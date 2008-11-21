@@ -1,0 +1,23 @@
+* first process
+  up to first user-level instruction
+  mostly about struct proc, segments, stacks, kalloc()
+  explain user-half, kernel-half, two stacks, two sets of regs
+  not SMP
+  not much about locking or scheduler or swtch
+  (where is fork())?
+
+This chapter will trace through xv6's initialization code, focusing on
+the creation of the first process. It will end with the execution of
+the first user-space instruction. Along the way you'll learn about the
+structure of an xv6 process, about xv6's memory management, and about
+kernel->user transitions.
+
+What happens when you turn on an x86 PC?
+
+reset, bios, boot block, entry.S, main()
+
+The story starts at main(). How did we get here? What is the
+state of the machine?
+
+Initial conditions: segments, stack, where in mem.
+

@@ -1,16 +1,16 @@
 This book explains the workings of the xv6 operating system.  xv6 is
-loosely modeled on UNIX V6 as presented in John Lyons' source listing
-and commentary. The purpose of xv6 is to illustrate how operating
-systems work. The purpose of this book is to provide background, to
-explain some subtle aspects of xv6, and to guide the reader on some
-walking tours through particularly interesting code paths.
+loosely modeled on UNIX V6 and inspired by John Lyons' books.  The
+purpose of xv6 is to illustrate concretely how operating systems work.
+The purpose of this book is to provide background, to explain subtle
+aspects of xv6, and to guide the reader on walking tours through
+particularly interesting code paths.
 
 You should read this book alongside a printout of the xv6 source
 listing; much of the discussion is intimately tied to the source.
 Better yet, explore the xv6 source in whatever order you find most
 illuminating, consulting this book only as necessary.
 
-What will you learn from xv6 and from this book?  You'll learn
+What will you learn from xv6 and from this book?  You'll see
 interfaces and implementations for the core services expected of an
 operating system: processes, protected address spaces, a file system,
 and I/O.  You'll learn a set of time-tested implementation techniques:
@@ -21,16 +21,26 @@ multiprocessor.
 
 What won't you learn? xv6 is far smaller than any useful operating
 system.  It won't teach you about networking, swapping, demand paging,
-shared memory, job control, sound card drivers, user-level threads,
-signals, or window systems. It won't teach you any radical ideas about
-operating system structure; xv6 is entirely traditional, incorporating
-only ideas from before about 1975. In return, xv6 is small enough that
-can read it in a weekend and hold the entire design in your head.
+shared memory, real-time scheduling, job control, sound card drivers,
+user-level threads, signals, or window systems. It won't teach you any
+radical ideas about operating system structure; xv6 is entirely
+traditional, incorporating only ideas from before about 1975. In
+return, xv6 is small enough that can read it in a weekend and hold the
+entire design in your head.
 
 Why not read Lyons' excellent annotated UNIX V6 source? There is no
 deep reason. Some shallow reasons: xv6 runs on Intel x86 hardware, a
 more familiar environment than the PDP11; xv6 is written in modern C;
-and xv6 runs on shared-memory multiprocessors.
+and xv6 illustrates the techniques needed to run on shared-memory
+multiprocessors.
+
+This book grew out of a set of lectures from MIT's advanced operating
+systems class (6.828).  6.828 uses xv6 to help explain basic design
+and implementation ideas; the students read the source, and the xv6
+lectures consist partially of stepping through interesting execution
+paths in an x86 emulator. The students build an entirely different
+operating system in the labs, in which they learn about ideas missing
+from xv6: paging, shared memory, IPC and networking.
 
 The next few chapters provide background that is not specific to xv6:
 UNIX's basic abstractions and its system call interface, and brief
@@ -38,11 +48,3 @@ introductions to C and the x86 architecture.  Each subsequent chapter
 focuses on a specific story within xv6, starting with an overview, and
 continuing with explanations of one or more detailed traversals of
 important execution paths through the source.
-
-This book grew out of a set of lectures from MIT's advanced operating
-systems class (6.828).  6.828 uses xv6 to help explain basic design
-and implementation ideas; the students read the source, and the xv6
-lectures consist partially of stepping through various important
-execution paths in an x86 emulator. The students build an entirely
-different operating system in the labs, in which they learn about
-ideas missing from xv6: paging, shared memory, IPC and networking.
