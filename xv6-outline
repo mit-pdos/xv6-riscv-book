@@ -1,0 +1,68 @@
+Outline for a book about xv6. Really notes.
+
+questions
+  intro chapter about x86, or explain as needed?
+  intro chapter about C?
+  each chapter is an intro + walk through some set of code paths
+  maybe bag boot block? and thus real mode.
+  some way to keep book line #s synced w/ code?
+
+* introduction
+  what we are trying to achieve
+  how to use the book
+  history / motivation
+
+* explanation of what "V6-like UNIX" means
+  so non-UNIX people will understand what we're building
+  main abstractions
+    processes, memory, file descriptors, pipes
+  system calls
+    fork, wait, exit
+  example: simple shell
+
+* boot
+  power on, BIOS
+  boot sector
+  load kernel from disk
+
+* first process
+  up to first user-level instruction
+  mostly about struct proc, segments, stacks, kalloc()
+  explain user-half, kernel-half, two stacks, two sets of regs
+  not SMP
+  not much about locking or scheduler or swtch
+  (where is fork())?
+
+* system calls, traps, device interrupts
+
+* multiprocessors and locking
+
+* process switching
+
+* sleep/wakeup
+
+* exit / wait / kill
+
+* file descriptors
+
+* pipes
+
+* block I/O
+  struct buf
+  block cache
+  B_BUSY
+
+* file read/write
+  inodes, iget, iput
+  I_BUSY
+
+* directory operations
+  lookup, create, unlink
+
+* file system crash recovery (?)
+
+* odds and ends
+  appendix, or put somewhere else, or drop
+  SMP boot
+  console driver
+  IDE disk driver
