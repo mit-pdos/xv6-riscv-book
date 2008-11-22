@@ -5,12 +5,16 @@
   not SMP
   not much about locking or scheduler or swtch
   (where is fork())?
+  what do we mean by e.g. "when the process is running"?
+    user? kernel? either?
+  did we explain user vs kernel somewhere?
 
 This chapter will trace through xv6's initialization code, focusing on
 the creation of the first process. It will end with the execution of
-the first user-space instruction. Along the way you'll learn about the
-structure of an xv6 process, about xv6's memory management, and about
-kernel->user transitions.
+the first user-space instruction (which will turn out to be at line
+6708). Along the way you'll learn about the structure of an xv6
+process, about xv6's memory management, and about kernel->user
+transitions.
 
 When you first turn on a PC, it executes some hardware setup code
 stored in non-volatile memory. This code is supplied by the PC's
@@ -24,7 +28,8 @@ bootmain.c.  bootasm.S sets up the CPU's memory management unit to map
 32-bit virtual addresses directly to physical memory.  Specifically:
 line 0957 turns on protected mode, line 0961 enters 32-bit mode, and
 the segment descriptors loaded at line 0954 cause virtual addresses to
-be used as physical addresses.
+be used as physical addresses. Line 0974 puts the top of the stack at
+0x7c00; it grows down from there.
 
 bootmain.c loads the xv6 kernel from hard drive 0 into memory.  It
 expects the kernel to start at sector 1 (the second sector) and to be
@@ -39,4 +44,31 @@ rather than 0x0 is to avoid conflicts with resources the PC hardware
 stores in the first megabyte of memory (trap vectors, the VGA frame
 buffer, the executing boot block at 0x7c00, etc.).
 
-Now we are in main. Oops where is the stack?
+xv6 proper starts in main() at line 1212. For now we are only
+interested in line 1235, which calls userinit() to create the first
+process.  userinit() starts at line 1757.
+
+Each process in xv6 has three main parts: a proc structure, some user
+memory, and a kernel stack.  A proc structure (sheet 15) is an entry
+in the proc[] array; it holds pointers to the memory and kernel stack,
+as well as other data such as saved registers.  xv6 often uses the
+variable p to refer to a proc structure.
+
+A process's user memory (p->mem) holds the process's instructions,
+data, and stack.  p->sz holds the size of the process's user memory.
+When the process is running user instructions, xv6 instructs the MMU
+to map virtual address zero to be the start of user memory, so that
+each user process has the illusion of having a dedicated memory
+system. The user instructions start at p->mem; the user stack is at
+the end (p->mem + p->sz) and grows down.
+
+When a process is executing in the kernel, for example in a system
+call, it must have a stack on which to save variables and function
+call return addresses.  xv6 allocates one stack for each process for
+use when it is in the kernel, called the process's kernel stack
+(p->kstack).  This is a separate stack from the user stack, since the
+user stack may not be valid.  Each process has its own kernel stack
+(rather than all sharing a single stack) so that a system call may
+"block" in the kernel to wait for I/O, and resume where it left off
+when the I/O has finished; the process's kernel stack saves much of
+the state required for such a resumption.
