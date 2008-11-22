@@ -7,6 +7,9 @@ questions
   maybe bag boot block? and thus real mode.
   some way to keep book line #s synced w/ code?
   exercises?
+  hints about looking for stuff in kernel.asm?
+  elf format?
+  mkfs
 
 * introduction
   what we are trying to achieve

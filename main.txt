@@ -12,12 +12,31 @@ the first user-space instruction. Along the way you'll learn about the
 structure of an xv6 process, about xv6's memory management, and about
 kernel->user transitions.
 
-What happens when you turn on an x86 PC?
+When you first turn on a PC, it executes some hardware setup code
+stored in non-volatile memory. This code is supplied by the PC's
+manufacturer, and is usually called the BIOS. The last thing the BIOS
+does is load the first sector (512 bytes) from the hard drive into
+memory at 0x7c00, and then jump to 0x7c00. That sector is called the
+boot block.
 
-reset, bios, boot block, entry.S, main()
+xv6 provides its own boot block, whose code is in bootasm.S and
+bootmain.c.  bootasm.S sets up the CPU's memory management unit to map
+32-bit virtual addresses directly to physical memory.  Specifically:
+line 0957 turns on protected mode, line 0961 enters 32-bit mode, and
+the segment descriptors loaded at line 0954 cause virtual addresses to
+be used as physical addresses.
 
-The story starts at main(). How did we get here? What is the
-state of the machine?
+bootmain.c loads the xv6 kernel from hard drive 0 into memory.  It
+expects the kernel to start at sector 1 (the second sector) and to be
+in ELF format. The Makefile initializes the disk 0 image so that this
+is true; see the xv6.img target. The ELF format indicates the address
+at which the executable file expects to be loaded into memory and its
+entry address; bootmain.c obeys these directions.  Makefile links the
+kernel so that it will be loaded into memory starting at address
+0x100000, and so that its entry address is main(); see the kernel
+target in the Makefile. The reason for loading the kernel at 0x100000
+rather than 0x0 is to avoid conflicts with resources the PC hardware
+stores in the first megabyte of memory (trap vectors, the VGA frame
+buffer, the executing boot block at 0x7c00, etc.).
 
-Initial conditions: segments, stack, where in mem.
-
+Now we are in main. Oops where is the stack?
