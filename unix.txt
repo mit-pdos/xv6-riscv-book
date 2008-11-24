@@ -28,15 +28,6 @@ pipes, and a file system.
 
 * Processes and Memory
 
-[SYS_exec]    sys_exec,
-[SYS_exit]    sys_exit,
-[SYS_fork]    sys_fork,
-[SYS_getpid]  sys_getpid,
-[SYS_kill]    sys_kill,
-[SYS_sleep]   sys_sleep,
-[SYS_wait]    sys_wait,
-[SYS_sbrk]    sys_sbrk,
-
 An xv6 process consists of user-space memory (instructions, data, and
 stack) along with some state inside the kernel.  xv6 provides
 time-sharing: it transparently switches the available CPUs among the
@@ -66,13 +57,31 @@ fork() returns zero. Here's an example:
   }
 
 The exit() system call causes a process to die. The wait() system call
-waits for any of a process's children to die, and then returns.
+waits for any of a process's children to die, and then returns.  The
+kill(pid) system call takes a process ID as an argument, and causes
+that process to die.
 
 A process may overwrite itself with a program stored in a file with
 the exec() system call.  The file must contain an ELF-format
 executable.  If all goes well, exec() does not really return; instead,
 the instructions loaded from the file start executing at the
-entry-point declared in the ELF header.
+entry-point declared in the ELF header. exec() takes two arguments:
+the name of the file containing the executable, and an array
+of string arguments. For example:
+
+  char *args[3];
+  args[0] = "echo";
+  args[1] = "hello";
+  args[2] = 0;
+  exec("/bin/echo", args);
+
+xv6 allocates most user-space memory implicity: fork() allocates the
+memory required for the child's copy of the parent's memory, and
+exec() allocates enough memory to hold the executable file.  A process
+that needs more memory at run-time (perhaps in malloc()) can call
+sbrk(n) to allocate n bytes of memory. sbrk() returns the address of
+the new memory. xv6 places the new memory just after all of the
+process's existing memory.
 
 * File descriptors
 [SYS_read]    sys_read,
@@ -88,7 +97,9 @@ read and write may block
 
 * Pipes
 [SYS_pipe]    sys_pipe,
+example of typical use w/ fork
 finite buffer
+last close (ref cnt)
 close on one end vs close on both ends
 eof
 blocking write
@@ -102,6 +113,9 @@ blocking read
 [SYS_mknod]   sys_mknod,
 [SYS_open]    sys_open,
 [SYS_unlink]  sys_unlink,
+
+unlink vs close
+links (ok, mostly the issue is implementation: link cnt vs inode ref cnt)
 
 * Example: A simple shell
 Or maybe fire up a program with output redirected.
