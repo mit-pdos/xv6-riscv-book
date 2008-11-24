@@ -70,7 +70,7 @@ of string arguments. For example:
   args[2] = 0;
   exec("/bin/echo", args);
 
-xv6 allocates most user-space memory implicity: fork() allocates the
+xv6 allocates most user-space memory implicitly: fork() allocates the
 memory required for the child's copy of the parent's memory, and
 exec() allocates enough memory to hold the executable file.  A process
 that needs more memory at run-time (perhaps in malloc()) can call

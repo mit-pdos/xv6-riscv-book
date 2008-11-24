@@ -43,7 +43,8 @@ questions
 
 * x86 overview
   mostly segments
-  cpl, dpl, selector, descriptor, base
+  MMU, cpl, dpl, selector, descriptor, base
+  eflags, EIP, ESP, CS, DS, SS
 
 * first process
   up to first user-level instruction
@@ -54,6 +55,7 @@ questions
   (where is fork())?
 
 * system calls, traps, device interrupts
+  talk about protection, CPL
 
 * multiprocessors and locking
 
