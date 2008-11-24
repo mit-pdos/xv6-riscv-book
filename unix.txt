@@ -15,14 +15,93 @@ kernel; the kernel performs the service and returns. Thus a process
 alternates between executing in "user space" and in "kernel space".
 
 The kernel uses the CPU's hardware protection mechanisms to ensure
-that 
+that each process executing in user space can only access its own
+memory.  The kernel executes with the hardware privileges required to
+implement these protections, while user-space process code executes
+without privilege.  A system call both raises the hardware privilege
+level and jumps to code inside the kernel.
 
-protection
-privilege
-kernel
-user 
-crossings
-process
-system calls
+The xv6 kernel provides a subset of the services and system calls that
+UNIX kernels traditionally offer.  The following paragraphs outline
+xv6's services, which include processes, memory, file descriptors,
+pipes, and a file system.
 
-xv6 provides a subset of 
+* Processes and Memory
+
+[SYS_exec]    sys_exec,
+[SYS_exit]    sys_exit,
+[SYS_fork]    sys_fork,
+[SYS_getpid]  sys_getpid,
+[SYS_kill]    sys_kill,
+[SYS_sleep]   sys_sleep,
+[SYS_wait]    sys_wait,
+[SYS_sbrk]    sys_sbrk,
+
+An xv6 process consists of user-space memory (instructions, data, and
+stack) along with some state inside the kernel.  xv6 provides
+time-sharing: it transparently switches the available CPUs among the
+set of process which wish to execute. When a process is not executing,
+xv6 saves its CPU registers, restoring them when it next runs the
+process. Each process has a unique numeric non-zero process ID (pid).
+
+One process may create another with the fork() system call. fork()
+creates a new process with exactly the same memory contents as the
+process that called fork; the former is called the "child" and the
+latter the "parent".  The child starts executing with a return from
+fork(). The main difference between the parent and child is that the
+parent's fork() returns the child's process ID, while the child's
+fork() returns zero. Here's an example:
+
+  int pid;
+
+  pid = fork();
+  if(pid == 0){
+    printf("I am the child.\n");
+    exit();
+  } else if(pid > 0){
+    printf("I am the parent; child's pid is %d.\n", pid);
+    wait();
+  } else {
+    printf("fork() returned an error.\n");
+  }
+
+The exit() system call causes a process to die. The wait() system call
+waits for any of a process's children to die, and then returns.
+
+A process may overwrite itself with a program stored in a file with
+the exec() system call.  The file must contain an ELF-format
+executable.  If all goes well, exec() does not really return; instead,
+the instructions loaded from the file start executing at the
+entry-point declared in the ELF header.
+
+* File descriptors
+[SYS_read]    sys_read,
+[SYS_write]   sys_write,
+[SYS_close]   sys_close,
+[SYS_dup]     sys_dup,
+
+Inherited across fork.
+seek offset (though no seek).
+stdin, stdout.
+eof (zero read).
+read and write may block
+
+* Pipes
+[SYS_pipe]    sys_pipe,
+finite buffer
+close on one end vs close on both ends
+eof
+blocking write
+blocking read
+
+* File System
+[SYS_chdir]   sys_chdir,
+[SYS_fstat]   sys_fstat,
+[SYS_link]    sys_link,
+[SYS_mkdir]   sys_mkdir,
+[SYS_mknod]   sys_mknod,
+[SYS_open]    sys_open,
+[SYS_unlink]  sys_unlink,
+
+* Example: A simple shell
+Or maybe fire up a program with output redirected.
