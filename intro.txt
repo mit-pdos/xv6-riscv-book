@@ -20,13 +20,13 @@ drivers.  You'll learn about making all this work on a shared-memory
 multiprocessor.
 
 What won't you learn? xv6 is far smaller than any useful operating
-system.  It won't teach you about networking, swapping, demand paging,
+system. It won't teach you about networking, swapping, demand paging,
 shared memory, real-time scheduling, job control, sound card drivers,
-user-level threads, signals, or window systems. It won't teach you any
-radical ideas about operating system structure; xv6 is entirely
-traditional, incorporating only ideas from before about 1975. In
-return, xv6 is small enough that you can read it in a weekend and hold
-the entire design in your head.
+user-level threads, signals, user access controls, or window systems.
+It won't teach you any radical ideas about operating system structure;
+xv6 is entirely traditional, incorporating only ideas from before
+about 1975. In return, xv6 is small enough that you can read it in a
+weekend and hold the entire design in your head.
 
 Why not read Lions' excellent annotated UNIX V6 source? There is no
 deep reason. Some shallow reasons: xv6 runs on Intel x86 hardware, a

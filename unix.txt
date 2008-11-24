@@ -78,6 +78,9 @@ sbrk(n) to allocate n bytes of memory. sbrk() returns the address of
 the new memory. xv6 places the new memory just after all of the
 process's existing memory.
 
+xv6 does not provide a notion of users or protecting one user from
+another; all processes essentially run as root.
+
 * File descriptors
 
 A file descriptor represents an I/O destination to which a process may
