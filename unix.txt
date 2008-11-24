@@ -1,25 +1,20 @@
-* explanation of what "V6-like UNIX" means
-  so non-UNIX people will understand what we're building
-  user and kernel, protection
-  main abstractions
-    processes, memory, file descriptors, pipes
-  system calls
-    fork, wait, exit
-  example: simple shell
+This chapter describes the interface for which xv6 is the
+implementation.
 
 xv6 takes the form of a "kernel": a special program that provides
 services to running programs. Each running program, called a
-"process", has instructions, data, and a stack. When a process needs
-to invoke a kernel service, it makes a "system call" to enter the
-kernel; the kernel performs the service and returns. Thus a process
-alternates between executing in "user space" and in "kernel space".
+"process", has memory containing instructions, data, and a stack. When
+a process needs to invoke a kernel service, it makes a "system call"
+to enter the kernel; the kernel performs the service and returns. Thus
+a process alternates between executing in "user space" and in "kernel
+space".
 
 The kernel uses the CPU's hardware protection mechanisms to ensure
 that each process executing in user space can only access its own
-memory.  The kernel executes with the hardware privileges required to
-implement these protections, while user-space process code executes
-without privilege.  A system call both raises the hardware privilege
-level and jumps to code inside the kernel.
+memory. The kernel executes with the hardware privileges required to
+implement these protections, while user-space code executes without
+privilege. Invocation of a system call both raises the hardware
+privilege level and jumps into the kernel.
 
 The xv6 kernel provides a subset of the services and system calls that
 UNIX kernels traditionally offer.  The following paragraphs outline
@@ -84,16 +79,83 @@ the new memory. xv6 places the new memory just after all of the
 process's existing memory.
 
 * File descriptors
-[SYS_read]    sys_read,
-[SYS_write]   sys_write,
-[SYS_close]   sys_close,
-[SYS_dup]     sys_dup,
 
-Inherited across fork.
-seek offset (though no seek).
-stdin, stdout.
-eof (zero read).
-read and write may block
+A file descriptor represents an I/O destination to which a process may
+write bytes or from which it may read. A file descriptor may refer to
+a file, a directory, a pipe to another process, or the console. A file
+descriptor takes the form of a small integer; the kernel uses it to
+index into an internal table.
+
+By convention, file descriptor 0 provides input to a program, and file
+descriptor 1 refers to the desired destination of its output (called
+standard input and standard output). The UNIX shell exploits this
+convention to implement I/O redirection and pipelines.
+
+The read() and write() system calls read and write bytes from/to file
+descriptors. This code copies its standard input to its standard
+output:
+
+  while(1){
+    char buf[512];
+    int n = read(0, buf, sizeof(buf));
+    if(n <= 0)
+      break;
+    if(write(1, buf, n) != n){
+      printf("write error\n");
+      exit();
+    }
+  }
+
+read(fd, buf, n) waits until data is available on file descriptor fd,
+copies up to n bytes of input into buf, and returns that number of
+bytes. read() consumes those bytes: a subsequent read() will yield the
+bytes that follow in the input stream. If the file descriptor will
+never yield any more data, read() returns zero to indicate
+end-of-file; this condition arises at the end of an ordinary file, or
+when reading from a pipe whose writing end has been closed.
+
+close(fd) indicates that the process no longer needs the file
+descriptor. That descriptor is now free in the calling process, and
+the kernel may return it from a future open(), pipe(), or dup() (see
+below). The kernel always allocates the lowest-numbered free file
+descriptor.
+
+fork() gives the child an initial set of file descriptors that are
+identical to the parent's descriptors. exec() preserves the calling
+process's descriptors. This behavior allows programs such as the shell
+to implement I/O redirection by fork()ing, setting up the desired I/O
+environment in the child, and then calling exec(). Here is a
+simplified version of the code a shell runs when you type
+"program<infile".
+
+  char args[] = { "program", "program", 0 };
+  if(fork() == 0){
+    close(0);
+    open("infile", 0);
+    exec("program", args);
+  }
+
+What happens when a process fork()s and both parent and child read or
+write the file descriptors that they now share? For example:
+
+  if(fork() == 0){
+    write(1, "x", 1);
+  } else {
+    write(1, "y", 1);
+  }
+
+Both parent and child write to the standard output. Will one write
+overwrite the other, yielding a file with just one byte (either x or
+y)? No. File descriptors with the same ultimate origin, but copied by
+fork() or dup(), share an "offset" in their kernel state indicating
+the position of the next byte to be read or written. In the above
+code, the first write() increments the shared offset, so that the data
+from the second write() appears after that from the first. This
+behavior helps produce useful results from shell commands
+such as (echo x ; echo y) > outfile.
+
+write may block: interesting for pipes
+dup()
 
 * Pipes
 [SYS_pipe]    sys_pipe,
