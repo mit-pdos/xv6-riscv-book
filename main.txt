@@ -2,8 +2,8 @@ This chapter will trace through xv6's initialization code, focusing on
 the creation of the first process. It will end with the execution of
 the first user-space instruction (which will turn out to be at line
 6708). Along the way you'll learn about the structure of an xv6
-process, about xv6's memory management, and about kernel->user
-transitions.
+process, about xv6's memory management, and about transitions from
+kernel to user.
 
 When you first turn on a PC, it executes some hardware setup code
 stored in non-volatile memory. This code is supplied by the PC's

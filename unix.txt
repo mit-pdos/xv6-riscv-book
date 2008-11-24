@@ -1,0 +1,28 @@
+* explanation of what "V6-like UNIX" means
+  so non-UNIX people will understand what we're building
+  user and kernel, protection
+  main abstractions
+    processes, memory, file descriptors, pipes
+  system calls
+    fork, wait, exit
+  example: simple shell
+
+xv6 takes the form of a "kernel": a special program that provides
+services to running programs. Each running program, called a
+"process", has instructions, data, and a stack. When a process needs
+to invoke a kernel service, it makes a "system call" to enter the
+kernel; the kernel performs the service and returns. Thus a process
+alternates between executing in "user space" and in "kernel space".
+
+The kernel uses the CPU's hardware protection mechanisms to ensure
+that 
+
+protection
+privilege
+kernel
+user 
+crossings
+process
+system calls
+
+xv6 provides a subset of 
