@@ -157,18 +157,69 @@ from the second write() appears after that from the first. This
 behavior helps produce useful results from shell commands
 such as (echo x ; echo y) > outfile.
 
-write may block: interesting for pipes
-dup()
+A nice aspect of file descriptors is that they are equally at home
+with random-access and stream I/O. For example, a program that reads
+its standard input usually does not need to be aware of whether the
+input comes from the console, a file, or a pipe.
+
+pipe section uses dup()...
 
 * Pipes
-[SYS_pipe]    sys_pipe,
-example of typical use w/ fork
-finite buffer
-last close (ref cnt)
-close on one end vs close on both ends
-eof
-blocking write
-blocking read
+
+A pipe appears to processes as a pair of file descriptors, one for
+writing and one for reading. A sequence of bytes written to the former
+appear when the latter is read. 
+
+The most common use for pipes is for communication between processes.
+The following code fork()s a process to run cat and writes "hello" to
+it via a pipe:
+
+  int pipe_fds[2];
+  char *args[] = { "cat", 0 };
+  pipe(pipe_fds);
+  if(fork() == 0){
+    close(0);
+    dup(pipe_fds[0]);
+    close(pipe_fds[0]);
+    close(pipe_fds[1]);
+    exec("/bin/cat", args);
+  } else {
+    close(pipe_fds[0]);
+    write(pipe_fds[1], "hello\n", 6);
+    close(pipe_fds[1]);
+  }
+
+The program first creates a new pipe with the pipe() system call.
+pipe() returns the pipe's two file descriptors in the array passed as
+its argument, the read descriptor followed by the write descriptor.
+The fork()ed child inherits both file descriptors. The close() and
+dup() sequence causes descriptor 0 (the standard input) to refer to
+the read side of the pipe. Now the cat command will run with input
+from the pipe. After the fork() the parent writes to the pipe's write
+descriptor, and closes both descriptors.
+
+A read on a pipe waits for some data to be written. The read may
+return less data than requested. If there are no open file descriptors
+referring to the pipe's write side, and there is no more data waiting
+to be read, a read will return -1 to indicate end-of-file. This is one
+reason why it's important that the child in the above code example
+closes its copy of the pipe's write descriptor; otherwise it would
+never see end-of-file.
+
+You may wonder why UNIX has special kernel support for pipes, when
+file redirection can be used to get a similar effect. For example, the
+following two shell commands produce the same output:
+
+  echo hello | cat
+  echo hello > /tmp/xyz ; cat < /tmp/xyz
+
+If the kernel didn't provide pipes, you could imagine a shell
+implementing "|" with file redirection. One reason pipes are
+preferable is that they automatically clean themselves up, while with
+file redirection the shell would have to be careful to remove
+/tmp/xyz. A second reason is that pipes can pass arbitrarily long
+streams of data, while file redirection requires enough free space on
+the disk to store all the data.
 
 * File System
 [SYS_chdir]   sys_chdir,
@@ -183,4 +234,6 @@ unlink vs close
 links (ok, mostly the issue is implementation: link cnt vs inode ref cnt)
 
 * Example: A simple shell
-Or maybe fire up a program with output redirected.
+
+Maybe the code examples above are all that's needed;
+it's not clear what more a full shell would add.

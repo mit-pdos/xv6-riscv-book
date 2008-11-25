@@ -20,6 +20,7 @@ questions
     user? kernel? either?
   note only two transitions: user/kernel, kernel/kernel
   the general idea that you usually "resume" and restore "saved" state
+  unix.txt examples often don't check error returns; at least mention this.
   general allocation strategy
     proc, bufs, FDs, pipes, user memory
     no general-purpose allocator
