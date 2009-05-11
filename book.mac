@@ -1,0 +1,314 @@
+.\"
+.\"	preliminary formatting, subject to change.
+.\"	mostly lifted from rsc's thesis and cleaned up.
+.\"
+.do xflag 3	\" heirloom troff: enable long names like groff
+.mediasize letter
+.hylang en_US
+.lc_ctype en_US.utf8
+.\"
+.\"	fonts
+.\"
+.fp 1 R MinionPro-Regular otf
+.feature R +tnum
+.fp 2 I MinionPro-It otf
+.fp 3 B MinionPro-Bold otf
+.fp 4 BI MinionPro-BoldIt otf
+.fp 5 C LucidaSans-Typewriter83 pfa
+.fp 0 E ACaslonPro-Regular otf
+.feature E +onum +smcp
+.\" The expert font needs letter space tracking for use as small caps (Gunnar Ritter)
+.track E 1 .3 24 3
+.\" Use vertically centered tilde, circumflex
+.ftr R ~\[asciitilde]
+.ftr I ~\[asciitilde]
+.ftr B ~\[asciitilde]
+.ftr BI ~\[asciitilde]
+.ftr C ~\[asciitilde]
+.ftr R ^\[asciicircum]
+.ftr I ^\[asciicircum]
+.ftr B ^\[asciicircum]
+.ftr BI ^\[asciicircum]
+.ftr C ^\[asciicircum]
+.\"
+.\"	date
+.\"
+.\"9 .fp 5 C LucidaSansCW83
+.if \n(mo==1 .ds mo January
+.if \n(mo==2 .ds mo February
+.if \n(mo==3 .ds mo March
+.if \n(mo==4 .ds mo April
+.if \n(mo==5 .ds mo May
+.if \n(mo==6 .ds mo June
+.if \n(mo==7 .ds mo July
+.if \n(mo==8 .ds mo August
+.if \n(mo==9 .ds mo September
+.if \n(mo==10 .ds mo October
+.if \n(mo==11 .ds mo November
+.if \n(mo==12 .ds mo December
+.nr _ (\n(yr%100)+2000
+.ds yr \n_
+.ds date "\*(mo \n(dy, \*(yr
+.\"
+.\"	initialization
+.\"
+.ds center-footer "\\n%
+.ds center-header "
+.ds left-footer "
+.ds left-header "
+.ds right-footer "
+.ds right-header "
+.nr IL 0
+.nr ID 4n
+.nr IN 0
+.nr h1 0 1
+.nr line-length 6i
+.nr left-margin 1.25i
+.nr P0 0.4v
+.nr page-length 11i
+.nr footer-margin 1i
+.nr header-margin 1i
+.nr point-size 12
+.nr RN 0 1
+.nr T0 4n
+.nr exercise 0 1
+.ft 1
+.\"
+.\"	wa - print a warning
+.\"
+.de wa
+.tm \\n(.F:\\n(.c: \\$1 \\$2 \\$3 \\$4 \\$5 \\$6 \\$7 \\$8 \\$9
+..
+.\"
+.\"	init - run-time initialization
+.\"
+.de init
+.ll \\n[line-length]u
+.po \\n[left-margin]u
+.pl \\n[page-length]u
+.new-page
+.wh 0 new-page
+.wh -\\n[footer-margin]u page-footer
+.wh -\\n[footer-margin]u/2u page-bottom
+.nr A0 0
+.nr page-number 1
+..
+.\"
+.\"	new page
+.\"
+.de new-page
+.sp \\n[header-margin]u/2u
+.ev 1
+.in 0i
+.ll \\n[line-length]u
+.ad c
+'tl '\\*[left-header]'\\*[center-header]'\\*[right-header]'
+.ev
+'sp |\\n[header-margin]u
+..
+.\"
+.\"	page footer
+.\"
+.de page-footer
+.ch page-footer 20i
+.ev 1
+'sp |(\\n[page-length]u-\\n[footer-margin]u)
+.bp
+.ev
+.ch page-footer -\\n[footer-margin]u
+..
+.\"
+.\"	page bottom
+.\"
+.de page-bottom
+.nr save-ps \\n(.s
+.nr save-ft \\n(.f
+.ft 1
+.ps \\n[point-size]
+'lt \\n[line-length]u
+.po \\n[left-margin]u
+.if \\n%>0 .tl \(ts\\*[left-footer-text]\(ts\\*[center-footer-text]\(ts\\*[right-footer-text]\(ts
+.ft \\n[save-ft]
+.ps \\n[save-ps]
+..
+.\"
+.\"	bold
+.\"
+.de bold
+.font-change B "\\$1" "\\$2\\&" "\\$3"
+..
+.\"
+.\"	code font
+.\"
+.de code
+.font-change C "\\$1" "\\$2\\&" "\\$3"
+..
+.\"
+.\"	font change
+.\"
+.de font-change
+.ie \\n(.$==1 .ft \\$1
+.el \&\\$4\\f\\$1\\$2\&\\fP\\$3
+..
+.\"
+.\"	italic
+.\"
+.de italic
+.font-change I "\\$1" "\\$2\\&" "\\$3"
+..
+.\"
+.\"	left-adjust paragraph
+.\"
+.de LP
+.in \\n[indent]u
+.br
+.hy 1
+.ad b
+.fi
+.ft R
+.sp \\n[para-spacing]u
+.PS
+..
+.\"
+.\"	ordinary paragraph
+.\"
+.de PP
+.if \\n(LP>0 .sp 0.2v
+.LP
+.if \\n(LP>0 .nr LP 0
+.ti 2m
+..
+.\"
+.\"	indented paragraph
+.\"
+.de IP
+.br
+.ne 3
+.sp 0.2v
+.ie '\\$2'' .nr IP 4n
+.el .nr IP \\$2
+.in \\n(INu+\\n(IPu
+.if !'\\$1'' \{\
+.	ti -\\n(IPu
+\&\\$1
+.	ie \\n(.k>=\\n(.i .br
+.	el .sp -1\}
+..
+.\"
+.\"	set point size
+.\"
+.de PS
+.ps \\n[point-size]
+.nr _ \\n[point-size]*1200u
+.vs \\n_u
+..
+.\"
+.\"	chapter-like
+.\"
+.de big-heading
+.init
+.ft BI
+DRAFT as of \*[date]: DO NOT CIRCULATE
+.sp
+.ft B
+.ps 20
+.vs 24
+\\$1
+..
+.\"
+.\"	chapter heading
+.\"
+.de chapter
+.big-heading "Chapter \\*[\\$1]
+.sp
+\\$2
+.sp
+.LP
+..
+.\"
+.\"	section heading
+.\"
+.de section
+.br
+.ft B
+.ps 16
+.vs 18
+.sp 1.5
+\\$1
+.sp 0.5
+.ft R
+.LP
+..
+.\"
+.\"	exercises
+.\"
+.de exercise
+.LP
+\\n+[exercise].
+..
+.de answer xx
+.ig
+.xx
+.\"
+.\"	font change aliases
+.\"
+.de register
+.code "%\\$1" "\\$2" "\\$3"
+..
+.de opcode
+.code "\\$1" "\\$2" "\\$3"
+..
+.de file
+.code "\\$1" "\\$2" "\\$3"
+..
+.de address
+.code "\\$1" "\\$2" "\\$3"
+..
+.de lines
+\&\\$3(1111-9999)\\$2
+..
+.de line
+\&\\$3(1111)\\$2
+..
+.\"
+.\"	P1 - code start
+.\"
+.de P1
+.sp 0.3v
+.IP \\$1
+.nf
+.ft C
+.ta +4n +4n +4n +4n +4n +4n +4n +4n
+.ps 10
+.vs 12
+..
+.\"
+.\"	P2 - code end
+.\"
+.de P2
+.sp 0.4v
+.PS
+.LP
+..
+.\"
+.\"	P3 - code break
+.\"
+.de P3
+.P2
+.P1
+..
+.\"
+.\"	table of contents
+.\"
+.ds CH:SHELL 1
+.ds CH:BOOT 2
+.ds CH:MEM 3
+.ds CH:TRAP 4
+.ds CH:PROC 5
+.ds CH:DISK 6
+.ds CH:FSDATA 7
+.ds CH:FSFUNC 8
+.ds CH:FSFILE 9
+.ds CH:EXEC 10
+.ds APP:C A
+.ds APP:HW B

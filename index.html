@@ -1,0 +1,80 @@
+<html>
+<head>
+<title>xv6 book (DRAFT; DO NOT CIRCULATE)</title>
+</head>
+<body>
+<h1>xv6 book</h1>
+<h2>DRAFT: DO NOT CIRCULATE</h2>
+
+very much in progres<br><br>
+
+Introduction yet to be written.<br>
+<ul>
+<li>read with the code side by side
+<li>code references look like (xxxx) or (xxxx-yyyy).
+<li>each chapter starts with an introduction to the topic,
+spends most of the text on code,
+and then wraps up talking about how xv6
+compares to real-world operating systems.
+</ul>
+
+Chapter 1: An Operating System Interface
+<blockquote>
+The Unix system call interface as illustrated by the shell.
+</blockquote>
+
+<a href="boot.pdf">Chapter 2: Bootstrap</a>
+<blockquote>
+From power on to kernel start.
+</blockquote>
+
+Chapter 3: Address spaces
+<blockquote>
+Process memory management and segments.
+</blockquote>
+
+Chapter 4: Traps, interrupts, and system calls.
+<blockquote>
+Low-level trap mechanism, trap handler, system call arguments.
+</blockquote>
+
+Chapter 5: Process coordination.
+<blockquote>
+Multiprocessing, locking, sleep and wakeup (pipe example), fork, wait, exit.
+(needs to be split)
+</blockquote>
+
+<a href="disk.pdf">Chapter 6: Buffer cache and disk</a>
+<blockquote>
+Buffer cache and IDE disk driver.
+</blockquote>
+
+Chapter 7: File system data structures
+<blockquote>
+Block in use bitmap, block allocation, inode structure, inode contents.
+</blockquote>
+
+Chapter 8: File system operations
+<blockquote>
+</blockquote>
+
+Chapter 9: File system system calls
+<blockquote>
+</blockquote>
+
+Chapter 10: Exec
+<blockquote>
+Exec
+</blockquote>
+
+Appendix A: Low-level C and inline assembly
+<blockquote>
+Intro to C and inline assembly for people who only know Java (say).
+Examples drawn entirely from xv6 source.
+Perhaps explain malloc.c.
+</blockquote>
+
+Appendix B: Additional drivers.
+<blockquote>
+Keyboard, screen, probably interrupt controllers and MP hardware.
+</blockquote>
