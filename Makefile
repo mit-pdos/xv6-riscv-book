@@ -13,5 +13,5 @@ all: $(PDF)
 
 
 push: index.html $(PDF)
-	scp $^ am.lcs.mit.edu:~rsc/public_html/xv6book
+	scp $^ am.lcs.mit.edu:~rsc/public_html/xv6-book
 
