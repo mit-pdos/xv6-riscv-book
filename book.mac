@@ -15,10 +15,6 @@
 .fp 3 B MinionPro-Bold otf
 .fp 4 BI MinionPro-BoldIt otf
 .fp 5 C LucidaSans-Typewriter83 pfa
-.fp 0 E ACaslonPro-Regular otf
-.feature E +onum +smcp
-.\" The expert font needs letter space tracking for use as small caps (Gunnar Ritter)
-.track E 1 .3 24 3
 .\" Use vertically centered tilde, circumflex
 .ftr R ~\[asciitilde]
 .ftr I ~\[asciitilde]
@@ -300,7 +296,7 @@ DRAFT as of \*[date]: DO NOT CIRCULATE
 .\"
 .\"	table of contents
 .\"
-.ds CH:SHELL 1
+.ds CH:UNIX 1
 .ds CH:BOOT 2
 .ds CH:MEM 3
 .ds CH:TRAP 4
