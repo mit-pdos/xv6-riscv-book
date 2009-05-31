@@ -281,7 +281,7 @@ all in under 512 bytes of machine code.
 .PP
 The first instruction in the boot sector is
 .opcode cli
-.line bootasm.S:/^Disable.interrupts ,
+.line bootasm.S:/Disable.interrupts/ ,
 which disables processor interrupts.
 Interrupts are a way for hardware devices to invoke
 operating system functions called interrupt handlers.
@@ -420,7 +420,7 @@ and low-level software probably continues to depend on 8088
 behavior at boot.
 The boot sector must enable the A20 line using I/O to the keyboard
 controller on ports 0x64 and 0x60
-.lines bootasm.S:/^Enable.A20/,/outb.*%al,.0x60/ .
+.lines bootasm.S:/Enable.A20/,/outb.*%al,.0x60/ .
 .PP
 The 80286 could address 24 bits of memory (16 megabytes) and
 the 80386 and later x86 processors can address 32 bits of memory (4
@@ -442,7 +442,7 @@ more than 20 bits of memory.
 It executes an
 .opcode lgdt
 instruction 
-.line bootasm;S:/lgdt
+.line bootasm.S:/lgdt/
 to set the processor's global descriptor table (GDT)
 register with the value
 .code gdtdesc
@@ -479,7 +479,7 @@ setting the 1 bit
 .code CR0_PE )
 in register
 .register cr0
-.lines bootasm.S:/movl.*%cr0,/,/movl.*,.%cr0/ .
+.lines bootasm.S:/movl.*%cr0/,/movl.*,.%cr0/ .
 At this point the processor is in a kind of
 limbo: protected mode is enabled, but the
 processor is not executing code from a protected
@@ -489,9 +489,9 @@ the code executes a far jump
 (\c
 .opcode ljmp )
 instruction
-.line bootasm.S:/ljmp .
+.line bootasm.S:/ljmp/ .
 The jump continues execution at the next line
-.line bootasm.S:/^code32
+.line bootasm.S:/^.code32/
 but in doing so sets 
 .register cs
 to 
@@ -542,14 +542,14 @@ away from the boot sector code.
 .PP
 Finally the boot sector can call the C function
 .code bootmain
-.line bootasm.S:/^call.*bootmain .
+.line bootasm.S:/call.*bootmain/ .
 .code Bootmain 's
 job is to load and run the kernel.
 It only returns if something has gone wrong.
 In that case, the code sends a few output words
 on port
 .address 0x8a00
-.lines bootasm.S:/^bootmain.returns/,/spin:/-1 .
+.lines bootasm.S:/bootmain.returns/,/spin:/-1 .
 On real hardware, there is no device connected
 to that port, so this code does nothing.
 If the boot sector is running inside the PC simulator Bochs, port 
@@ -574,11 +574,11 @@ The kernel is an ELF format binary, defined in
 An ELF binary is an ELF file header,
 .code struct
 .code elfhdr
-.line elf.h:/^struct.elfhdr ,
+.line elf.h:/^struct.elfhdr/ ,
 followed by a sequence of program section headers,
 .code struct
 .code proghdr
-.line elf.h:/^struct.proghdr .
+.line elf.h:/^struct.proghdr/ .
 Each
 .code proghdr
 describes a section of the kernel that must be loaded into memory.
@@ -588,7 +588,7 @@ To get access to the headers,
 .code bootmain
 loads the first 4096 bytes of the file,
 a gross overestimation of the amount needed
-.line bootmain.c:/readseg .
+.line bootmain.c:/readseg/ .
 It places the in-memory copy at address
 .address 0x10000 ,
 another out-of-the-way memory address.
@@ -616,7 +616,7 @@ described in Chapter CH:PROC.
 .PP
 Another ordinarily discouraged practice is that the boot
 sector casts freely between pointers and integers
-.lines "bootmain.c:/elfhdr..0x10000/ bootmain.c:/readseg/ 'and so on'" .
+.lines "bootmain.c:/elfhdr..0x10000/ 'bootmain.c:/readseg!(!(/' 'and so on'" .
 Programming languages distinguish the two to catch errors,
 but the underlying processor sees no difference.
 An operating system must work at the processor's level;
@@ -628,7 +628,7 @@ operating system: Unix.
 Back in the boot sector, what should be an ELF binary header
 has been loaded into memory at address
 .code 0x10000
-.line bootmain.c:/readseg .
+.line bootmain.c:/readseg/ .
 The next step is to check that the first four bytes of the header,
 the so-called magic number,
 are the bytes
@@ -638,7 +638,7 @@ are the bytes
 .code 'F' ,
 or
 .code ELF_MAGIC
-.line elf.h:/ELF_MAGIC .
+.line elf.h:/ELF_MAGIC/ .
 All ELF binary headers are required to begin with this magic number
 as identication.
 If the ELF header has the right magic number, the boot
@@ -702,20 +702,20 @@ uses the addresses in the header to direct the loading of the kernel.
 It calls
 .code readseg
 to load data from disk
-.line bootmain.c:/readseg.*filesz
+.line bootmain.c:/readseg.*filesz/
 and calls
 .code stosb
 to zero the remainder of the segment
-.line bootmain.c:/stosb .
+.line bootmain.c:/stosb/ .
 .code Stosb
-.line x86.h:/^stosb
+.line x86.h:/^stosb/
 uses the x86 instruction
 .opcode rep
 .opcode stosb
 to initialize every byte of a block of memory.
 .PP
 .code Readseg
-.line bootmain.c:/^readseg
+.line bootmain.c:/^readseg/
 reads at least
 .code count
 bytes from the disk
@@ -732,7 +732,10 @@ boot sector will call
 .code "readseg((uchar*)0x1073e0, 0x73e0, 0x79e)" .
 Due to sector granularity, this call is equivalent to
 .code "readseg((uchar*)0x107200, 0x7200, 0xa00)" :
-it reads 0x1e0 bytes before the desired memory region and 0x82
+it reads
+.code 0x1e0
+bytes before the desired memory region and
+.code 0x82
 bytes afterward.
 In practice, this sloppy behavior turns out not to be a problem
 (see exercise XXX).
@@ -741,7 +744,7 @@ begins by computing the ending virtual address, the first memory
 address above 
 .code va
 that doesn't need to be loaded from disk
-.line bootmain.c:/eva.= ,
+.line bootmain.c:/eva.=/ ,
 and rounding
 .code va
 down to a sector-aligned disk offset .
@@ -756,7 +759,7 @@ to read each sector into memory.
 .PP
 .PP
 .code Readsect
-.line bootmain.c:/^readsect
+.line bootmain.c:/^readsect/
 reads a single disk sector.
 It is our first example of a device driver, albeit a tiny one.
 .code Readsect
@@ -770,7 +773,7 @@ byte (connected to input port
 to
 .code 01 .
 .code Waitdisk
-.line bootmain.c:/^waitdisk
+.line bootmain.c:/^waitdisk/
 reads the status byte until the bits are set that way.
 Chapter \*[CH:DISK] will examine more efficient ways to wait for hardware
 status changes, but busy waiting like this (also called polling)
@@ -801,7 +804,7 @@ After writing the arguments,
 writes to the
 command register
 to trigger the read
-.line bootmain.c:/0x1F7 .
+.line bootmain.c:/0x1F7/ .
 The command
 .code 0x20
 is ``read sectors.''
@@ -810,7 +813,7 @@ data stored in the specified sectors and make it available
 in 32-bit pieces on input port
 .code 0x1f0 .
 .code Waitdisk
-.line bootmain.c:/^waitdisk
+.line bootmain.c:/^waitdisk/
 waits until the disk signals that the data is ready,
 and then the call to
 .code insl
@@ -818,7 +821,7 @@ reads the 128
 .code SECTSIZE/4 ) (
 32-bit pieces into memory starting at
 .code dst
-.line bootmain.c:/insl.0x1F0 .
+.line bootmain.c:/insl.0x1F0/ .
 .PP
 .code Inb ,
 .code outb ,
@@ -827,10 +830,10 @@ and
 are not ordinary C functions.  They are
 inlined functions whose bodies are assembly language
 fragments
-.line "x86.h:/^inb x86.h:/^outb x86.h:/^insl" .
+.line "x86.h:/^inb/ x86.h:/^outb/ x86.h:/^insl/" .
 When gcc sees the call to
 .code inb
-.line bootmain.c:/inb\(/ ,
+.line 'bootmain.c:/inb!(/' ,
 the inlined assembly causes it to emit a single
 .code inb
 instruction. 
@@ -843,7 +846,7 @@ while still writing the control logic in C instead of assembly.
 .PP
 The implementation of
 .code insl
-.line x86.h:/^insl
+.line x86.h:/^insl/
 is worth looking at more closely.
 .code Rep
 .code insl
@@ -922,7 +925,7 @@ loops calling
 .code readseg ,
 which loops calling
 .code readsect
-.lines bootmain.c:/for.;/,/}/ .
+.lines 'bootmain.c:/for.;/,/!}/' .
 At the end of the loop,
 .code bootmain
 has loaded the kernel into memory.
@@ -936,7 +939,7 @@ where the kernel expects to be started
 .code Bootmain
 casts the entry point integer to a function pointer
 and calls that function, essentially jumping to the kernel's entry point
-.lines bootmain.c:/entry.=/,/entry\(\)/ .
+.lines 'bootmain.c:/entry.=/,/entry!(!)/' .
 The kernel should not return, but if it does,
 .code bootmain
 will return, and then

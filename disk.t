@@ -57,7 +57,7 @@ The disk drive and buffer cache coordinate the use of disk sectors
 with a data structure called a buffer,
 .code struct
 .code buf
-.line buf.h:/^struct.buf .
+.line buf.h:/^struct.buf/ .
 Each buffer represents the contents of one sector on a particular
 disk device.  The
 .code dev
@@ -104,14 +104,14 @@ particular piece of hardware.
 .PP
 The kernel initializes the disk driver at boot time by calling
 .code ideinit
-.line ide.c:/^ideinit
+.line ide.c:/^ideinit/
 from
 .code main
-.line main.c:/ideinit .
+.line main.c:/ideinit/ .
 .code Ideinit
 initializes
 .code idelock
-.line ide.c:/idelock
+.line ide.c:/idelock/
 and then must prepare the hardware.
 In Chapter \*[CH:TRAP], xv6 disabled all hardware interrupts.
 .code Ideinit
@@ -137,14 +137,14 @@ Next,
 probes the disk hardware.
 It begins by calling
 .code idewait
-.lines ide.c:/^idewait.0
+.line ide.c:/^idewait.0/
 to wait for the disk to
 be able to accept commands.
 The disk hardware presents status bits on port
 .address 0x1f7 ,
 as we saw in chapter \*[CH:BOOT].
 .code Idewait
-.line ide.c:/^idewait
+.line ide.c:/^idewait/
 polls the status bits until the busy bit
 .code IDE_BSY ) (
 is clear and the ready bit
@@ -209,7 +209,7 @@ the buffer at the front of the queue to the disk hardware;
 the others are simply waiting their turn.
 .PP
 .code Iderw
-.line ide.c:/^iderw
+.line ide.c:/^iderw/
 adds the buffer
 .code b
 to the end of the queue
@@ -224,11 +224,11 @@ otherwise the buffer will be started once
 the buffers ahead of it are taken care of.
 .PP
 .code Idestart
-.code ide.c:/^idestart
+.line ide.c:/^idestart/
 issues either a read or a write for the buffer's device and sector,
 according to the flags.
 If the operation is a write, idestart must supply the data now
-.line ide.c:/outsl
+.line ide.c:/outsl/
 and the interrupt will signal that the data has been written to disk.
 If the operation is a read, the interrupt will signal that the
 data is ready, and the handler will read it.
@@ -251,9 +251,9 @@ As we saw in Chapter \*[CH:TRAP],
 will call
 .code ideintr
 to handle it
-.line trap.c:/ideintr .
+.line trap.c:/ideintr/ .
 .code Ideintr
-.line ide.c:/^ideintr
+.line ide.c:/^ideintr/
 consults the first buffer in the queue to find
 out which operation was happening.
 If the buffer was being read and the disk controller has data waiting,
@@ -320,10 +320,10 @@ a processor must never hold that lock with interrupts enabled.
 Xv6 is more conservative: it never holds any lock with interrupts enabled.
 It uses
 .code pushcli
-.line spinlock.c:/^pushcli
+.line spinlock.c:/^pushcli/
 and
 .code popcli
-.line spinlock.c:/^popcli
+.line spinlock.c:/^popcli/
 to manage a stack of ``disable interrupts'' operations
 .code cli "" (
 is the x86 instruction that disables interrupts,
@@ -332,13 +332,13 @@ as we saw in Chapter \*[CH:BOOT]).
 calls
 .code pushcli
 before trying to acquire a lock
-.line spinlock.c:/pushcli ,
+.line spinlock.c:/pushcli/ ,
 and 
 .code release
 calls
 .code popcli
 after releasing the lock
-.line spinlock.c:/popcli .
+.line spinlock.c:/popcli/ .
 It is important that
 .code acquire
 call
@@ -346,7 +346,7 @@ call
 before the 
 .code xchg
 that might acquire the lock
-.line spinlock.c:/while.xchg .
+.line spinlock.c:/while.xchg/ .
 If the two were reversed, there would be
 a few instruction cycles when the lock
 was held with interrupts enabled, and
@@ -358,7 +358,7 @@ call
 only after the
 .code xchg
 that releases the lock
-.line spinlock.c:/xchg.*0 .
+.line spinlock.c:/xchg.*0/ .
 These races are similar to the ones involving
 .code holding
 (see Chapter \*[CH:LOCK], Exercise XXX).
@@ -389,7 +389,7 @@ The buffer cache is a doubly-linked list of buffers.
 .code Binit ,
 called by
 .code main
-.line main.c:/binit ,
+.line main.c:/binit/ ,
 initializes the list with the
 .code NBUF
 buffers in the static array
@@ -402,7 +402,7 @@ not the
 array.
 .PP
 .code Bread
-.line bio.c:/^bread
+.line bio.c:/^bread/
 calls
 .code bget
 to get a locked buffer for the given sector
@@ -414,9 +414,9 @@ calls
 to do that before returning the buffer.
 .PP
 .code Bget
-.line bio.c:/^bget
+.line bio.c:/^bget/
 scans the buffer list for a buffer with the given device and sector numbers
-.lines bio.c:/^Try.for.cached/,/^..}/ .
+.lines bio.c:/Try.for.cached/,/^..}/ .
 If there is such a buffer,
 .code bget
 needs to lock it before returning.
@@ -425,7 +425,7 @@ If the buffer is not in use,
 can set the
 .code B_BUSY
 flag and return
-.lines bio.c:/if.!.b->flags.&.B_BUSY/,/^....}/ .
+.lines 'bio.c:/if...b->flags.&.B_BUSY/,/^....}/' .
 If the buffer is already in use,
 .code bget
 sleeps on the buffer to wait for its release.
@@ -501,7 +501,7 @@ If the caller does write to the data, it must call
 .code bwrite
 to flush the changed data out to disk before releasing the buffer.
 .code Bwrite
-.line bio.c:/^bwrite
+.line bio.c:/^bwrite/
 sets the 
 .code B_DIRTY
 flag and calls
@@ -520,10 +520,10 @@ b-release,
 is cryptic but worth learning:
 it originated in Unix and is used in BSD, Linux, and Solaris too.)
 .code Brelse
-.line bio.c:/^brelse
+.line bio.c:/^brelse/
 moves the buffer from its position in the linked list
 to the front of the list
-.lines bio.c:/b->next->prev.=.b->prev/,/bufhead.next.=.b/ ,
+.lines 'bio.c:/b->next->prev.=.b->prev/,/bufhead.next.=.b/' ,
 clears the
 .code B_BUSY
 bit, and wakes any processes sleeping on the buffer.
