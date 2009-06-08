@@ -262,6 +262,7 @@ DRAFT as of \*[date]: DO NOT CIRCULATE
 ..
 .de line
 .ds LINE xxxx
+.sy touch .turd
 .sy ./line \\$1 >.turd
 .so .turd
 .sy rm -f .turd

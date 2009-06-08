@@ -2,6 +2,8 @@ PDF=\
 	unix.pdf\
 	boot.pdf\
 	disk.pdf\
+	fsdata.pdf\
+	fscall.pdf\
 
 all: $(PDF)
 
