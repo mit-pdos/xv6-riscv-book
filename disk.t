@@ -137,7 +137,7 @@ Next,
 probes the disk hardware.
 It begins by calling
 .code idewait
-.line ide.c:/^idewait.0/
+.line ide.c:/idewait.0/
 to wait for the disk to
 be able to accept commands.
 The disk hardware presents status bits on port

@@ -1,13 +1,15 @@
 PDF=\
 	unix.pdf\
 	boot.pdf\
+	mem.pdf\
+	trap.pdf\
 	disk.pdf\
 	fsdata.pdf\
 	fscall.pdf\
 
 all: $(PDF)
 
-%.ps: %.t book.mac line
+%.ps: %.t book.mac line xv6-code.pdf
 	./run1 $*.t > $@ || rm -f $@
 
 %.pdf: %.ps

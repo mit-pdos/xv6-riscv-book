@@ -234,7 +234,7 @@ in switching from process to scheduler and back to process.
 The convention in xv6 is that a process
 that wants to give up the cpu must
 acquire the process table lock
-.code &ptable.lock ,
+.code ptable.lock ,
 release any other locks it is holding,
 update its own state
 .code cp->state ), (
@@ -283,7 +283,7 @@ must already hold the lock,
 and control of the lock passes to the
 switched-to code.
 This is necessary because
-.code &ptable.lock
+.code ptable.lock
 protects the 
 .code state
 and
@@ -319,79 +319,847 @@ exists only to honor this convention by releasing the
 otherwise, the new process could start at
 .code trapret .
 .\"
-.section "Code: Sleep and wakeup
+.section "Sleep and wakeup
 .\"
 .PP
-XXX
-
-
-
-Now we can see why
-.code sched
-requires 
-.code &ptable.lock
-to be held: 
-It continues the
-.code for
-loop, looking for 
-
-
-.lines proc.c:/if.readeflags/,/interruptible/
+Locks help cpus and processes avoid interfering with each other,
+and scheduling help processes share a cpu,
+but so far we have no abstractions that make it easy
+for processes to communicate.
+Sleep and wakeup fill that void, allowing one process to 
+sleep waiting for an event and another process to wake it up
+once the event has happened.
+.PP
+To illustrate what we mean, let's consider a
+simple producer/consumer queue.
+The queue allows one process to send a nonzero pointer
+to another process.
+Assuming there is only one sender and one receiver
+and they execute on different cpus,
+this implementation is correct:
+.P1
+  100	struct q {
+  101	  void *ptr;
+  102	};
+  103	
+  104	void*
+  105	send(struct q *q, void *p)
+  106	{
+  107	  while(q->ptr != 0)
+  108	    ;
+  109	  q->ptr = p;
+  110	}
+  111	
+  112	void*
+  113	recv(struct q *q)
+  114	{
+  115	  void *p;
+  116	
+  117	  while((p = q->ptr) == 0)
+  118	    ;
+  119	  q->ptr = 0;
+  120	  return p;
+  121	}
+.P2
+.code Send
+loops until the queue is empty
+.code ptr "" (
+.code ==
+.code 0)
+and then puts the pointer
+.code p
+in the queue.
+.code Recv
+loops until the queue is non-empty
+and takes the pointer out.
+When run in different processes,
+.code send
 and
-since the process may stop running
-for an 
-First, note that
-.code yield
-acquires
-the process table lock
-.code &ptable.lock
-and sets the current process's state to
-.code RUNNABLE
-before calling
-.code sched 
-.lines proc.c:/yieldlock/,/sched/ .
-
-changing their state,
-and calling 
-
-
+.code recv
+both edit
+.code q->ptr ,
+but
+.code send
+only writes to the pointer when it is zero
+and
+.code recv
+only writes to the pointer when it is nonzero,
+so they do not step on each other.
 .PP
-Let's suppose that this call to
-.code swtch
-is running the initial process as created by
-.code allocproc .
-The context will have a 
-.code eip
-of
-.code forkret :
-returning from
-.code swtch
-will start running
-.code forkret .
-.code Forkret
-.line proc.c:/^forkret/
-releases 
-.code &ptable.lock ,
-as does any other function that 
-
-
-
-as we saw in Chapter \*[CH:MEM], the 
-
-
-
-
+The implementation above may be correct,
+but it is very expensive.  If the sender sends
+rarely, the receiver will spend most
+of its time spinning in the 
+.code while
+loop hoping for a pointer.
+The receiver's cpu could find more productive work
+if there were a way for the receiver to be notified when the
+.code send
+had delivered a pointer.
+.code Sleep
+and
+.code wakeup 
+provide such a mechanism.
+.code Sleep(chan)
+sleeps on the pointer
+.code chan ,
+called the wait channel,
+which may be any kind of pointer;
+it is used only as an identifying address
+and is not dereferenced.
+.code Sleep
+puts the calling process to sleep, releasing the cpu
+for other work.
+It does not return until the process is awake again.
+.code Wakeup(chan)
+wakes all the processes 
+sleeping on
+.code chan
+(if any),
+causing their
+.code sleep
+calls to return.
+We can change the queue implementation to use
+.code sleep
+and
+.code wakeup :
+.P1
+  201	void*
+  202	send(struct q *q, void *p)
+  203	{
+  204	  while(q->ptr != 0)
+  205	    ;
+  206	  q->ptr = p;
+  207	  wakeup(q);  /* wake recv */
+  208	}
+  209	
+  210	void*
+  211	recv(struct q *q)
+  212	{
+  213	  void *p;
+  214	
+  215	  while((p = q->ptr) == 0)
+  216	    sleep(q);
+  217	  q->ptr = 0;
+  218	  return p;
+  219	}
+.P2
+.PP
+This code is more efficient but no longer correct.
+Suppose that
+.code recv
+finds that
+.code q->ptr
+.code ==
+.code 0 
+on line 215
+and decides to call 
+.code sleep .
+Before
+.code recv
+can sleep,
+.code send
+runs on another cpu:
+it changes
+.code q->ptr
+to be nonzero and calls
+.code wakeup ,
+which finds no processes sleeping.
+Now
+.code recv
+continues executing at line 216:
+it calls
+.code sleep
+and goes to sleep.
+This causes a problem:
+.code recv
+is asleep waiting for a pointer
+that has already arrived.
+The next
+.code send
+will sleep waiting for 
+.code recv
+to consume the pointer in the queue,
+at which point the system will be deadlocked.
+.PP
+The root of this problem is that the
+invariant that
+.code recv
+only sleeps when
+.code q->ptr
+.code ==
+.code 0
+is violated by 
+.code send
+running at just the wrong moment.
+To protect this invariant, we introduce a lock,
+which 
+.code sleep
+releases only after the calling process
+is asleep; this avoids the missed wakeup in
+the example above.
+Once the calling process is awake again
+.code sleep
+reacquires the lock before returning.
+The following code is correct and makes
+efficient use of the cpu when 
+.code recv
+must wait:
+.P1
+  300	struct q {
+  301	  struct spinlock lock;
+  302	  void *ptr;
+  303	};
+  304	
+  305	void*
+  306	send(struct q *q, void *p)
+  307	{
+  308	  lock(&q->lock);
+  309	  while(q->ptr != 0)
+  310	    ;
+  311	  q->ptr = p;
+  312	  wakeup(&q->lock);
+  313	  unlock(&q->lock);
+  314	}
+  315	
+  316	void*
+  317	recv(struct q *q)
+  318	{
+  319	  void *p;
+  320	
+  321	  lock(&q->lock);
+  322	  while((p = q->ptr) == 0)
+  323	    sleep(q, &q->lock);
+  324	  q->ptr = 0;
+  325	  unlock(&q->lock);
+  326	  return p;
+  327	}
+.P2
+.PP
+A complete implementation would also sleep
+in
+.code send
+when waiting for a receiver to consume
+the value from a previous
+.code send .
 .\"
 .section "Code: Sleep and wakeup
 .\"
-
+.PP
+Let's look at the implementation of
+.code sleep
+and
+.code wakeup
+in xv6.
+The basic idea is to have
+.code sleep
+mark the current process as
+.code SLEEPING
+and then call
+.code sched
+to release the processor;
+.code wakeup
+looks for a process sleeping on the given pointer
+and marks it as 
+.code RUNNABLE .
+.PP
+.code Sleep
+.line proc.c:/^sleep/
+begins with a few sanity checks:
+there must be a current process
+.lines proc.c:/cp == 0/,/sleep/
+and
+.code sleep
+must have been passed a lock
+.lines proc.c:/lk == 0/,/sleep.without/ .
+Then 
+.code sleep
+acquires 
+.code ptable.lock
+.line proc.c:/sleeplock1/ .
+Now the process going to sleep holds both
+.code ptable.lock
+and
+.code lk .
+Holding
+.code lk
+was necessary in the caller (in the example,
+.code recv ):
+it
+ensured that no other process (in the example,
+one running
+.code send )
+could start a call
+.code wakeup(chan) .
+Now that
+.code sleep
+holds
+.code ptable.lock ,
+it is safe to release
+.code lk :
+some other process may start a call to
+.code wakeup(chan) ,
+but
+.code wakeup
+will not run until it can acquire
+.code ptable.lock ,
+so it must wait until
+.code sleep
+is done,
+keeping the
+.code wakeup
+from missing the
+.code sleep .
+.PP
+There is a minor complication: if 
+.code lk
+is equal to
+.code &ptable.lock ,
+then
+.code sleep
+would deadlock trying to acquire it as
+.code &ptable.lock
+and then release it as
+.code lk .
+In this case,
+.code sleep
+considers the acquire and release
+to cancel each other out
+and skips them entirely
+.line proc.c:/sleeplock0/ .
+.PP
+Now that
+.code sleep
+holds
+.code ptable.lock
+and no others,
+it can put the process to sleep by recording
+the sleep channel,
+changing the process state,
+and calling
+.code sched
+.line proc.c:/chan.=.chan/,/sched/ .
+.PP
+At some point later, a process will call
+.code wakeup(chan) .
+.code Wakeup
+.line proc.c:/^wakeup/
+acquires
+.code ptable.lock
+and calls
+.code wakeup1 ,
+which does the real work.
+It is important that
+.code wakeup
+hold the
+.code ptable.lock
+both because it is manipulating process states
+and because, as we just saw,
+.code ptable.lock
+makes sure that
+.code sleep
+and
+.code wakeup
+do not miss each other.
+.code Wakeup1 "" (
+is a separate function because
+sometimes the scheduler needs to
+execute a wakeup when it already
+holds the 
+.code ptable.lock ;
+we will see an example of this later.)
+.code Wakeup1
+.line proc.c:/^wakeup1/
+loops over the process table.
+When it finds a process in state
+.code SLEEPING
+with a matching
+.code chan ,
+it changes that process's state to
+.code RUNNABLE .
+The next time the scheduler runs, it will
+see that the process is ready to be run.
+.PP
+There is another complication: spurious wakeups.
 .\"
 .section "Code: Pipes
 .\"
+The simple queue we used earlier in this Chapter
+was a toy, but xv6 contains a real queue
+that uses
+.code sleep
+and
+.code wakeup
+to synchronize readers and writers.
+That queue is the implementation of pipes.
+We saw the interface for pipes in Chapter \*[CH:UNIX]:
+bytes written to one end of a pipe are copied
+in an in-kernel buffer and then can be read out
+of the other end of the pipe.
+Future chapters will examine the file system support
+surrounding pipes, but let's look now at the
+implementations of 
+.code pipewrite
+and
+.code piperead .
+.PP
+Each pipe
+is represented by a 
+.code struct
+.code pipe ,
+which contains
+a 
+.code lock
+and a 
+.code data
+buffer.
+The fields
+.code nread
+and
+.code nwrite
+count the number of bytes read from
+and written to the buffer.
+The buffer wraps around:
+the next byte written after
+.code buf[PIPESIZE-1]
+is 
+.code buf[0] ,
+but the counts do not wrap.
+This convention lets the implementation
+distinguish a full buffer 
+.code nwrite "" (
+.code ==
+.code nread+PIPESIZE )
+from an empty buffer
+.code nwrite
+.code ==
+.code nread ),
+but it means that indexing into the buffer
+must use
+.code buf[nread
+.code %
+.code PIPESIZE]
+instead of just
+.code buf[nread] 
+(and similarly for
+.code nwrite ).
+Let's suppose that calls to
+.code piperead
+and
+.code pipewrite
+happen simultaneously on two different cpus.
+.PP
+.code Pipewrite
+.line pipe.c:/^pipewrite/
+begins by acquiring the pipe's lock, which
+protects the counts, the data, and their
+associated invariants.
+.code Piperead
+.line pipe.c:/^piperead/
+then tries to acquire the lock too, but cannot.
+It spins in
+.code acquire
+.line spinlock.c:/^acquire/
+waiting for the lock.
+While
+.code piperead
+waits,
+.code pipewrite
+loops over the bytes being written—\c
+.code addr[0] ,
+.code addr[1] ,
+\&...,
+.code addr[n-1] —\c
+adding each to the pipe in turn
+.line pipe.c:/nwrite!+!+/ .
+During this loop, it could happen that
+the buffer fills
+.line pipe.c:/pipewrite-full/ .
+In this case, 
+.code pipewrite
+calls
+.code wakeup
+to alert any sleeping readers to the fact
+that there is data waiting in the buffer
+and then sleeps on
+.code &p->nwrite
+to wait for a reader to take some bytes
+out of the buffer.
+.code Sleep
+releases 
+.code p->lock
+as part of putting
+.code pipewrite 's
+process to sleep.
+.PP
+Now that
+.code p->lock
+is available,
+.code piperead
+manages to acquire it and start running in earnest:
+it finds that
+.code p->nread
+.code !=
+.code p->nwrite
+.line proc.c:/pipe-empty/
+.code pipewrite "" (
+went to sleep because
+.code p->nwrite
+.code ==
+.code p->nread+PIPESIZE
+.line proc.c:/pipe-full/ )
+so it falls through to the 
+.code for
+loop, copies data out of the pipe
+.line proc.c:/piperead-copy/,/^..}/ ,
+and increments 
+.code nread
+by the number of bytes copied.
+That many bytes are now available for writing, so
+.code piperead
+calls
+.code wakeup
+.line pipe.c:/piperead-wakeup/
+to wake any sleeping writers
+before it returns to its caller.
+.PP
+.code Wakeup
+finds a process sleeping on
+.code &p->nwrite ,
+the process that was running
+.code pipewrite
+but stopped when the buffer filled.
+It marks that process as
+.code RUNNABLE .
+.PP
+Let's suppose that the scheduler on the other cpu
+has decided to run some other process,
+so
+.code pipewrite
+does not start running again immediately.
+Instead,
+.code piperead
+returns to its caller, who then calls
+.code piperead
+again. 
+Let's also suppose that the first
+.code piperead
+consumed all the data from the pipe buffer,
+so now
+.code p->nread
+.code ==
+.code p->nwrite .
+.code Piperead
+sleeps on
+.code &p->nread
+to await more data
+.line pipe.c:/piperead-sleep/ .
+Once the process calling
+.code piperead
+is asleep, the cpu can run
+.code pipewrite 's
+process, causing 
+.code sleep
+to return
+.line pipe.c:/pipewrite-sleep/ .
+.code Pipewrite
+finishes its loop, copying the remainder of
+its data into the buffer
+.line pipewrite.c:/nwrite!+!+/ .
+Before returning,
+.code pipewrite
+calls
+.code wakeup
+in case there are any readers
+waiting for the new data
+.line pipe.c:/pipewrite-wakeup1/ .
+There is one, the
+.code piperead
+we just left.
+It continues running
+.line pipe.c/piperead-sleep/
+and copies the new data out of the pipe.
+.\"
+.section "Code: Wait and exit
+.\"
+.code Sleep
+and
+.code wakeup
+do not have to be used for implementing queues.
+They work for any condition that can be checked
+in code and needs to be waited for.
+As we saw in Chapter \*[CH:UNIX],
+a parent process can call
+.code wait
+to wait for a child to exit.
+In xv6, when a child exits, it does not die immediately.
+Instead, it switches to the
+.code ZOMBIE
+process state until the parent calls
+.code wait
+to learn of the exit.
+The parent is then responsible for freeing the
+memory associated with the process 
+and preparing the
+.code struct
+.code proc
+for reuse.
+Each process structure
+keeps a pointer to its parent in
+.code p->parent .
+If the parent exits before the child, the initial process
+.code init
+adopts the child
+and waits for it.
+This step is necessary to make sure that some
+process cleans up after the child when it exits.
+All the process structures are protected by
+.code ptable.lock .
+.PP
+.code Wait
+begins by
+acquiring 
+.code ptable.lock .
+Then it scans the process table
+looking for children.
+If 
+.code wait
+finds that the current process has children
+but that none of them have exited,
+it calls
+.code sleep
+to wait for one of the children to exit
+.line proc.c:/wait-sleep/
+and loops.
+Here,
+the lock being released in 
+.code sleep
+is
+.code ptable.lock ,
+the special case we saw above.
+.PP
+.code Exit
+acquires
+.code ptable.lock
+and then wakes the current process's parent
+.line "'proc.c:/wakeup1!(cp->parent!)/'" .
+This may look premature, since 
+.code exit
+has not marked the current process as a
+.code ZOMBIE
+yet, but it is safe:
+although the parent is now marked as
+.code RUNNABLE ,
+the loop in
+.code wait
+cannot run until
+.code exit
+releases 
+.code ptable.lock
+by calling
+.code sched
+to enter the scheduler,
+so
+.code wait
+can't look at
+the exiting process until after
+the state has been set to
+.code ZOMBIE
+.line proc.c:/state.=.ZOMBIE/ .
+Before exit reschedules,
+it reparents all of
+the exiting process's children,
+passing them to the
+.code initproc
+.lines proc.c:/Pass.abandoned/,/wakeup1/+2 .
+Finally,
+.code exit
+calls
+.code sched
+to relinquish the cpu.
+.PP
+Now the scheduler can choose to run the
+exiting process's parent, which is asleep in
+.code wait
+.line proc.c:/wait-sleep/ .
+The call to
+.code sleep
+returns holding
+.code ptable.lock ;
+.code wait
+rescans the process table
+and finds the exited child with
+.code state
+.code ==
+.code ZOMBIE .
+.line proc.c:/state.==.ZOMBIE/ .
+It records the child's
+.code pid
+and then cleans up the 
+.code struct 
+.code proc ,
+freeing the memory associated
+with the process
+.line proc.c:/pid.=.p..pid/,/killed.=.0/ .
+The child process could have done most
+of the cleanup during
+.code exit ,
+but it is important that the parent 
+process be the one to free
+.code p->kstack :
+when the child runs
+.code exit ,
+its stack sits in the memory allocated as
+.code p->kstack .
+The stack can only be freed once the child process
+has called
+.code swtch
+(via
+.code sched )
+and moved off it.
+.\"
+.section "Scheduling concerns
+.\"
+.PP
+XXX spurious wakeups
+
+XXX checking p->killed
+
+XXX thundering herd
 
 .\"
 .section "Real world
 .\"
-sleep and wakeup are a simple form of condition variable.
+.PP
+.code Sleep
+and
+.code wakeup
+are a simple and effective synchronization method,
+but there are many others.
+The first challenge in all of them is to
+avoid the ``missed wakeups'' problem we saw at the
+beginning of the chapter.
+The original Unix kernel's
+.code sleep
+disabled interrupts.
+This sufficed because Unix ran on a single-cpu system.
+Because xv6 runs on multiprocessors,
+it added an explicit lock to
+.code sleep .
+FreeBSD's
+.code msleep
+takes the same approach.
+Plan 9's 
+.code sleep
+uses a callback function that runs with the scheduling
+lock held just before going to sleep;
+the function serves as a last minute check
+of the sleep condition, to avoid missed wakeups.
+The Linux kernel's
+.code sleep
+uses an explicit process queue instead of
+a wait channel; the queue has its own internal lock.
+(XXX Looking at the code that seems not
+to be enough; what's going on?)
+.PP
+Scanning the entire process list in
+.code wakeup
+for processes with a matching
+.code chan
+is inefficient.  A better solution is to
+replace the
+.code chan
+in both
+.code sleep
+and
+.code wakeup
+with a data structure that holds
+a list of processes sleeping on that structure.
+Plan 9's
+.code sleep
+and
+.code wakeup
+call that structure a rendezvous point or
+.code Rendez .
+Many thread libraries refer to the same
+structure as a condition variable;
+in that context, the operations
+.code sleep
+and
+.code wakeup
+are called
+.code wait
+and
+.code signal .
+All of these mechanisms share the same
+flavor: the sleep condition is protected by
+some kind of lock dropped atomically during sleep.
+.PP
+Semaphores are another common coordination
+mechanism.
+A semaphore is an integer value with two operations,
+increment and decrement (or up and down).
+It is aways possible to increment a semaphore,
+but the semaphore value is not allowed to drop below zero:
+a decrement of a zero semaphore sleeps until
+another process increments the semaphore,
+and then those two operations cancel out.
+The integer value typically corresponds to a real
+count, such as the number of bytes available in a pipe buffer
+or the number of zombie children that a process has.
+Using an explicit count as part of the abstraction
+avoids the ``missed wakeup'' problem:
+there is an explicit count of the number
+of wakeups that have occurred.
+The count also avoids the spurious wakeup
+and thundering herd problems inherent in 
+condition variables.
 
+Exercises:
+
+Sleep has to check lk != &ptable.lock
+to avoid a deadlock
+.lines proc.c:/sleeplock0/,/^..}/ .
+It could eliminate the special case by 
+replacing
+.P1
+if(lk != &ptable.lock){
+  acquire(&ptable.lock);
+  release(lk);
+}
+.P2
+with
+.P1
+release(lk);
+acquire(&ptable.lock);
+ .P2
+Doing this would break
+.code sleep .
+How?
+
+Most process cleanup could be done by either
+.code exit
+or
+.code wait ,
+but we saw above that
+.code exit
+must not free
+.code p->stack .
+It turns out that
+.code exit
+must be the one to close the open files.
+Why?
+The answer involves pipes.
+
+Implement semaphores in xv6.
+You can use mutexes but do not use sleep and wakeup.
+Replace the uses of sleep and wakeup in xv6
+with semaphores.  Judge the result.
+
+
+Additional reading:
+
+cox and mullender, semaphores.
+
+pike et al, sleep and wakeup
 

@@ -19,59 +19,55 @@ and then wraps up talking about how xv6
 compares to real-world operating systems.
 </ul>
 
-<!--
-NOTE: It would be cool (read, appropriately nerdy) if we had ten main
-chapters that could be Chapters 0 through 9
-and then Appendix A would follow
--->
-
-<a href="unix.pdf">Chapter 1: An Operating System Interface</a>
+<a href="unix.pdf">Chapter 0: Operating system interfaces</a>
 <blockquote>
 The Unix system call interface.
 </blockquote>
 
-<a href="boot.pdf">Chapter 2: Bootstrap</a>
+<a href="boot.pdf">Chapter 1: Bootstrap</a>
 <blockquote>
 From power on to kernel start.
 </blockquote>
 
-Chapter 3: Address spaces
+<a href="mem.pdf">Chapter 2: Processes</a>
 <blockquote>
-Process memory management and segments
+Memory and process allocation, segments, the first user process.
 </blockquote>
 
-Chapter 4: Coordination
+<a href="trap.pdf">Chapter 3: Traps</a>
 <blockquote>
-Multiprocessing, locking, sleep and wakeup, pipes.
+Low-level trap mechanism, trap handler, system call arguments, sbrk, fork.
 </blockquote>
 
-Chapter 5: Process management
+<!-- proc.pdf -->
+Chapter 4: Locks
 <blockquote>
-Scheduler, sbrk, fork, wait, and exit.
+Locks and interrupts.
 </blockquote>
 
-Chapter 6: Traps
+Chapter 5: Scheduling and coordination
 <blockquote>
-Low-level trap mechanism, trap handler, system call arguments.
+Scheduling, sleep and wakeup, pipes, wait and exit.
 </blockquote>
 
-<a href="disk.pdf">Chapter 7: Buffer cache</a>
+<a href="disk.pdf">Chapter 6: Buffer cache</a>
 <blockquote>
 Buffer cache and IDE disk driver.
 </blockquote>
 
-<a href="fsdata.pdf">Chapter 8: File system data</a>
+<a href="fsdata.pdf">Chapter 7: File system data</a>
 <blockquote>
 Block in use bitmap, block allocation, inode structure, inode contents,
 directories, path names.
 </blockquote>
 
-<a href="fscall.pdf">Chapter 9: File system calls</a>
+<a href="fscall.pdf">Chapter 8: File system calls</a>
 <blockquote>
-
+FIle descriptors, open, close, dup, read, write.
 </blockquote>
 
-Chapter 10: Exec
+<!-- exec.pdf -->
+Chapter 9: Exec
 <blockquote>
 Exec
 </blockquote>
@@ -80,10 +76,9 @@ Appendix A: Low-level C and inline assembly
 <blockquote>
 Intro to C and inline assembly for people who only know Java (say).
 Examples drawn entirely from xv6 source.
-Perhaps explain malloc.c.
 </blockquote>
 
 Appendix B: Additional drivers.
 <blockquote>
-Keyboard, screen, probably interrupt controllers and MP hardware.
+Keyboard, screen, probably MP hardware.
 </blockquote>
