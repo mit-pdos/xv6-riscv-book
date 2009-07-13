@@ -3,6 +3,8 @@ PDF=\
 	boot.pdf\
 	mem.pdf\
 	trap.pdf\
+	lock.pdf\
+	sched.pdf\
 	disk.pdf\
 	fsdata.pdf\
 	fscall.pdf\
