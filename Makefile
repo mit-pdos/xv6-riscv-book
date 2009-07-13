@@ -8,6 +8,7 @@ PDF=\
 	disk.pdf\
 	fsdata.pdf\
 	fscall.pdf\
+	exec.pdf\
 
 all: $(PDF)
 
