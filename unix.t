@@ -14,20 +14,21 @@ It manages the low-level hardware, so that, for example,
 a word processor need not concern itself with which video card
 is being used.
 It also multiplexes the hardware, allowing many programs
-to share the program and run (or appear to run) at the same time.
+to share the computer and run (or appear to run) at the same time.
 Finally, operating systems provide controlled ways for programs
 to interact with each other, so that programs can share data or work together.
 .PP
 This description of an operating system does not say exactly what interface
-the operating system provides to user programs.  Historically, operating systems
-researchers have experimented and continue to experiment with a
-quite a variety of interfaces.
+the operating system provides to user programs.   Operating systems
+researchers have experimented and continue to experiment with 
+a variety of interfaces.
 Although the interfaces differ from system to system, the basic ideas
 and concepts are the same.
 This book uses a single operating system as a concrete example to illustrate
 those basic ideas and concepts.
-That operating system, xv6, follows the basic interfaces
-introduced by Ken Thompson and Dennis Ritchie's Unix operating system.
+That operating system, xv6, provides the basic interfaces
+introduced by Ken Thompson and Dennis Ritchie's Unix operating system,
+as well as mimicing Unix's internal design.
 Many modern operating sytems—BSD, Linux, Mac OS X, Sun's Solaris,
 and even, to a lesser extent, Microsoft's Windows—have Unix-like interfaces.
 Understanding xv6 is a good start toward understanding any of these systems
@@ -104,8 +105,8 @@ system call.
 .code Fork
 creates a new process, called the child, with exactly the same memory contents
 as the calling process, called the parent.
-The parent and child both continue exiting at the return from
-.code fork .
+.code Fork
+returns in both the parent and the child.
 In the parent,
 .code fork
 returns the child's pid;
@@ -212,14 +213,17 @@ run as root.
 .\"
 .\"	File descriptors
 .\"
-.section "Code: File desscriptors
+.section "Code: File descriptors
 .PP
-A file descriptor is a small integer representing an object
+A file descriptor is a small integer representing a kernel-managed object
 that a process may read from or write to.
 That object may be a data file, a directory, a pipe, or the console.
-It is conventional to refer to all of these as files.
+It is conventional to call whatever object a file
+descriptor refers to a file.
 Internally, the xv6 kernel uses the file descriptor
-as an index into a per-process table.
+as an index into a per-process table,
+so that every process has a private space of file descriptors
+starting at zero.
 By convention, a process reads from file descriptor 0 (standard input),
 writes output to file descriptor 1 (standard output), and
 writes error messages to file descriptor 2 (standard error).
@@ -243,7 +247,7 @@ bytes from the open file corresponding to the file descriptor
 copies them into
 .code buf ,
 and returns the number of bytes copied.
-Every open file has associated with it an offset into the file.
+Every file descriptor has an offset associated with it.
 .code Read
 reads data from the current file offset and then advances
 that offset by the number of bytes read:
@@ -309,8 +313,8 @@ releases a file descriptor, making it free for reuse by a future
 or
 .code dup
 system call (see below).
-The kernel always allocates file descriptors 
-by choosing the smallest one available.
+The kernel always allocates the lowest-numbered
+file descriptor that is unused by the calling process.
 .PP
 .code Fork
 copies the parent's file descriptor table along with its memory,
@@ -396,6 +400,17 @@ dup(1);  // uses 2, assuming 0 is not available
 write(1, "hello ");
 write(2, "world\en");
 .P2
+.PP
+Two file descriptors share an offset if they were derived from
+the same original file descriptor by a sequence of
+.code fork
+and
+.code dup
+calls.
+Otherwise file descriptors do not share offsets, even if they
+resulted from 
+.code open
+calls for the same file.
 .PP
 File descriptors are a powerful abstraction,
 because they hide the details of what they are connected to:
@@ -507,13 +522,14 @@ sent data with
 .\"
 .section "Code: File system
 .PP
-Xv6 provides containing data files,
+Xv6 provides data files,
 which are uninterpreted byte streams,
-and directories, which are special files that
+and directories, which
 contain references to other data files and directories.
+Xv6 implements directories as a special kind of file.
 The directories are arranged into a tree, starting
 at a special directory called the root.
-In xv6, a path like
+A path like
 .code /a/b/c
 refers to the file or directory named
 .code c
@@ -697,6 +713,7 @@ a very different flavor of interface.
 The complexity of the Multics design had a direct influence
 on the designers of Unix, who tried to build something simpler.
 .PP
+XXX can we cut this, since its point is the same as the next paragraph?
 An operating system interface that went out of fashion
 decades ago but has recently returned is the idea of a virtual machine monitor.
 Such systems provide a superficially different interface from xv6,
