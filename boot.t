@@ -508,11 +508,15 @@ setting the 1 bit
 in register
 .register cr0
 .lines bootasm.S:/movl.*%cr0/,/movl.*,.%cr0/ .
-At this point the processor is in a kind of
-limbo: protected mode is enabled, but the
-processor is not executing code from a protected
-mode code segment.
-To finish the transition into full protected mode,
+Enabling protected mode does not change how the processor
+translates virtual to physical addresses or whether
+it is in 32-bit mode;
+it is only when one loads a new value into a segment register
+that the processor reads the GDT and changes its internal
+segmentation settings.
+Thus the processor continues to execute in 16-bit mode with the same
+segment translations as before.
+The switch to 32-bit mode,
 the code executes a far jump
 (\c
 .opcode ljmp )
@@ -529,23 +533,22 @@ descriptor entry from the
 .code gdt
 table.
 The entry describes a 32-bit code segment,
-so the processor switches into 32-bit protected mode.
-Thus, the processor is now simulating a 32-bit 80386.
-The bootstrap 8088 mode is over.
+so the processor switches into 32-bit mode.
+The boot sector code has nursed the processor
+through an evolution from 8088 through 80286 
+to 80386.
+.PP
 The boot sector's first action in 32-bit mode is to
 initialize the data segment registers with
 .code DSEG32
 .lines bootasm.S:/movw.*DSEG32/,/Stack.Segment/ .
-.PP
-The PC started executing
-.file bootasm.S
-behaving like an Intel 8088.
-The boot sector code has nursed it along carefully,
-making it behave first like a 16-bit Intel 80286 and
-now like a 32-bit 80386.  The only step left before
-executing C code is to set up a stack.
-The boot sector has complete run of the machine and
-can choose any unused section of memory.
+The segments are set up so that the processor uses
+32-bit virtual addresses directly as 32-bit physical addresses,
+without translation, so the software can now conveniently
+all the machine's memory.
+The only step left before
+executing C code is to set up a stack
+in an unused region of memory.
 The memory from
 .address 0xa0000
 to
@@ -568,7 +571,7 @@ the stack will grow down from there, toward
 .address 0x0000 ,
 away from the boot sector code.
 .PP
-Finally the boot sector can call the C function
+Finally the boot sector calls the C function
 .code bootmain
 .line bootasm.S:/call.*bootmain/ .
 .code Bootmain 's
@@ -592,7 +595,7 @@ A real boot sector might attempt to print an error message first.
 .\"
 .section "Code: C bootstrap
 .PP
-The C half of the boot sector,
+The C part of the boot sector,
 .file bootmain.c
 .line bootmain.c:1 ,
 loads a kernel from an IDE disk
@@ -620,6 +623,7 @@ a gross overestimation of the amount needed
 It places the in-memory copy at address
 .address 0x10000 ,
 another out-of-the-way memory address.
+.ig
 .PP
 We've now seen two arbitrarily chosen addresses: the stack
 growing down from
@@ -641,9 +645,11 @@ run without an operating system.
 There is no room for a full memory allocator and really no need.
 The kernel itself does implement and use a memory allocator,
 described in Chapter CH:PROC.
+XXX but the boot code doesn't mention 0x100000.
+..
 .PP
-Another ordinarily discouraged practice is that the boot
-sector casts freely between pointers and integers
+.code bootmain
+casts freely between pointers and integers
 .lines "bootmain.c:/elfhdr..0x10000/ 'bootmain.c:/readseg!(!(/' 'and so on'" .
 Programming languages distinguish the two to catch errors,
 but the underlying processor sees no difference.
@@ -687,6 +693,9 @@ Each
 .code proghdr
 gives a virtual address
 .code va ), (
+the location where the section's content lies on the disk
+relative to the start of the ELF header
+.code offset ), (
 the number of bytes to load
 from the file
 .code filesz ), (
@@ -726,8 +735,16 @@ loaded from the kernel binary and the remaining
 bytes are zeroed.
 .PP
 .code Bootmain
-uses the addresses in the header to direct the loading of the kernel.
-It calls
+uses the addresses in the
+.code proghdr
+to direct the loading of the kernel.
+It reads each section's content starting from the disk location
+.code offset
+bytes after the start of the ELF header,
+and writes to memory starting at address
+.code va .
+.code Bootmain
+calls
 .code readseg
 to load data from disk
 .line bootmain.c:/readseg.*filesz/
@@ -973,6 +990,15 @@ The kernel should not return, but if it does,
 will return, and then
 .file bootasm.S
 will attempt a Bochs breakpoint and then loop forever.
+.PP
+Where is the kernel in memory?
+.code Bootmain
+does not directly decide;
+it just follows the directions in the ELF headers.
+The "linker" creates the ELF headers, and the xv6 Makefile
+that calls the linker tells it that the kernel should
+start at 
+.code 0x100000 .
 .PP
 Assuming all has gone well, the kernel entry pointer will be
 the kernel's
