@@ -545,7 +545,7 @@ initialize the data segment registers with
 The segments are set up so that the processor uses
 32-bit virtual addresses directly as 32-bit physical addresses,
 without translation, so the software can now conveniently
-all the machine's memory.
+use all of the machine's memory.
 The only step left before
 executing C code is to set up a stack
 in an unused region of memory.
