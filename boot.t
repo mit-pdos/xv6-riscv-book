@@ -20,8 +20,9 @@
 	as such, the chapter is a bit of an experiment.
 ..
 .section Hardware
+.ig
 The core of a computer system is its
-computer's central processing unit (simply, it's
+computer's central processing unit (simply, its
 processor or cpu).  The operating system deals with
 the processor in great detail but deals with the other
 components of the system—the memory, the disks,
@@ -29,9 +30,13 @@ the network and graphics controllers—in comparatively less detail.
 Those other components are mostly abstracted away.
 The hardware details necessary to understand an operating
 system are therefore focused on the processor itself.
+XXX the above is true of xv6 but false for most operating
+systems, which have far more code for device handling
+than for CPU management.
+..
 .PP
-The heart of any processor is its execution engine,
-which runs a conceptually simple loop:
+A computer's cpu (central processing unit, or cpu)
+runs a conceptually simple loop:
 it inspects the value of a register called the program counter,
 reads a machine instruction from that address in memory,
 advances the program counter past the instuction,
@@ -52,8 +57,8 @@ data is provided by the processor's register set.  A
 register is a storage cell inside the processor itself,
 capable of holding a machine word-sized value (typically 16,
 32, or 64 bits).  Data stored in registers can typically be
-read or written at the processor's native execution speed;
-there is no penalty for accessing registers.  The x86
+read or written quickly, in a single cpu cycle.
+The x86
 provides eight general purpose 32-bit registers—\c
 .register eax ,
 .register ebx ,
@@ -189,8 +194,8 @@ needs to worry about the memory cache—are multiprocessing
 (Chapter \*[CH:SMP]) and device drivers (Chapter \*[CH:DISK]).
 .PP
 One reason memory access is so much slower than register
-access is that the memory is a separate chip from the main
-processor.
+access is that the memory is in set of chips physically
+separate from the processor chip.
 To allow the processor to communicate with the
 memory, there is a collection of wires, called a bus, running
 between the two.  A simple mental model is that some of the wires,
@@ -297,7 +302,8 @@ re-enable interrupts.
 .\" XXX should we write about the Intel 8088 in the present tense?
 Remember that the processor is simulating an Intel 8088.
 The Intel 8088 had eight 16-bit general-purpose registers
-but could address 20 bits of memory (1 megabyte).
+but 20 wires in its address bus leading to memory,
+and thus could be connected to 1 megabyte of memory.
 The segment registers
 .register cs ,
 .register ds ,
@@ -324,12 +330,19 @@ to
 : \c
 .register di .
 The 20-bit memory address that went out on the 8088 bus
-was the segment times 16 plus the offset:
-virtual address 
+was the segment times 16 plus the offset.
+We'll call the addresses the processor chip sends to memory
+"physical addresses,"
+and the addresses that programs directly manipulate
+"virtual addresses."
+Thus on an 8088 a
+virtual address consists of a 16-bit segment register combined with
+a 16-bit general-purpose register, for example
 .address 0x8765 \c
 : \c
-.address 0x4321
-is physical address
+.address 0x4321 ,
+and translates to a 20-bit physical address sent to the
+memory chips, in this case
 .address 0x87650 +\c
 .address 0x4321
 =
@@ -386,7 +399,8 @@ but virtual address
 on the 8088
 referred to physical address
 .address 0x0ffef .
-The Intel 80286 could address 24 bits of memory (16 megabytes),
+The Intel 80286 had 24-bit physical addresses and thus
+could address 16 megabytes of memory,
 so its real mode did not discard the top bit:
 virtual address
 .address 0xffff \c
@@ -395,7 +409,7 @@ virtual address
 on the 80286
 referred to physical address 
 .address 0x10ffef .
-The IBM PC At, IBM's 1984 update to the IBM PC,
+The IBM PC AT, IBM's 1984 update to the IBM PC,
 used an 80286 instead of an 8088, but by then there
 were programs that depended on the 8088's address truncation
 and did not run correctly on the 80286.
@@ -422,12 +436,22 @@ The boot sector must enable the A20 line using I/O to the keyboard
 controller on ports 0x64 and 0x60
 .lines bootasm.S:/Enable.A20/,/outb.*%al,.0x60/ .
 .PP
-The 80286 could address 24 bits of memory (16 megabytes) and
-the 80386 and later x86 processors can address 32 bits of memory (4
-gigabytes).  As we have seen, 16-bit real mode can only
-address just over 20 bits of memory (1,114,095 bytes).  To
-address the rest, software must put the processor in a new
-mode called protected mode.  In protected mode, a segment
+The 8088 had 16-bit general-purpose registers, so that a program that
+wanted to use more than 65,536 bytes of memory required awkward
+manipulation of segment registers. The 8088's 20-bit physical addresses also
+limited the total amount of RAM to a size that seems small today.
+Modern software expects to be able to use tens to thousands of
+megabytes of memory, and expects to be able to do it without fiddling
+with segment registers. The minimum modern expectation is that a
+processor should have 32-bit registers that can be used directly as
+addresses. The Intel x86 architecture arrived at those capabilities in
+two stages of evolution. The 80286 introduced "protected mode" which
+allowed the segmentation scheme to generate physical addresses with as
+many bits as required. The 80386 introduced "32-bit mode" which
+replaced the 80286's 16-bit registers with 32-bit registers. The xv6
+boot sequence enables both modes as follows.
+.PP
+In protected mode, a segment
 register is not a simple base memory address anymore.
 Instead, it is an index into a segment descriptor table.
 Each table entry specifies a base physical address,
@@ -455,7 +479,11 @@ the processor requires entry 0 to be a null entry;
 entry 1 is a 32-bit code segment with offset 0 and limit 0xffffffff,
 allowing access to all of physical memory;
 and
-entry 2 is a 32-bit data segment with the same offset and limit.
+entry 2 is a data segment with the same offset and limit.
+"32-bit code segment" enables the 80386's 32-bit mode,
+so that the processor will default
+to 32-bit registers, addresses, and arithmetic when executing
+in the segment.
 In protected mode, the bottom two bits of a
 segment register give the processor's privilege level (0 is
 kernel, 3 is user mode, 1 and 2 are intermediate).  The next
