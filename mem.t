@@ -10,17 +10,15 @@ and main memory safely, isolating them so that
 one errant program cannot break others.
 To that end, xv6 provides the concept of a process,
 as described in Chapter \*[CH:UNIX].
-To xv6, processes are just data structures, no different
-than disk buffers or file tables.
-Processes come alive with help from the hardware, which isolates
-processes from each other and mediates the transitions
-between processes and xv6.
-This chapter picks examines how xv6 manages memory
-to allocate a process and then uses the segmentation
-hardware—the same segmentation hardware that the
-boot loader grudgingly configured in Chapter \*[CH:BOOT]
-in order to enter protected mode—to create the illusion
-that each process has its own private memory address space.
+xv6 implements a process as a set of data structures,
+but a process is quite special:
+it comes alive with help from the hardware.
+This chapter examines how xv6 allocates
+memory to hold process code and data,
+how it creates a new process,
+and how it configures the processor's segmentation
+hardware to give each process the illusion that
+it hash its own private memory address space.
 The next few chapters will examine how xv6 uses hardware
 support for interrupts and context switching to create
 the illusion that each process has its own private cpu.
@@ -28,24 +26,28 @@ the illusion that each process has its own private cpu.
 .section "Code: Memory allocation
 .\"
 .PP
-In Chapter \*[CH:BOOT], the boot sector picked a few fixed
-memory locations to hold its data structures.
-This approach doesn't scale beyond tiny programs
-like the boot sector.
-Instead, xv6 employs a memory allocator, which is
-in charge of managing the machine's physical memory.
-When a section of code in xv6 needs a block of memory,
+xv6 allocates most of its data structures statically, by
+declaring C global variables and arrays.
+The linker and the boot loader cooperate to decide exactly
+what memory locations will hold these variables, so that the
+C code doesn't have to explictly allocate memory.
+However, xv6 does explicitly and dynamically allocate physical memory
+for user process memory, for the kernel stacks of user processes,
+and for pipe buffers.
+When xv6 needs memory for one of these purposes,
 it calls
-.code kalloc
-to allocate one; when finished, the code must call
+.code kalloc ;
+when it no longer needs them memory, it calls
 .code kfree
-to release the block back to the allocator.
+to release the memory back to the allocator.
 Xv6's memory allocator manages blocks of memory
-that are a multiple of 4 kilobytes,
+that are a multiple of 4096 bytes,
 because the allocator is used mainly to allocate
 process address spaces, and the x86 segmentation
 hardware manages those address spaces in
 multiples of 4 kilobytes.
+The xv6 allocator calls one of these 4096-byte units a
+page, though it has nothing to do with paging.
 .PP
 .code Main
 calls 
@@ -53,10 +55,9 @@ calls
 to initialize the allocator
 .line main.c:/kinit/ .
 .code Kinit
-must begin by determining how much physical
-memory is available to be managed.
-This task sounds simple but is quite difficult on
-the x86.
+ought to begin by determining how much physical
+memory is available, but this
+turns out to be difficult on the x86.
 Xv6 doesn't need much memory, so
 it assumes that there is at least one megabyte
 available past the end of the loaded kernel
@@ -72,8 +73,7 @@ a very safe assumption on modern hardware.
 uses the special linker-defined symbol
 .code end
 to find the end of the kernel's static data
-and rounds that address up to the
-next page boundary
+and rounds that address up to a multiple of 4096 bytes
 .line kalloc.c:/~.PAGE/ .
 When 
 .code n
@@ -112,12 +112,13 @@ this initial call to
 .code kfree
 gives it a megabyte to manage.
 .PP
-The allocator tracks memory using a
-.I "free list" ,
-a list of memory regions that are available
+The allocator maintains a
+.I "free list" 
+of memory regions that are available
 for allocation.
 It keeps the list sorted in increasing
-order of address.
+order of address in order to ease the task
+of merging contiguous blocks of freed memory.
 Each contiguous region of available
 memory is represented by a
 .code struct
@@ -167,17 +168,17 @@ code use an integer or pointer that is out of range
 is around 16 million).
 .PP
 .code Kfree 's
-first real work is to create a
+first real work is to store a
 .code run
-out of the memory at
+in the memory at
 .code v .
-It sets 
-.code p
-to the
-.code run
-for
-.code v
-and sets
+It uses a cast in order to make
+.code p ,
+which is a pointer to a
+.code run ,
+refer to the same memory as
+.code v .
+It also sets
 .code pend
 to the
 .code run
@@ -303,33 +304,50 @@ deletes the run from the list
 .lines "'kalloc.c:/r->len == 0/,/rp = r->next/'"
 before returning.
 .\"
-.section "Code: Process allocation
+.section "Code: Process creation
 .\"
 .PP
-Now that xv6 has a memory allocator,
-we can move on to process allocation.
+This section describes how xv6 creates the very first process.
 Xv6 represents each process by a 
 .code struct
 .code proc
-.line proc.h:/^struct.proc/ .
-Each process has a private memory space
-.code mem "" (
-and
-.code sz ).
-The rest of the fields in the structure
-make appearances in future chapters.
-Xv6 uses a fixed table
+.line proc.h:/^struct.proc/ 
+entry in the statically-sized
 .code ptable.proc
-of
-.code NPROC
-processes.
-When a new process must be created,
-xv6 calls
-.code allocproc
-to allocate one from the table.
+process table.
+The most important fields of a
+.code struct
+.code proc
+are
+.code mem ,
+which points to the physical memory containing the process's
+instructions, data, and stack;
+.code kstack ,
+which points to the process's kernel stack for use in interrupts
+and system calls; and
+and 
+.code state ,
+which indicates whether the process is allocated, ready
+to run, running, etc.
 .PP
-.code Allocproc
+The story of the creation of the first process starts when
+.code main
+.line main.c:/userinit/ 
+calls
+.code userinit
+.line proc.c:/^userinit/ ,
+whose first action is to call
+.code allocproc .
+The job of
+.code allocproc
 .line proc.c:/^allocproc/
+is to allocate a slot in the process table and
+to initialize the parts of the process's state
+required for it to execute in the kernel.
+.code Allocproc is called for all new processes, while
+.code userinit
+is only called for the very first process.
+.code Allocproc
 scans the table for a process with state
 .code UNUSED
 .lines proc.c:/for.p.=.ptable.proc/,/goto.found/ .
@@ -357,53 +375,61 @@ The process's kernel stack
 is the one it uses when executing in the kernel
 during the handling of that interrupt.
 .code Allocproc
-makes the new stack appear as if it were the
-result of entering the kernel via an interrupt,
-so that the code that runs when exiting
-the kernel after an interrupt
-can also be used to exit the kernel the first
-time a process runs.
-The top of the stack is the trap frame
-.code p->tf ,
-which saves the user space context.
-.code Allocproc 's
-caller is responsible for initializing the contents
-of 
-.code p->tf .
-Below the trap frame is the kernel context
-.code p->context .
-Normally
-.code p->context
-is saved during a call to
-.code swtch ,
-the context switch function.
+writes values at the top of the new stack that
+look just like those that would be there if the
+process had entered the kernel via an interrupt,
+so that the ordinary code for returning from
+the kernel back to the user part of a process will work.
+These values are a
+.code struct
+.code trapframe
+which stores the user registers,
+the address of the kernel code that returns from an
+interrupt
+.code trapret ) (
+for use as a function call return address,
+and a 
+.code struct
+.code context
+which holds the process's kernel registers.
+When the kernel switches contexts to this new process,
+the context switch will restore
+its kernel registers; it will then execute kernel code to return
+from an interrupt and thus restore the user registers,
+and then execute user instructions.
 .code Allocproc
-makes the context
-appear as if it were the result of a
-call to 
-.code swtch ,
-so that the usual process switching
-mechanism can be used to start
-running this process the first time
-it is scheduled.
-.code Allocproc
-zeros the kernel context except 
-.code p->context->eip ,
-which it sets to
+sets
+.code p->context->eip 
+to
+.code forkret ,
+so that the process will start executing in the kernel
+at the start of
 .code forkret .
-The stack pointer is not stored
-explicitly in the context;
-just as each 
-.code run
-in the memory allocator
-kept the memory it managed
-implicitly in its address,
-.code p->context
-keeps the stack pointer implicitly:
-it is
+The context switching code will start executing the
+new process with the stack pointer set to
 .code p->context+1 ,
-here the bottom of the trap frame.
-XXX picture needed.
+which points to the stack slot holding the address of the
+.code trapret
+function, just as if
+.code forkret
+had been called by
+.code trapret.
+.P1
+ ----------  <-- top of new process's kernel stack
+| esp      |
+| ...      |
+| eip      |
+| ...      |
+| edi      | <-- p->tf (new proc's user registers)
+| trapret  | <-- address forkret will return to
+| eip      |
+| ...      |
+| edi      | <-- p->context (new proc's kernel registers)
+|          |
+| (empty)  |
+|          |
+ ----------  <-- p->kstack
+.P2
 .PP
 .code Main
 calls

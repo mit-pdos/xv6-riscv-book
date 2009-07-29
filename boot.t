@@ -1049,3 +1049,8 @@ and aligned virtual address/file offsets.
 ..
 .exercise
 something about BIOS lasting longer + security problems
+.exercise
+Suppose you wanted bootmain() to load the kernel at 0x200000
+instead of 0x100000, and you did so by modifying bootmain()
+to add 0x100000 to the va of each ELF section. Something would
+go wrong. What?
