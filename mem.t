@@ -572,7 +572,8 @@ to the process it found
 stands for current process)
 and calls
 .code usegment
-to create a few more segments on this cpu
+to create segments on this cpu for the user-space
+execution of the process
 .line "'proc.c:/usegment!(!)/'" .
 Usegment
 .line proc.c:/^usegment/
@@ -609,8 +610,11 @@ to
 .code RUNNING
 and calls
 .code swtch
-to switch to the new process's
-kernel context
+to perform a context switch to
+.code p
+(i.e. load the process's kernel registers from
+.code p->context
+into the hardware registers)
 .line "'proc.c:/swtch.*c->context.*p->context/'" .
 .code Swtch
 .line swtch.S:/^swtch/ ,
@@ -633,6 +637,8 @@ The final
 instruction pops a new
 .code eip
 from the stack, finishing the context switch.
+Now the processor is running process
+.code p .
 .PP
 .code Allocproc
 set
@@ -651,9 +657,9 @@ releases the
 (see Chapter \*[CH:LOCK])
 and then returns.
 .code Allocproc
-arranged that the word on the stack
-above
-.code forkret 's
+arranged that the top word on the stack after
+.code p->context
+is popped off
 would be 
 .code trapret ,
 so now 
@@ -704,6 +710,30 @@ that means
 .code SEG_UCODE:0 ,
 the first instruction of
 .code initcode.S .
+.PP
+At this point,
+.code %eip
+holds zero and
+.code %esp
+holds 4096.
+These are virtual addresses in the process's user address space.
+The processor's segmentation machinery translates them into physical addresses.
+The relevant segmentation registers (cs, ds, and ss) and
+segment descriptors were set up by 
+.code userinit
+and
+.code usegment
+to translate virtual address zero to physical address
+.code p->mem ,
+with a maximum virtual address of
+.code p->sz .
+The fact that the process is running with CPL=3 (in the low
+bits of cs) means that it cannot use the segment descriptors
+.code SEG_KCODE
+and
+.code SEG_KDATA ,
+which would give it access to all of physical memory.
+So the process is constrained to using only its own memory.
 .PP
 .code Initcode.S
 .line initcode.S:/^start/
@@ -777,39 +807,44 @@ xv6 uses the linear scan
 Xv6 departs from modern operating systems in its use of
 segmentation registers for process isolation and address
 translation.
-Every other operating system for the x86
+Most operating systems for the x86
 uses the paging hardware for address translation
 and protection; they treat the segmentation hardware
 mostly as a nuisance to be disabled by creating no-op segments
 like the boot sector did.
-Xv6 uses segmentation instead of paging mainly for
-simplicitly.
-This allows us to focus on operating system services
-like process management and the file system
-instead of complex memory management.
-Essentially any other operating system textbook
-can be consulted for more on page tables and paging.
+However, a simple paging scheme is somewhat more complex to
+implement than a simple segmentation scheme.  Since xv6
+does not aspire to any of the advanced features which
+would require paging, it uses segmentation instead.
+.ig
+The real reasons are that we didn't want to make it too easy
+to copy paging code from xv6 to jos, and that we wanted to
+provide a contrast to paging, and that it's a nod to V6's
+use of PDP11 segments. Next time let's use paging.
+..
 .PP
-The one common use of segmentation is as a way to
-provide cheap per-thread storage, like xv6 does to create per-cpu storage.
+The one common use of segmentation is to implement
+variables like xv6's
+.code cp
+that are at a fixed address but have different values
+in different threads.
 Implementations of per-cpu (or per-thread) storage on other
 architectures would dedicate a register to holding a pointer
 to the per-cpu data area, but the x86 has so few general
 registers that the extra effort required to use segmentation
 is worthwhile.
 .PP
-There is one important drawback to xv6's use of segmentation
-instead of paging: without page tables,
-there is no way to make address 0 is an invalid address.
-This means that if xv6 or a user program dereferences
-a null pointer, it reads or writes the memory at that
-location and keeps running.
-In contrast, systems that use paging typically leave
-the first few pages of the address space unmapped,
-so that dereferencing a null pointer causes a memory fault.
-This one drawback would be severe enough to warrant
-the implementation of paging if xv6 were more than
-just a teaching operating system.
+xv6's use of segmentation instead of paging is awkward in a
+couple of ways, even given its low ambitions.
+First, it causes user-space address zero to be a valid address,
+so that programs do  not fault when they dereference null pointers;
+a paging system could force faults by marking the first page
+invalid, which turns out to be invaluable for catching bugs
+in C code.
+Second, xv6's segment scheme places the stack at a relatively low
+address which prevents automatic stack extension.
+Finally, all of a process's memory must be contiguous in physical
+memory, leading to fragmentation and/or copying.
 .PP
 In the earliest days of operating systems,
 each operating system was tailored to a specific
@@ -878,4 +913,3 @@ scheduler turns on interrupts.  That would be great;
 if it's not true already we should make it so.]]
 
 3. Look at real operating systems to see how they size memory.
-
