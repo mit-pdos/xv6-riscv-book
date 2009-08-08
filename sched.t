@@ -2,29 +2,29 @@
 .chapter CH:SCHED "Scheduling
 .PP
 In some sense, locks are needed because the 
-the computer has too many cpus: a single-cpu
+the computer has too many CPUs: a single-CPU
 interrupt-free system could not need locking,
 although it would suffer other problems.
-At the same time, even our multiprocessors have too few cpus:
+At the same time, even our multiprocessors have too few CPUs:
 Modern operating systems implement the illusion that
 the machine can simultaneously run many processes,
-more processes than there are cpus.
-If two different processes are competing for a single cpu,
+more processes than there are CPUs.
+If two different processes are competing for a single CPU,
 xv6 multiplexes them, switching many times per second
 between executing one and the other.
 Xv6 uses multiplexing to create the illusion that each process 
-has its own cpu, just as xv6 used the memory allocator
+has its own CPU, just as xv6 used the memory allocator
 and hardware segmentation to create the illusion that each
 process has its own memory.
 .PP
 Once there are multiple processes executing, xv6 must
 provide some way for them to coordinate.
-Since each cpu runs at most one cpu at a time,
+Since each CPU runs at most one CPU at a time,
 locks suffice to implement mutual exclusion, but
 processes need more than mutual exclusion.
 Often it is necessary for one process to wait for
 another to perform some action.
-Rather than make the waiting process waste cpu by
+Rather than make the waiting process waste CPU by
 repeatedly checking whether that action has happened,
 xv6 allows a process to sleep waiting for an event
 and allows another process to wake the first process.
@@ -53,7 +53,7 @@ enables interrupts with an explicit
 .code sti
 .line "'proc.c:/sti!(!)/'" ,
 so that if a hardware interrupt is waiting
-to be handled, the scheduler's cpu
+to be handled, the scheduler's CPU
 will handle it before continuing.
 Then the scheduler
 loops over the process table
@@ -61,7 +61,7 @@ looking for a runnable process, one that has
 .code p->state 
 .code ==
 .code RUNNABLE .
-Once it finds a process, it sets the per-cpu current process
+Once it finds a process, it sets the per-CPU current process
 variable
 .code cp ,
 updates the user segments with
@@ -78,12 +78,12 @@ to start running it
 .PP
 Every xv6 process has its own kernel stack and register set, as we saw in
 Chapter \*[CH:MEM].
-Each cpu has its own kernel stack to use when running
+Each CPU has its own kernel stack to use when running
 the scheduler.
 .code Swtch
 saves the scheduler's context—it's stack and registers—and
 switches to the chosen process's context.
-When it is time for the process to give up the cpu,
+When it is time for the process to give up the CPU,
 it will call
 .code swtch
 to save its own context and return to the scheduler context.
@@ -204,7 +204,7 @@ called
 .code swtch
 to switch to
 .code c->context ,
-the per-cpu scheduler context.
+the per-CPU scheduler context.
 That new context had been saved by 
 .code scheduler 's
 call to
@@ -232,7 +232,7 @@ now let's take
 as a given and examine the conventions involved
 in switching from process to scheduler and back to process.
 The convention in xv6 is that a process
-that wants to give up the cpu must
+that wants to give up the CPU must
 acquire the process table lock
 .code ptable.lock ,
 release any other locks it is holding,
@@ -251,7 +251,7 @@ which we will examine later.
 double checks those conditions
 .lines "'proc.c:/if..holding/,/running/'"
 and then an implication:
-since a lock is held, the cpu should be
+since a lock is held, the CPU should be
 running with interrupts disabled.
 Finally,
 .code sched
@@ -294,15 +294,15 @@ decided to yield, set its state to
 .code RUNNABLE ,
 and then before it could
 .code swtch
-to give up the cpu, a different cpu would
+to give up the CPU, a different CPU would
 try to run it using 
 .code swtch .
-This other cpu's call to
+This other CPU's call to
 .code swtch
 would use a stale context, the one from the
 last time the process was started, causing time
 to appear to move backward.
-It would also cause two cpus to be executing
+It would also cause two CPUs to be executing
 on the same stack.  Both are incorrect.
 .PP
 There is one case when the scheduler's 
@@ -322,8 +322,8 @@ otherwise, the new process could start at
 .section "Sleep and wakeup
 .\"
 .PP
-Locks help cpus and processes avoid interfering with each other,
-and scheduling help processes share a cpu,
+Locks help CPUs and processes avoid interfering with each other,
+and scheduling help processes share a CPU,
 but so far we have no abstractions that make it easy
 for processes to communicate.
 Sleep and wakeup fill that void, allowing one process to 
@@ -335,7 +335,7 @@ simple producer/consumer queue.
 The queue allows one process to send a nonzero pointer
 to another process.
 Assuming there is only one sender and one receiver
-and they execute on different cpus,
+and they execute on different CPUs,
 this implementation is correct:
 .P1
   100	struct q {
@@ -392,7 +392,7 @@ rarely, the receiver will spend most
 of its time spinning in the 
 .code while
 loop hoping for a pointer.
-The receiver's cpu could find more productive work
+The receiver's CPU could find more productive work
 if there were a way for the receiver to be notified when the
 .code send
 had delivered a pointer.
@@ -408,7 +408,7 @@ which may be any kind of pointer;
 it is used only as an identifying address
 and is not dereferenced.
 .code Sleep
-puts the calling process to sleep, releasing the cpu
+puts the calling process to sleep, releasing the CPU
 for other work.
 It does not return until the process is awake again.
 .code Wakeup(chan)
@@ -459,7 +459,7 @@ Before
 .code recv
 can sleep,
 .code send
-runs on another cpu:
+runs on another CPU:
 it changes
 .code q->ptr
 to be nonzero and calls
@@ -502,7 +502,7 @@ Once the calling process is awake again
 .code sleep
 reacquires the lock before returning.
 The following code is correct and makes
-efficient use of the cpu when 
+efficient use of the CPU when 
 .code recv
 must wait:
 .P1
@@ -747,7 +747,7 @@ Let's suppose that calls to
 .code piperead
 and
 .code pipewrite
-happen simultaneously on two different cpus.
+happen simultaneously on two different CPUs.
 .PP
 .code Pipewrite
 .line pipe.c:/^pipewrite/
@@ -832,7 +832,7 @@ but stopped when the buffer filled.
 It marks that process as
 .code RUNNABLE .
 .PP
-Let's suppose that the scheduler on the other cpu
+Let's suppose that the scheduler on the other CPU
 has decided to run some other process,
 so
 .code pipewrite
@@ -856,7 +856,7 @@ to await more data
 .line pipe.c:/piperead-sleep/ .
 Once the process calling
 .code piperead
-is asleep, the cpu can run
+is asleep, the CPU can run
 .code pipewrite 's
 process, causing 
 .code sleep
@@ -976,7 +976,7 @@ Finally,
 .code exit
 calls
 .code sched
-to relinquish the cpu.
+to relinquish the CPU.
 .PP
 Now the scheduler can choose to run the
 exiting process's parent, which is asleep in
@@ -1042,7 +1042,7 @@ beginning of the chapter.
 The original Unix kernel's
 .code sleep
 disabled interrupts.
-This sufficed because Unix ran on a single-cpu system.
+This sufficed because Unix ran on a single-CPU system.
 Because xv6 runs on multiprocessors,
 it added an explicit lock to
 .code sleep .

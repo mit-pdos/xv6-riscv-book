@@ -794,7 +794,7 @@ like open and close, and not here in data structure land.
 .section "Real world
 .PP
 Xv6's file system implementation assumes that disk operations are
-far more expensive than cpu operations.
+far more expensive than computation.
 It uses an efficient tree structure on disk but comparatively
 inefficient linear scans in the inode
 and buffer cache.

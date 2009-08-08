@@ -2,8 +2,8 @@
 .chapter CH:LOCK "Locking
 .PP
 Xv6 runs on multiprocessors, computers with
-multiple cpus executing code independently.
-These multiple cpus operate on a single physical
+multiple CPUs executing code independently.
+These multiple CPUs operate on a single physical
 address space and share data structures; xv6 must
 introduce a coordination mechanism to keep them
 from interfering with each other.
@@ -11,11 +11,11 @@ Even on a uniprocessor, xv6 must use some mechanism
 to keep interrupt handlers from interfering with
 non-interrupt code.
 Xv6 uses the same low-level concept for both: locks.
-Locks provide mutual exclusion, ensuring that only one cpu at a time
+Locks provide mutual exclusion, ensuring that only one CPU at a time
 can hold a lock.
 If xv6 only accesses a data structure 
 while holding a particular lock,
-then xv6 can be sure that only one cpu
+then xv6 can be sure that only one CPU
 at a time is accessing the data structure.
 In this situation, we say that the lock protects
 the data structure.
@@ -44,7 +44,7 @@ Proving this implementation correct is a typical
 exercise in a data structures and algorithms class.
 Even though this implementation can be proved
 correct, it isn't, at least not on a multiprocessor.
-If two different cpus execute
+If two different CPUs execute
 .code insert
 at the same time,
 it could happen that both execute line 15
@@ -62,7 +62,7 @@ the node involved in the first assignment
 will be lost.
 This kind of problem is called a race condition.
 The problem with races is that they depend on
-the exact timing of the two cpus involved and
+the exact timing of the two CPUs involved and
 are consequently difficult to reproduce.
 For example, adding print statements while debugging
 .code insert
@@ -71,7 +71,7 @@ to make the race disappear.
 .PP
 The typical way to avoid races is to use a lock.
 Locks ensure mutual exclusion,
-so that only one cpu can execute 
+so that only one CPU can execute 
 .code insert
 at a time; this makes the scenario above
 impossible.
@@ -129,12 +129,12 @@ does not point at
 .code l
 yet (reestablished at line 16).
 The race condition we examined above
-happened because a second cpu executed
+happened because a second CPU executed
 code that depended on the list invariants
 while they were (temporarily) violated.
-Proper use of a lock ensures that only one cpu at a time
+Proper use of a lock ensures that only one CPU at a time
 can operate on the data structure, so that
-no cpu will execute a data structure operation when the 
+no CPU will execute a data structure operation when the 
 data structure's invariants do not hold.
 .PP
 .\"
@@ -164,12 +164,12 @@ Logically, xv6 should acquire a lock by executing code like
 Unfortunately, this implementation does not
 guarantee mutual exclusion on a modern
 multiprocessor.
-It could happen that two (or more) cpus simultaneously
+It could happen that two (or more) CPUs simultaneously
 reach line 25, see that 
 .code lk->locked
 is zero, and then both grab the lock by executing lines
 26 and 27.
-At this point, two different cpus hold the lock,
+At this point, two different CPUs hold the lock,
 which violates the mutual exclusion property.
 Rather than helping us avoid race conditions,
 this implementation of
@@ -211,7 +211,7 @@ was 0 and is now 1—\c
 so the loop can stop.
 Once the lock is acquired,
 .code acquire
-records, for debugging, the cpu and stack trace
+records, for debugging, the CPU and stack trace
 that acquired the lock.
 When a process acquires a lock
 and forget to release it, this information
@@ -233,7 +233,7 @@ System design strives for clean, modular abstractions:
 it is best when a caller does not need to know how a
 callee implements particular functionality.
 Locks interfere with this modularity.
-For example, if a cpu holds a particular lock,
+For example, if a CPU holds a particular lock,
 it cannot call any function f that will try to 
 reacquire that lock: since the caller can't release
 the lock until f returns, if f tries to acquire
@@ -267,7 +267,7 @@ and was in the middle of editing the list data structure.
 Maybe the invariants hold or maybe they don't.
 The list no longer protects them.
 Locks are just as important for protecting callers and callees
-from each other as they are for protecting different cpus
+from each other as they are for protecting different CPUs
 from each other;
 recursive locks give up that property.
 .PP
@@ -283,8 +283,8 @@ Locks force themselves into our abstractions.
 The hardest part about using locks is deciding how many locks
 to use and which data and invariants each lock protects.
 There are a few basic principles.
-First, any time a variable can be written by one cpu
-at the same time that another cpu can read or write it,
+First, any time a variable can be written by one CPU
+at the same time that another CPU can read or write it,
 a lock should be introduced to keep the two
 operations from overlapping.
 Second, remeber that locks protect invariants:
@@ -302,11 +302,11 @@ Many uniprocessor operating systems have been
 converted to run on multiprocessors using this approach,
 sometimes called a ``giant kernel lock,''
 but the approach sacrifices true concurrency:
-only one cpu can execute in the kernel at a time.
+only one CPU can execute in the kernel at a time.
 If the kernel does any heavy computation, it would be
 more efficient to use a larger set of more fine-grained
 locks, so that the kernel could execute on multiple
-cpus simultaneously.
+CPUs simultaneously.
 .PP
 Ultimately, the choice of lock granularity is more art than science.
 Xv6 uses a few coarse data-structure specific locks.
@@ -318,25 +318,25 @@ XXX look at code here XXX
 .section "Interrupt handlers
 .\"
 Xv6 uses locks to protect interrupt handlers
-running on one cpu from non-interrupt code accessing the same
-data on another cpu.
+running on one CPU from non-interrupt code accessing the same
+data on another CPU.
 For example,
 the timer interrupt handler 
 .line trap.c:/T_IRQ0...IRQ_TIMER/
 increments
 .code ticks
-but another cpu might be in
+but another CPU might be in
 .code sys_sleep
 at the same time, using the variable
 .line sysproc.c:/ticks0.=.ticks/ .
 The lock
 .code tickslock
-synchronizes access by the two cpus to the
+synchronizes access by the two CPUs to the
 single variable.
 .PP
-Locks are useful not just for synchronizing multiple cpus
+Locks are useful not just for synchronizing multiple CPUs
 but also for synchronizing interrupt and non-interrupt code
-on the same cpu.
+on the same CPU.
 The 
 .code ticks
 variable is used by the interrupt handler and
@@ -344,10 +344,10 @@ also by the non-interrupt function
 .code sys_sleep ,
 as we just saw.
 If the non-interrupt code is manipulating a shared
-data structure, it may not be safe for the cpu to
+data structure, it may not be safe for the CPU to
 interrupt that code and start running an interrupt
 handler that will use the data structure.
-Xv6's disables interrupts on a cpu when that cpu holds a lock;
+Xv6's disables interrupts on a CPU when that CPU holds a lock;
 this ensures proper data access and also avoids deadlocks:
 an interrupt handler can never acquire a lock aleady held
 by the code it interrupted.

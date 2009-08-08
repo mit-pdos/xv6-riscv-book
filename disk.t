@@ -7,7 +7,7 @@
 	but it's probably too small to stand on its own, and it is
 	tied very closely to the buffer cache
 	
-	have to decide on processor vs cpu vs CPU, i/o vs I/O.
+	have to decide on processor vs CPU, i/o vs I/O.
 	
 	be sure to say buffer, not block
 ..
@@ -128,9 +128,9 @@ The call to
 enables the interrupt on a uniprocessor;
 .code ioapicenable
 enables the interrupt on a multiprocessor,
-but only on the last cpu
+but only on the last CPU
 .code ncpu-1 ): (
-on a two-processor system, cpu 1 handles disk interrupts.
+on a two-processor system, CPU 1 handles disk interrupts.
 .PP
 Next,
 .code ideinit
@@ -193,7 +193,7 @@ issues disk read commands and reads the status
 bits repeatedly until the data is ready.
 This polling or busy waiting is fine in a boot sector, which has nothing better to do.
 In an operating system, however, it is more efficient to
-let another process run on the cpu and arrange to receive
+let another process run on the CPU and arrange to receive
 an interrupt when the disk operation has completed.
 .code Iderw
 takes this latter approach,
@@ -236,14 +236,14 @@ data is ready, and the handler will read it.
 Having added the request to the queue and started it if necessary,
 .code iderw
 must wait for the result.  As discussed above,
-polling does not make efficient use of the cpu.
+polling does not make efficient use of the CPU.
 Instead,
 .code iderw
 sleeps, waiting for the interrupt handler to 
 record in the buffer's flags that the operation is done
 .lines ide.c:/while.*VALID/,/sleep/ .
 While this process is sleeping,
-xv6 will schedule other processes to keep the cpu busy.
+xv6 will schedule other processes to keep the CPU busy.
 .PP
 Eventually, the disk will finish its operation and trigger an interrupt.
 As we saw in Chapter \*[CH:TRAP],
@@ -281,7 +281,7 @@ must pass the next waiting buffer to the disk
 [XXX Is there an example we can use that would push
 this back into the interrupt chapter?]
 .PP
-On a multiprocessor, ordinary kernel code can run on one cpu
+On a multiprocessor, ordinary kernel code can run on one CPU
 while an interrupt handler runs on another.
 If the two code sections share data, they must use locks
 to synchronize access to that data.
@@ -555,7 +555,7 @@ buffer is the one least likely to be used again soon.
 .PP
 Actual device drivers are far more complex than the disk driver in this chapter,
 but the basic ideas are the same:
-typically devices are slower than cpu, so the hardware uses
+typically devices are slower than CPU, so the hardware uses
 interrupts to notify the operating system of status changes.
 Modern disk controllers typically
 accept multiple outstanding disk requests at a time and even reorder
@@ -576,8 +576,8 @@ DMA allows the disk or other controllers direct access to physical memory.
 The driver gives the device the physical address of the buffer's data field and
 the device copies directly to or from main memory,
 interrupting once the copy is complete.
-Using DMA means that the cpu is not involved at all in the transfer,
-which can be more efficient and is less taxing for the cpu's memory caches.
+Using DMA means that the CPU is not involved at all in the transfer,
+which can be more efficient and is less taxing for the CPU's memory caches.
 .PP
 The buffer cache in a real-world operating system is significantly
 more complex than xv6's, but it serves the same two purposes:

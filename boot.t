@@ -23,19 +23,24 @@
 .ig
 The core of a computer system is its
 computer's central processing unit (simply, its
-processor or cpu).  The operating system deals with
+processor or CPU).  The operating system deals with
 the processor in great detail but deals with the other
 components of the system—the memory, the disks,
 the network and graphics controllers—in comparatively less detail.
 Those other components are mostly abstracted away.
 The hardware details necessary to understand an operating
 system are therefore focused on the processor itself.
-XXX the above is true of xv6 but false for most operating
+XXX rtm: the above is true of xv6 but false for most operating
 systems, which have far more code for device handling
 than for CPU management.
+XXX rsc: yes and no.  i didn't mean the volume of code but the level of detail.
+the os works with the cpu on a much lower level than it
+does with the device hardware.  for example, it doesn't
+have to deal with explicit ram refreshes, the pci bus protocol,
+managing each device's internal traps, and so on.
 ..
 .PP
-A computer's cpu (central processing unit, or cpu)
+A computer's CPU (central processing unit, or processor)
 runs a conceptually simple loop:
 it inspects the value of a register called the program counter,
 reads a machine instruction from that address in memory,
@@ -57,7 +62,7 @@ data is provided by the processor's register set.  A
 register is a storage cell inside the processor itself,
 capable of holding a machine word-sized value (typically 16,
 32, or 64 bits).  Data stored in registers can typically be
-read or written quickly, in a single cpu cycle.
+read or written quickly, in a single CPU cycle.
 The x86
 provides eight general purpose 32-bit registers—\c
 .register eax ,

@@ -21,7 +21,7 @@ hardware to give each process the illusion that
 it hash its own private memory address space.
 The next few chapters will examine how xv6 uses hardware
 support for interrupts and context switching to create
-the illusion that each process has its own private cpu.
+the illusion that each process has its own private CPU.
 .\"
 .section "Code: Memory allocation
 .\"
@@ -542,7 +542,7 @@ calls
 to initialize the kernel's segment descriptor table
 .line main.c:/ksegment/ .
 .code Ksegment
-initializes a per-cpu global descriptor table
+initializes a per-CPU global descriptor table
 .code c->gdt
 with the same segments that the boot sector
 configured
@@ -572,7 +572,7 @@ to the process it found
 stands for current process)
 and calls
 .code usegment
-to create segments on this cpu for the user-space
+to create segments on this CPU for the user-space
 execution of the process
 .line "'proc.c:/usegment!(!)/'" .
 Usegment
@@ -700,7 +700,7 @@ and
 .code %eflags
 off the stack.
 The contents of the trap frame
-have been transferred to the cpu state,
+have been transferred to the CPU state,
 so the processor continues at the
 .code %cs:%eip
 specified in the trap frame.
@@ -828,9 +828,9 @@ variables like xv6's
 .code cp
 that are at a fixed address but have different values
 in different threads.
-Implementations of per-cpu (or per-thread) storage on other
+Implementations of per-CPU (or per-thread) storage on other
 architectures would dedicate a register to holding a pointer
-to the per-cpu data area, but the x86 has so few general
+to the per-CPU data area, but the x86 has so few general
 registers that the extra effort required to use segmentation
 is worthwhile.
 .PP

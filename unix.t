@@ -57,7 +57,7 @@ and
 .italic kernel
 .italic space .
 .PP
-The kernel uses the cpu's hardware protection mechanisms to
+The kernel uses the CPU's hardware protection mechanisms to
 ensure that each process executing in user space can only access
 its own memory.
 The kernel executes with the hardware privileges required to

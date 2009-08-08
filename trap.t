@@ -142,7 +142,7 @@ and
 .code %gs
 to point at the 
 .code SEG_KCPU
-per-cpu data segment
+per-CPU data segment
 .lines "'trapasm.S:/movw.*SEG_KCPU/,/%gs/'" .
 Chapter \*[CH:MEM] will revisit that segment.  \" TODO is CH:MEM right?
 Once the segments are set properly,
