@@ -801,17 +801,17 @@ it finds that
 .code p->nread
 .code !=
 .code p->nwrite
-.line proc.c:/pipe-empty/
+.line pipe.c:/pipe-empty/
 .code pipewrite "" (
 went to sleep because
 .code p->nwrite
 .code ==
 .code p->nread+PIPESIZE
-.line proc.c:/pipe-full/ )
+.line pipe.c:/pipewrite-full/ )
 so it falls through to the 
 .code for
 loop, copies data out of the pipe
-.line proc.c:/piperead-copy/,/^..}/ ,
+.line pipe.c:/piperead-copy/,/^..}/ ,
 and increments 
 .code nread
 by the number of bytes copied.
