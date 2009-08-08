@@ -328,7 +328,7 @@ increments
 but another cpu might be in
 .code sys_sleep
 at the same time, using the variable
-.line sysproc.c:/^ticks0.=.ticks/ .
+.line sysproc.c:/ticks0.=.ticks/ .
 The lock
 .code tickslock
 synchronizes access by the two cpus to the

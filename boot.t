@@ -495,10 +495,10 @@ with kernel privilege level.
 Those entries are the code and data segments the
 boot sector will use in protected mode.  
 The code refers to these numbers using the aliases
-.code CSEG32
+.code SEG_KCODE
 and
-.code DSEG32
-.lines bootasm.S:/set.CSEG32/,/set.DSEG32/ .
+.code SEG_KDATA
+.lines bootasm.S:/SEG_KCODE/,/SEG_KDATA/ .
 .PP
 Once it has loaded the GDT register, the boot sector enables
 protected mode, by
@@ -523,11 +523,11 @@ the code executes a far jump
 instruction
 .line bootasm.S:/ljmp/ .
 The jump continues execution at the next line
-.line bootasm.S:/^.code32/
+.line bootasm.S:/^start32/
 but in doing so sets 
 .register cs
 to 
-.code CSEG32 ,
+.code SEG_KCODE ,
 which causes the processor to load the
 descriptor entry from the
 .code gdt
@@ -540,8 +540,8 @@ to 80386.
 .PP
 The boot sector's first action in 32-bit mode is to
 initialize the data segment registers with
-.code DSEG32
-.lines bootasm.S:/movw.*DSEG32/,/Stack.Segment/ .
+.code SEG_KDATA
+.lines bootasm.S:/movw.*SEG_KDATA/,/Stack.Segment/ .
 The segments are set up so that the processor uses
 32-bit virtual addresses directly as 32-bit physical addresses,
 without translation, so the software can now conveniently

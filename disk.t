@@ -396,7 +396,7 @@ buffers in the static array
 .code buf
 .lines bio.c:/Create.linked.list/,/^..}/ .
 All other access to the buffer cache refer to the linked list via
-.code bufhead ,
+.code bcache.head ,
 not the
 .code buf
 array.
@@ -523,7 +523,7 @@ it originated in Unix and is used in BSD, Linux, and Solaris too.)
 .line bio.c:/^brelse/
 moves the buffer from its position in the linked list
 to the front of the list
-.lines 'bio.c:/b->next->prev.=.b->prev/,/bufhead.next.=.b/' ,
+.lines 'bio.c:/b->next->prev.=.b->prev/,/bcache.head.next.=.b/' ,
 clears the
 .code B_BUSY
 bit, and wakes any processes sleeping on the buffer.
@@ -537,7 +537,7 @@ take advantage of this:
 the scan for an existing buffer must process the entire list
 in the worst case, but checking the most recently used buffers
 first (starting at
-.code bufhead
+.code bcache.head
 and following
 .code next
 pointers) will reduce scan time when there is good locality of reference.

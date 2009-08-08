@@ -42,7 +42,7 @@ at boot time; the last thing
 .code mpmain
 does is call
 .code scheduler
-.line main.c:/scheduler!(!)/ .
+.line "'main.c:/scheduler!(!)/'" .
 .PP
 .code Scheduler
 .line proc.c:/^scheduler/ runs a simple loop:
@@ -51,7 +51,7 @@ At the beginning of the loop,
 .code scheduler
 enables interrupts with an explicit
 .code sti
-.line proc.c:/sti!(!)/ ,
+.line "'proc.c:/sti!(!)/'" ,
 so that if a hardware interrupt is waiting
 to be handled, the scheduler's cpu
 will handle it before continuing.
@@ -123,7 +123,7 @@ to save the current context in
 .code cp->context
 and switch to the scheduler context previously saved in 
 .code c->context
-.line proc.c:/swtch!(.cp-/ .
+.line "'proc.c:/swtch!(.cp-/'" .
 .PP
 .code Swtch
 .line swtch.S:/swtch/
@@ -209,7 +209,7 @@ That new context had been saved by
 .code scheduler 's
 call to
 .code swtch
-.line proc.c:/swtch!(.c-/ .
+.line "'proc.c:/swtch!(.c-/'" .
 When the
 .code swtch
 we have been tracing returns,
@@ -249,7 +249,7 @@ and
 which we will examine later.
 .code Sched
 double checks those conditions
-.lines proc.c:/if.!holding/,/running/
+.lines "'proc.c:/if..holding/,/running/'"
 and then an implication:
 since a lock is held, the cpu should be
 running with interrupts disabled.
@@ -567,11 +567,11 @@ and marks it as
 .line proc.c:/^sleep/
 begins with a few sanity checks:
 there must be a current process
-.lines proc.c:/cp == 0/,/sleep/
+.lines "'proc.c:/cp == 0/,/sleep/'"
 and
 .code sleep
 must have been passed a lock
-.lines proc.c:/lk == 0/,/sleep.without/ .
+.lines "'proc.c:/lk == 0/,/sleep.without/'" .
 Then 
 .code sleep
 acquires 
@@ -771,7 +771,7 @@ loops over the bytes being written—\c
 \&...,
 .code addr[n-1] —\c
 adding each to the pipe in turn
-.line pipe.c:/nwrite!+!+/ .
+.line "'pipe.c:/nwrite!+!+/'" .
 During this loop, it could happen that
 the buffer fills
 .line pipe.c:/pipewrite-full/ .
@@ -865,7 +865,7 @@ to return
 .code Pipewrite
 finishes its loop, copying the remainder of
 its data into the buffer
-.line pipewrite.c:/nwrite!+!+/ .
+.line "'pipe.c:/nwrite!+!+/'" .
 Before returning,
 .code pipewrite
 calls

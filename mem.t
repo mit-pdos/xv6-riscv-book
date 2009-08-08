@@ -90,7 +90,7 @@ then does a surprising thing:
 it calls
 .code kfree
 to free a megabyte of memory starting at that address
-.line kalloc.c:/kfree.start/ .
+.line kalloc.c:/kfree.p..len/ .
 The discussion of
 .code kalloc
 and
