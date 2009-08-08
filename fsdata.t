@@ -26,7 +26,7 @@ a variable length sequence of bytes.
 The file system is implemented in four steps.
 The first step is the block allocator.  It manages disk blocks, keeping
 track of which blocks are in use,
-just as the memory allocator in Appendix \*[APP:MEM] tracks which
+just as the memory allocator in Chapter \*[CH:MEM] tracks which
 memory pages are in use.
 The second step is unnamed files called inodes (pronounced i-node).
 Inodes are a collection of allocated blocks holding a variable length
@@ -194,7 +194,7 @@ and then to unlock the inode with
 before calling
 .code iput .
 Leaving locking to the caller allows the file system calls
-(described in Chapter \*[CH:FSSYS]) to manage the atomicity of
+(described in Chapter \*[CH:FSCALL]) to manage the atomicity of
 complex operations.
 Multiple processes can hold a reference to an inode
 .code ip
@@ -525,7 +525,7 @@ begin by checking for
 .code T_DEV .
 This case handles special devices whose data does not
 live in the file system; we will return to this case in
-Chapter \*[CH:DEV].
+Chapter \*[CH:XXX].
 .PP
 .code Stati
 .line fs.c:/^stati/
@@ -535,7 +535,7 @@ structure, which is exposed to user programs
 via the
 .code stat
 system call
-(see Chapter \*[CH:FSSYS]).
+(see Chapter \*[CH:FSCALL]).
 .\"
 .\"
 .\"

@@ -46,16 +46,16 @@ has memory containing
 instructions, data, and a stack.
 When a process needs to invoke a kernel service,
 it makes a
-.I system
-.I call
+.italic system
+.italic call
 to enter the kernel;
 the kernel performs the service and returns.
 Thus a process alternates between executing in
-.I user
-.I space
+.italic user
+.italic space
 and
-.I kernel
-.I space .
+.italic kernel
+.italic space .
 .PP
 The kernel uses the cpu's hardware protection mechanisms to
 ensure that each process executing in user space can only access
@@ -97,7 +97,7 @@ among the set of processes waiting to execute.
 When a process is not executing, xv6 saves its CPU registers,
 restoring them when it next runs the process.
 Each process has a unique numeric non-zero process identifier, or
-.I pid .
+.italic pid .
 .PP
 One process may create another using the
 .code fork
@@ -117,14 +117,14 @@ int pid;
 
 pid = fork();
 if(pid > 0){
-  printf("parent: child=%d\n", pid);
+  printf("parent: child=%d\en", pid);
   pid = wait();
-  printf("child %d is done\n", pid);
+  printf("child %d is done\en", pid);
 } else if(pid == 0){
-  printf("child: exiting\n");
+  printf("child: exiting\en");
   exit();
 } else {
-  printf("fork error\n");
+  printf("fork error\en");
 }
 .P2
 The
@@ -179,7 +179,7 @@ argv[0] = "echo";
 argv[1] = "hello";
 argv[2] = 0;
 exec("/bin/echo", argv);
-printf("exec error\n");
+printf("exec error\en");
 .P2
 This fragment replaces the calling program with an instance
 of the program 
@@ -294,11 +294,11 @@ for(;;){
   if(n == 0)
     break;
   if(n < 0){
-    fprintf(2, "read error\n");
+    fprintf(2, "read error\en");
     exit();
   }
   if(write(1, buf, n) != n){
-    fprintf(2, "write error\n");
+    fprintf(2, "write error\en");
     exit();
   }
 }
@@ -542,8 +542,8 @@ in the root directory
 Paths that don't begin with
 .code /
 are evaluated relative to the calling process's
-.I current
-.I directory ,
+.italic current
+.italic directory ,
 which can be changed with the
 .code chdir
 system call.

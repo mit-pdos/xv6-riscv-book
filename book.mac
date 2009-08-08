@@ -3,6 +3,8 @@
 .\"	mostly lifted from rsc's thesis and cleaned up.
 .\"
 .do xflag 3	\" heirloom troff: enable long names like groff
+.\" all warnings
+.warn +w
 .mediasize letter
 .hylang en_US
 .lc_ctype en_US.utf8
@@ -116,6 +118,9 @@
 .\"
 .\"	page bottom
 .\"
+.ds left-footer-text "
+.ds center-footer-text "
+.ds right-footer-text "
 .de page-bottom
 .nr save-ps \\n(.s
 .nr save-ft \\n(.f
@@ -155,6 +160,8 @@
 .\"
 .\"	left-adjust paragraph
 .\"
+.nr indent 0
+.nr para-spacing 0
 .de LP
 .in \\n[indent]u
 .br
@@ -168,6 +175,7 @@
 .\"
 .\"	ordinary paragraph
 .\"
+.nr LP 0
 .de PP
 .if \\n(LP>0 .sp 0.2v
 .LP
@@ -242,14 +250,19 @@ DRAFT as of \*[date]: DO NOT CIRCULATE
 .LP
 \\n+[exercise].
 ..
+.de xx
+..
 .de answer xx
 .ig
 .xx
 .\"
 .\"	font change aliases
 .\"
+.de register-font
+.code "\\$1" "\\$2" "\\$3"
+..
 .de register
-.code "%\\$1" "\\$2" "\\$3"
+.register-font "%\\$1" "\\$2" "\\$3"
 ..
 .de opcode
 .code "\\$1" "\\$2" "\\$3"
@@ -259,6 +272,12 @@ DRAFT as of \*[date]: DO NOT CIRCULATE
 ..
 .de address
 .code "\\$1" "\\$2" "\\$3"
+..
+.de smallcaps
+\&\\$3\s-3\\$1\\$2
+..
+.de sheet
+.line "\\$1:1" "\\$2" "\\$3"
 ..
 .de line
 .ds LINE xxxx
@@ -300,17 +319,24 @@ DRAFT as of \*[date]: DO NOT CIRCULATE
 .P1
 ..
 .\"
+.\"	TS/TE - no-ops for tbl
+.\"
+.de TS
+..
+.de TE
+..
+.\"
 .\"	table of contents
 .\"
-.ds CH:UNIX 1
-.ds CH:BOOT 2
-.ds CH:MEM 3
-.ds CH:TRAP 4
-.ds CH:PROC 5
+.ds CH:UNIX 0
+.ds CH:BOOT 1
+.ds CH:MEM 2
+.ds CH:TRAP 3
+.ds CH:LOCK 4
+.ds CH:SCHED 5
 .ds CH:DISK 6
 .ds CH:FSDATA 7
-.ds CH:FSFUNC 8
-.ds CH:FSFILE 9
-.ds CH:EXEC 10
+.ds CH:FSCALL 8
+.ds CH:EXEC 9
 .ds APP:C A
 .ds APP:HW B

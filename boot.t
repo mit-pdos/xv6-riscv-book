@@ -190,8 +190,8 @@ just two kinds of storage—registers and memory—and not
 worry about the distinctions between the different levels of
 the memory hierarchy.
 The exceptions—the only reasons an x86 operating system
-needs to worry about the memory cache—are multiprocessing
-(Chapter \*[CH:SMP]) and device drivers (Chapter \*[CH:DISK]).
+needs to worry about the memory cache—are concurrency
+(Chapter \*[CH:LOCK]) and device drivers (Chapter \*[CH:DISK]).
 .PP
 One reason memory access is so much slower than register
 access is that the memory is in set of chips physically

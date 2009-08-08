@@ -144,7 +144,7 @@ to point at the
 .code SEG_KCPU
 per-cpu data segment
 .lines "'trapasm.S:/movw.*SEG_KCPU/,/%gs/'" .
-Chapter \*[CH:PROC] will revisit that segment.
+Chapter \*[CH:MEM] will revisit that segment.  \" TODO is CH:MEM right?
 Once the segments are set properly,
 .code alltraps
 can call the C trap handler
@@ -207,10 +207,11 @@ calls the system call handler
 .code syscall .
 We'll revisit the two
 .code cp->killed
-checks in Chapter \*[CH:PROC].
+checks in Chapter \*[CH:SCHED].  \" XXX really?
 .PP
 After checking for a system call, trap looks for hardware interrupts:
-the clock (Chapter \*[CH:PROC]), the disk (Chapter \*[CH:DISK]),
+the clock (Chapter \*[CH:TRAP]),  \" XXX really?
+the disk (Chapter \*[CH:DISK]),
 the keyboard and serial port (Appendix \*[APP:HW]).
 In addition to the expected hardware devices, a trap
 can be caused by a spurious interrupt... XXX more here.
@@ -237,7 +238,7 @@ to what was going on before the trap.
 Before doing that, 
 .code trap
 may exit or yield the current process; we will
-look at this code more closely in Chapter \*[CH:PROC].
+look at this code more closely in Chapter \*[CH:SCHED].
 .\"
 .section "Code: System calls
 .\"

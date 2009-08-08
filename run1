@@ -3,4 +3,4 @@
 export GS_FONTPATH=font
 export TROFFONTS=font
 
-cat $* | /usr/ucb/tbl | /usr/ucb/troff | /usr/ucb/dpost
+/usr/ucb/tbl $* | /usr/ucb/troff | /usr/ucb/dpost

@@ -113,7 +113,7 @@ this initial call to
 gives it a megabyte to manage.
 .PP
 The allocator maintains a
-.I "free list" 
+.italic "free list" 
 of memory regions that are available
 for allocation.
 It keeps the list sorted in increasing
@@ -218,7 +218,7 @@ loop is explained by the assignment
 .code p :
 in order to be able to insert
 .code p
-.I before
+.italic before
 .code r ,
 the code had to keep track of where
 it found the pointer 
@@ -618,7 +618,7 @@ into the hardware registers)
 .line "'proc.c:/swtch.*c->context.*p->context/'" .
 .code Swtch
 .line swtch.S:/^swtch/ ,
-which we will reexamine in Chapter \*[CH:PROC],
+which we will reexamine in Chapter \*[CH:SCHED],
 sets 
 .code %esp
 to its second argument,

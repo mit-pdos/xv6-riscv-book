@@ -178,7 +178,7 @@ into the stack pointer
 The new stack has the same form as the old one that
 .code swtch
 just left—the new stack
-.I was
+.italic was
 the old one in a previous call to
 .code swtch —\c
 so 

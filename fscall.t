@@ -466,7 +466,7 @@ releases the old
 .code cp->cwd ,
 and saves the new one in its place.
 .PP
-Chapter \*[CH:SYNC] examined the implementation of pipes
+Chapter \*[CH:SCHED] examined the implementation of pipes
 before we even had a file system.
 .code Sys_pipe
 connects that implementation to the file system
@@ -474,7 +474,7 @@ by providing a way to create a pipe pair.
 Its argument is a pointer to space for two integers,
 where it will record the two new file descriptors.
 Then it allocates the pipe and installs the file descriptors.
-Chapter \*[CH:SYNC] did not examine
+Chapter \*[CH:SCHED] did not examine
 .code pipealloc
 .line pipe.c:/^pipealloc/
 and
