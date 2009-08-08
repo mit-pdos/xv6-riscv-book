@@ -33,8 +33,6 @@ Many modern operating sytems—BSD, Linux, Mac OS X, Solaris,
 and even, to a lesser extent, Microsoft Windows—have Unix-like interfaces.
 Understanding xv6 is a good start toward understanding any of these systems
 and many others.
-To illustrate the xv6 interface, this chapter examines the source code
-of a user program, the shell, that uses most of it.
 .PP
 Xv6 takes the form of a
 .italic kernel ,
@@ -58,12 +56,12 @@ and
 .italic space .
 .PP
 The kernel uses the CPU's hardware protection mechanisms to
-ensure that each process executing in user space can only access
+ensure that each process executing in user space can access only
 its own memory.
 The kernel executes with the hardware privileges required to
 implement these protections; user programs execute without
 those privileges.
-When the user programs invokes a system call, the hardware
+When a user program invokes a system call, the hardware
 raises the privilege level and starts executing a pre-arranged
 function in the kernel.
 Chapter \*[CH:TRAP] examines this sequence in more detail.
@@ -75,6 +73,7 @@ that Unix kernels traditionally offer.
 The rest of this chapter outlines xv6's services—\c
 processes, memory, file descriptors, pipes, and a file system—\c
 and illustrate these services with code from the shell.
+.\" XXX these snippets aren't really from the xv6 shell.  do we need to tone that down?
 .PP
 The shell is an ordinary program that
 reads commands from the user
@@ -91,12 +90,13 @@ the Unix Bourne shell.
 .section "Code: Processes and memory
 .PP
 An xv6 process consists of user-space memory (instructions, data, and stack)
-along with some state inside the kernel.
+and a kernel process data structure.
 Xv6 provides time-sharing: it transparently switches the available CPUs
 among the set of processes waiting to execute.
 When a process is not executing, xv6 saves its CPU registers,
 restoring them when it next runs the process.
-Each process has a unique numeric non-zero process identifier, or
+Each process can be uniquely identified by a
+positive integer called its process identifier, or
 .italic pid .
 .PP
 One process may create another using the
@@ -153,7 +153,7 @@ Note that the parent and child were executing with
 different memory and different registers:
 changing a variable in the parent does not affect the
 same variable in the child, nor does the child affect the parent.
-The main form of direct communication between parent and child 
+The main form of direct communication between parent and child is
 .code wait
 and
 .code exit .
@@ -163,7 +163,7 @@ The
 system call
 replaces the calling process's memory with a new memory
 image loaded from an ELF-format executable stored in the file system.
-If all goes well,
+When it succeeds,
 .code exec
 does not return to the calling program;
 instead, the instructions loaded from the file start
@@ -183,7 +183,7 @@ printf("exec error\en");
 .P2
 This fragment replaces the calling program with an instance
 of the program 
-.code /bin/hello
+.code /bin/echo
 running with the argument list
 .code echo
 .code hello .
@@ -345,7 +345,7 @@ for the newly opened
 .code input.txt :
 0 will be the smallest available file descriptor.
 .code Cat
-then executes with file descriptor 0 referring to
+then executes with file descriptor 0 (standard input) referring to
 .code input.txt .
 .PP
 Although
@@ -355,11 +355,11 @@ between parent and child.
 Consider this example:
 .P1
 if(fork() == 0) {
-  write(1, "hello ");
+  write(1, "hello ", 6);
   exit();
 } else {
   wait();
-  write(1, "world\en");
+  write(1, "world\en", 6);
 }
 .P2
 At the end of this fragment, the file attached to file descriptor 1
@@ -397,8 +397,8 @@ into a file:
 .P1
 close(2);
 dup(1);  // uses 2, assuming 0 is not available
-write(1, "hello ");
-write(2, "world\en");
+write(1, "hello ", 6);
+write(2, "world\en", 6);
 .P2
 .PP
 Two file descriptors share an offset if they were derived from
@@ -562,7 +562,7 @@ the second neither refers to nor modifies the process's current directory.
 The
 .code open
 system call evalutes the path name of an existing file or directory
-and prepares that file for I/O by the calling process.
+and prepares that file for use by the calling process.
 There are multiple system calls to create a new file or directory:
 .code mkdir
 creates a new directory,
@@ -580,17 +580,14 @@ fd = open("/dir/file", O_CREATE|O_WRONLY);
 close(fd);
 mknod("/console", 1, 1);
 .P2
-The arguments to 
-.code mknod
-are the major and minor device number,
-which uniquely identify the desired device to the kernel.
-[TODO: Throw away minor device number?]
-.PP
 .code Mknod
 creates a file in the file system,
 but the file has no contents.
 Instead, the file's metadata marks it as a device file
-and records the major and minor device numbers.
+and records the major and minor device numbers
+(the two arguments to 
+.code mknod ),
+which uniquely identify a kernel device.
 When a process later opens the file, the kernel
 diverts
 .code read
@@ -632,11 +629,9 @@ Reading from or writing to
 .code a
 is the same as reading from or writing to
 .code b .
-Each inode is identified by a unique number, which
-.code fstat
-includes in the
-.code stat
-information.
+Each inode is identified by a unique
+.italic inode
+.italic number .
 After the code sequence above, it is possible
 to determine that
 .code a
@@ -649,7 +644,7 @@ both will return the same inode number
 .code ino ), (
 and the
 .code nlink
-field will be set to 2, 
+count will be set to 2.
 .PP
 The
 .code unlink
@@ -662,7 +657,7 @@ unlink("a");
 to the last code sequence will not remove the inode,
 because it is still accessible as
 .code b .
-In fact, in order to remove or reuse an inode,
+In order to remove or reuse an inode,
 xv6 requires not only that all its names have been unlinked
 but also that there are no file descriptors referring to it.
 Thus,
@@ -680,14 +675,14 @@ or exits.
 .section "Real world
 .PP
 It is difficult today to remember that Unix's combination of the ``standard'' file
-descriptors, pipes, and convenient syntax in the shell for
-both redirection and pipes was a major advance in writing
+descriptors, pipes, and convenient shell syntax for
+operations on them was a major advance in writing
 general-purpose reusable programs.
 The idea sparked a whole culture of ``software tools'' that was
 responsible for much of Unix's power and popularity,
 and the shell was the first so-called ``scripting language.''
-The Unix system call interface persists in other Unix-like systems,
-like today's BSD, Linux, and Mac OS X.
+The Unix system call interface persists today in systems like
+BSD, Linux, and Mac OS X.
 .PP
 Xv6, like Unix before it, has a very simple interface.
 It doesn't implement modern features like networking
@@ -712,7 +707,7 @@ between data in memory and data on disk, producing
 a very different flavor of interface.
 The complexity of the Multics design had a direct influence
 on the designers of Unix, who tried to build something simpler.
-.PP
+.ig
 XXX can we cut this, since its point is the same as the next paragraph?
 An operating system interface that went out of fashion
 decades ago but has recently returned is the idea of a virtual machine monitor.
@@ -725,6 +720,7 @@ a virtual disk instead of a file system;
 virtual machines send messages to each other
 and the outside world using virtual network devices
 instead of pipes or files.
+..
 .PP
 This book examines how xv6 implements its Unix-like interface,
 but the ideas and concepts apply to more than just Unix.
