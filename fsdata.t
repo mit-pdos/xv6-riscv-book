@@ -810,7 +810,7 @@ which requires a linear scan over all the disk blocks during each lookup.
 This is reasonable when directories are only a few disk blocks,
 especially if the entries in each disk block can be kept sorted,
 but when directories span many disk blocks.
-Windows's NTFS, OS X's HFS, and Sun's ZFS, just to name a few, implement
+Microsoft Windows's NTFS, Mac OS X's HFS, and Solaris's ZFS, just to name a few, implement
 a directory as an on-disk balanced tree of blocks.
 This is more complicated than reusing the file implementation
 but guarantees logarithmic-time directory lookups.

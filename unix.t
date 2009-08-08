@@ -29,8 +29,8 @@ those basic ideas and concepts.
 That operating system, xv6, provides the basic interfaces
 introduced by Ken Thompson and Dennis Ritchie's Unix operating system,
 as well as mimicing Unix's internal design.
-Many modern operating sytems—BSD, Linux, Mac OS X, Sun's Solaris,
-and even, to a lesser extent, Microsoft's Windows—have Unix-like interfaces.
+Many modern operating sytems—BSD, Linux, Mac OS X, Solaris,
+and even, to a lesser extent, Microsoft Windows—have Unix-like interfaces.
 Understanding xv6 is a good start toward understanding any of these systems
 and many others.
 To illustrate the xv6 interface, this chapter examines the source code
