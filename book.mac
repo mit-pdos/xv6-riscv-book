@@ -212,7 +212,7 @@
 .de big-heading
 .init
 .ft BI
-DRAFT as of \*[date]: DO NOT CIRCULATE
+DRAFT as of \*[date]: Copyright 2009 Cox, Kaashoek, Morris
 .sp
 .ft B
 .ps 20
