@@ -271,7 +271,7 @@ DRAFT as of \*[date]: Copyright 2009 Cox, Kaashoek, Morris
 .code "\\$1" "\\$2" "\\$3"
 ..
 .de smallcaps
-\&\\$3\s-3\\$1\\$2
+\&\\$3\s-3\\$1\s+3\\$2
 ..
 .de sheet
 .line "\\$1:1" "\\$2" "\\$3"
