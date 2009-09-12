@@ -328,11 +328,11 @@ For example, the
 .opcode movs
 instruction copies data from
 .register ds \c
-: \c
+:\c
 .register si
 to
 .register es \c
-: \c
+:\c
 .register di .
 The 20-bit memory address that went out on the 8088 bus
 was the segment times 16 plus the offset.
@@ -344,7 +344,7 @@ Thus, on an 8088, a
 virtual address consists of a 16-bit segment register combined with
 a 16-bit general-purpose register, for example
 .address 0x8765 \c
-: \c
+:\c
 .address 0x4321 ,
 and translates to a 20-bit physical address sent to the
 memory chips, in this case
@@ -358,21 +358,21 @@ PC BIOSes guarantee to copy the boot sector to physical address
 and start it executing, but there is no guarantee
 that they will choose to set
 .register cs \c
-: \c
+:\c
 .register ip
 to
 .address 0x0000 \c
-: \c
+:\c
 .address 0x7c00 .
 In fact, some BIOSes use
 .address 0x0000 \c
-: \c
-.address 0x7c00 \c
+:\c
+.address 0x7c00
 when the boot sector is from a hard disk
 and use
 .address 0x07c0 \c
-: \c
-.address 0x0000 \c
+:\c
+.address 0x0000
 when the boot sector is from a bootable CD or DVD.
 There are no guarantees at all about the initial
 contents of the segment registers used for data accesses
@@ -399,7 +399,7 @@ so it discarded the top bit:
 .address 0x10ffef ,
 but virtual address
 .address 0xffff \c
-: \c
+:\c
 .address 0xffff
 on the 8088
 referred to physical address
@@ -409,7 +409,7 @@ could address 16 megabytes of memory,
 so its real mode did not discard the top bit:
 virtual address
 .address 0xffff \c
-: \c
+:\c
 .address 0xffff
 on the 80286
 referred to physical address 
