@@ -340,7 +340,7 @@ We'll call the addresses the processor chip sends to memory
 "physical addresses,"
 and the addresses that programs directly manipulate
 "virtual addresses."
-Thus on an 8088 a
+Thus, on an 8088, a
 virtual address consists of a 16-bit segment register combined with
 a 16-bit general-purpose register, for example
 .address 0x8765 \c
@@ -418,6 +418,7 @@ The IBM PC AT, IBM's 1984 update to the IBM PC,
 used an 80286 instead of an 8088, but by then there
 were programs that depended on the 8088's address truncation
 and did not run correctly on the 80286.
+.PP
 IBM worked around this incompatibility in hardware:
 the PC AT design connected the 20th address line of memory
 (A20) to the logical
@@ -479,6 +480,7 @@ register with the value
 which in turns points at the table
 .code gdt
 .lines bootasm.S:/^gdt:/,/data.seg/ .
+.PP
 This simple GDT has three entries:
 the processor requires entry 0 to be a null entry;
 entry 1 is a 32-bit code segment with offset 0 and limit 0xffffffff,
