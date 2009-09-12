@@ -118,9 +118,6 @@
 .\"
 .\"	page bottom
 .\"
-.ds left-footer-text "
-.ds center-footer-text "
-.ds right-footer-text "
 .de page-bottom
 .nr save-ps \\n(.s
 .nr save-ft \\n(.f
@@ -128,7 +125,7 @@
 .ps \\n[point-size]
 'lt \\n[line-length]u
 .po \\n[left-margin]u
-.if \\n%>0 .tl \(ts\\*[left-footer-text]\(ts\\*[center-footer-text]\(ts\\*[right-footer-text]\(ts
+.if \\n%>0 .tl \(ts\\*[left-footer]\(ts\\*[center-footer]\(ts\\*[right-footer]\(ts
 .ft \\n[save-ft]
 .ps \\n[save-ps]
 ..
