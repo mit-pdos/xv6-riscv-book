@@ -2,7 +2,7 @@
 .ig
 	this is even rougher than most chapters
 ..
-.chapter CH:MEM "Processes
+.chapter CH:MEM "Processes"
 .PP
 One of an operating system's central roles
 is to allow multiple programs to share the CPUs
@@ -23,14 +23,14 @@ The next few chapters will examine how xv6 uses hardware
 support for interrupts and context switching to create
 the illusion that each process has its own private CPU.
 .\"
-.section "Code: Memory allocation
+.section "Code: Memory allocation"
 .\"
 .PP
 xv6 allocates most of its data structures statically, by
 declaring C global variables and arrays.
 The linker and the boot loader cooperate to decide exactly
 what memory locations will hold these variables, so that the
-C code doesn't have to explictly allocate memory.
+C code doesn't have to explicitly allocate memory.
 However, xv6 does explicitly and dynamically allocate physical memory
 for user process memory, for the kernel stacks of user processes,
 and for pipe buffers.
@@ -293,7 +293,7 @@ has a simpler job than
 .code kfree :
 it walks the free list looking for
 a run that is large enough to
-accomodate the allocation.
+accommodate the allocation.
 When it finds one, 
 .code kalloc
 takes the memory from the end of the run
@@ -304,7 +304,7 @@ deletes the run from the list
 .lines "'kalloc.c:/r->len == 0/,/rp = r->next/'"
 before returning.
 .\"
-.section "Code: Process creation
+.section "Code: Process creation"
 .\"
 .PP
 This section describes how xv6 creates the very first process.
@@ -344,7 +344,8 @@ The job of
 is to allocate a slot in the process table and
 to initialize the parts of the process's state
 required for it to execute in the kernel.
-.code Allocproc is called for all new processes, while
+.code Allocproc 
+is called for all new processes, while
 .code userinit
 is only called for the very first process.
 .code Allocproc
@@ -365,12 +366,14 @@ process.  If the memory allocation fails,
 changes the state back to
 .code UNUSED
 and returns zero to signal failure.
+.PP
 Now
 .code allocproc
 must set up the new process's kernel stack.
 As we will see in Chapter \*[CH:TRAP],
 the usual way that a process enters the kernel
-is via an interrupt.
+is via an interrupt mechanism, which is used by system calls,
+interrupts, and exceptions.
 The process's kernel stack
 is the one it uses when executing in the kernel
 during the handling of that interrupt.
@@ -450,7 +453,7 @@ program
 .code initcode.S ; (
 .line initcode.S:1 ),
 so the memory need only be a single page
-.code proc.c:/sz.=.PAGE/,/kalloc/ .
+.line proc.c:/sz.=.PAGE/,/kalloc/ .
 The initial contents of that memory are
 the compiled form of
 .code initcode.S ;
@@ -460,7 +463,7 @@ defines two special symbols
 .code _binary_initcode_start
 and
 .code _binary_initcode_size
-telling the loction and size of the binary
+telling the location and size of the binary
 (XXX sidebar about why it is extern char[]).
 .code Userinit
 copies that binary into the new process's memory
@@ -610,31 +613,25 @@ to
 .code RUNNING
 and calls
 .code swtch
-to perform a context switch to
-.code p
-(i.e. load the process's kernel registers from
-.code p->context
-into the hardware registers)
-.line "'proc.c:/swtch.*c->context.*p->context/'" .
-.code Swtch
 .line swtch.S:/^swtch/ ,
+to perform a context switch from one kernel process to another; in
+this invocation, from a scheduler process to
+.code p .
+.code Swtch ,
 which we will reexamine in Chapter \*[CH:SCHED],
-sets 
-.code %esp
-to its second argument,
-in this case
-.code &p->context ,
-XXX maybe should do in detail here XXX
-and pops the callee-save registers
-.code edi ,
-.code esi ,
-.code ebx ,
-and 
-.code ebp 
-from the stack.
+saves the scheduler's registers that must be saved; i.e., the context
+.line proc.h:/^struct.context/
+that a process needs to later resume correctly.
+Then,
+.code Swtch
+loads 
+.code p->context
+into the hardware registers.
 The final
 .code ret
-instruction pops a new
+instruction 
+.line swtch.S:/ret$/
+pops a new
 .code eip
 from the stack, finishing the context switch.
 Now the processor is running process
@@ -778,9 +775,11 @@ system call are
 .code $init
 and
 .code $argv .
-The final zero makes this hand-written
-system call look like the ordinary assembly stub system calls.
-XXX look at C call, assembly stubs.
+The final zero makes this hand-written system call look like the
+ordinary system calls, as we will see in Chapter \*[CH:TRAP].  As
+before, this setup avoids special-casing the first process (in this
+case, its first system call), and instead reuses code that xv6 must
+provide for standard operation.
 .PP
 The next chapter examines how xv6 configures
 the x86 hardware to handle the system call interrupt
@@ -793,7 +792,7 @@ to finally implement
 .code exec
 in Chapter \*[CH:EXEC].
 .\"
-.section "Real world
+.section "Real world"
 .\"
 .PP
 Most operating systems have adopted the process
@@ -875,23 +874,19 @@ xv6 is assuming that the machine has at
 least a little more than 2 MB of memory.
 A real operating system would have to do a better job.
 .PP
-Memory allocation was a hot topic a long time ago.
-Basic problem was how to make the most efficient
-use of the available memory and how best to
-prepare for future requests without knowing what
-the future requests were going to be.
-See Knuth.
-Today, more effort is spent on making memory allocators
-fast rather than on making them space-efficient.
-Today's allocation heavy languages, small blocks dominate.
-Xv6 avoids smaller than a page allocations by 
-using fixed-size data structures.
-A real kernel allocator would need to handle
-small allocations as well as large ones,
-although the paging hardware might keep it
-from needing to handle objects larger than a page.
+Memory allocation was a hot topic a long time ago.  Basic problem was
+how to make the most efficient use of the available memory and how
+best to prepare for future requests without knowing what the future
+requests were going to be.  See Knuth.  Today, more effort is spent on
+making memory allocators fast rather than on making them
+space-efficient.  The runtimes of today's modern programming languages
+allocate mostly many small blocks.  Xv6 avoids smaller than a page
+allocations by using fixed-size data structures.  A real kernel
+allocator would need to handle small allocations as well as large
+ones, although the paging hardware might keep it from needing to
+handle objects larger than a page.
 .\"
-.section "Exercises
+.section "Exercises"
 .\"
 1. Set a breakpoint at swtch.  Single step through to forkret.
 Set another breakpoint at forkret's ret.
@@ -904,6 +899,7 @@ Sure enough you end up at initcode.
 You don't end up at 0x1b:0.  What happened?
 Explain it.
 Peek ahead to the next chapter if necessary.
+.ig
 [[Intent here is to point out the clock interrupt,
 so that students aren't confused by it trying
 to see the return to user space.
@@ -911,5 +907,6 @@ But maybe the clock interrupt doesn't happen at the
 first iret anymore.  Maybe it happens when the 
 scheduler turns on interrupts.  That would be great;
 if it's not true already we should make it so.]]
+..
 
 3. Look at real operating systems to see how they size memory.
