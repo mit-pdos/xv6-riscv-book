@@ -18,6 +18,8 @@
 	to be used.
 	
 	as such, the chapter is a bit of an experiment.
+
+	there isn't really anything called "32-bit mode".
 ..
 .section Hardware
 .ig
@@ -167,7 +169,7 @@ cache memory.
 The cache memory serves as a middle ground
 between registers and memory both in access time and in size.
 Today's x86 processors typically have two levels of
-cache, a small first-level cache with access times relativel
+cache, a small first-level cache with access times relatively
 close to the processor's clock rate and a larger
 second-level cache with access times in between the
 first-level cache and main memory.
@@ -199,7 +201,7 @@ needs to worry about the memory cache—are concurrency
 (Chapter \*[CH:LOCK]) and device drivers (Chapter \*[CH:DISK]).
 .PP
 One reason memory access is so much slower than register
-access is that the memory is in set of chips physically
+access is that the memory is a set of chips physically
 separate from the processor chip.
 To allow the processor to communicate with the
 memory, there is a collection of wires, called a bus, running
@@ -523,7 +525,7 @@ that the processor reads the GDT and changes its internal
 segmentation settings.
 Thus the processor continues to execute in 16-bit mode with the same
 segment translations as before.
-The switch to 32-bit mode,
+The switch to 32-bit mode happens when
 the code executes a far jump
 (\c
 .opcode ljmp )
