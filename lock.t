@@ -1,5 +1,5 @@
 .so book.mac
-.chapter CH:LOCK "Locking
+.chapter CH:LOCK "Locking"
 .PP
 Xv6 runs on multiprocessors, computers with
 multiple CPUs executing code independently.
@@ -138,7 +138,7 @@ no CPU will execute a data structure operation when the
 data structure's invariants do not hold.
 .PP
 .\"
-.section "Code: Locks
+.section "Code: Locks"
 .\"
 Xv6's represents a lock as a
 .code struct
@@ -226,7 +226,7 @@ is the opposite of
 it clears the debugging fields
 and then releases the lock.
 .\"
-.section "Modularity and recursive locks
+.section "Modularity and recursive locks"
 .\"
 .PP
 System design strives for clean, modular abstractions:
@@ -270,6 +270,10 @@ Locks are just as important for protecting callers and callees
 from each other as they are for protecting different CPUs
 from each other;
 recursive locks give up that property.
+.ig
+The last case would be a good one to construct an example around.
+maybe the directory example in lecture notes
+..
 .PP
 Since there is no ideal transparent solution,
 we must consider locks part of the function's
@@ -278,7 +282,7 @@ The programmer must arrange that function doesn't
 invoke a function f while holding a lock that f needs.
 Locks force themselves into our abstractions.
 .\"
-.section "Code: Using locks
+.section "Code: Using locks"
 .\"
 The hardest part about using locks is deciding how many locks
 to use and which data and invariants each lock protects.
@@ -312,10 +316,12 @@ Ultimately, the choice of lock granularity is more art than science.
 Xv6 uses a few coarse data-structure specific locks.
 Hopefully, the examples of xv6 will help convey a feeling
 for some of the art.
-.PP
-XXX look at code here XXX
+.ig
+examples from xv6.  places where kernel holds many locks (idelock,
+ptable); is there a longer chain?.
+...
 .\"
-.section "Interrupt handlers
+.section "Interrupt handlers"
 .\"
 Xv6 uses locks to protect interrupt handlers
 running on one CPU from non-interrupt code accessing the same
@@ -385,32 +391,32 @@ this way, if code acquires two different locks,
 interrupts will not be reenabled until both
 locks have been released.
 .\"
-.section "Memory ordering
+.section "Memory ordering"
 .\"
 .PP
-XXX a section about ordering of reads and writes,
+A section about ordering of reads and writes,
 reordering and such.  not too much detail, just enough
 to explain the comments in spinlock.c and to give
 a sense that the general problem is wicked complicated
 and that it's not worth avoiding locks,
 which hide memory details.
 .\"
-.section "Real world
+.section "Real world"
 .\"
-xxx locking is hard and not well understood.
+locking is hard and not well understood.
 
-xxx approaches to synchronization still an active topic
+approaches to synchronization still an active topic
 of research.
 
-xxx best to use locks as the base for higher-level constructs
+best to use locks as the base for higher-level constructs
 like synchronized queues, although xv6 does not do this.
 
-xxx user space locks too; xv6 doesn't let processes share memory
+user space locks too; xv6 doesn't let processes share memory
 so no need.
 
-xxx semaphores.
+semaphores.
 
-xxx no need for atomicity really; lamport's algorithm.
+no need for atomicity really; lamport's algorithm.
 
-xxx lock-free algorithms.
+lock-free algorithms.
 

@@ -58,6 +58,7 @@ and system calls.
 Have to set up interrupt controller.
 Picinit, picenable.
 Interrupt masks.
+Interrupt numbers.
 Interrupt routing.
 On multiprocessor, different hardware but same effect.
 .\"
