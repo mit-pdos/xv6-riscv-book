@@ -44,6 +44,16 @@ called an interrupt handler.  Before starting the interrupt handler,
 the processor saves its previous state, so that the interrupt handler
 can restore that state if appropriate.
 .PP
+A challenge in the transition to and from the interrupt handler is
+that the processor should switch from user mode to kernel mode, and
+back.  If a device generates an interrupt (e.g., the clock chip) and a
+processor is running a user processor, then we would like to arrange
+that the kernel handles the interrupt, so that it can switch the
+processor to a different user process, if the clock interrupt signals
+the end of the time slice for the current running process.  We want
+this interrupt to be handled by the kernel, because a user program
+ignore it so that it doesn't have to give up the processor.
+.PP
 A word on terminology: Although the official x86 term is interrupt,
 x86 refers to all of these as traps, largely because it was the term
 used by the PDP11/40 and therefore is the conventional Unix term.
@@ -53,29 +63,60 @@ This chapter examines the xv6 trap handlers,
 covering hardware interrupts, software exceptions,
 and system calls.
 .\"
-.section "Code: Hardware interrupts (to be written)"
+.section "Code: The first system call"
 .\"
-Have to set up interrupt controller.
-Picinit, picenable.
-Interrupt masks.
-Interrupt numbers.
-Interrupt routing.
-On multiprocessor, different hardware but same effect.
+.PP
+The last chapter ended with 
+.code initcode.S
+invoke a system call.
+Let's look at that again
+.line initcode.S:/'T_SYSCALL'/ .
+Remember from Chapter \*[CH:MEM] that the process pushed the arguments
+for an 
+.code exec
+call on the process's stack, and
+system call number in
+.code %eax .
+The system call numbers match the entries in the syscalls array,
+a table of function pointers
+.line syscall.c:/'syscalls'/ .
+We need to arrange that the 
+.code int
+instruction switches the processor from user space to kernel space,
+that the kernel invokes the right kernel function (i.e.,
+.code sys_exec ),
+and that the kernel can retrieve the arguments for
+.code sys_exec .
+The next few subsections describes how xv6 arranges this for system
+calls, and then we will discover that we can reuse the same code for
+interrupts and exceptions.
 .\"
 .section "Code: Assembly trap handlers"
 .\"
 .PP
+Xv6 must set up the x86 hardware to do something sensible
+on encountering an
+.code int
+instruction, which the hardware views as an interrupt, initiated by a program.
 The x86 allows for 256 different interrupts.
 Interrupts 0-31 are defined for software
 exceptions, like divide errors or attempts to access invalid memory addresses.
 Xv6 maps the 32 hardware interrupts to the range 32-63
 and uses interrupt 64 as the system call interrupt.
-On the x86, interrupt handlers are defined in the interrupt descriptor table (IDT).
-The IDT has 256 entries, each giving the
+.ig
+pointer to the x86 exception table with vector numbers (DE, DB, ...)
+..
+.PP
+On the x86, interrupt handlers are defined in the interrupt descriptor
+table (IDT). The IDT has 256 entries, each giving the
 .code %cs
 and
 .code %eip
 to be used when handling the corresponding interrupt.
+.ig
+pointer to the IDT table.
+..
+.PP
 .code Tvinit
 .line trap.c:/^tvinit/ ,
 called from
@@ -91,6 +132,7 @@ Each entry point is different, because the x86 provides
 does not provide the trap number to the interrupt handler.
 Using 256 different handlers is the only way to distinguish
 the 256 cases.
+.PP
 .code Tvinit
 handles
 .code T_SYSCALL ,
@@ -101,12 +143,37 @@ as second argument.
 Trap gates don't clear the 
 .code IF_FL
 flag, allowing other interrupts during the system call handler.
+.PP
 The kernel also sets for the system call gate the privilege to
 .code DPL_USER ,
 which allows a user program to generate
 the trap with an explicit
 .code int
 instruction.
+If xv6 didn't set the privilege, then if the user program would invoke 
+.code int ,
+the processor would generate a general protection exception, which
+goes to vector 13. 
+.PP
+When changing protection levels from user to kernel mode, the kernel
+shouldn't use the stack of the user process, because who knows if the
+stack is a valid one. The user process may have been malicious or
+contain an error, and supplied a value in
+.code esp ,
+which doesn't correspond to a stack.
+Xv6 programs the x86 hardware to perform a stack switch on a trap by
+setting up a task segment descriptor through which the hardware loads an stack
+segment selector and a new value for
+.code %esp .
+IN
+.code usegment
+.line proc.c:/^usegment/ .
+has stored the address of the top of the kernel stack of the user
+process into the task segment descriptor, and the x86 
+will
+be load that address in
+.code %esp
+on a trap.
 .ig
 TODO: Replace SETGATE with real code.
 ..
@@ -125,6 +192,7 @@ if the processor didn't, pushes the interrupt number, and then
 jumps to
 .code alltraps ,
 a common body.
+.PP
 .code Alltraps
 .line trapasm.S:/^alltraps/
 continues to save processor state: it pushes
@@ -134,7 +202,7 @@ continues to save processor state: it pushes
 .code %gs ,
 and the general-purpose registers
 .lines trapasm.S:/Build.trap.frame/,/pushal/ .
-The result of this effort is that the stack now contains
+The result of this effort is that the kernel stack now contains
 a
 .code struct
 .code trapframe 
@@ -146,17 +214,37 @@ XXX picture.
 ..
 The processor pushed cs, eip, and eflags.
 The processor or the trap vector pushed an error number,
-and alltraps pushed the rest.
+and 
+.code alltraps 
+pushed the rest.
 The trap frame contains all the information necessary
 to restore the user mode processor state
 when the trap handler is done,
 so that the processor can continue exactly as it was when
 the trap started.
 .PP
+In the case of the first system call, the saved eip will the address
+of the instruction right after the 
+.code int
+instruction.
+.code
+cs 
+is the user code segement selector.
+.code eflags
+is the content of the eflags register at the point of executing the 
+.code int
+instruction.
+As part of saving the general-purpose registers,
+.code alltraps
+also saved 
+.code %eax ,
+which contains the system call number, and now that number is also in
+the trapframe on the kernel stack.
+.PP
 Now that the user mode processor state is saved,
 .code alltraps
-can set up the processor for running kernel code.
-The processor set the code and stack segments
+can finishing setting up processor for running kernel code.
+The processor set the selectors
 .code %cs
 and
 .code %ss
@@ -176,6 +264,7 @@ to point at the
 per-CPU data segment
 .lines "'trapasm.S:/movw.*SEG_KCPU/,/%gs/'" .
 Chapter \*[CH:MEM] will revisit that segment.  \" TODO is CH:MEM right?
+.PP
 Once the segments are set properly,
 .code alltraps
 can call the C trap handler
@@ -249,11 +338,19 @@ can be caused by a spurious interrupt, an unwanted hardware interrupt.
 .ig
 give a concrete example.
 ..
+.PP
 If the trap is not a system call and not a hardware device looking for
 attention,
 .code trap
 assumes it was caused by incorect behavior (e.g.,
-divide by zero) as part of the code that was executing before the trap.
+divide by zero) as part of the code that was executing before the
+trap.  
+If the code that caused the trap was a user program, xv6 prints
+details and then sets
+.code cp->killed
+to remember to clean up the user process.
+We will look at how xv6 does this cleanup in Chapter \*[CH:SCHED].
+.PP
 If it was the kernel running, there must be a kernel bug:
 .code trap
 prints details about the surprise and then calls
@@ -263,38 +360,32 @@ prints details about the surprise and then calls
 panic is the kernel's last resort: the impossible has happened and the
 kernel does not know how to proceed.  In xv6, panic does ...]]
 .PP
-If the code that caused the trap was a user program, xv6 prints
-details and then sets
-.code cp->killed
-to kill the program.
-After the trap has been handled, it is time to go back
-to what was going on before the trap. 
-Before doing that, 
-.code trap
-may exit or yield the current process; we will
-look at this code more closely in Chapter \*[CH:SCHED].
 .\"
 .section "Code: System calls"
 .\"
 .PP
-The last chapter ended with 
-.code initcode.S
-invoke a system call.
-Let's look at that again.
-Remember from Chapter \*[CH:MEM] that a user program
-makes a system call by pushing the arguments on the
-C stack and then calling a stub function that puts the
-system call number in
-.code %eax
-and traps.
-The system call numbers match the entries in the syscalls array,
-a table of function pointers.
-.code Syscall
-.line syscall.c:/^syscall/
-fetches the system call number from
+For system calls,
+.code
+trap
+invokes
+.code syscall
+.line syscall.c:/'^syscall'/ .
+.code Syscall 
+loads the system call number from the trap frame, which
+contains the saved
 .code %eax ,
-checks that it is in range, and calls the function from the table.
-It records that function's return value in
+and indexes into the system call tables.
+For the first system call, 
+.code %eax
+contains the value 9,
+and
+.code syscall
+will invoke the 9th entry of the system call table, which corresponds
+to invoking
+.code sys_exec .
+.PP
+.code Syscall
+records the return value of the system call function in
 .code %eax .
 When the trap returns to user space, it will load the values
 from
@@ -311,9 +402,6 @@ If the system call number is invalid,
 .code syscall
 prints an error and returns \-1.
 .PP
-.ig
-XXX system call argument checking.
-..
 Later chapters will examine the implementation of
 particular system calls.
 This chapter is concerned with the mechanisms for system calls.
@@ -329,6 +417,7 @@ esp points at the return address for the system cal stub.
 The arguments are right above it, at esp+4.
 Then the nth argument is at esp + 4 + 4 *
 .italic n .  
+.PP
 Argint calls fetchint
 to read the value at that address from user memory and write it to *ip.
 Fetchint cannot simply cast the address to a pointer, because kernel and user
@@ -374,28 +463,93 @@ Let's look at how
 .code sys_exec
 uses these functions to get at its arguments. (to be written.)
 .\"
-.section "Code: Interrupts (to be written)"
+.section "Code: Interrupts"
 .\"
 .PP
-Like system calls, except: devices generate them at any time, there
-are no arguments in CPU registers, nothing to return to, usually can't
-ignore them. There is hardware on the motherboard to signal the CPU
-when a device needs attention (e.g. the user has typed a character on
-the keyboard). There's usually a separate vector for each
-device. Let's look at the timer interrupt; the timer hardware
+Devices on the motherboard can generate interrupts, and xv6 must setup
+the hardware to handle these interrupts.  Without device support xv6
+wouldn't be usable; a user couldn't type on the keyboard, a file
+system couldn't store data on disk, etc. Fortunately, adding
+interrupts and support for simple devices doesn't require much
+additional complexity.  As we will see, interrupts can use the same
+code as for systems calls and exceptions.
+.PP
+Interrupts are similar to system calls, except devices generate them
+at any time.  There is hardware on the motherboard to signal the CPU
+when a device needs attention (e.g., the user has typed a character on
+the keyboard). We must program the device to generate interrupt, and
+arrange that a CPU receives the interrupt. 
+.PP
+Let's look at the timer device and timer interrupts.  Like the x86
+processor itself, PC motherboards have evolved.  Xv6 is designed for a
+board with multiple processors, and each processor must be programmed
+to receive interrupts.
+.PP
+We first program the programmable interrupt controler (PIC) to set up
+the master to receive interrupts and use interrupt gate 32 for
+interrupt request (IRQ) 0. The next 7 interrupts will also be
+delivered over the master line.  The IO APIC chip manages interrupts
+for an SMP system, and xv6 sets it up in a similar way.  (XXX needs
+work.)
+.PP
+So far, xv6 has set up the routing of interrupts; xv6 still has to
+arrange for interrupts to happen.  To do so xv6 programs the local
+advanced program controler (LAPIC) of each processor in
+.code lapicinit
+.line lapic.c:/^lapicinit/ .
+The details are specific to the LAPIC and you can consult the LAPIC
+documentation, but the key line is the one that programs the timer
+.line lapic.c:/lapicw.TIMER/ .
+This line tells the LAPIC to periodically generate an interrupt at
+.code IRQ_TIMER,
+which is IRQ 0.
+The timer hardware
 generates an interrupt 100 times per second so that the kernel can
 track the passage of time and so the kernel can time-slice among
-multiple running processes. The timer interrupts through vector 32.
+multiple running processes. 
+Line
+.line lapic.c:/lapicw.TPR/
+enables interrupts on a CPU's LAPIC, which will cause it to deliver
+interrupts to the processor.
 .PP
-info idt 32, then set a breakpoint at vector32 (vb 0x8:...)
+The processor can control if it wants to receive interrupts through the
+.code IF
+flags in the eflags register.
+The instruction
+.code cli
+disables interrupts on the processor by clearing 
+.code IF , 
+and
+.code sti
+enables interrupts on a processor.  Xv6 disables interrupts during
+booting for the main cpu
+.line bootasm.S:/cli/
+and for the other processors
+.line bootother.S:/cli/ .
+The scheduler on each processor enables interrupts
+.line proc.c:/sti/ .
 .PP
-print-stack 5. What was the CPU doing at the time of the interrupt? What stack is being used?
+The timer interrupts through vector 32, which xv6 setup in
+.code idtinit 
+.line main.c:/idtinit/ .
+The only difference between vector 32 and vector 64 (the one for
+system calls) is that vector 32 is an interrupt gate instead of a trap
+gate.  Interrupt gates clears
+.code IF ,
+so that the interrupted processor doesn't receive interrupts while it
+is handling the current interrupt.  From here on until
+.code trap , 
+interrupts follow
+the same code path as system calls and exceptions, building up a trap frame.
 .PP
-The interrupt will have pushed different numbers of words on the stack depending on whether the CPU was in user-space or the kernel; how does iret know how many words to pop?
-.PP
-What prevents lots of interrupts from coming in all at once and overflowing the kernel stack? Print the registers; IF=0x200. info idt 32, info idt 48.
-.PP
-trap(), when it's called for a time interrupt, does just two things: increment the ticks variable, and call yield(). The latter, as we will see, may cause the interrupt to return in a different process!
+.code Trap
+when it's called for a time interrupt, does just two things:
+increment the ticks variable 
+.line trap.c:/ticks++/ , 
+and call
+.code wakeup . 
+The latter, as we will see in Chapter \*[CH:SCHED], may cause the
+interrupt to return in a different process.
 .ig
 Turns out our kernel had a subtle security bug in the way it handled traps... vb 0x1b:0x11, run movdsgs, step over breakpoints that aren't mov ax, ds, dump_cpu and single-step. dump_cpu after mov gs, then vb 0x1b:0x21 to break after sbrk returns, dump_cpu again.
 ..
@@ -403,6 +557,10 @@ Turns out our kernel had a subtle security bug in the way it handled traps... vb
 .section "Real world"
 .\"
 interrupt handler (trap) table driven.
+
+Interrupt masks.
+Interrupt routing.
+On multiprocessor, different hardware but same effect.
 
 interrupts can move.
 
@@ -414,3 +572,5 @@ have to copy system call strings.
 
 even harder if memory space can be adjusted.
 
+Supporting all the devices on a PC motherboard in its full glory is
+much work, because the drivers to manage the devices can get complex.
