@@ -1,6 +1,10 @@
 .so book.mac
 .chapter CH:LOCK "Locking"
 .PP
+.ig
+ide.c has a linked list. rewrite this text to focus
+araound xv6 more.  see homework questions.
+..
 Xv6 runs on multiprocessors, computers with
 multiple CPUs executing code independently.
 These multiple CPUs operate on a single physical
@@ -420,3 +424,13 @@ no need for atomicity really; lamport's algorithm.
 
 lock-free algorithms.
 
+.\"
+.section "Exercises"
+.\"
+
+1. get rid off the xchg in acquire. explain what happens when you run xv6?
+
+2. move the acquire in iderw to before sleep.  is there a race? why
+don't you observe it when booting xv6 and run slamfs?   increase critical section with a dummy loop; what do you see now?  explain.
+
+3. do posted homework question.
