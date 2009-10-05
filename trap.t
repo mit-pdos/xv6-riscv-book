@@ -625,6 +625,9 @@ interrupt to return in a different process.
 .ig
 Turns out our kernel had a subtle security bug in the way it handled traps... vb 0x1b:0x11, run movdsgs, step over breakpoints that aren't mov ax, ds, dump_cpu and single-step. dump_cpu after mov gs, then vb 0x1b:0x21 to break after sbrk returns, dump_cpu again.
 ..
+.ig
+point out that we are trying to be manly with interrupts, by turning them on often in the kernel.  probably would be just fine to turn them on only when the kernel is idle.
+..
 .\"
 .section "Real world"
 .\"

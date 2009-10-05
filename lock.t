@@ -3,7 +3,9 @@
 .PP
 .ig
 ide.c has a linked list. rewrite this text to focus
-araound xv6 more.  see homework questions.
+araound xv6 more.  see homework questions and slamfs.
+show what happens if the link listed as a race (a user process might
+never be woken up.
 ..
 Xv6 runs on multiprocessors, computers with
 multiple CPUs executing code independently.

@@ -1,38 +1,46 @@
 .so book.mac
-.chapter CH:SCHED "Scheduling
+.chapter CH:SCHED "Scheduling"
 .PP
-In some sense, locks are needed because the 
-the computer has too many CPUs: a single-CPU
-interrupt-free system could not need locking,
-although it would suffer other problems.
-At the same time, even our multiprocessors have too few CPUs:
-Modern operating systems implement the illusion that
-the machine can simultaneously run many processes,
-more processes than there are CPUs.
-If two different processes are competing for a single CPU,
-xv6 multiplexes them, switching many times per second
-between executing one and the other.
-Xv6 uses multiplexing to create the illusion that each process 
-has its own CPU, just as xv6 used the memory allocator
-and hardware segmentation to create the illusion that each
-process has its own memory.
+Any operating system is likely to run with more processes than the
+computer has processors, and so some plan is needed to time share the
+processors between the processes. An ideal plan is transparent to user
+processes.  A common to provide transparency is to provide each process
+with the illusion that it has its own virtual processor, and have the
+operating system multiplex multiple virtual processors on a single
+physical processor.
 .PP
-Once there are multiple processes executing, xv6 must
-provide some way for them to coordinate.
-Since each CPU runs at most one CPU at a time,
-locks suffice to implement mutual exclusion, but
-processes need more than mutual exclusion.
-Often it is necessary for one process to wait for
-another to perform some action.
-Rather than make the waiting process waste CPU by
-repeatedly checking whether that action has happened,
-xv6 allows a process to sleep waiting for an event
-and allows another process to wake the first process.
+Xv6 has provides this plan.  If two different processes are competing
+for a single CPU, xv6 multiplexes them, switching many times per
+second between executing one and the other.  Xv6 uses multiplexing to
+create the illusion that each process has its own CPU, just as xv6
+used the memory allocator and hardware segmentation to create the
+illusion that each process has its own memory.
 .PP
-As an example of these problems
-and their solution, this chapter examines the implementation of pipes.
+Implementing multiplexing has a few challenges. First, how to switch
+from process to another? Xv6 uses the standard mechanism of context
+switching; although the idea is simple, the code to implement is
+typically among the most opaque code in an operating system. Second,
+how to do context switching transparently?  Xv6 uses the standard
+technique to force context switch in the timer interrupt handler,
+Third, may processes may be switching concurrently, and a locking plan
+is necessary to avoid races. Fourth, when a process completed its
+execution, it shouldn't be multiplexed with other processes, but
+cleaning a process is not easy; it cannot clean up itself since that
+requires that it runs.  Xv6 tries to solve these problems as
+straightforward as possible, but nevertheless the resulting code is
+tricky.
+.PP
+Once there are multiple processes executing, xv6 must also provide
+some way for them to coordinate among themselves. Often it is
+necessary for one process to wait for another to perform some action.
+Rather than make the waiting process waste CPU by repeatedly checking
+whether that action has happened, xv6 allows a process to sleep
+waiting for an event and allows another process to wake the first
+process. Because processes run in parallel, there is a risk of losing
+a wake up. As an example of these problems and their solution, this
+chapter examines the implementation of pipes.
 .\"
-.section "Code: Scheduler
+.section "Code: Scheduler"
 .\"
 Chapter \*[CH:MEM] breezed through the scheduler on the way to user space.
 Let's take a closer look at it.
@@ -73,7 +81,7 @@ and then calls
 to start running it
 .lines proc.c:/Switch.to/,/swtch/ .
 .\"
-.section "Code: Context switching
+.section "Code: Context switching"
 .\"
 .PP
 Every xv6 process has its own kernel stack and register set, as we saw in
@@ -222,7 +230,7 @@ scheduler stack, not
 .code initproc 's
 kernel stack.
 .\"
-.section "Code: Scheduling
+.section "Code: Scheduling"
 .\"
 .PP
 The last section looked at the low-level details of
@@ -319,7 +327,7 @@ exists only to honor this convention by releasing the
 otherwise, the new process could start at
 .code trapret .
 .\"
-.section "Sleep and wakeup
+.section "Sleep and wakeup"
 .\"
 .PP
 Locks help CPUs and processes avoid interfering with each other,
@@ -543,7 +551,7 @@ when waiting for a receiver to consume
 the value from a previous
 .code send .
 .\"
-.section "Code: Sleep and wakeup
+.section "Code: Sleep and wakeup"
 .\"
 .PP
 Let's look at the implementation of
@@ -682,7 +690,7 @@ see that the process is ready to be run.
 .PP
 There is another complication: spurious wakeups.
 .\"
-.section "Code: Pipes
+.section "Code: Pipes"
 .\"
 The simple queue we used earlier in this Chapter
 was a toy, but xv6 contains a real queue
@@ -880,7 +888,7 @@ It continues running
 .line pipe.c/piperead-sleep/
 and copies the new data out of the pipe.
 .\"
-.section "Code: Wait and exit
+.section "Code: Wait and exit"
 .\"
 .code Sleep
 and
@@ -1018,7 +1026,7 @@ has called
 .code sched )
 and moved off it.
 .\"
-.section "Scheduling concerns
+.section "Scheduling concerns"
 .\"
 .PP
 XXX spurious wakeups
@@ -1028,7 +1036,7 @@ XXX checking p->killed
 XXX thundering herd
 
 .\"
-.section "Real world
+.section "Real world"
 .\"
 .PP
 .code Sleep
