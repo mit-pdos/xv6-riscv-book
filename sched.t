@@ -4,7 +4,7 @@
 Any operating system is likely to run with more processes than the
 computer has processors, and so some plan is needed to time share the
 processors between the processes. An ideal plan is transparent to user
-processes.  A common to provide transparency is to provide each process
+processes.  A common approach is to provide each process
 with the illusion that it has its own virtual processor, and have the
 operating system multiplex multiple virtual processors on a single
 physical processor.
@@ -53,7 +53,8 @@ does is call
 .line "'main.c:/scheduler!(!)/'" .
 .PP
 .code Scheduler
-.line proc.c:/^scheduler/ runs a simple loop:
+.line proc.c:/^scheduler/ 
+runs a simple loop:
 find a process to run, run it until it stops, repeat.
 At the beginning of the loop, 
 .code scheduler
@@ -287,10 +288,11 @@ across calls to
 .code swtch :
 the caller of
 .code swtch
-must already hold the lock,
-and control of the lock passes to the
-switched-to code.
-This is necessary because
+must already hold the lock, and control of the lock passes to the
+switched-to code.  This convention is unusual with locks; the typical
+convention is the thread that acquires a lock is also responsible of
+releasing the lock, which makes it easier to reason about correctness.
+For context switching is necessary to break the typical convention because
 .code ptable.lock
 protects the 
 .code state
@@ -312,6 +314,31 @@ last time the process was started, causing time
 to appear to move backward.
 It would also cause two CPUs to be executing
 on the same stack.  Both are incorrect.
+.PP
+To avoid this problem, xv6 follows the convention that the thread that
+releases a processor acquires the 
+.code ptable.lock
+lock and the thread that receives
+that processor next releases the lock.
+To make this convention clear, a thread gives up its
+processor always in
+.code sched ,
+switches always to the same location in the scheduler thread, which
+returns a processor always in
+.code sched . 
+Thus, if one were to print out the line numbers where xv6 switches
+threads, one would observe the following simple pattern:
+.line 'proc.c:/swtch\(&c/' ,
+.line 'proc.c:/swtch\(&cp/' ,
+.line 'proc.c:/swtch\(&c/' ,
+.line 'proc.c:/swtch\(&cp/' ,
+and so on.  The procedures in which this stylized switching between
+two threads happens are sometimes referred to as co-routines; in this
+example,
+.code sched
+and
+.code scheduler
+are co-routines of each other.
 .PP
 There is one case when the scheduler's 
 .code swtch
@@ -453,7 +480,8 @@ and
   219	}
 .P2
 .PP
-This code is more efficient but no longer correct.
+This code is more efficient but no longer correct, because it suffers
+from what is known as the "lost wake up" problem.
 Suppose that
 .code recv
 finds that
@@ -526,7 +554,7 @@ must wait:
   309	  while(q->ptr != 0)
   310	    ;
   311	  q->ptr = p;
-  312	  wakeup(&q->lock);
+  312	  wakeup(q);
   313	  unlock(&q->lock);
   314	}
   315	
@@ -1009,6 +1037,7 @@ and then cleans up the
 freeing the memory associated
 with the process
 .line proc.c:/pid.=.p..pid/,/killed.=.0/ .
+.PP
 The child process could have done most
 of the cleanup during
 .code exit ,
@@ -1025,6 +1054,17 @@ has called
 (via
 .code sched )
 and moved off it.
+This reason is the main one that the scheduler procedure runs on its
+own stack, and that xv6 organizes 
+.code sched
+and
+.code scheduler
+as co-routines.
+Xv6 couldn't invoke the procedure
+.code scheduler
+directly from the child, because that procedure would then be running on a stack
+that might be removed by the parent process calling
+.code wait .
 .\"
 .section "Scheduling concerns"
 .\"
