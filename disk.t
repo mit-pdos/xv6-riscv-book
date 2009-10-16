@@ -1,5 +1,5 @@
 .so book.mac
-.chapter CH:DISK "Buffer cache
+.chapter CH:DISK "Buffer cache"
 .ig
 	notes:
 
@@ -40,7 +40,8 @@ Even so, performance is not the most important reason
 for the buffer cache.
 When two different processes need to edit the same disk block
 (for example, perhaps both are creating files in the same directory),
-the disk block is shared data, just like the XXX in Chapter \*[CH:XXX].
+the disk block is shared data, just like the process table is shared among
+all kernel threads in Chapter \*[CH:SCHED].
 The buffer cache serializes access to the disk blocks,
 just as locks serialize access to in-memory data structures.
 Like the operating system as a whole, the buffer cache's fundamental
@@ -48,7 +49,7 @@ purpose is to enable safe cooperation between processes.
 .\"
 .\" -------------------------------------------
 .\"
-.section "Code: Data structures
+.section "Code: Data structures"
 .PP
 Disk hardware traditionally presents the data on the disk
 as a numbered sequence of 512-byte blocks called sectors:
@@ -93,7 +94,7 @@ flag set, we say the buffer is locked.
 .\"
 .\" -------------------------------------------
 .\"
-.section "Code: Disk driver
+.section "Code: Disk driver"
 .PP
 The IDE device provides access to disks connected to the
 PC standard IDE controller.
@@ -164,7 +165,7 @@ It writes to port
 to select disk 1
 and then waits a while for the status bit to show
 that the disk is ready
-.code ide.c:/^Check.if.disk.1/,/^..}/ .
+.lines ide.c:/Check.if.disk.1/,/^..}/ .
 If not, 
 .code ideinit
 assumes the disk is absent.
@@ -276,10 +277,11 @@ must pass the next waiting buffer to the disk
 .\"
 .\" -------------------------------------------
 .\"
-.section "Code: Interrupts and locks
-.PP
+.section "Code: Interrupts and locks"
+.ig
 [XXX Is there an example we can use that would push
 this back into the interrupt chapter?]
+..
 .PP
 On a multiprocessor, ordinary kernel code can run on one CPU
 while an interrupt handler runs on another.
@@ -361,11 +363,11 @@ that releases the lock
 .line spinlock.c:/xchg.*0/ .
 These races are similar to the ones involving
 .code holding
-(see Chapter \*[CH:LOCK], Exercise XXX).
+(see Chapter \*[CH:LOCK]).
 .\"
 .\" -------------------------------------------
 .\"
-.section "Code: Buffer cache
+.section "Code: Buffer cache"
 .PP
 As discussed at the beginning of this chapter,
 the buffer cache synchronizes access to disk blocks,
@@ -551,7 +553,7 @@ buffer is the one least likely to be used again soon.
 .\"
 .\" -------------------------------------------
 .\"
-.section "Real world
+.section "Real world"
 .PP
 Actual device drivers are far more complex than the disk driver in this chapter,
 but the basic ideas are the same:
@@ -562,7 +564,7 @@ accept multiple outstanding disk requests at a time and even reorder
 them to make most efficient use of the disk arm.
 When disks were simpler, operating system often reordered the
 request queue themselves, though reordering has implications
-for file system consistency, as we will see in Chapter \*[CH:XXX].
+for file system consistency, as we will see in Chapter \*[CH:FSCALL].
 .PP
 Other hardware is surprisingly similar to disks: network device buffers
 hold packets, audio device buffers hold sound samples, graphics card
@@ -596,7 +598,7 @@ using the paging hardware, without any copying.
 .\"
 .\" -------------------------------------------
 .\"
-.section "Exercises
+.section "Exercises"
 .exercise
 Setting a bit in a buffer's
 .code flags

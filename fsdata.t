@@ -14,7 +14,7 @@
 	never free a block until the pointer has been zeroed on disk.
 
 ..
-.chapter CH:FSDATA "File system data structures
+.chapter CH:FSDATA "File system data structures"
 .PP
 The disk driver and buffer cache (Chapter \*[CH:DISK]) provide safe, synchronized
 access to disk blocks.
@@ -40,7 +40,7 @@ a convenient syntax for identifying particular files or directories.
 .\"
 .\" -------------------------------------------
 .\"
-.section "File system layout
+.section "File system layout"
 .PP
 Xv6 lays out its file system as follows.
 Block 0 is unused, left available for use by the operating system boot sequence.
@@ -60,7 +60,7 @@ the number of data blocks, and the number of inodes.
 .\"
 .\" -------------------------------------------
 .\"
-.section "Code: Block allocator
+.section "Code: Block allocator"
 .PP
 The block allocator is made up of the two functions:
 .code balloc
@@ -83,7 +83,7 @@ Now that
 knows the number of inodes in the file system,
 it can consult the in-use bitmaps to find a free data block.
 The loop
-.code fs.c:/^..for.b.=.0/
+.line fs.c:/^..for.b.=.0/
 considers every block, starting at block 0 up to 
 .code sb.size ,
 the number of blocks in the file system,
@@ -525,7 +525,7 @@ begin by checking for
 .code T_DEV .
 This case handles special devices whose data does not
 live in the file system; we will return to this case in
-Chapter \*[CH:XXX].
+Chapter \*[CH:FSCALL].
 .PP
 .code Stati
 .line fs.c:/^stati/
