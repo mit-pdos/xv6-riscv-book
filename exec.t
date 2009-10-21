@@ -1,5 +1,5 @@
 .so book.mac
-.chapter CH:EXEC "Exec
+.chapter CH:EXEC "Exec"
 .PP
 Chapter \*[CH:MEM] stopped with the 
 .code initproc
@@ -44,7 +44,7 @@ had just started.
 The heap comes last so that expanding it does not require
 moving any of the other sections.
 .\"
-.section "Code
+.section "Code"
 .\"
 When the system call arrives,
 .code syscall
@@ -180,7 +180,7 @@ handles orphaned zombies until the shell exits,
 and repeats.
 The system is up.
 .\"
-.section "Real world
+.section "Real world"
 .\"
 .code Exec
 is the most complicated code in xv6 in and in most operating systems.
@@ -193,13 +193,15 @@ with another.
 Real world operationg systems have even more complicated
 .code exec 
 implementations.
-They handle shell scripts (see exercise XXX),
+They handle shell scripts (see exercise below),
 more complicated ELF binaries, and even multiple
 binary formats.
 .PP
-XXX some kind of send-off, in lieu of a conclusion chapter?
+.ig
+some kind of send-off, in lieu of a conclusion chapter?
+..
 .\"
-.section "Exercises
+.section "Exercises"
 .\"
 1. Unix implementations of 
 .code exec

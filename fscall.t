@@ -3,17 +3,20 @@
 	notes:
 
 	perhaps namei belongs at the start of this chapter?
-..
-.chapter CH:FSCALL
-.PP
-XXX intro
-write ordering
-note on terminology: file means open file.
 
+	write ordering
+..
+.chapter CH:FSCALL  "File system calls"
+.PP
+The previous chapter layed described the file system data structures,
+and how they are used to implemented files and directories.  This
+chapter completes the file system by explaning how the system calls
+for file operations are implemented.  In this chapter, "file" means an
+open file.
 .\"
 .\"
 .\"
-.section "Code: Files
+.section "Code: Files"
 .PP
 Xv6 gives each process its own table of open files, as we saw in
 Chapter \*[CH:UNIX].
@@ -336,8 +339,7 @@ Like
 .code create
 starts by caling
 .code nameiparent
-to get the inode of the parent directory
-.line "sysfile.c:/nameiparent.path/ 'XXX probably wrong'"
+to get the inode of the parent directory.
 It then calls
 .code dirlookup
 to check whether the name already exists
@@ -407,8 +409,10 @@ it is easy to implement
 .code sys_mkdir ,
 and
 .code sys_mknod .
+.ig
 (TODO: Explain the name sys_mknod.
 Perhaps mknod was for a while the only way to create anything?)
+..
 .PP
 .code Sys_open
 .line sysfile.c:/^sys_open/
