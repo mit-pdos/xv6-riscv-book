@@ -9,7 +9,7 @@ with the illusion that it has its own virtual processor, and have the
 operating system multiplex multiple virtual processors on a single
 physical processor.
 .PP
-Xv6 has provides this plan.  If two different processes are competing
+Xv6 adopts this approach.  If two different processes are competing
 for a single CPU, xv6 multiplexes them, switching many times per
 second between executing one and the other.  Xv6 uses multiplexing to
 create the illusion that each process has its own CPU, just as xv6
@@ -21,13 +21,14 @@ from process to another? Xv6 uses the standard mechanism of context
 switching; although the idea is simple, the code to implement is
 typically among the most opaque code in an operating system. Second,
 how to do context switching transparently?  Xv6 uses the standard
-technique to force context switch in the timer interrupt handler,
+technique of using the timer interrupt handler to drive context switches.
 Third, may processes may be switching concurrently, and a locking plan
-is necessary to avoid races. Fourth, when a process completed its
-execution, it shouldn't be multiplexed with other processes, but
-cleaning a process is not easy; it cannot clean up itself since that
-requires that it runs.  Xv6 tries to solve these problems as
-straightforward as possible, but nevertheless the resulting code is
+is necessary to avoid races. Fourth, when a process has completed its
+execution, it shouldn't continue to run and be multiplexed
+with other processes, but
+cleaning a process is not easy: it cannot clean up after itself since
+doing so would require it to be running.  Xv6 tries to solve these problems as
+simply as possible, but nevertheless the resulting code is
 tricky.
 .PP
 Once there are multiple processes executing, xv6 must also provide
@@ -37,7 +38,7 @@ Rather than make the waiting process waste CPU by repeatedly checking
 whether that action has happened, xv6 allows a process to sleep
 waiting for an event and allows another process to wake the first
 process. Because processes run in parallel, there is a risk of losing
-a wake up. As an example of these problems and their solution, this
+a wake up event. As an example of these problems and their solution, this
 chapter examines the implementation of pipes.
 .\"
 .section "Code: Scheduler"
@@ -90,10 +91,10 @@ Chapter \*[CH:MEM].
 Each CPU has its own kernel stack to use when running
 the scheduler.
 .code Swtch
-saves the scheduler's context—it's stack and registers—and
+saves the scheduler's context—its stack and registers—and
 switches to the chosen process's context.
 When it is time for the process to give up the CPU,
-it will call
+the process will call
 .code swtch
 to save its own context and return to the scheduler context.
 Each context is represented by a
@@ -259,7 +260,7 @@ which we will examine later.
 .code Sched
 double checks those conditions
 .lines "'proc.c:/if..holding/,/running/'"
-and then an implication:
+and then an implication of those conditions:
 since a lock is held, the CPU should be
 running with interrupts disabled.
 Finally,
@@ -358,7 +359,7 @@ otherwise, the new process could start at
 .\"
 .PP
 Locks help CPUs and processes avoid interfering with each other,
-and scheduling help processes share a CPU,
+and scheduling helps processes share a CPU,
 but so far we have no abstractions that make it easy
 for processes to communicate.
 Sleep and wakeup fill that void, allowing one process to 
@@ -440,8 +441,8 @@ sleeps on the pointer
 .code chan ,
 called the wait channel,
 which may be any kind of pointer;
-it is used only as an identifying address
-and is not dereferenced.
+the sleep/wakeup code uses this pointer only as an identifying address
+and never dereferences it.
 .code Sleep
 puts the calling process to sleep, releasing the CPU
 for other work.
@@ -1089,10 +1090,10 @@ avoid the ``missed wakeups'' problem we saw at the
 beginning of the chapter.
 The original Unix kernel's
 .code sleep
-disabled interrupts.
-This sufficed because Unix ran on a single-CPU system.
+simply disabled interrupts,
+which sufficed because Unix ran on a single-CPU system.
 Because xv6 runs on multiprocessors,
-it added an explicit lock to
+it adds an explicit lock to
 .code sleep .
 FreeBSD's
 .code msleep
