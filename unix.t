@@ -51,7 +51,7 @@ has memory containing instructions, data, and a stack. The
 instructions correspond to the machine instructions that implement the
 program's computation.  The data corresponds to the data structures
 that the program uses to implement its computation. The stack allows
-the program to invoke procedure calls and run the computation.  
+the program to invoke procedure calls.  
 .PP
 When a
 process needs to invoke a kernel service, it invokes a procedure call
@@ -88,17 +88,17 @@ lB lB
 l l .
 System call	Description
 fork()	Create process
-exit()	Exit process
-wait()	Wait for a child
-kill(pid)	Send a signal to process pid
+exit()	Terminate current process
+wait()	Wait for a child process
+kill(pid)	Terminate process pid
 getpid()	Return current process's id
-sleep(n)	Sleep for n seconds
-exec(*argv)	Load program
-sbrk(n)	Grow process's memory with n bytes
-open(s, flags)	Open a file with mode specified in flags
+sleep(n)	Sleep for n time units
+exec(filename, *argv)	Load a file and execute it
+sbrk(n)	Grow process's memory by n bytes
+open(filename, flags)	Open a file; flags indicate read/write
 read(fd, buf, n)	Read n byes from an open file into buf
-write(fd, buf, n)	Write n bytes from an open file into fd
-close(fd)	Release fd
+write(fd, buf, n)	Write n bytes to an open file
+close(fd)	Release open file fd
 dup(fd)	Duplicate fd
 pipe(p)	Create a pipe and return fd's in p
 chdir(s)	Change directory to directory s
@@ -106,7 +106,7 @@ mkdir(s)	Create a new directory s
 mknod(s, major, minor)	Create a device file
 fstat(fd)	Return info about an open file
 link(s1, s2)	Create another name (s2) for the file s1
-unlink(s)	Remove a name
+unlink(filename)	Remove a file
 .TE
 .PP
 The rest of this chapter outlines xv6's services—\c
@@ -120,8 +120,11 @@ The shell is an ordinary program that
 reads commands from the user
 and executes them.
 It is the main interactive way that users use traditional Unix-like systems.
-The fact that the shell is a user program, not part of the kernel, means
-that it is easily replaced.  In fact, modern Unix systems have a variety of
+The fact that the shell is a user program, not part of the kernel, 
+illustrates the power of the system call interface: there is nothing
+special about the shell.
+It also means that the shell is easy to replace, and
+modern Unix systems have a variety of
 shells to choose from, each with its own syntax and semantics.
 The xv6 shell is a simple implementation of the essence of
 the Unix Bourne shell.  It's implementation can be found at sheet
@@ -132,7 +135,7 @@ the Unix Bourne shell.  It's implementation can be found at sheet
 .section "Code: Processes and memory"
 .PP
 An xv6 process consists of user-space memory (instructions, data, and stack)
-and a kernel process data structure.
+and per-process state private to the kernel.
 Xv6 provides time-sharing: it transparently switches the available CPUs
 among the set of processes waiting to execute.
 When a process is not executing, xv6 saves its CPU registers,
@@ -141,7 +144,7 @@ Each process can be uniquely identified by a
 positive integer called its process identifier, or
 .italic pid .
 .PP
-One process may create another using the
+A process may create a new process using the
 .code fork
 system call.
 .code Fork
@@ -174,8 +177,11 @@ The
 system call causes the calling process to exit (stop executing).
 The
 .code wait
-system call waits for one of the calling process's children to exit
-and returns the pid of the child that exited.
+system call returns the pid of an exited child of the
+current process; if none of the caller's children
+has exited,
+.code wait
+waits for one to do so.
 In the example, the output lines
 .P1
 parent: child=1234
@@ -194,7 +200,7 @@ parent: child 1234 is done
 Note that the parent and child were executing with
 different memory and different registers:
 changing a variable in the parent does not affect the
-same variable in the child, nor does the child affect the parent.
+child, nor does the child affect the parent.
 The main form of direct communication between parent and child is
 .code wait
 and
@@ -206,7 +212,7 @@ system call
 replaces the calling process's memory with a new memory
 image loaded from a file stored in the file system.
 The file must have a particular format, which specifies which part of
-the file are instructions, which part is data, at which instruction
+the file holds instructions, which part is data, at which instruction
 to start, etc.. The format xv6
 uses is called the ELF format, which Chapter \*[CH:BOOT] discusses in
 more detail.
@@ -234,8 +240,8 @@ of the program
 running with the argument list
 .code echo
 .code hello .
-(Most programs ignore the first argument, which is 
-conventionally the name of the program.)
+Most programs ignore the first argument, which is 
+conventionally the name of the program.
 .PP
 The xv6 shell uses the above calls to run programs on behalf of
 users. The main structure of the shell is simple; see
@@ -284,10 +290,10 @@ You might wonder why
 .code fork
 and
 .code exec
-are not combined in a single call; as we
+are not combined in a single call; we
 will
-see later, the choice of having separate calls for creating a process
-and loading a program is clever.
+see later that separate calls for creating a process
+and loading a program is a clever design.
 .PP
 Xv6 allocates most user-space memory
 implicitly:
@@ -318,8 +324,8 @@ A file descriptor is a small integer representing a kernel-managed object
 that a process may read from or write to.
 A file descriptor is obtained by calling 
 .code open 
-with an pathname as argument.
-The object by the pathname may be a data file, a directory, a pipe, or
+with a pathname as argument.
+The pathname may refer to a data file, a directory, a pipe, or
 the console.
 It is conventional to call whatever object a file
 descriptor refers to a file.
@@ -352,7 +358,7 @@ bytes from the open file corresponding to the file descriptor
 .code fd ,
 copies them into
 .code buf ,
-and returns the number of bytes copied.
+and returns the number of bytes read.
 Every file descriptor has an offset associated with it.
 .code Read
 reads data from the current file offset and then advances
@@ -389,7 +395,7 @@ each
 picks up where the previous one left off.
 .PP
 The following program fragment (which forms the essence of
-.code echo )
+.code cat )
 copies data from its standard input
 to its standard output.  If an error occurs, it writes a message
 on standard error.
@@ -412,16 +418,16 @@ for(;;){
 }
 .P2
 The important thing to note in the code fragment is that
-.code echo
+.code cat
 doesn't know whether it is reading from a file, console, or whatever.
 Similarly 
-.code echo
+.code cat
 doesn't know whether it is printing to a console, a file, or whatever.
 The use of file descriptors and the convention that file descriptor 0
 is input and file descriptor 1 is output allows a simple
 implementation
 of 
-.code echo .
+.code cat .
 .PP
 The
 .code close
@@ -432,12 +438,14 @@ releases a file descriptor, making it free for reuse by a future
 or
 .code dup
 system call (see below).
-An important rule in Unix is that the kernel must always allocates the
-lowest-numbered file descriptor that is unused by the calling process.
+An important Unix rule is that 
+a newly allocated file descriptor 
+is always the lowest-numbered unused
+descriptor of the current process.
 .PP
-This rule and how 
+File descriptors and
 .code fork
-works makes I/O redirection work well.
+interact to make I/O redirection easy to implement.
 .code Fork
 copies the parent's file descriptor table along with its memory,
 so that the child starts with exactly the same open files as the parent.
@@ -473,7 +481,7 @@ then executes with file descriptor 0 (standard input) referring to
 The code for I/O redirection in the xv6 shell works exactly in this way; see
 the case at
 .line sh.c:/case.REDIR/ .
-Recall that at this point in the code the shell already forked the
+Recall that at this point in the code the shell has already forked the
 child shell and that 
 .code runcmd 
 will call
@@ -514,7 +522,7 @@ picks up where the child's
 .code write
 left off.
 This behavior helps produce useful results from sequences
-of shell commands, like
+of shell command, like
 .code (echo
 .code hello;
 .code echo
@@ -533,10 +541,9 @@ This is another way to write
 .code world
 into a file:
 .P1
-close(2);
-dup(1);  // uses 2, assuming 0 and 1 not available
+fd = dup(1);
 write(1, "hello ", 6);
-write(2, "world\en", 6);
+write(fd, "world\en", 6);
 .P2
 .PP
 Two file descriptors share an offset if they were derived from
@@ -550,17 +557,17 @@ resulted from
 .code open
 calls for the same file.  
 .code Dup 
-allows shells to implement commands like the following one
-correctly (
-.code 2>
-means redirect file descriptor 2):
+allows shells to implement commands like this:
 .code ls
 .code existing-file
 .code non-existing-file
 .code >
 .code tmp1
-.code 2>
-.code tmp1 .
+.code 2>&1 .
+The
+.code 2>&1
+tells the shell to give the command a file descriptor 2 that
+is a duplicate of descriptor 1.
 Both the name of the existing file and the error message for the
 non-existing file will show up in the file
 .code tmp1.
@@ -708,9 +715,9 @@ sent data with
 .section "Code: File system"
 .PP
 Xv6 provides data files,
-which are uninterpreted byte streams,
+which are uninterpreted byte arrays,
 and directories, which
-contain references to other data files and directories.
+contain named references to other data files and directories.
 Xv6 implements directories as a special kind of file.
 The directories are arranged into a tree, starting
 at a special directory called the root.
@@ -835,17 +842,17 @@ count will be set to 2.
 The
 .code unlink
 system call removes a name from the file system,
-but not necessarily the underlying inode.
+but does not free the underlying inode or file content.
 Adding
 .P1
 unlink("a");
 .P2
-to the last code sequence will not remove the inode,
-because it is still accessible as
+to the last code sequence leaves the inode
+and file content accessible as
 .code b .
-In order to remove or reuse an inode,
-xv6 requires not only that all its names have been unlinked
-but also that there are no file descriptors referring to it.
+Xv6 frees an inode and associated file content when
+all the inode's names have been unlinked and all file
+descriptors referring to it have been closed.
 Thus,
 .P1
 fd = open("/tmp/xyz", O_CREATE|O_RDWR);
@@ -856,20 +863,19 @@ that will be cleaned up when the process closes
 .code fd
 or exits.
 .PP
-The xv6 shell doesn't directly support any calls for manipulating the
-file system.  User commands for file system operations are implemented
-as separate user-level programs such as
+Xv6 commands for file system operations are implemented
+as user-level programs such as
 .code mkdir ,
 .code ln ,
 .code rm ,
 etc. This design allows anyone to extend the shell with new user
-commands.  In hint-sight this plan seems the obvious right one, but
-when Unix was designed it was common that such commands were built
-into the shell.  
+commands.  In hind-sight this plan seems obvious, but
+other systems designed at the time of Unix often built
+such commands into the shell (and built the shell into the kernel).
 .PP
-The one exception is
+One exception is
 .code cd ,
-which is a build in command; see line 
+which built into the shell; see line 
 .line sh.c:/if.buf.0..==..c./ .
 The reason is that cd must change the current working directory of the
 shell itself.  If
@@ -886,7 +892,7 @@ the shell's) working directory would not change.
 .\"
 .section "Real world"
 .PP
-It is difficult today to remember that Unix's combination of the ``standard'' file
+Unix's combination of the ``standard'' file
 descriptors, pipes, and convenient shell syntax for
 operations on them was a major advance in writing
 general-purpose reusable programs.
@@ -896,9 +902,9 @@ and the shell was the first so-called ``scripting language.''
 The Unix system call interface persists today in systems like
 BSD, Linux, and Mac OS X.
 .PP
-Xv6, like Unix before it, has a very simple interface.
+Xv6 has a very simple interface.
 It doesn't implement modern features like networking
-or computer graphics.  The various Unix derivatives have
+or computer graphics.  Current Unix derivatives have
 many more system calls, especially in those newer areas.
 Unix's early devices, such as terminals, are modeled as 
 special files, like the
@@ -940,6 +946,6 @@ Any operating system must multiplex processes onto
 the underlying hardware, isolate processes from each
 other, and provide mechanisms for controlled
 inter-process communication.
-After studying this book, you should be able to
+After studying xv6, you should be able to
 look at other, more complex operating systems
 and see the concepts underlying xv6 in those systems as well.
