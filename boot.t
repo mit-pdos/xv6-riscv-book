@@ -43,14 +43,14 @@ managing each device's internal traps, and so on.
 ..
 .PP
 A computer's CPU (central processing unit, or processor)
-runs a conceptually simple loop:
+runs a conceptually loop:
 it inspects the value of a register called the program counter,
 reads a machine instruction from that address in memory,
 advances the program counter past the instuction,
 and executes the instruction.
 Repeat.
 If the execution of the instruction does not modify the
-program counter, this simple loop will interpret the
+program counter, this loop will interpret the
 memory pointed at by the program counter as a simple
 sequence of machine instructions to run one after the other.
 Instructions that do change the program counter implement
@@ -152,14 +152,14 @@ will see in this chapter.
 The floating-point and debug registers are less interesting
 and not used by xv6.
 .PP
-Registers are very fast but very expensive in bulk.
+Registers are fast but expensive.
 Most processors provide at most a few tens of general-purpose
 registers. 
 The next conceptual level of storage is the main
 random-access memory (RAM).  Main memory is 10-100x slower
 than a register, but it is much cheaper, so there can be more
 of it.
-A typical x86 processor has at most a kilobyte of registers,
+An x86 processor has a few dozen registers,
 but a typical PC today has gigabytes of main memory. 
 Because of the enormous differences in both access
 speed and size between registers and main memory, most
@@ -230,11 +230,17 @@ hardware devices too.  The x86 processor provides special
 and
 .opcode out
 instructions that read and write values from device
-addresses called ports.  The hardware implementation of
+addresses called I/O ports.  The hardware implementation of
 these instructions is essentially the same as reading and
 writing memory.  Early x86 processors had an extra
-address line: 0 meant read/write from a device port and 1
+address line: 0 meant read/write from an I/O port and 1
 meant read/write from main memory.
+Each hardware device monitors these lines for reads and writes to
+its assigned range of I/O ports.
+A device's ports let the software configure the device, examine
+its status, and cause the device to take actions; for example,
+software can use I/O port reads and writes to cause the disk
+interface hardware to read and write sectors on the disk.
 .PP
 Many computer architectures have no separate device access
 instructions.  Instead the devices have fixed memory
@@ -268,10 +274,11 @@ and then jumps (sets the processor's
 .register ip )
 to that address.
 When the boot sector begins executing, the processor is
-simulating an Intel 8088, the core of the
+simulating an Intel 8088, the CPU chip in the
 original IBM PC released in 1981.
 The xv6 boot sector's job is to put the processor in a more
-modern operating mode and then transfer control to the xv6 kernel.
+modern operating mode, to load the xv6 kernel from disk into memory,
+and then to transfer control to the kernel.
 In xv6, the boot sector comprises two source files,
 one written in a combination of 16-bit and 32-bit x86 assembly
 .file bootasm.S ; (
@@ -306,81 +313,42 @@ hardware devices.
 When xv6 is ready (in Chapter \*[CH:TRAP]), it will
 re-enable interrupts.
 .PP
-.\" XXX should we write about the Intel 8088 in the present tense?
-Remember that the processor is simulating an Intel 8088.
-The Intel 8088 had eight 16-bit general-purpose registers
-but 20 wires in its address bus leading to memory,
-and thus could be connected to 1 megabyte of memory.
+The processor is in "real mode," in which it simulates an Intel 8088.
+In real mode there are eight 16-bit general-purpose registers,
+but the processor sends 20 bits of address to memory.
 The segment registers
 .register cs ,
 .register ds ,
 .register es ,
 and
 .register ss
-provided the additional bits necessary to generate 20-bit
+provide the additional bits necessary to generate 20-bit
 memory addresses from 16-bit registers.
-In fact, they provide more than enough bits: the segment
-registers are 16 bits wide too.
-A full memory reference on the 8088 consists of two 16-bit words,
-a segment and an offset, written
-\fIsegment\fP:\fIoffset\fP.
-Typically, the segment is taken from a segment register
-and the offset from a general-purpose register.
-For example, the
-.opcode movs
-instruction copies data from
-.register ds \c
-:\c
-.register si
-to
-.register es \c
-:\c
-.register di .
-The 20-bit memory address that went out on the 8088 bus
-was the segment times 16 plus the offset.
+When a program refers to a memory address, the processor
+automatically adds 16 times the value of one of the
+segment registers; these registers are 16 bits wide.
+Which segment register is usually implicit in the
+kind of memory reference:
+instruction fetches use
+.register cs ,
+data reads and writes use
+.register ds ,
+and stack reads and writes use
+.register ss .
 We'll call the addresses the processor chip sends to memory
 "physical addresses,"
 and the addresses that programs directly manipulate
 "virtual addresses."
-Thus, on an 8088, a
-virtual address consists of a 16-bit segment register combined with
-a 16-bit general-purpose register, for example
-.address 0x8765 \c
-:\c
-.address 0x4321 ,
-and translates to a 20-bit physical address sent to the
-memory chips, in this case
-.address 0x87650 +\c
-.address 0x4321
-=
-.address 0x8b971 .
+People often write a full real-mode virtual memory reference as
+\fIsegment\fP:\fIoffset\fP,
+indicating the value of the relevant segment register and
+the address supplied by the program.
 .PP
-PC BIOSes guarantee to copy the boot sector to physical address
-.address 0x7c00
-and start it executing, but there is no guarantee
-that they will choose to set
-.register cs \c
-:\c
-.register ip
-to
-.address 0x0000 \c
-:\c
-.address 0x7c00 .
-In fact, some BIOSes use
-.address 0x0000 \c
-:\c
-.address 0x7c00
-when the boot sector is from a hard disk
-and use
-.address 0x07c0 \c
-:\c
-.address 0x0000
-when the boot sector is from a bootable CD or DVD.
-There are no guarantees at all about the initial
-contents of the segment registers used for data accesses
-.register ds , (
+The BIOS does not guarantee anything about the 
+contents of 
+.register ds , 
 .register es ,
-.register ss ),
+.register ss ,
 so first order of business after disabling interrupts
 is to set
 .register ax
@@ -391,7 +359,9 @@ and
 .register ss
 .lines bootasm.S:/Segment.number.zero/,/Stack.Segment/ .
 .PP
-The address calculation can produce a 21-bit address,
+A virtual
+\fIsegment\fP:\fIoffset\fP
+can yield a 21-bit physical address,
 but the Intel 8088 could only address 20 bits of memory,
 so it discarded the top bit:
 .address 0xffff0 \c
@@ -406,72 +376,49 @@ but virtual address
 on the 8088
 referred to physical address
 .address 0x0ffef .
-The Intel 80286 had 24-bit physical addresses and thus
-could address 16 megabytes of memory,
-so its real mode did not discard the top bit:
-virtual address
-.address 0xffff \c
-:\c
-.address 0xffff
-on the 80286
-referred to physical address 
-.address 0x10ffef .
-The IBM PC AT, IBM's 1984 update to the IBM PC,
-used an 80286 instead of an 8088, but by then there
-were programs that depended on the 8088's address truncation
-and did not run correctly on the 80286.
-.PP
-IBM worked around this incompatibility in hardware:
-the PC AT design connected the 20th address line of memory
-(A20) to the logical
-.smallcaps AND
-of the 20th address line coming out of the 80286 processor
-and the second bit of the keyboard controller's output port.
-When the PC AT booted, the keyboard output
-port's second bit was zero, making the memory controller
-always see zero on the A20 line, which in turn made the
-80286's memory accesses behave like an 8088, so that
-8088 programs would run correctly.
-Of course, IBM wanted to allow new programs
-to take advantage of the expanded memory.
-PC AT-specific software instructed the keyboard controller
-to change the output port bit to a 1, allowing the 80286's A20
-values to pass unfiltered to the memory controller.
-To this day, modern PCs continue this backwards compatibility dance,
-and low-level software probably continues to depend on 8088
-behavior at boot.
-The boot sector must enable the A20 line using I/O to the keyboard
+Some early software relied on the hardware ignoring the 21st
+address bit, so when Intel introduced processors with more
+than 20 bits of physical address, IBM provided a
+compatibility hack that is a requirement for PC-compatible
+hardware.
+If the second bit of the keyboard controller's output port
+is low, the 21st physical address bit is always cleared;
+if high, the 21st bit acts normally.
+The boot sector must enable the 21st address bit using I/O to the keyboard
 controller on ports 0x64 and 0x60
 .lines bootasm.S:/Enable.A20/,/outb.*%al,.0x60/ .
 .PP
-The 8088 had 16-bit general-purpose registers, so that a program that
-wanted to use more than 65,536 bytes of memory required awkward
-manipulation of segment registers. The 8088's 20-bit physical addresses also
-limited the total amount of RAM to a size that seems small today.
-Modern software expects to be able to use tens to thousands of
-megabytes of memory, and expects to be able to do it without fiddling
-with segment registers. The minimum modern expectation is that a
-processor should have 32-bit registers that can be used directly as
-addresses. The Intel x86 architecture arrived at those capabilities in
-two stages of evolution. The 80286 introduced "protected mode" which
-allowed the segmentation scheme to generate physical addresses with as
-many bits as required. The 80386 introduced "32-bit mode" which
-replaced the 80286's 16-bit registers with 32-bit registers. The xv6
-boot sequence enables both modes as follows.
+Real mode's 16-bit general-purpose and segment registers
+make it awkward for a program to use more than 65,536 bytes
+of memory, and impossible to use more than a megabyte.
+Modern x86 processors have a "protected mode" which allows
+physical addresses to have many more bits, and a
+"32-bit" mode that causes registers, virtual addresses,
+and most integer arithmetic to be carried out with 32 bits
+rather than 16.
+The xv6 boot sequence enables both modes as follows.
 .PP
 In protected mode, a segment
-register is not a simple base memory address anymore.
-Instead, it is an index into a segment descriptor table.
+register is an index into a segment descriptor table.
 Each table entry specifies a base physical address,
 a maximum virtual address called the limit,
 and permission bits for the segment.
-These additions are the protection in protected mode: they
+These permissions are the protection in protected mode: they
 can be used to make sure that one program cannot access
-memory belonging to another program (including the operating
-system itself).  Chapter \*[CH:MEM] will put the protection
-features to good use; the boot sector simply wants access to
-more than 20 bits of memory.  
-It executes an
+memory belonging to another program.
+.PP 
+xv6 makes almost no use of segments (it uses the paging hardware
+instead, as the next chapter describes).
+The boot code sets up the segment descriptor table
+.code gdt
+.lines bootasm.S:/^gdt:/,/data.seg/
+so that all segments have a base address of zero and the maximum possible
+limit (four gigabytes).
+The table has a null entry, one entry for executable
+code, and one entry to data.
+The code segment descriptor has a flag set that indicates
+that the code should run in 32-bit mode.
+The boot code executes an
 .opcode lgdt
 instruction 
 .line bootasm.S:/lgdt/
@@ -480,44 +427,17 @@ register with the value
 .code gdtdesc
 .lines bootasm.S:/^gdtdesc:/,/address.gdt/ ,
 which in turns points at the table
-.code gdt
-.lines bootasm.S:/^gdt:/,/data.seg/ .
-.PP
-This simple GDT has three entries:
-the processor requires entry 0 to be a null entry;
-entry 1 is a 32-bit code segment with offset 0 and limit 0xffffffff,
-allowing access to all of physical memory;
-and
-entry 2 is a data segment with the same offset and limit.
-"32-bit code segment" enables the 80386's 32-bit mode,
-so that the processor will default
-to 32-bit registers, addresses, and arithmetic when executing
-in the segment.
-In protected mode, the bottom two bits of a
-segment register give the processor's privilege level (0 is
-kernel, 3 is user mode, 1 and 2 are intermediate).  The next
-bit selects between the global descriptor table (0) and a
-second table called the local descriptor table (1).  The
-rest of the bits are an index into the given table. 
-Thus 0x8 and 0x10 refer to GDT entries 1 and 2
-with kernel privilege level.
-Those entries are the code and data segments the
-boot sector will use in protected mode.  
-The code refers to these numbers using the aliases
-.code SEG_KCODE
-and
-.code SEG_KDATA
-.lines bootasm.S:/SEG_KCODE/,/SEG_KDATA/ .
+.code gdt .
 .PP
 Once it has loaded the GDT register, the boot sector enables
-protected mode, by
+protected mode by
 setting the 1 bit
 (\c
 .code CR0_PE )
 in register
 .register cr0
 .lines bootasm.S:/movl.*%cr0/,/movl.*,.%cr0/ .
-Enabling protected mode does not change how the processor
+Enabling protected mode does not immediately change how the processor
 translates virtual to physical addresses or whether
 it is in 32-bit mode;
 it is only when one loads a new value into a segment register
@@ -535,12 +455,8 @@ The jump continues execution at the next line
 .line bootasm.S:/^start32/
 but in doing so sets 
 .register cs
-to 
-.code SEG_KCODE ,
-which causes the processor to load the
-descriptor entry from the
-.code gdt
-table.
+to refer to the code descriptor entry in
+.code gdt .
 The entry describes a 32-bit code segment,
 so the processor switches into 32-bit mode.
 The boot sector code has nursed the processor
@@ -551,10 +467,7 @@ The boot sector's first action in 32-bit mode is to
 initialize the data segment registers with
 .code SEG_KDATA
 .lines bootasm.S:/movw.*SEG_KDATA/,/Stack.Segment/ .
-The segments are set up so that the processor uses
-32-bit virtual addresses directly as 32-bit physical addresses,
-without translation, so the software can now conveniently
-use all of the machine's memory.
+Virtual address now map directly to physical addresses.
 The only step left before
 executing C code is to set up a stack
 in an unused region of memory.
@@ -1009,7 +922,7 @@ that calls the linker tells it that the kernel should
 start at 
 .code 0x100000 .
 .PP
-Assuming all has gone well, the kernel entry pointer will be
+Assuming all has gone well, the kernel entry pointer will refer to
 the kernel's
 .code main
 function (see
