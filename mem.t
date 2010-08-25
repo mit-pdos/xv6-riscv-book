@@ -10,18 +10,50 @@ and main memory safely, isolating them so that
 one errant program cannot break others.
 To that end, xv6 provides the concept of a process,
 as described in Chapter \*[CH:UNIX].
-xv6 implements a process as a set of data structures,
-but a process is quite special:
-it comes alive with help from the hardware.
 This chapter examines how xv6 allocates
 memory to hold process code and data,
 how it creates a new process,
-and how it configures the processor's segmentation
+and how it configures the processor's paging
 hardware to give each process the illusion that
-it hash its own private memory address space.
+it has a private memory address space.
 The next few chapters will examine how xv6 uses hardware
 support for interrupts and context switching to create
 the illusion that each process has its own private CPU.
+.\"
+.section "Code: Address Space Overview"
+.\"
+.PP
+xv6 ensures that each process can only read and write the memory that
+xv6 has allocated to it, and not for example the kernel's memory or
+the memory of other processes. xv6 also arranges for each process's
+memory to be contiguous and to start at virtual address zero. The C
+language definition and the Gnu linker expect process memory to be
+contiguous. Process memory starts at zero because that is what Unix
+has always done. A process's view of memory is called an address space.
+.PP
+x86 protected mode defines three kinds of addresses. Executing
+software generates
+virtual addresses when it fetches instructions or reads and writes
+memory; instructions cannot directly use a linear or physical addresses.
+The segmentation hardware translates virtual to linear addresses.
+Finally, the paging hardware (when enabled) translates linear to physical
+addresses. xv6 sets up the segmentation hardware so that virtual and
+linear addresses are always the same: the segment descriptors
+all have a base of zero and the maximum possible limit.
+xv6 sets up the x86 paging hardware to translate linear to physical
+addresses in a way that implements process address spaces with
+the properties outlined above.
+.PP
+The paging hardware uses a page table to translate linear to
+physical addresses. A page table is logically an array of 
+.EQ
+2^20
+.EN
+(1,048,576) page table entries (PTEs). Each PTE contains a
+20-bit physical page number (PPN) and some flags. The paging
+hardware translates a linear address by using its top 20 bits
+to index into the page table to find a PTE, and replacing
+those bits with the PPN in the PTE.
 .\"
 .section "Code: Memory allocation"
 .\"

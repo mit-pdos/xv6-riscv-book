@@ -1,16 +1,10 @@
 .so book.mac
 .chapter CH:UNIX "Operating system interfaces"
 .PP
-Computers are simple machines of enormous complexity.
-On the one hand, a processor can do very little: it just executes
-a single instruction from memory and repeats, billions of times
-per second.
-On the other hand, the details of how it does this and how software
-is expected to interact with the hardware vary wildly.
-The job of an operating system is to address both of these problems.
-An operating system creates the illusion of a simple machine that does
-quite a bit for the programs that it runs.
-It manages the low-level hardware, so that, for example,
+The job of an operating system is to share a computer among
+multiple programs and to provide a more useful set of services
+than the hardware alone supports.
+The operating system manages the low-level hardware, so that, for example,
 a word processor need not concern itself with which video card
 is being used.
 It also multiplexes the hardware, allowing many programs
