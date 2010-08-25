@@ -45,18 +45,115 @@ addresses in a way that implements process address spaces with
 the properties outlined above.
 .PP
 The paging hardware uses a page table to translate linear to
-physical addresses. A page table is logically an array of 
-.EQ
-2^20
-.EN
+physical addresses. A page table is logically an array of 2^20
 (1,048,576) page table entries (PTEs). Each PTE contains a
 20-bit physical page number (PPN) and some flags. The paging
 hardware translates a linear address by using its top 20 bits
 to index into the page table to find a PTE, and replacing
-those bits with the PPN in the PTE.
+those bits with the PPN in the PTE.  The paging hardware
+copies the low 12 bits unchanged from the linear to the
+translated physical address.  Thus a page table gives
+the operating system control over linear-to-physical address translations
+at the granularity of aligned chunks of 4096 (2^12) bytes.
+.PP
+Each PTE also contains flag bits that affect how the page of linear
+addresses that refer to the PTE are translated.
+.code PTE_P
+controls whether the PTE is valid: if it is
+not set, a reference to the page causes a fault (i.e. is not allowed).
+.code PTE_W
+controls whether instructions are allowed to issue
+writes to the page; if not set, only reads and
+instruction fetches are allowed.
+.code PTE_U
+controls whether user programs are allowed to use the
+page; if clear, only the kernel is allowed to use the page.
+.PP
+xv6 uses page tables to implement process address spaces as
+follows. Each process has a separate page table, and xv6 tells
+the page table hardware to switch
+page tables when xv6 switches between processes.
+A process's user-accessible memory starts at linear address
+zero and can have size of at most 640 kilobytes.
+xv6 sets up the PTEs for the lower 640 kilobytes (i.e.,
+the first 160 PTEs in the process's page table) to point
+to whatever pages of physical memory xv6 has allocated for
+the process's memory. xv6 sets the
+.code PTE_U
+bit on the first 160 PTEs so that a process can use its
+own memory.
+If a process has asked xv6 for less than 640 kilobytes,
+xv6 will fill in fewer than 160 of these PTEs.
+.PP
+Different processes' page tables translate the first 160 pages to
+different pages of physical memory, so that each process has
+private memory.
+However, xv6 sets up every process's page table to translate linear addresses
+above 640 kilobytes in the same way.
+To a first approximation, all processes' page tables map linear
+addresses above 640 kilobytes directly to physical addresses.
+However, xv6 does not set the
+.code PTE_U
+flag in the relevant PTEs.
+This means that the kernel is allowed to use linear addresses
+above 640 kilobytes, but user processes are not.
+For example, the kernel can use its own instructions and data
+(at linear/physical addresses starting at one megabyte).
+The kernel can also read and write all the physical memory beyond
+the end of its data segment, since linear addresses map directly
+to physical addresses in this range.
+.PP 
+Note that every process's page table simultaneously contains
+translations for both all of the user process's memory and all
+of the kernel's memory.
+This setup is very convenient: it means that xv6 can switch between
+the kernel and the process when making system calls without
+having to switch page tables.
+The price paid for this convenience is that the sum of the size
+of the kernel and the largest process must be less than four
+gigabytes on a machine with 32-bit addresses. xv6 has much
+more restrictive sizes---each user process must fit in 640 kilobytes---but 
+that 640 is easy to increase.
+.PP
+With the page table arrangement that xv6 sets up, a process can use
+the lower 640 kilobytes of linear addresses, but cannot use any
+other addresses---xv6 sets the
+.code PTE_U
+bit in the PTEs for these low addresses, but not for any other PTEs.
+A user process cannot tell the hardware to switch page tables.
+As long as xv6 maps the lower 640 kilobytes of a process's linear
+addresses to physical pages that are not used for any 
+purpose other than storing that process's data, a process
+cannot affect the memory of any other process or of the kernel.
 .\"
 .section "Code: Memory allocation"
 .\"
+.PP
+xv6 needs to allocate memory at run-time to store its own data structures
+and to store processes' memory. There are three main questions
+to be answered when allocating memory. First,
+what physical memory (i.e. DRAM storage cells) are to be used?
+Second, at what linear address or addresses is the newly
+allocated physical memory to be mapped? And third, how
+does xv6 know what physical memory is free and what memory
+is already in use?
+.PP
+xv6 maintains a pool of physical memory for run-time allocation.
+It uses the physical memory beyond the end of the loaded kernel's
+data segment. xv6 allocates (and frees) physical memory at page (4096-byte)
+granularity. It keeps a linked list of free physical pages;
+the xv6 allocator deletes pages from the list, and xv6 adds freed
+pages back to the list.
+.PP
+When the kernel allocates physical memory that only it will use, it
+does not need to make any special arrangement to be able to
+refer to that memory with a linear address: the kernel sets up
+all page tables so that linear addresses map directly to physical
+addresses for addresses above 640 KB. Thus if the kernel allocates
+the physical page at physical address 0x200000 for its internal use,
+it can use that memory via linear address 0x200000 without further ado.
+.PP
+XXX to be continued.
 .PP
 xv6 allocates most of its data structures statically, by
 declaring C global variables and arrays.
