@@ -20,7 +20,7 @@ The next few chapters will examine how xv6 uses hardware
 support for interrupts and context switching to create
 the illusion that each process has its own private CPU.
 .\"
-.section "Code: Address Space Overview"
+.section "Address Spaces"
 .\"
 .PP
 xv6 ensures that each process can only read and write the memory that
@@ -117,19 +117,20 @@ that 640 is easy to increase.
 .PP
 With the page table arrangement that xv6 sets up, a process can use
 the lower 640 kilobytes of linear addresses, but cannot use any
-other addresses---xv6 sets the
+other addresses---even though xv6 maps all of physical memory
+in every process's page table, it sets the
 .code PTE_U
-bit in the PTEs for these low addresses, but not for any other PTEs.
-A user process cannot tell the hardware to switch page tables.
-As long as xv6 maps the lower 640 kilobytes of a process's linear
-addresses to physical pages that are not used for any 
-purpose other than storing that process's data, a process
-cannot affect the memory of any other process or of the kernel.
+bits only for addresses under 640 kilobytes.
+Assuming many things (a user process can't change the page table,
+xv6 never maps the same physical page into the lower 640 kilobytes
+of more than one process's page table, etc.),
+the result is that a process can use its own memory
+but not the memory of any other process or of the kernel.
 .\"
-.section "Code: Memory allocation"
+.section "Memory allocation"
 .\"
 .PP
-xv6 needs to allocate memory at run-time to store its own data structures
+xv6 needs to allocate physical memory at run-time to store its own data structures
 and to store processes' memory. There are three main questions
 to be answered when allocating memory. First,
 what physical memory (i.e. DRAM storage cells) are to be used?
@@ -138,11 +139,11 @@ allocated physical memory to be mapped? And third, how
 does xv6 know what physical memory is free and what memory
 is already in use?
 .PP
-xv6 maintains a pool of physical memory for run-time allocation.
+xv6 maintains a pool of physical memory available for run-time allocation.
 It uses the physical memory beyond the end of the loaded kernel's
 data segment. xv6 allocates (and frees) physical memory at page (4096-byte)
 granularity. It keeps a linked list of free physical pages;
-the xv6 allocator deletes pages from the list, and xv6 adds freed
+xv6 deletes newly allocated pages from the list, and adds freed
 pages back to the list.
 .PP
 When the kernel allocates physical memory that only it will use, it
@@ -153,93 +154,79 @@ addresses for addresses above 640 KB. Thus if the kernel allocates
 the physical page at physical address 0x200000 for its internal use,
 it can use that memory via linear address 0x200000 without further ado.
 .PP
-XXX to be continued.
+What if a user process allocates memory with
+.code sbrk ?
+Suppose that the current size of the process is 12 kilobytes,
+and that xv6 finds a free page of physical memory at physical address
+0x201000. In order to ensure that user process memory remains contiguous,
+that physical page should appear at linear address 0x3000.
+This is the time (and the only time) when xv6 uses the paging hardware's
+ability to translate a linear address to a different physical address.
+xv6 modifies the 3rd PTE (which covers the range 0x3000 to 0x3fff)
+to refer to physical page number 0x201 (the upper 20 bits of 0x201000),
+and sets the 
+.code PTE_U
+and
+.code PTE_W
+bits in that PTE.
+Now the user process will be able to use 16 kilobytes of contiguous
+memory starting at linear address zero.
+Two different PTEs now refer to this page of physical memory:
+the PTE for linear address 0x201000 and the PTE for linear address
+0x3000. The kernel can use the memory with either of these linear
+addresses; the user process can only use the second.
+.\"
+.section "Code: Memory allocator"
+.\"
 .PP
-xv6 allocates most of its data structures statically, by
-declaring C global variables and arrays.
-The linker and the boot loader cooperate to decide exactly
-what memory locations will hold these variables, so that the
-C code doesn't have to explicitly allocate memory.
-However, xv6 does explicitly and dynamically allocate physical memory
-for user process memory, for the kernel stacks of user processes,
-and for pipe buffers.
-When xv6 needs memory for one of these purposes,
-it calls
-.code kalloc ;
-when it no longer needs them memory, it calls
-.code kfree
-to release the memory back to the allocator.
-Xv6's memory allocator manages blocks of memory
-that are a multiple of 4096 bytes,
-because the allocator is used mainly to allocate
-process address spaces, and the x86 segmentation
-hardware manages those address spaces in
-multiples of 4 kilobytes.
-The xv6 allocator calls one of these 4096-byte units a
-page, though it has nothing to do with paging.
-.PP
-.code Main
-calls 
-.code kinit
-to initialize the allocator
-.line main.c:/kinit/ .
-.code Kinit
-ought to begin by determining how much physical
-memory is available, but this
-turns out to be difficult on the x86.
-Xv6 doesn't need much memory, so
-it assumes that there is at least one megabyte
-available past the end of the loaded kernel
-and uses that megabyte.
-The kernel is around 50 kilobytes and is
-loaded one megabyte into the address space,
-so xv6 is assuming that the machine has at 
-least a little more than two megabytes of memory,
-a very safe assumption on modern hardware.
-.PP
-.code Kinit
-.line kalloc.c:/^kinit/
-uses the special linker-defined symbol
-.code end
-to find the end of the kernel's static data
-and rounds that address up to a multiple of 4096 bytes
-.line kalloc.c:/~.PAGE/ .
-When 
-.code n
-is a power of two, the expression
-.code (a+n-1)
-.code &
-.code ~(n-1)
-is a common C idiom to round
-.code a
-up to the next multiple of
-.code n .
-.code Kinit
-then does a surprising thing:
-it calls
-.code kfree
-to free a megabyte of memory starting at that address
-.line kalloc.c:/kfree.p..len/ .
-The discussion of
+The xv6 kernel calls
 .code kalloc
 and
 .code kfree
-above said that
+to allocate and free physical memory at run-time.
+The kernel uses run-time allocation for user process
+memory and for these kernel data strucures:
+kernel stacks, pipe buffers, and page tables.
+The allocator manages page-sized (4096-byte) blocks of memory.
+The kernel can directly use allocated memory through a linear
+address equal to the allocated memory's physical address.
+.PP
+.code Main
+calls 
+.code pminit ,
+which in turn calls
+.code kinit
+to initialize the allocator
+.line vm.c:/kinit/ .
+.code pminit
+ought to determine how much physical
+memory is available, but this
+turns out to be difficult on the x86.
+.code pminit
+assumes that the machine has
+16 megabytes
+.code PHYSTOP ) (
+of physical memory, and tells
+.code kinit
+to use all the memory between the end of the kernel
+and 
+.code PHYSTOP
+as the initial pool of free memory.
+.PP
+.code Kinit
+.line kalloc.c:/^kinit/
+calls
 .code kfree
-was for returning memory allocated with
-.code kalloc ,
-but that was a client-centric perspective.
-From the allocator's point of view,
-calls to
+with the address that
+.code pminit
+passed to it.
+This will cause
 .code kfree
-give it memory to hand out,
-and then calls to
-.code kalloc
-ask for the memory back.
+to add that memory to the allocator's list of free pages.
 The allocator starts with no memory;
 this initial call to
 .code kfree
-gives it a megabyte to manage.
+gives it some to manage.
 .PP
 The allocator maintains a
 .italic "free list" 
@@ -254,9 +241,8 @@ memory is represented by a
 .code run .
 But where does the allocator get the memory
 to hold that data structure?
-The allocator does another surprising thing:
-it uses the memory being tracked as the
-place to store the
+It uses the memory being tracked 
+to store the
 .code run
 structure tracking it.
 Each
@@ -285,7 +271,7 @@ locking in detail.
 .line kalloc.c:/^kfree/
 begins by setting every byte in the 
 memory being freed to the value 1.
-This step is unnecessary for correct operation,
+This step is not necessary,
 but it helps break incorrect code that
 continues to refer to memory after freeing it.
 This kind of bug is called a dangling reference.
@@ -293,8 +279,8 @@ By setting the memory to a bad value,
 .code kfree
 increases the chance of making such
 code use an integer or pointer that is out of range
-.code 0x01010101 "" (
-is around 16 million).
+.code 0x11111111 "" (
+is around 286 million).
 .PP
 .code Kfree 's
 first real work is to store a
