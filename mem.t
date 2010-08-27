@@ -362,7 +362,7 @@ First, if
 .code rend
 .code ==
 .code p
-.line kalloc.c/rend.==.p/ ,
+.line kalloc.c:/rend.==.p/ ,
 then the run
 .code r
 ends where the new run
@@ -379,12 +379,12 @@ If growing
 .code r
 makes it abut the next block in the list,
 that block can be absorbed too
-.lines "'kalloc.c/r->next && r->next == pend/,/}/'" .
+.lines "'kalloc.c:/r->next && r->next == pend/,/}/'" .
 Second, if
 .code pend
 .code ==
 .code r
-.line kalloc.c/pend.==.r/ ,
+.line kalloc.c:/pend.==.r/ ,
 then the run 
 .code p
 ends where the new run
@@ -423,30 +423,45 @@ before returning.
 .\"
 .PP
 This section describes how xv6 creates the very first process.
-Xv6 represents each process by a 
+Each xv6 process has many pieces of state, which xv6 gathers
+into a
 .code struct
 .code proc
-.line proc.h:/^struct.proc/ 
-entry in the statically-sized
-.code ptable.proc
-process table.
-The most important fields of a
-.code struct
+.line proc.h:/^struct.proc/ .
+A process's most important pieces of state are its user
+memory, its kernel stack, and its run state.
+We'll use the notation
+.code p->xxx
+to refer to elements of the
 .code proc
-are
-.code mem ,
-which points to the physical memory containing the process's
-instructions, data, and stack;
-.code kstack ,
-which points to the process's kernel stack for use in interrupts
-and system calls; and
-and 
-.code state ,
-which indicates whether the process is allocated, ready
-to run, running, etc.
+structure.
+.PP
+.code p->pgdir
+holds the process's page table, an array of PTEs.
+xv6 causes the paging hardware to use a process's
+.code p->pgdir
+when xv6 starts running that process.
+A process's page table also serves as the record of the
+addresses of the physical pages that store the process's user memory.
+.PP
+.code p->kstack
+points to the process's kernel stack.
+When a process is executing in the kernel, for example in a system
+call, it must have a stack on which to save variables and function
+call return addresses.  xv6 allocates one kernel stack for each process.
+The kernel stack is separate from the user stack, since the
+user stack may not be valid.  Each process has its own kernel stack
+(rather than all sharing a single stack) so that a system call may
+wait (or "block") in the kernel to wait for I/O, and resume where it
+left off when the I/O has finished; the process's kernel stack saves
+much of the state required for such a resumption.
+.PP
+.code p->state 
+indicates whether the process is allocated, ready
+to run, running, waiting for I/O, or exiting.
 .PP
 The story of the creation of the first process starts when
-.code main
+.code mainc
 .line main.c:/userinit/ 
 calls
 .code userinit
@@ -456,7 +471,11 @@ whose first action is to call
 The job of
 .code allocproc
 .line proc.c:/^allocproc/
-is to allocate a slot in the process table and
+is to allocate a slot
+(a
+.code struct
+.code proc )
+in the process table and
 to initialize the parts of the process's state
 required for it to execute in the kernel.
 .code Allocproc 
@@ -472,7 +491,7 @@ When it finds an unused process,
 sets the state to
 .code EMBRYO
 to mark it as used and
-gives the processes a unique
+gives the process a unique
 .code pid
 .lines proc.c:/EMBRYO/,/nextpid/ .
 Next, it tries to allocate a kernel stack for the
@@ -485,53 +504,84 @@ and returns zero to signal failure.
 Now
 .code allocproc
 must set up the new process's kernel stack.
+Ordinarily processes are only created by
+.code fork ,
+so a new process
+starts life copied from its parent.  The result of 
+.code fork
+is a child
+that has identical user memory contents to its parent.
+.code allocproc
+sets up the child to 
+start life running in the kernel, with a specially prepared kernel
+stack and set of kernel registers that cause it to "return" to user
+space at the same place (the return from the
+.code fork
+system call) as the parent.
+.code allocproc
+does part of this work by setting up return program counter
+values that will cause the new process to first execute in
+.code forkret
+and then in
+.code trapret
+.lines proc.c:/uint.trapret/,/uint.forkret/ .
+The new process will start running in the kernel,
+with register contents copied from
+.code p->context .
+Thus setting
+.code p->context->eip
+to
+.code forkret
+will cause the new process to execute at
+the start of the kernel function
+.code forkret 
+.line proc.c:/^forkret/ .
+This function 
+will return to whatever address is at the bottom of the stack.
+The context switch code
+.line swtch.S:/^swtch/
+sets the stack pointer to point just beyond the end of
+.code p->context .
+.code allocproc
+places
+.code p->context
+on the stack, and puts a pointer to
+.code trapret
+just above it; that is where
+.code forkret
+will return.
+.code trapret
+restores user registers
+from values stored at the top of the kernel stack and jumps
+into the user process
+.line trapasm.S:/^trapret/ .
+This setup is the same for ordinary
+.code fork
+and for creating the first process, though in
+the latter case the process will start executing at
+location zero rather than at a return from
+.code fork .
+.PP
 As we will see in Chapter \*[CH:TRAP],
-the usual way that a process enters the kernel
+the way that control transfers from user software to the kernel
 is via an interrupt mechanism, which is used by system calls,
 interrupts, and exceptions.
-The process's kernel stack
-is the one it uses when executing in the kernel
-during the handling of that interrupt.
-.code Allocproc
+Whenever control transfers into the kernel while a process is running,
+the hardware and xv6 trap entry code save user registers on the
+top of the process's kernel stack.
+.code userinit
 writes values at the top of the new stack that
 look just like those that would be there if the
-process had entered the kernel via an interrupt,
+process had entered the kernel via an interrupt
+.lines proc.c:/tf..cs.=./,/tf..eip.=./ ,
 so that the ordinary code for returning from
 the kernel back to the user part of a process will work.
 These values are a
 .code struct
 .code trapframe
-which stores the user registers,
-the address of the kernel code that returns from an
-interrupt
-.code trapret ) (
-for use as a function call return address,
-and a 
-.code struct
-.code context
-which holds the process's kernel registers.
-When the kernel switches contexts to this new process,
-the context switch will restore
-its kernel registers; it will then execute kernel code to return
-from an interrupt and thus restore the user registers,
-and then execute user instructions.
-.code Allocproc
-sets
-.code p->context->eip 
-to
-.code forkret ,
-so that the process will start executing in the kernel
-at the start of
-.code forkret .
-The context switching code will start executing the
-new process with the stack pointer set to
-.code p->context+1 ,
-which points to the stack slot holding the address of the
-.code trapret
-function, just as if
-.code forkret
-had been called by
-.code trapret.
+which stores the user registers.
+.PP
+Here is the state of the new process's kernel stack:
 .P1
  ----------  <-- top of new process's kernel stack
 | esp      |
@@ -549,27 +599,22 @@ had been called by
  ----------  <-- p->kstack
 .P2
 .PP
-.code Main
-calls
-.code userinit
-to create the first user process
-.line main.c:/userinit/ .
-.code Userinit
-.line proc.c:/^userinit/
-calls
-.code allocproc ,
-saves a pointer to the process as
-.code initproc ,
-ad then configures the new process's
-user state.
-First, the process needs memory.
-This first process is going to execute a very tiny
-program
+The first process is going to execute a small program
 .code initcode.S ; (
-.line initcode.S:1 ),
-so the memory need only be a single page
-.line proc.c:/sz.=.PAGE/,/kalloc/ .
-The initial contents of that memory are
+.line initcode.S:1 ).
+The process needs physical memory in which to store this
+program, the program needs to be copied to that memory,
+and the process needs a page table that refers to
+that memory.
+.PP
+.code userinit
+calls 
+.code setupkvm
+.line vm.c:/^setupkvm/
+to create a page table for the process.
+...
+.PP
+The initial contents of the first process's memory are
 the compiled form of
 .code initcode.S ;
 as part of the kernel build process, the linker
