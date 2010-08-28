@@ -1,6 +1,20 @@
 .so book.mac
 .ig
-	this is even rougher than most chapters
+  this is even rougher than most chapters
+  talk a little about initial page table conditions:
+    paging not on, but virtual mostly mapped direct to physical,
+    which is what things look like when we turn paging on as well
+    since paging is turned on after we create first process.
+  the explanation of setupkvm is pretty involved, I wonder if
+    it should be moved to a separate section. maybe part of boot
+    chapter, on the theory that it is about setting up the machine?
+    then the description of PTEs etc would also have to be moved.
+  mention why still have SEG_UCODE/SEG_UDATA?
+  do we ever really say what the low two bits of %cs do?
+    in particular their interaction with PTE_U
+  i worry that we often say "process" when it is not clear whether
+    we're talking about running in user space or in the kernel
+    e.g. "a process isn't allowed to look at the kernel's memory"
 ..
 .chapter CH:MEM "Processes"
 .PP
@@ -23,10 +37,10 @@ the illusion that each process has its own private CPU.
 .section "Address Spaces"
 .\"
 .PP
-xv6 ensures that each process can only read and write the memory that
+xv6 ensures that each user process can only read and write the memory that
 xv6 has allocated to it, and not for example the kernel's memory or
 the memory of other processes. xv6 also arranges for each process's
-memory to be contiguous and to start at virtual address zero. The C
+user memory to be contiguous and to start at virtual address zero. The C
 language definition and the Gnu linker expect process memory to be
 contiguous. Process memory starts at zero because that is what Unix
 has always done. A process's view of memory is called an address space.
@@ -40,7 +54,7 @@ Finally, the paging hardware (when enabled) translates linear to physical
 addresses. xv6 sets up the segmentation hardware so that virtual and
 linear addresses are always the same: the segment descriptors
 all have a base of zero and the maximum possible limit.
-xv6 sets up the x86 paging hardware to translate linear to physical
+xv6 sets up the x86 paging hardware to translate (or "map") linear to physical
 addresses in a way that implements process address spaces with
 the properties outlined above.
 .PP
@@ -68,6 +82,18 @@ instruction fetches are allowed.
 .code PTE_U
 controls whether user programs are allowed to use the
 page; if clear, only the kernel is allowed to use the page.
+.PP
+A few reminders about terminology.
+Physical memory refers to storage cells in DRAM.
+A byte of physical memory has an address, called a physical address.
+A program uses virtual addresses, which the segmentation and
+paging hardware translates to physical addresses, and then
+sends to the DRAM system to read or write storage.
+At this level of discussion there is no such thing as virtual memory.
+If you want to store data in memory, you must find some
+physical memory, install mappings to translate some virtual
+address to the physical address of your memory, and write
+your data to that virtual address.
 .PP
 xv6 uses page tables to implement process address spaces as
 follows. Each process has a separate page table, and xv6 tells
@@ -109,6 +135,8 @@ of the kernel's memory.
 This setup is very convenient: it means that xv6 can switch between
 the kernel and the process when making system calls without
 having to switch page tables.
+For the most part the kernel does not have its own page
+table; it is almost always borrowing some process's page table.
 The price paid for this convenience is that the sum of the size
 of the kernel and the largest process must be less than four
 gigabytes on a machine with 32-bit addresses. xv6 has much
@@ -126,6 +154,14 @@ xv6 never maps the same physical page into the lower 640 kilobytes
 of more than one process's page table, etc.),
 the result is that a process can use its own memory
 but not the memory of any other process or of the kernel.
+.PP
+To review, xv6 ensures that each user process can only use its own memory,
+and that a user process sees its memory as having contiguous addresses.
+xv6 implements the first by setting the
+.code PTE_U
+bit only on PTEs of virtual addresses that refer to the process's own memory.
+It implements the second using the ability of page tables to translate
+a virtual address to a different physical address.
 .\"
 .section "Memory allocation"
 .\"
@@ -611,8 +647,107 @@ that memory.
 calls 
 .code setupkvm
 .line vm.c:/^setupkvm/
-to create a page table for the process.
-...
+to create a page table for the process with (for now) mappings
+only for memory that the kernel uses.
+.PP
+An x86 page table is stored in physical memory, in the form of a
+4096-byte "page directory" that contains pointers to 1024
+"page table pages."
+Each page table page is an array of 1024 32-bit PTEs.
+The page directory is also an array of 1024 PTEs, with each
+physical page number referring to a page table page.
+The paging hardware uses the top 10 bits of a virtual address to
+select a page directory entry.
+If the page directory entry is marked
+.code PTE_P ,
+the paging hardware uses the next 10 bits of virtual
+address to select a PTE from the page table page that the
+page directory entry refers to.
+If the page directory entry is not valid, the paging hardware
+raises a fault.
+This two-level structure allows a page table to omit entire
+page table pages in the common case in which large ranges of
+virtual addresses have no mappings.
+.PP
+.code setupkvm
+allocates a page of memory to hold the page directory.
+It then calls
+.code mappages
+to install translations for ranges of memory that the kernel
+will use; these translations all map a virtual address to the
+same physical address.  The translations include the kernel's
+instructions and data, physical memory up to
+.code PHYSTOP ,
+and memory ranges which are actually I/O devices.
+.code setupkvm
+does not install any mappings for the process's user memory;
+this will happen later.
+.PP
+.code mappages
+.line vm.c:/^mappages/
+installs mappings for a range of virtual addresses to
+a corresponding range of physical addresses.
+It does this separately for each virtual address in the range,
+at page intervals.
+For each virtual address to be mapped,
+.code mappages
+calls
+.code walkpgdir
+to find the address of the PTE that holds the address's translation.
+It then initializes the PTE to hold the relevant physical page
+number, the desired permissions (
+.code PTE_W
+and/or
+.code PTE_U ),
+and 
+.code PTE_P
+to mark the PTE as valid
+.line vm.c:/pte.=.pa/ .
+.PP
+.code walkpgdir
+.line vm.c:/^walkpgdir/
+mimics the actions of the x86 paging hardware as it
+looks up the PTE for a virtual address.
+It uses the upper 10 bits of the virtual address to find
+the page directory entry
+.line vm.c:/pde.=..pgdir/ .
+If the page directory entry isn't valid, then
+the required page table page hasn't yet been created;
+if the
+.code create
+flag is set,
+.code walkpgdir
+goes ahead and creates it.
+Finally it uses the next 10 bits of the virtual address
+to find the address of the PTE in the page table page
+.line vm.c:/return..pgtab/ .
+The code uses the physical addresses in the page directory entries
+as virtual addresses. This works because the kernel allocates
+page directory pages and page table pages from an area of physical
+memory (between the end of the kernel and
+.code PHYSTOP)
+for which the kernel has direct virtual to physical mappings.
+.PP
+Back to
+.code userinit .
+It calls
+.code allocuvm
+in order to allocate physical memory for the process and
+add mappings for it to the process's page table.
+.code allocuvm
+.line vm.c:/^allocuvm/
+calls
+.code walkpgdir
+to find whether each page in the required range of
+virtual addresses is already mapped in the process's
+page table.
+If it isn't,
+.code allocuvm
+allocates a page of physical memory with
+.code kalloc
+and calls
+.code mappages
+to map the virtual address to the physical address of the allocated page.
 .PP
 The initial contents of the first process's memory are
 the compiled form of
@@ -627,8 +762,15 @@ telling the location and size of the binary
 (XXX sidebar about why it is extern char[]).
 .code Userinit
 copies that binary into the new process's memory
-and zeros the rest
-.lines proc.c:/memset.p..mem/,/memmove/ .
+by calling
+.code inituvm ,
+which uses
+.code walkpgdir
+to find the physical address of each of the process's
+pages and copies successive pages of the binary there
+.line vm.c:/^inituvm/ .
+.code userinit
+zeros the rest of the process's memory.
 Then it sets up the trap frame with the initial user mode state:
 the
 .code cs
