@@ -5,10 +5,6 @@
     paging not on, but virtual mostly mapped direct to physical,
     which is what things look like when we turn paging on as well
     since paging is turned on after we create first process.
-  the explanation of setupkvm is pretty involved, I wonder if
-    it should be moved to a separate section. maybe part of boot
-    chapter, on the theory that it is about setting up the machine?
-    then the description of PTEs etc would also have to be moved.
   mention why still have SEG_UCODE/SEG_UDATA?
   do we ever really say what the low two bits of %cs do?
     in particular their interaction with PTE_U
@@ -455,6 +451,110 @@ deletes the run from the list
 .lines "'kalloc.c:/r->len == 0/,/rp = r->next/'"
 before returning.
 .\"
+.section "Code: Page Table Initialization"
+.\"
+.PP
+.code mainc
+.line main.c:/kvmalloc/
+creates a page table for the kernel's use with a call to
+.code kvmalloc ,
+and
+.code mpmain
+.line main.c:/vminit/
+causes the x86 paging hardware to start using that
+page table with a call to 
+.code vminit .
+This page table maps most virtual addresses to the same
+physical address, so turning on paging with it in place does not 
+disturb execution of the kernel.
+.PP
+.code kvmalloc
+calls
+.code setupkvm
+and stores a pointer to the resulting page table,
+since it will be used later.
+.PP
+An x86 page table is stored in physical memory, in the form of a
+4096-byte "page directory" that contains pointers to 1024
+"page table pages."
+Each page table page is an array of 1024 32-bit PTEs.
+The page directory is also an array of 1024 PTEs, with each
+physical page number referring to a page table page.
+The paging hardware uses the top 10 bits of a virtual address to
+select a page directory entry.
+If the page directory entry is marked
+.code PTE_P ,
+the paging hardware uses the next 10 bits of virtual
+address to select a PTE from the page table page that the
+page directory entry refers to.
+If the page directory entry is not valid, the paging hardware
+raises a fault.
+This two-level structure allows a page table to omit entire
+page table pages in the common case in which large ranges of
+virtual addresses have no mappings.
+.PP
+.code setupkvm
+allocates a page of memory to hold the page directory.
+It then calls
+.code mappages
+to install translations for ranges of memory that the kernel
+will use; these translations all map a virtual address to the
+same physical address.  The translations include the kernel's
+instructions and data, physical memory up to
+.code PHYSTOP ,
+and memory ranges which are actually I/O devices.
+.code setupkvm
+does not install any mappings for the process's user memory;
+this will happen later.
+.PP
+.code mappages
+.line vm.c:/^mappages/
+installs mappings into the page table
+for a range of virtual addresses to
+a corresponding range of physical addresses.
+It does this separately for each virtual address in the range,
+at page intervals.
+For each virtual address to be mapped,
+.code mappages
+calls
+.code walkpgdir
+to find the address of the PTE that holds the address's translation.
+It then initializes the PTE to hold the relevant physical page
+number, the desired permissions (
+.code PTE_W
+and/or
+.code PTE_U ),
+and 
+.code PTE_P
+to mark the PTE as valid
+.line vm.c:/pte.=.pa/ .
+.PP
+.code walkpgdir
+.line vm.c:/^walkpgdir/
+mimics the actions of the x86 paging hardware as it
+looks up the PTE for a virtual address.
+It uses the upper 10 bits of the virtual address to find
+the page directory entry
+.line vm.c:/pde.=..pgdir/ .
+If the page directory entry isn't valid, then
+the required page table page hasn't yet been created;
+if the
+.code create
+flag is set,
+.code walkpgdir
+goes ahead and creates it.
+Finally it uses the next 10 bits of the virtual address
+to find the address of the PTE in the page table page
+.line vm.c:/return..pgtab/ .
+The code uses the physical addresses in the page directory entries
+as virtual addresses. This works because the kernel allocates
+page directory pages and page table pages from an area of physical
+memory (between the end of the kernel and
+.code PHYSTOP)
+for which the kernel has direct virtual to physical mappings.
+
+
+.\"
 .section "Code: Process creation"
 .\"
 .PP
@@ -647,90 +747,9 @@ that memory.
 calls 
 .code setupkvm
 .line vm.c:/^setupkvm/
-to create a page table for the process with (for now) mappings
+to create a page table for the process with (at first) mappings
 only for memory that the kernel uses.
-.PP
-An x86 page table is stored in physical memory, in the form of a
-4096-byte "page directory" that contains pointers to 1024
-"page table pages."
-Each page table page is an array of 1024 32-bit PTEs.
-The page directory is also an array of 1024 PTEs, with each
-physical page number referring to a page table page.
-The paging hardware uses the top 10 bits of a virtual address to
-select a page directory entry.
-If the page directory entry is marked
-.code PTE_P ,
-the paging hardware uses the next 10 bits of virtual
-address to select a PTE from the page table page that the
-page directory entry refers to.
-If the page directory entry is not valid, the paging hardware
-raises a fault.
-This two-level structure allows a page table to omit entire
-page table pages in the common case in which large ranges of
-virtual addresses have no mappings.
-.PP
-.code setupkvm
-allocates a page of memory to hold the page directory.
 It then calls
-.code mappages
-to install translations for ranges of memory that the kernel
-will use; these translations all map a virtual address to the
-same physical address.  The translations include the kernel's
-instructions and data, physical memory up to
-.code PHYSTOP ,
-and memory ranges which are actually I/O devices.
-.code setupkvm
-does not install any mappings for the process's user memory;
-this will happen later.
-.PP
-.code mappages
-.line vm.c:/^mappages/
-installs mappings for a range of virtual addresses to
-a corresponding range of physical addresses.
-It does this separately for each virtual address in the range,
-at page intervals.
-For each virtual address to be mapped,
-.code mappages
-calls
-.code walkpgdir
-to find the address of the PTE that holds the address's translation.
-It then initializes the PTE to hold the relevant physical page
-number, the desired permissions (
-.code PTE_W
-and/or
-.code PTE_U ),
-and 
-.code PTE_P
-to mark the PTE as valid
-.line vm.c:/pte.=.pa/ .
-.PP
-.code walkpgdir
-.line vm.c:/^walkpgdir/
-mimics the actions of the x86 paging hardware as it
-looks up the PTE for a virtual address.
-It uses the upper 10 bits of the virtual address to find
-the page directory entry
-.line vm.c:/pde.=..pgdir/ .
-If the page directory entry isn't valid, then
-the required page table page hasn't yet been created;
-if the
-.code create
-flag is set,
-.code walkpgdir
-goes ahead and creates it.
-Finally it uses the next 10 bits of the virtual address
-to find the address of the PTE in the page table page
-.line vm.c:/return..pgtab/ .
-The code uses the physical addresses in the page directory entries
-as virtual addresses. This works because the kernel allocates
-page directory pages and page table pages from an area of physical
-memory (between the end of the kernel and
-.code PHYSTOP)
-for which the kernel has direct virtual to physical mappings.
-.PP
-Back to
-.code userinit .
-It calls
 .code allocuvm
 in order to allocate physical memory for the process and
 add mappings for it to the process's page table.
