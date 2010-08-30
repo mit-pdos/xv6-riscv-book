@@ -1195,25 +1195,18 @@ ones.
 .\"
 .section "Exercises"
 .\"
-1. Set a breakpoint at swtch.  Single step through to forkret.
-Set another breakpoint at forkret's ret.
-Continue past the release.
-Single step into trapret and then all the way to the iret.
-Set a breakpoint at 0x1b:0 and continue.
-Sure enough you end up at initcode.
+1. Set a breakpoint at swtch.  Single step with gdb's
+.code stepi
+through the ret to
+.code forkret ,
+then use gdb's
+.code finish
+to proceed to
+.code trapret ,
+then
+.code stepi
+until you get to
+.code initcode 
+at virtual address zero.
 
-2. Do the same thing except single step past the iret.
-You don't end up at 0x1b:0.  What happened?
-Explain it.
-Peek ahead to the next chapter if necessary.
-.ig
-[[Intent here is to point out the clock interrupt,
-so that students aren't confused by it trying
-to see the return to user space.
-But maybe the clock interrupt doesn't happen at the
-first iret anymore.  Maybe it happens when the 
-scheduler turns on interrupts.  That would be great;
-if it's not true already we should make it so.]]
-..
-
-3. Look at real operating systems to see how they size memory.
+2. Look at real operating systems to see how they size memory.
