@@ -11,6 +11,7 @@
   i worry that we often say "process" when it is not clear whether
     we're talking about running in user space or in the kernel
     e.g. "a process isn't allowed to look at the kernel's memory"
+  talk about why there are three main*() routines in main.c?
 ..
 .chapter CH:MEM "Processes"
 .PP
@@ -191,10 +192,12 @@ What if a user process allocates memory with
 Suppose that the current size of the process is 12 kilobytes,
 and that xv6 finds a free page of physical memory at physical address
 0x201000. In order to ensure that user process memory remains contiguous,
-that physical page should appear at linear address 0x3000.
+that physical page should appear at linear address 0x3000 when
+the process is running.
 This is the time (and the only time) when xv6 uses the paging hardware's
 ability to translate a linear address to a different physical address.
 xv6 modifies the 3rd PTE (which covers the range 0x3000 to 0x3fff)
+in the process's page table
 to refer to physical page number 0x201 (the upper 20 bits of 0x201000),
 and sets the 
 .code PTE_U
@@ -203,7 +206,7 @@ and
 bits in that PTE.
 Now the user process will be able to use 16 kilobytes of contiguous
 memory starting at linear address zero.
-Two different PTEs now refer to this page of physical memory:
+Two different PTEs now refer to the physical memory at 0x201000:
 the PTE for linear address 0x201000 and the PTE for linear address
 0x3000. The kernel can use the memory with either of these linear
 addresses; the user process can only use the second.
@@ -460,18 +463,20 @@ creates a page table for the kernel's use with a call to
 .code kvmalloc ,
 and
 .code mpmain
-.line main.c:/vminit/
+.line main.c:/vmenable/
 causes the x86 paging hardware to start using that
 page table with a call to 
-.code vminit .
+.code vmenable .
 This page table maps most virtual addresses to the same
 physical address, so turning on paging with it in place does not 
 disturb execution of the kernel.
 .PP
 .code kvmalloc
+.line vm.c:/^kvmalloc/
 calls
 .code setupkvm
-and stores a pointer to the resulting page table,
+and stores a pointer to the resulting page table in
+.code kpgdir ,
 since it will be used later.
 .PP
 An x86 page table is stored in physical memory, in the form of a
@@ -527,7 +532,7 @@ and/or
 and 
 .code PTE_P
 to mark the PTE as valid
-.line vm.c:/pte.=.pa/ .
+.line vm.c:/perm...PTE_P/ .
 .PP
 .code walkpgdir
 .line vm.c:/^walkpgdir/
@@ -552,8 +557,20 @@ page directory pages and page table pages from an area of physical
 memory (between the end of the kernel and
 .code PHYSTOP)
 for which the kernel has direct virtual to physical mappings.
-
-
+.PP
+.code vmenable
+.line vm.c:/^vmenable/
+loads
+.code kpgdir
+into the x86
+.register cr3
+register, which is where the hardware looks for
+the physical address of the current page directory.
+It then sets
+.code CR0_PG
+in
+.register cr0
+to enable paging.
 .\"
 .section "Code: Process creation"
 .\"
@@ -849,34 +866,13 @@ to
 .\"
 .section "Code: Running a process
 .\"
-Rather than use special code to start the first
-process running and guide it to user space,
-xv6 has chosen to set up the initial data structure
-state as if that process was already running.
-But it wasn't running and still isn't:
-so far, this has been just an elaborate
-construction exercise, like lining up dominoes.
-Now it is time to knock over the first domino,
-set the operating system and the hardware in motion
-and watch what happens.
-.PP
-.code Main
-calls
-.code ksegment
-to initialize the kernel's segment descriptor table
-.line main.c:/ksegment/ .
-.code Ksegment
-initializes a per-CPU global descriptor table
-.code c->gdt
-with the same segments that the boot sector
-configured
-(and one more, 
-.code SEG_KCPU ,
-which we will revisit in Chapter \*[CH:LOCK]).
-After calling
-.code userinit ,
-which we examined above,
+Now that the first process's state is prepared,
+it is time to run it.
+After 
 .code main
+calls
+.code userinit ,
+.code mpmain
 calls
 .code scheduler
 to start running user processes
@@ -889,27 +885,20 @@ set to
 .code RUNNABLE ,
 and there's only one it can find:
 .code initproc .
-It sets the global variable
-.code cp
-to the process it found
-.code cp "" (
-stands for current process)
-and calls
-.code usegment
-to create segments on this CPU for the user-space
-execution of the process
-.line "'proc.c:/usegment!(!)/'" .
-Usegment
-.line proc.c:/^usegment/
-creates code and data segments
-.code SEG_UCODE
-and
-.code SEG_UDATA
-mapping addresses 0 through
-.code cp->sz-1
-to the memory at
-.code cp->mem .
-It also creates a new task state segment
+It sets the per-cpu variable
+.code proc
+to the process it found and calls
+.code switchuvm
+to tell the hardware to start using the target
+process's page table
+.line vm.c:/lcr3.*p..pgdir/ .
+Changing page tables while executing in the kernel
+works because 
+.code setupkvm
+causes all processes' page tables to have identical
+mappings for kernel code and data.
+.code switchuvm
+also creates a new task state segment
 .code SEG_TSS
 that instructs the hardware to handle
 an interrupt by returning to kernel mode
@@ -920,34 +909,36 @@ and
 set to
 .code SEG_KDATA<<3
 and
-.code (uint)cp->kstack+KSTACKSIZE ,
+.code (uint)proc->kstack+KSTACKSIZE ,
 the top of this process's kernel stack.
 We will reexamine the task state segment in Chapter \*[CH:TRAP].
 .PP
-Now that
-.code usegment
-has created the user code and data segments,
-the scheduler can start running the process.
-It sets
+.code scheduler
+now sets
 .code p->state
 to
 .code RUNNING
 and calls
 .code swtch
-.line swtch.S:/^swtch/ ,
-to perform a context switch from one kernel process to another; in
-this invocation, from a scheduler process to
-.code p .
-.code Swtch ,
-which we will reexamine in Chapter \*[CH:SCHED],
-saves the scheduler's registers that must be saved; i.e., the context
-.line proc.h:/^struct.context/
-that a process needs to later resume correctly.
-Then,
-.code Swtch
-loads 
-.code p->context
-into the hardware registers.
+.line swtch.S:/^swtch/ 
+to perform a context switch to the target process.
+.code swtch 
+saves the current registers and loads the saved registers
+of the target process
+.code proc->context ) (
+into the x86 hardware registers,
+including the stack pointer and instruction pointer.
+The current context is not a process but rather a special
+per-cpu scheduler context, so
+.code scheduler
+tells
+.code swtch
+to save the current hardware registers in per-cpu storage
+.code cpu->scheduler ) (
+rather than in any process's context.
+We'll examine
+.code switch
+in more detail in Chapter \*[CH:SCHED].
 The final
 .code ret
 instruction 
@@ -1020,12 +1011,11 @@ off the stack.
 The contents of the trap frame
 have been transferred to the CPU state,
 so the processor continues at the
-.code %cs:%eip
+.code %eip
 specified in the trap frame.
 For
 .code initproc ,
-that means
-.code SEG_UCODE:0 ,
+that means virtual address zero,
 the first instruction of
 .code initcode.S .
 .PP
@@ -1035,22 +1025,28 @@ holds zero and
 .code %esp
 holds 4096.
 These are virtual addresses in the process's user address space.
-The processor's segmentation machinery translates them into physical addresses.
-The relevant segmentation registers (cs, ds, and ss) and
-segment descriptors were set up by 
+The processor's paging hardware translates them into physical addresses
+(we'll ignore segments since xv6 sets them up with the identity mapping
+.line vm.c:/^ksegment/ ).
+.code allocuvm
+set up the PTE for the page at virtual address zero to
+point to the physical memory allocated for this process,
+and marked that PTE with
+.code PTE_U
+so that the user process can use it.
+No other PTEs in the process's page table have the
+.code PTE_U
+bit set.
+The fact that
 .code userinit
-and
-.code usegment
-to translate virtual address zero to physical address
-.code p->mem ,
-with a maximum virtual address of
-.code p->sz .
-The fact that the process is running with CPL=3 (in the low
-bits of cs) means that it cannot use the segment descriptors
-.code SEG_KCODE
-and
-.code SEG_KDATA ,
-which would give it access to all of physical memory.
+.line proc.c:/UCODE/
+set up the low bits of
+.register cs
+to run the process's user code at CPL=3 means that the user code
+can only use PTE entries with
+.code PTE_U
+set, and cannot modify sensitive hardware registers such as
+.register cr3 .
 So the process is constrained to using only its own memory.
 .PP
 .code Initcode.S
@@ -1118,53 +1114,48 @@ in Chapter \*[CH:EXEC].
 .PP
 Most operating systems have adopted the process
 concept, and most processes look similar to xv6's.
-A real operating system would use an explicit free list
-for constant time allocation instead of the linear time search in
+A real operating system would find free
+.code proc
+structures with an explicit free list
+in constant time instead of the linear-time search in
 .code allocproc ;
 xv6 uses the linear scan
-(the first of many) for its utter simplicity.
+(the first of many) for simplicity.
 .PP
-Xv6 departs from modern operating systems in its use of
-segmentation registers for process isolation and address
-translation.
-Most operating systems for the x86
-uses the paging hardware for address translation
-and protection; they treat the segmentation hardware
-mostly as a nuisance to be disabled by creating no-op segments
-like the boot sector did.
-However, a simple paging scheme is somewhat more complex to
-implement than a simple segmentation scheme.  Since xv6
-does not aspire to any of the advanced features which
-would require paging, it uses segmentation instead.
-.ig
-The real reasons are that we didn't want to make it too easy
-to copy paging code from xv6 to jos, and that we wanted to
-provide a contrast to paging, and that it's a nod to V6's
-use of PDP11 segments. Next time let's use paging.
-..
-.PP
-The one common use of segmentation is to implement
-variables like xv6's
-.code cp
+Like most operating systems, xv6 uses the paging hardware
+for memory protection and mapping and mostly ignores
+segmentation. Most operating systems make far more sophisticated
+use of paging than xv6; for example, xv6 lacks demand
+paging from disk, copy-on-write fork, shared memory,
+and automatically extending stacks.
+xv6 does use segments for the common trick of
+implementing per-cpu variables such as
+.code proc
 that are at a fixed address but have different values
-in different threads.
-Implementations of per-CPU (or per-thread) storage on other
+on different CPUs.
+Implementations of per-CPU (or per-thread) storage on non-segment
 architectures would dedicate a register to holding a pointer
 to the per-CPU data area, but the x86 has so few general
 registers that the extra effort required to use segmentation
 is worthwhile.
 .PP
-xv6's use of segmentation instead of paging is awkward in a
-couple of ways, even given its low ambitions.
-First, it causes user-space address zero to be a valid address,
-so that programs do  not fault when they dereference null pointers;
-a paging system could force faults by marking the first page
-invalid, which turns out to be invaluable for catching bugs
-in C code.
-Second, xv6's segment scheme places the stack at a relatively low
-address which prevents automatic stack extension.
-Finally, all of a process's memory must be contiguous in physical
-memory, leading to fragmentation and/or copying.
+xv6's address space layout is awkward.
+The user stack is at a relatively low address and grows down,
+which means it cannot grow very much.
+User memory cannot grow beyond 640 kilobytes.
+Most operating systems avoid both of these problems by
+locating the kernel instructions and data at high
+virtual addresses (e.g. starting at 0x80000000) and
+putting the top of the user stack just beneath the
+kernel. Then the user stack can grow down from high
+addresses, user data (via
+.code sbrk )
+can grow up from low addresses, and there is hundreds of megabytes of
+growth potential between them.
+It is also potentially awkward for the kernel to map all of
+physical memory into the virtual address space; for example
+that would leave zero virtual address space for user mappings
+on a 32-bit machine with 4 gigabytes of DRAM.
 .PP
 In the earliest days of operating systems,
 each operating system was tailored to a specific
@@ -1187,25 +1178,20 @@ so modern x86 operating systems typically
 augment one or more of them with complex
 sanity checks and heuristics.
 In the interest of simplicity, xv6 assumes
-that the machine it runs on has at least one megabyte
-of memory past the end of the kernel.
-Since the kernel is around 50 kilobytes and is
-loaded one megabyte into the address space,
-xv6 is assuming that the machine has at 
-least a little more than 2 MB of memory.
+that the machine it runs on has at least 16 megabytes
+of memory.
 A real operating system would have to do a better job.
 .PP
-Memory allocation was a hot topic a long time ago.  Basic problem was
-how to make the most efficient use of the available memory and how
-best to prepare for future requests without knowing what the future
-requests were going to be.  See Knuth.  Today, more effort is spent on
-making memory allocators fast rather than on making them
-space-efficient.  The runtimes of today's modern programming languages
-allocate mostly many small blocks.  Xv6 avoids smaller than a page
-allocations by using fixed-size data structures.  A real kernel
+Memory allocation was a hot topic a long time ago, the basic problems being
+efficient use of very limited memory and
+preparing for unknown future requests.
+See Knuth.  Today people care more about speed than
+space-efficiency.  In addition, a more elaborate kernel
+would likely allocate many different sizes of small blocks,
+rather than (as in xv6) just 4096-byte blocks;
+a real kernel
 allocator would need to handle small allocations as well as large
-ones, although the paging hardware might keep it from needing to
-handle objects larger than a page.
+ones.
 .\"
 .section "Exercises"
 .\"
