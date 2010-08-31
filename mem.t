@@ -220,52 +220,6 @@ memory and for these kernel data strucures:
 kernel stacks, pipe buffers, and page tables.
 The allocator manages page-sized (4096-byte) blocks of memory.
 .PP
-.code Main
-calls 
-.code pminit ,
-which in turn calls
-.code kinit
-to initialize the allocator
-.line vm.c:/kinit/ .
-.code pminit
-ought to determine how much physical
-memory is available, but this
-turns out to be difficult on the x86.
-.code pminit
-assumes that the machine has
-16 megabytes
-.code PHYSTOP ) (
-of physical memory, and tells
-.code kinit
-to use all the memory between the end of the kernel
-and 
-.code PHYSTOP
-as the initial pool of free memory.
-.PP
-.code Kinit
-.line kalloc.c:/^kinit/
-calls
-.code kfree
-with the address of each page of memory in the
-range that
-.code pminit
-passed to it.
-This will cause
-.code kfree
-to add that memory to the allocator's list of free pages.
-A PTE can only refer to a physical address that is aligned
-on a 4096-byte boundary (is a multiple of 4096), so
-.code kinit
-uses
-.code PGROUNDUP
-and
-.code PGROUNDDOWN 
-to ensure that it frees only aligned physical addresses.
-The allocator starts with no memory;
-these initial calls to
-.code kfree
-gives it some to manage.
-.PP
 The allocator maintains a
 .italic "free list" 
 of addresses of physical memory pages that are available
@@ -274,9 +228,9 @@ Each free page's list element is a
 .code struct
 .code run 
 .line kalloc.c:/^struct.run/ .
-But where does the allocator get the memory
+Where does the allocator get the memory
 to hold that data structure?
-It store the free page's
+It store each free page's
 .code run
 structure in the free page itself,
 since there's nothing else stored there.
@@ -292,6 +246,50 @@ and
 .code release ;
 Chapter \*[CH:LOCK] will examine
 locking in detail.
+.PP
+.code Main
+calls 
+.code kinit
+to initialize the allocator
+.line kalloc.c:/^kinit/ .
+.code kinit
+ought to determine how much physical
+memory is available, but this
+turns out to be difficult on the x86.
+Instead it assumes that the machine has
+16 megabytes
+.code PHYSTOP ) (
+of physical memory, and uses all the memory between the end of the kernel
+and 
+.code PHYSTOP
+as the initial pool of free memory.
+.code kinit
+uses the symbol
+.code end ,
+which the linker causes to have an address that is just beyond
+the end of the kernel's data segment.
+.PP
+.code Kinit
+.line kalloc.c:/^kinit/
+calls
+.code kfree
+with the address of each page of memory between
+.code end
+and
+.code PHYSTOP .
+This will cause
+.code kfree
+to add those pages to the allocator's free list.
+A PTE can only refer to a physical address that is aligned
+on a 4096-byte boundary (is a multiple of 4096), so
+.code kinit
+uses
+.code PGROUNDUP
+to ensure that it frees only aligned physical addresses.
+The allocator starts with no memory;
+these initial calls to
+.code kfree
+gives it some to manage.
 .PP
 .code Kfree
 .line kalloc.c:/^kfree/
