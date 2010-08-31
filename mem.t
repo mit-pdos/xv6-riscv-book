@@ -1,6 +1,13 @@
 .so book.mac
 .ig
-  this is even rougher than most chapters
+  terminology:
+    process: refers to execution in user space, or maybe struct proc &c
+    process memory: the lower 640 k
+    process's kernel thread
+    so: swtch() switches to a given process's kernel thread
+    trapret's iret switches to the process of the current
+      kernel thread
+  delete coalescing from kfree(), and associated text?
   talk a little about initial page table conditions:
     paging not on, but virtual mostly mapped direct to physical,
     which is what things look like when we turn paging on as well
@@ -8,9 +15,6 @@
   mention why still have SEG_UCODE/SEG_UDATA?
   do we ever really say what the low two bits of %cs do?
     in particular their interaction with PTE_U
-  i worry that we often say "process" when it is not clear whether
-    we're talking about running in user space or in the kernel
-    e.g. "a process isn't allowed to look at the kernel's memory"
   talk about why there are three main*() routines in main.c?
 ..
 .chapter CH:MEM "Processes"
@@ -34,26 +38,28 @@ the illusion that each process has its own private CPU.
 .section "Address Spaces"
 .\"
 .PP
-xv6 ensures that each user process can only read and write the memory that
+xv6 ensures that each process can only read and write the memory that
 xv6 has allocated to it, and not for example the kernel's memory or
 the memory of other processes. xv6 also arranges for each process's
-user memory to be contiguous and to start at virtual address zero. The C
+memory to be contiguous and to start at virtual address zero. The C
 language definition and the Gnu linker expect process memory to be
-contiguous. Process memory starts at zero because that is what Unix
-has always done. A process's view of memory is called an address space.
+contiguous. Process memory starts at zero because that is traditional.
+A process's view of memory is called an address space.
 .PP
 x86 protected mode defines three kinds of addresses. Executing
-software generates
-virtual addresses when it fetches instructions or reads and writes
-memory; instructions cannot directly use a linear or physical addresses.
+software uses
+virtual addresses when fetching instructions or reading and writing
+memory.
 The segmentation hardware translates virtual to linear addresses.
 Finally, the paging hardware (when enabled) translates linear to physical
-addresses. xv6 sets up the segmentation hardware so that virtual and
+addresses.
+Software cannot directly use a linear or physical address.
+xv6 sets up the segmentation hardware so that virtual and
 linear addresses are always the same: the segment descriptors
 all have a base of zero and the maximum possible limit.
 xv6 sets up the x86 paging hardware to translate (or "map") linear to physical
 addresses in a way that implements process address spaces with
-the properties outlined above.
+the properties outlined in the previous paragraph.
 .PP
 The paging hardware uses a page table to translate linear to
 physical addresses. A page table is logically an array of 2^20
@@ -67,8 +73,8 @@ translated physical address.  Thus a page table gives
 the operating system control over linear-to-physical address translations
 at the granularity of aligned chunks of 4096 (2^12) bytes.
 .PP
-Each PTE also contains flag bits that affect how the page of linear
-addresses that refer to the PTE are translated.
+Each PTE contains flag bits that tell the paging hardware
+to restrict how the associated linear address is used.
 .code PTE_P
 controls whether the PTE is valid: if it is
 not set, a reference to the page causes a fault (i.e. is not allowed).
@@ -80,80 +86,69 @@ instruction fetches are allowed.
 controls whether user programs are allowed to use the
 page; if clear, only the kernel is allowed to use the page.
 .PP
-A few reminders about terminology.
+A few notes about terms.
 Physical memory refers to storage cells in DRAM.
 A byte of physical memory has an address, called a physical address.
 A program uses virtual addresses, which the segmentation and
 paging hardware translates to physical addresses, and then
-sends to the DRAM system to read or write storage.
-At this level of discussion there is no such thing as virtual memory.
-If you want to store data in memory, you must find some
-physical memory, install mappings to translate some virtual
-address to the physical address of your memory, and write
-your data to that virtual address.
+sends to the DRAM hardware to read or write storage.
+At this level of discussion there is no such thing as virtual memory,
+only virtual addresses.
+Because xv6 sets up segments to make virtual and linear addresses
+always identical, from now on we'll stop distinguishing between
+them and use virtual for both.
 .PP
 xv6 uses page tables to implement process address spaces as
 follows. Each process has a separate page table, and xv6 tells
 the page table hardware to switch
 page tables when xv6 switches between processes.
-A process's user-accessible memory starts at linear address
-zero and can have size of at most 640 kilobytes.
-xv6 sets up the PTEs for the lower 640 kilobytes (i.e.,
-the first 160 PTEs in the process's page table) to point
+A process's memory starts at virtual address
+zero and can have size of at most 640 kilobytes
+(160 pages).
+xv6 sets up the PTEs for the process's virtual addresses to point
 to whatever pages of physical memory xv6 has allocated for
-the process's memory. xv6 sets the
-.code PTE_U
-bit on the first 160 PTEs so that a process can use its
-own memory.
+the process's memory, and sets the 
+.code PTE_U ,
+.code PTE_W ,
+and 
+.code PTE_P
+flags in these PTEs.
 If a process has asked xv6 for less than 640 kilobytes,
-xv6 will fill in fewer than 160 of these PTEs.
+xv6 will leave 
+.code PTE_P
+clear in the remainder of the first 160 PTEs.
 .PP
 Different processes' page tables translate the first 160 pages to
 different pages of physical memory, so that each process has
 private memory.
-However, xv6 sets up every process's page table to translate linear addresses
+However, xv6 sets up every process's page table to translate virtual addresses
 above 640 kilobytes in the same way.
-To a first approximation, all processes' page tables map linear
-addresses above 640 kilobytes directly to physical addresses.
+To a first approximation, all processes' page tables map virtual
+addresses above 640 kilobytes directly to physical addresses,
+which makes it easy to address physical memory.
 However, xv6 does not set the
 .code PTE_U
-flag in the relevant PTEs.
-This means that the kernel is allowed to use linear addresses
-above 640 kilobytes, but user processes are not.
+flag in the PTEs above 640 kilobytes,
+so only the kernel can use them.
 For example, the kernel can use its own instructions and data
-(at linear/physical addresses starting at one megabyte).
-The kernel can also read and write all the physical memory beyond
-the end of its data segment, since linear addresses map directly
-to physical addresses in this range.
+(at virtual/physical addresses starting at one megabyte).
+The kernel can also read and write the physical memory beyond
+the end of its data segment.
 .PP 
-Note that every process's page table simultaneously contains
-translations for both all of the user process's memory and all
+Every process's page table simultaneously contains
+translations for both all of the process's memory and all
 of the kernel's memory.
-This setup is very convenient: it means that xv6 can switch between
-the kernel and the process when making system calls without
+This setup allows system calls and interrupts to switch
+between a running process and the kernel without
 having to switch page tables.
 For the most part the kernel does not have its own page
 table; it is almost always borrowing some process's page table.
 The price paid for this convenience is that the sum of the size
 of the kernel and the largest process must be less than four
-gigabytes on a machine with 32-bit addresses. xv6 has much
-more restrictive sizes---each user process must fit in 640 kilobytes---but 
-that 640 is easy to increase.
+gigabytes on a machine with 32-bit addresses.
 .PP
-With the page table arrangement that xv6 sets up, a process can use
-the lower 640 kilobytes of linear addresses, but cannot use any
-other addresses---even though xv6 maps all of physical memory
-in every process's page table, it sets the
-.code PTE_U
-bits only for addresses under 640 kilobytes.
-Assuming many things (a user process can't change the page table,
-xv6 never maps the same physical page into the lower 640 kilobytes
-of more than one process's page table, etc.),
-the result is that a process can use its own memory
-but not the memory of any other process or of the kernel.
-.PP
-To review, xv6 ensures that each user process can only use its own memory,
-and that a user process sees its memory as having contiguous addresses.
+To review, xv6 ensures that each process can only use its own memory,
+and that a process sees its memory as having contiguous virtual addresses.
 xv6 implements the first by setting the
 .code PTE_U
 bit only on PTEs of virtual addresses that refer to the process's own memory.
@@ -167,7 +162,7 @@ xv6 needs to allocate physical memory at run-time to store its own data structur
 and to store processes' memory. There are three main questions
 to be answered when allocating memory. First,
 what physical memory (i.e. DRAM storage cells) are to be used?
-Second, at what linear address or addresses is the newly
+Second, at what virtual address or addresses is the newly
 allocated physical memory to be mapped? And third, how
 does xv6 know what physical memory is free and what memory
 is already in use?
@@ -181,35 +176,36 @@ pages back to the list.
 .PP
 When the kernel allocates physical memory that only it will use, it
 does not need to make any special arrangement to be able to
-refer to that memory with a linear address: the kernel sets up
-all page tables so that linear addresses map directly to physical
+refer to that memory with a virtual address: the kernel sets up
+all page tables so that virtual addresses map directly to physical
 addresses for addresses above 640 KB. Thus if the kernel allocates
 the physical page at physical address 0x200000 for its internal use,
-it can use that memory via linear address 0x200000 without further ado.
+it can use that memory via virtual address 0x200000 without further ado.
 .PP
-What if a user process allocates memory with
+What if a process allocates memory with
 .code sbrk ?
 Suppose that the current size of the process is 12 kilobytes,
 and that xv6 finds a free page of physical memory at physical address
-0x201000. In order to ensure that user process memory remains contiguous,
-that physical page should appear at linear address 0x3000 when
+0x201000. In order to ensure that process memory remains contiguous,
+that physical page should appear at virtual address 0x3000 when
 the process is running.
 This is the time (and the only time) when xv6 uses the paging hardware's
-ability to translate a linear address to a different physical address.
-xv6 modifies the 3rd PTE (which covers the range 0x3000 to 0x3fff)
+ability to translate a virtual address to a different physical address.
+xv6 modifies the 3rd PTE (which covers virtual addresses 0x3000 through 0x3fff)
 in the process's page table
 to refer to physical page number 0x201 (the upper 20 bits of 0x201000),
-and sets the 
-.code PTE_U
+and sets
+.code PTE_U ,
+.code PTE_W ,
 and
-.code PTE_W
-bits in that PTE.
-Now the user process will be able to use 16 kilobytes of contiguous
-memory starting at linear address zero.
+.code PTE_P
+in that PTE.
+Now the process will be able to use 16 kilobytes of contiguous
+memory starting at virtual address zero.
 Two different PTEs now refer to the physical memory at 0x201000:
-the PTE for linear address 0x201000 and the PTE for linear address
-0x3000. The kernel can use the memory with either of these linear
-addresses; the user process can only use the second.
+the PTE for virtual address 0x201000 and the PTE for virtual address
+0x3000. The kernel can use the memory with either of these 
+addresses; the process can only use the second.
 .\"
 .section "Code: Memory allocator"
 .\"
@@ -219,12 +215,12 @@ The xv6 kernel calls
 and
 .code kfree
 to allocate and free physical memory at run-time.
-The kernel uses run-time allocation for user process
+The kernel uses run-time allocation for process
 memory and for these kernel data strucures:
 kernel stacks, pipe buffers, and page tables.
 The allocator manages page-sized (4096-byte) blocks of memory.
-The kernel can directly use allocated memory through a linear
-address equal to the allocated memory's physical address.
+.\" The kernel can directly use allocated memory through a virtual
+.\" address equal to the allocated memory's physical address.
 .PP
 .code Main
 calls 
@@ -273,13 +269,16 @@ of merging contiguous blocks of freed memory.
 Each contiguous region of available
 memory is represented by a
 .code struct
-.code run .
+.code run 
+.line kalloc.c:/^struct.run/ .
 But where does the allocator get the memory
 to hold that data structure?
 It uses the memory being tracked 
 to store the
 .code run
-structure tracking it.
+structure tracking it;
+since the allocator only needs to keep track of free
+memory, there is nothing else stored there.
 Each
 .code run
 .code *r
@@ -308,26 +307,21 @@ begins by setting every byte in the
 memory being freed to the value 1.
 This step is not necessary,
 but it helps break incorrect code that
-continues to refer to memory after freeing it.
+reads memory after freeing it.
 This kind of bug is called a dangling reference.
-By setting the memory to a bad value,
-.code kfree
-increases the chance of making such
-code use an integer or pointer that is out of range
+Code that interprets the contents of freed memory as a pointer
+will see an address that is out of range
 .code 0x11111111 "" (
 is around 286 million).
 .PP
 .code Kfree 's
-first real work is to store a
-.code run
-in the memory at
-.code v .
-It uses a cast in order to make
-.code p ,
-which is a pointer to a
+first real work is to cast
+.code v 
+to a pointer to
+.code struct
 .code run ,
-refer to the same memory as
-.code v .
+in
+.code p .
 It also sets
 .code pend
 to the
@@ -480,20 +474,19 @@ and stores a pointer to the resulting page table in
 since it will be used later.
 .PP
 An x86 page table is stored in physical memory, in the form of a
-4096-byte "page directory" that contains pointers to 1024
+4096-byte "page directory" that contains 1024 PTE-like references to 
 "page table pages."
 Each page table page is an array of 1024 32-bit PTEs.
-The page directory is also an array of 1024 PTEs, with each
-physical page number referring to a page table page.
 The paging hardware uses the top 10 bits of a virtual address to
 select a page directory entry.
 If the page directory entry is marked
 .code PTE_P ,
-the paging hardware uses the next 10 bits of virtual
+the paging hardware uses the next 10 bits of the virtual
 address to select a PTE from the page table page that the
 page directory entry refers to.
-If the page directory entry is not valid, the paging hardware
-raises a fault.
+If either of the page directory entry or the PTE has no
+.code PTE_P ,
+the paging hardware raises a fault.
 This two-level structure allows a page table to omit entire
 page table pages in the common case in which large ranges of
 virtual addresses have no mappings.
@@ -503,18 +496,18 @@ allocates a page of memory to hold the page directory.
 It then calls
 .code mappages
 to install translations for ranges of memory that the kernel
-will use; these translations all map a virtual address to the
+will use; these translations all map each virtual address to the
 same physical address.  The translations include the kernel's
 instructions and data, physical memory up to
 .code PHYSTOP ,
 and memory ranges which are actually I/O devices.
 .code setupkvm
-does not install any mappings for the process's user memory;
+does not install any mappings for the process's memory;
 this will happen later.
 .PP
 .code mappages
 .line vm.c:/^mappages/
-installs mappings into the page table
+installs mappings into a page table
 for a range of virtual addresses to
 a corresponding range of physical addresses.
 It does this separately for each virtual address in the range,
@@ -523,7 +516,7 @@ For each virtual address to be mapped,
 .code mappages
 calls
 .code walkpgdir
-to find the address of the PTE that holds the address's translation.
+to find the address of the PTE that should the address's translation.
 It then initializes the PTE to hold the relevant physical page
 number, the desired permissions (
 .code PTE_W
@@ -576,30 +569,40 @@ to enable paging.
 .\"
 .PP
 This section describes how xv6 creates the very first process.
-Each xv6 process has many pieces of state, which xv6 gathers
-into a
+The xv6 kernel maintains many pieces of state for each process,
+which it gathers into a
 .code struct
 .code proc
 .line proc.h:/^struct.proc/ .
-A process's most important pieces of state are its user
-memory, its kernel stack, and its run state.
+A process's most important pieces of kernel state are its 
+page table and the physical memory it refers to,
+its kernel stack, and its run state.
 We'll use the notation
 .code p->xxx
 to refer to elements of the
 .code proc
 structure.
 .PP
+You should view the kernel state of a process as a thread
+that executes in the kernel on behalf of a process.
+For example, when a process makes a system call, the CPU
+switches from executing the process to executing the
+process's kernel thread.
+The process's kernel thread executes the implementation
+of the system call (e.g., reads a file), and then
+returns back to the process.
+.PP
 .code p->pgdir
 holds the process's page table, an array of PTEs.
 xv6 causes the paging hardware to use a process's
 .code p->pgdir
-when xv6 starts running that process.
+when executing that process.
 A process's page table also serves as the record of the
-addresses of the physical pages that store the process's user memory.
+addresses of the physical pages allocated to store the process's memory.
 .PP
 .code p->kstack
 points to the process's kernel stack.
-When a process is executing in the kernel, for example in a system
+When a process's kernel thread is executing, for example in a system
 call, it must have a stack on which to save variables and function
 call return addresses.  xv6 allocates one kernel stack for each process.
 The kernel stack is separate from the user stack, since the
@@ -630,7 +633,7 @@ is to allocate a slot
 .code proc )
 in the process table and
 to initialize the parts of the process's state
-required for it to execute in the kernel.
+required for its kernel thread to execute.
 .code Allocproc 
 is called for all new processes, while
 .code userinit
@@ -648,7 +651,7 @@ gives the process a unique
 .code pid
 .lines proc.c:/EMBRYO/,/nextpid/ .
 Next, it tries to allocate a kernel stack for the
-process.  If the memory allocation fails, 
+process's kernel thread.  If the memory allocation fails, 
 .code allocproc
 changes the state back to
 .code UNUSED
@@ -662,31 +665,31 @@ Ordinarily processes are only created by
 so a new process
 starts life copied from its parent.  The result of 
 .code fork
-is a child
-that has identical user memory contents to its parent.
+is a child process
+that has identical memory contents to its parent.
 .code allocproc
 sets up the child to 
-start life running in the kernel, with a specially prepared kernel
+start life running its kernel thread, with a specially prepared kernel
 stack and set of kernel registers that cause it to "return" to user
 space at the same place (the return from the
 .code fork
 system call) as the parent.
 .code allocproc
 does part of this work by setting up return program counter
-values that will cause the new process to first execute in
+values that will cause the new process's kernel thread to first execute in
 .code forkret
 and then in
 .code trapret
 .lines proc.c:/uint.trapret/,/uint.forkret/ .
-The new process will start running in the kernel,
+The kernel thread will start executing
 with register contents copied from
 .code p->context .
 Thus setting
 .code p->context->eip
 to
 .code forkret
-will cause the new process to execute at
-the start of the kernel function
+will cause the kernel thread to execute at
+the start of 
 .code forkret 
 .line proc.c:/^forkret/ .
 This function 
@@ -706,7 +709,7 @@ will return.
 .code trapret
 restores user registers
 from values stored at the top of the kernel stack and jumps
-into the user process
+into the process
 .line trapasm.S:/^trapret/ .
 This setup is the same for ordinary
 .code fork
@@ -728,7 +731,7 @@ look just like those that would be there if the
 process had entered the kernel via an interrupt
 .lines proc.c:/tf..cs.=./,/tf..eip.=./ ,
 so that the ordinary code for returning from
-the kernel back to the user part of a process will work.
+the kernel back to the process's user code will work.
 These values are a
 .code struct
 .code trapframe
@@ -875,7 +878,7 @@ calls
 .code mpmain
 calls
 .code scheduler
-to start running user processes
+to start running processes
 .line main.c:/scheduler/ .
 .code Scheduler
 .line proc.c:/^scheduler/
@@ -921,10 +924,10 @@ to
 and calls
 .code swtch
 .line swtch.S:/^swtch/ 
-to perform a context switch to the target process.
+to perform a context switch to the target process's kernel thread.
 .code swtch 
 saves the current registers and loads the saved registers
-of the target process
+of the target kernel thread
 .code proc->context ) (
 into the x86 hardware registers,
 including the stack pointer and instruction pointer.
@@ -935,7 +938,7 @@ tells
 .code swtch
 to save the current hardware registers in per-cpu storage
 .code cpu->scheduler ) (
-rather than in any process's context.
+rather than in any process's kernel thread context.
 We'll examine
 .code switch
 in more detail in Chapter \*[CH:SCHED].
@@ -946,7 +949,7 @@ instruction
 pops a new
 .code eip
 from the stack, finishing the context switch.
-Now the processor is running process
+Now the processor is running the kernel thread of process
 .code p .
 .PP
 .code Allocproc
@@ -1024,7 +1027,7 @@ At this point,
 holds zero and
 .code %esp
 holds 4096.
-These are virtual addresses in the process's user address space.
+These are virtual addresses in the process's address space.
 The processor's paging hardware translates them into physical addresses
 (we'll ignore segments since xv6 sets them up with the identity mapping
 .line vm.c:/^ksegment/ ).
@@ -1033,7 +1036,7 @@ set up the PTE for the page at virtual address zero to
 point to the physical memory allocated for this process,
 and marked that PTE with
 .code PTE_U
-so that the user process can use it.
+so that the process can use it.
 No other PTEs in the process's page table have the
 .code PTE_U
 bit set.
