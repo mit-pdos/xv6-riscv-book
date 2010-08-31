@@ -219,8 +219,6 @@ The kernel uses run-time allocation for process
 memory and for these kernel data strucures:
 kernel stacks, pipe buffers, and page tables.
 The allocator manages page-sized (4096-byte) blocks of memory.
-.\" The kernel can directly use allocated memory through a virtual
-.\" address equal to the allocated memory's physical address.
 .PP
 .code Main
 calls 
@@ -248,46 +246,40 @@ as the initial pool of free memory.
 .line kalloc.c:/^kinit/
 calls
 .code kfree
-with the address that
+with the address of each page of memory in the
+range that
 .code pminit
 passed to it.
 This will cause
 .code kfree
 to add that memory to the allocator's list of free pages.
+A PTE can only refer to a physical address that is aligned
+on a 4096-byte boundary (is a multiple of 4096), so
+.code kinit
+uses
+.code PGROUNDUP
+and
+.code PGROUNDDOWN 
+to ensure that it frees only aligned physical addresses.
 The allocator starts with no memory;
-this initial call to
+these initial calls to
 .code kfree
 gives it some to manage.
 .PP
 The allocator maintains a
 .italic "free list" 
-of memory regions that are available
+of addresses of physical memory pages that are available
 for allocation.
-It keeps the list sorted in increasing
-order of address in order to ease the task
-of merging contiguous blocks of freed memory.
-Each contiguous region of available
-memory is represented by a
+Each free page's list element is a
 .code struct
 .code run 
 .line kalloc.c:/^struct.run/ .
 But where does the allocator get the memory
 to hold that data structure?
-It uses the memory being tracked 
-to store the
+It store the free page's
 .code run
-structure tracking it;
-since the allocator only needs to keep track of free
-memory, there is nothing else stored there.
-Each
-.code run
-.code *r
-represents the memory from address
-.code (uint)r
-to
-.code (uint)r 
-.code +
-.code r->len .
+structure in the free page itself,
+since there's nothing else stored there.
 The free list is
 protected by a spin lock 
 .line kalloc.c:/^struct/,/}/ .
@@ -305,148 +297,23 @@ locking in detail.
 .line kalloc.c:/^kfree/
 begins by setting every byte in the 
 memory being freed to the value 1.
-This step is not necessary,
-but it helps break incorrect code that
-reads memory after freeing it.
-This kind of bug is called a dangling reference.
-Code that interprets the contents of freed memory as a pointer
-will see an address that is out of range
-.code 0x11111111 "" (
-is around 286 million).
-.PP
-.code Kfree 's
-first real work is to cast
+This will cause code that uses memory after freeing it
+(uses "dangling references")
+to read garbage instead of the old valid contents;
+hopefully that will cause such code to break faster.
+Then
+.code kfree
+casts
 .code v 
 to a pointer to
 .code struct
 .code run ,
-in
-.code p .
-It also sets
-.code pend
-to the
-.code run
-for the block following
-.code v
-.lines kalloc.c:/p.=..struct.run/,/pend.=/ .
-If that block is free,
-.code pend
-will appear in the free list.
-Now 
-.code kfree
-walks the free list, considering each run 
+records the old start of the free list in
+.code r->next ,
+and sets the free list equal to
 .code r .
-The list is sorted in increasing address order, 
-so the new run 
-.code p
-belongs before the first run
-.code r
-in the list such that
-.code r >
-.code pend .
-The walk stops when either such an
-.code r
-is found or the list ends,
-and then 
-.code kfree
-inserts
-.code p
-in the list before
-.code r
-.lines kalloc.c:/Insert.p.before.r/,/rp.=.p/ .
-The odd-looking
-.code for
-loop is explained by the assignment
-.code *rp
-.code =
-.code p :
-in order to be able to insert
-.code p
-.italic before
-.code r ,
-the code had to keep track of where
-it found the pointer 
-.code r ,
-so that it could replace that pointer with 
-.code p .
-The value
-.code rp
-points at where
-.code r
-came from.
-.PP
-There are two other cases besides simply adding
-.code p
-to the list.
-If the new run
-.code p
-abuts an existing run,
-those runs need to be coalesced into one large run,
-so that allocating and freeing small blocks now
-does not preclude allocating large blocks later.
-The body of the 
-.code for
-loop checks for these conditions.
-First, if
-.code rend
-.code ==
-.code p
-.line kalloc.c:/rend.==.p/ ,
-then the run
-.code r
-ends where the new run
-.code p
-begins.
-In this case, 
-.code p
-can be absorbed into
-.code r
-by increasing
-.code r 's
-length.
-If growing 
-.code r
-makes it abut the next block in the list,
-that block can be absorbed too
-.lines "'kalloc.c:/r->next && r->next == pend/,/}/'" .
-Second, if
-.code pend
-.code ==
-.code r
-.line kalloc.c:/pend.==.r/ ,
-then the run 
-.code p
-ends where the new run
-.code r
-begins.
-In this case,
-.code r
-can be absorbed into 
-.code p
-by increasing
-.code p 's
-length
-and then replacing
-.code r
-in the list with
-.code p
-.lines "'kalloc.c:/pend.==.r/,/}/'" .
-.PP
 .code Kalloc
-has a simpler job than 
-.code kfree :
-it walks the free list looking for
-a run that is large enough to
-accommodate the allocation.
-When it finds one, 
-.code kalloc
-takes the memory from the end of the run
-.lines "'kalloc.c:/r->len >= n/,/-=/'" .
-If the run has no memory left,
-.code kalloc
-deletes the run from the list
-.lines "'kalloc.c:/r->len == 0/,/rp = r->next/'"
-before returning.
+removes and returns the first element in the free list.
 .\"
 .section "Code: Page Table Initialization"
 .\"
