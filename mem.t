@@ -634,24 +634,6 @@ calls
 .line vm.c:/^setupkvm/
 to create a page table for the process with (at first) mappings
 only for memory that the kernel uses.
-It then calls
-.code allocuvm
-in order to allocate physical memory for the process and
-add mappings for it to the process's page table.
-.code allocuvm
-.line vm.c:/^allocuvm/
-calls
-.code walkpgdir
-to find whether each page in the required range of
-virtual addresses is already mapped in the process's
-page table.
-If it isn't,
-.code allocuvm
-allocates a page of physical memory with
-.code kalloc
-and calls
-.code mappages
-to map the virtual address to the physical address of the allocated page.
 .PP
 The initial contents of the first process's memory are
 the compiled form of
@@ -668,14 +650,13 @@ telling the location and size of the binary
 copies that binary into the new process's memory
 by calling
 .code inituvm ,
-which uses
-.code walkpgdir
-to find the physical address of each of the process's
-pages and copies successive pages of the binary there
+which allocates one page of physical memory,
+maps virtual address zero to that memory,
+and copies the binary to that page
 .line vm.c:/^inituvm/ .
+Then 
 .code userinit
-zeros the rest of the process's memory.
-Then it sets up the trap frame with the initial user mode state:
+sets up the trap frame with the initial user mode state:
 the
 .code cs
 register contains a segment selector for the
