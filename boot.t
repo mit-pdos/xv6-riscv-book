@@ -43,7 +43,7 @@ managing each device's internal traps, and so on.
 ..
 .PP
 A computer's CPU (central processing unit, or processor)
-runs a conceptually loop:
+runs a conceptually simple loop:
 it inspects the value of a register called the program counter,
 reads a machine instruction from that address in memory,
 advances the program counter past the instuction,
@@ -51,7 +51,7 @@ and executes the instruction.
 Repeat.
 If the execution of the instruction does not modify the
 program counter, this loop will interpret the
-memory pointed at by the program counter as a simple
+memory pointed at by the program counter as a 
 sequence of machine instructions to run one after the other.
 Instructions that do change the program counter implement
 conditional branches, unconditional branches,
@@ -59,7 +59,7 @@ and function calls.
 .PP
 The execution engine is useless without the ability to store
 and modify program data.
-The simplest, fastest storage for
+The fastest storage for
 data is provided by the processor's register set.  A
 register is a storage cell inside the processor itself,
 capable of holding a machine word-sized value (typically 16,
