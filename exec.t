@@ -20,29 +20,44 @@ file descriptors, process id, and parent process the same.
 is thus little more than a binary loader, just like the one 
 in the boot sector from Chapter \*[CH:BOOT].
 The additional complexity comes from setting up the stack.
-The memory image of an executing process looks like:
+The user memory image of an executing process looks like:
 .P1
-[XXX better picture: not ASCII art,
-show individual argv pointers, show argc, 
-show argument strings, show fake return address.]
-
-+---------------------------------------+
-| text | data | stack | args | heap ... |
-+---------------------------------------+
-                      ^
-                      |
-                  initial sp
+      _________
+640K: |       |
+      | ...   |
+      | heap  |
+      | stack |
+      | data  |
+0:    | text  |
+      ---------
 .P2
-In xv6, the stack is a single page—4096 bytes—long.
-The command-line arguments follow the stack immediately
-in memory, so that the program can start at
+The heap is above the stack so that it can expand (with
+.code sbrk ).
+The stack is a single page—4096 bytes—long.
+Strings containing the command-line arguments, as well as an
+array of pointers to them, are at the very top of the stack.
+Just under that the kernel places values that allow a program
+to start at
 .code main
 as if the function call
 .code main(argc,
 .code argv)
 had just started.
-The heap comes last so that expanding it does not require
-moving any of the other sections.
+Here are the values that
+.code exec
+places at the top of the stack:
+.P1
+"argumentN"                      -- nul-terminated string
+ ...
+"argument0"
+0                                -- argv[argc]
+address of argumentN             
+ ...
+address of argument0             -- argv[0]
+address of address of argument0  -- argv argument to main()
+argc                             -- argc argument to main()
+0                                -- return PC for main() call
+.P2
 .\"
 .section "Code"
 .\"
@@ -53,7 +68,7 @@ invokes
 via the 
 .code syscalls
 table
-.line syscall.c:/syscalls.num/ .
+.line syscall.c:/static.int...syscalls/ .
 .code Sys_exec
 .line sysfile.c:/^sys_exec/
 parses the system call arguments,
@@ -74,60 +89,52 @@ Like the boot sector, it uses
 .code elf.magic
 to decide whether the binary is an ELF binary
 .line exec.c:/Check.ELF/,/ELF_MAGIC/+1 .
-Then it makes two passes through the program segment
-and argument lists.  The first computes the total amount
-of memory needed, and the second creates the memory image.
-The total memory size includes
-the program segments
-.lines exec.c:/Program.segments/,/}/ ,
-the argument strings
-.lines exec.c:/Arguments/,/sz.!+=.arglen/ ,
-the argument vector pointed at by
-.code argv
-.line exec.c:/argv.data/ ,
-the
-.code argv
-and
-.code argc 
-arguments to
-.code main
-.line exec.c:/4.*argv/,/argc/ ,
-and the stack
-.line exec.c:/Stack/,/./ .
-.code Exec
-then allocates and zeros the required amount of memory
-.lines exec.c:/Allocate/,/memset/
-and copies the data into the new memory image:
-the program segments
-.lines exec.c:/Load/,/iunlockput/ ,
-the argument strings and pointers
-.lines exec.c:/Initialize.stack/,/}/ ,
-and
-the stack frame for
-.code main
-.lines exec.c:/Stack.frame.for.main/,/fake/ .
+Then it allocates a new page table with no user mappings with
+.code setupkvm
+.line exec.c:/setupkvm/ ,
+allocates memory for each ELF segment with
+.code allocuvm
+.line exec.c:/allocuvm/ ,
+and loads each segment into memory with
+.code loaduvm
+.line exec.c:/loaduvm /.
+.code loaduvm
+.line vm.c:/^loaduvm/
+uses
+.code walkpgdir
+to find the physical address of the memory at which to write
+each page of the ELF segment, and
+.code readi
+to read from the file.
 .PP
-Notice that when
+Now
 .code exec
-copies the program segments,
-it makes sure that the data
-being loaded into memory fits in the declared size
-.code ph.memsz
-.lines "'exec.c:/ph.va !+ ph.memsz < ph.va/,/goto/'" .
-Without this check, a malformed ELF binary
-could cause 
+allocates and initializes the user stack.
+It assumes that one page of stack is enough.
+It is going to put the arguments passed to the system
+call at the top of the stack, so it first calculates
+how much space they will need
+.line exec.c:/arglen.=..arg/
+and at what user address they will start
+.line exec.c:/argp.=.sz.-.a/ .
+It places a null pointer at the end of what will be the
+.code argv
+list passed to
+.code main ,
+and then copies each argument string to its place in
+the stack
+.line exec.c:/memmove.mem.sp/ ,
+and places a pointer to each argument string to
+the right place in the
+.code argv
+array
+.line exec.c:/uint...mem.argp.*argv/ .
+Finally
 .code exec
-to write past the end of the allocated memory image,
-causing memory corruption and making the operating system unstable.
-The boot sector neglected this check both to reduce
-code size and because not checking doesn't change
-the failure mode: either way the machine doesn't
-boot if given a bad ELF image.
-In contrast, in
-.code exec
-this check is the difference between making
-one process fail 
-and making the entire system fail.
+pushes
+.code argv ,
+.code argc ,
+and a fake return program counter onto the stack.
 .PP
 During the preparation of the new memory image,
 if 
@@ -147,15 +154,10 @@ The only error cases in
 happen during the creation of the image.
 Once the image is complete, 
 .code exec
-can free the old image and install the new one
-.line exec.c:/kfree/,/esp.=.sp/ .
-After changing the image,
-.code exec
-must update the user segment registers to
-refer to the new image, just as
-.code sbrk
-did
-.line exec.c:/usegment/ .
+can install the new image
+.line exec.c:/switchuvm/
+and free the old one
+.line exec.c:/freevm/ .
 Finally,
 .code exec
 returns 0.
