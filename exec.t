@@ -109,6 +109,16 @@ to find the physical address of the allocated memory at which to write
 each page of the ELF segment, and
 .code readi
 to read from the file.
+The ELF file may contain data segments that contain
+global variables that should start out zero, represented with a
+.code memsz
+that is greater than the segment's
+.code filesz ;
+the result is that 
+.code allocuvm
+allocates zeroed physical memory, but
+.code loaduvm
+does not copy anything from the file.
 .PP
 Now
 .code exec
