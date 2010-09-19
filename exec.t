@@ -97,12 +97,15 @@ allocates memory for each ELF segment with
 .line exec.c:/allocuvm/ ,
 and loads each segment into memory with
 .code loaduvm
-.line exec.c:/loaduvm /.
+.line exec.c:/loaduvm/ .
+.code allocuvm
+checks that the virtual addresses requested
+are within the 640 kilobytes that user processes are allowed to use.
 .code loaduvm
 .line vm.c:/^loaduvm/
 uses
 .code walkpgdir
-to find the physical address of the memory at which to write
+to find the physical address of the allocated memory at which to write
 each page of the ELF segment, and
 .code readi
 to read from the file.
@@ -139,7 +142,7 @@ and a fake return program counter onto the stack.
 During the preparation of the new memory image,
 if 
 .code exec
-detected an error like an invalid program segment,
+detects an error like an invalid program segment,
 it jumps to the label
 .code bad ,
 frees the new image,

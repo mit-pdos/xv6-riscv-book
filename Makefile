@@ -21,7 +21,7 @@ all: $(PDF)
 clean:
 	rm -f $(PDF) *.ps
 
-xv6-code.pdf: ../xv6/xv6.pdf
+xv6-code.pdf: ../xv6-lecture/xv6.pdf
 	cp $^ $@
 
 push: index.html $(PDF) xv6-code.pdf
