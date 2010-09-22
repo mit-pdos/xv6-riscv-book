@@ -180,13 +180,13 @@ Xv6 programs the x86 hardware to perform a stack switch on a trap by
 setting up a task segment descriptor through which the hardware loads an stack
 segment selector and a new value for
 .code %esp .
-IN
-.code usegment
-.line proc.c:/^usegment/ .
-has stored the address of the top of the kernel stack of the user
+The function
+.code switchuvm
+.line vm.c:/^switchuvm/ 
+stores the address of the top of the kernel stack of the user
 process into the task segment descriptor, and the x86 
 will
-be load that address in
+load that address in
 .code %esp
 on a trap.
 .ig
@@ -227,7 +227,11 @@ at the time of the trap.
 .ig
 XXX picture.
 ..
-The processor pushed cs, eip, and eflags.
+The processor pushed 
+.code cs , 
+.code eip , 
+and 
+.code eflags .
 The processor or the trap vector pushed an error number,
 and 
 .code alltraps 
@@ -242,8 +246,7 @@ In the case of the first system call, the saved eip will the address
 of the instruction right after the 
 .code int
 instruction.
-.code
-cs 
+.code cs 
 is the user code segment selector.
 .code eflags
 is the content of the eflags register at the point of executing the 
@@ -423,58 +426,75 @@ The helper functions argint and argptr, argstr retrieve the
 .italic n 'th 
 system call
 argument, as either an integer, pointer, or a string.
-Argint uses the user-space esp register to locate the 
+.code argint 
+uses the user-space 
+.code esp 
+register to locate the 
 .italic n'th 
 argument:
-esp points at the return address for the system cal stub.
-The arguments are right above it, at esp+4.
-Then the nth argument is at esp + 4 + 4 *
-.italic n .  
+.code esp 
+points at the return address for the system call stub.
+The arguments are right above it, at 
+.code esp+4.
+Then the nth argument is at 
+.code esp+4+4*n .  
 .PP
-Argint calls fetchint
-to read the value at that address from user memory and write it to *ip.
-Fetchint cannot simply cast the address to a pointer, because kernel and user
-pointers have different meaning: in the kernel,
-address 0 means physical address zero, the first location in physical memory.
-When a user process is executing, the kernel sets the segmentation
-hardware so that user address zero corresponds to the process's private memory,
-kernel address p->mem.
-The kernel also uses the segmentation hardware to make sure
+.code argint 
+calls 
+.code fetchint
+to read the value at that address from user memory and write it to
+.code *ip .  
+.code fetchint 
+can simply cast the address to a pointer, because the user and the
+kernel share the same page table, but the kernel must verify that the
+pointer by the user is indeed a pointer in the user part of the address
+space.
+The kernel has set up the page-table hardware to make sure
 that the process cannot access memory outside its local private memory:
-if a user program tries to read or write memory at an address of p->sz or
-above, the processor will cause a segmentation trap, and trap will
+if a user program tries to read or write memory at an address of
+.code p->sz 
+or above, the processor will cause a segmentation trap, and trap will
 kill the process, as we saw above.
-Now though, the kernel is running and must implement the
-memory translation and checks itself.
-Fetchint checks that the user address is in range
-and then convert it to a kernel pointer by adding
-p->mem before reading the value.
+Now though, the kernel is running and it can derefence any address that the user might have passed, so it must check explicitly that the address is below
+.code p->sz 
 .PP
-Argptr is similar in purpose to argint: it interprets the 
+.code argptr
+is similar in purpose to 
+.code argint : 
+it interprets the 
 .italic n th 
-system call argument
-as a user pointer and sets *p to the equivalent kernel pointer.
-Argptr calls argint to fetch the argument as an integer and then users
-the same logic as fetchint to interpret the integer as a user pointer
-and compute the equivalent kernel pointer.
-Note that two translations occur during a call to argptr.
-First, the user stack pointer is translated during the fetching
+system call argument.
+.code argptr 
+calls 
+.code argint 
+to fetch the argument as an integer and then checks
+if the integer as a user pointer is indeed in the user part of
+the address space.
+Note that two checks occur during a call to 
+code argptr .
+First, the user stack pointer is checked during the fetching
 of the argument.
-Then the argument, itself a user pointer, is translated to 
-produce a kernel pointer.
+Then the argument, itself a user pointer, is checked.
 .PP
-Argstr is the final member of the system call argument trio.
-It interprets the nth argument as a pointer, like argptr does, but then
-also ensures that the pointer points at a NUL-terminated string:
-the NUL must be present before the address space ends.
+.code argstr 
+is the final member of the system call argument trio.
+It interprets the
+.italic n th 
+argument as a pointer.  It ensures that the pointer points at a
+NUL-terminated string and that the complete string is located below
+the end of the user part of the address space.
 .PP
 The system call implementations (for example, sysproc.c and sysfile.c)
-are typically wrappers: they decode the arguments using argint,
-argptr, and argstr and then call the real implementations.
+are typically wrappers: they decode the arguments using 
+.code argint ,
+.code argptr , 
+and 
+.code argstr
+and then call the real implementations.
 .PP
-Let's look at how
+In chapter  \*[CH:EXEC],
 .code sys_exec
-uses these functions to get at its arguments. (to be written.)
+uses these functions to get at its arguments.
 .\"
 .section "Code: Interrupts"
 .\"
@@ -597,8 +617,8 @@ The scheduler on each processor enables interrupts
 .line proc.c:/sti/ .
 To control that certain code fragments are not interrupted, xv6
 disables interrupts during these code fragments (e.g., see
-.code usegment
-.line proc.c:/^usegment/ ).
+.code switchuvm
+.line vm.c:/^switchuvm/ ).
 .PP
 The timer interrupts through vector 32 (which xv6 chose to handle IRQ
 0), which xv6 setup in
