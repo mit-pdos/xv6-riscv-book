@@ -20,12 +20,19 @@ time sharing.  As another example, when the disk has read a block from
 disk, it generates an interrupt to alert the operating system that the
 block is ready to be retrieved.
 .PP
-In all three cases, the operating system design must range for the
-following to happen.  The system must save user state for future
-transparent resume.  The system must be set up for continued execution
+The kernel handles all interrupts, rather than processes
+handling them, because in most cases only the kernel has the
+required privilege and state. For example, in order to time-slice
+among processes in response the clock interrupts, the kernel
+must be involved, if only to force uncooperative processes to
+yield the processor.
+.PP
+In all three cases, the operating system design must arrange for the
+following to happen.  The system must save the processor's registers for future
+transparent resume.  The system must be set up for execution
 in the kernel.  The system must chose a place for the kernel to start
 executing. The kernel must be able to retrieve information about the
-event, including arguments.  It must all be done securely; the system
+event, e.g., system call arguments.  It must all be done securely; the system
 must maintain isolation of user processes and the kernel.
 .PP
 To achieve this goal the operating system must be aware of the details
@@ -43,31 +50,24 @@ The basic plan is as follows.  An interrupts stops the normal
 processor loop—read an instruction, advance the program counter,
 execute the instruction, repeat—and starts executing a new sequence
 called an interrupt handler.  Before starting the interrupt handler,
-the processor saves its previous state, so that the interrupt handler
-can restore that state if appropriate.
-.PP
+the processor saves its registers, so that the operating system
+can restore them when it returns from the interrupt.
 A challenge in the transition to and from the interrupt handler is
 that the processor should switch from user mode to kernel mode, and
-back.  If a device generates an interrupt (e.g., the clock chip) and a
-processor is running a user processor, then we would like to arrange
-that the kernel handles the interrupt, so that it can switch the
-processor to a different user process, if the clock interrupt signals
-the end of the time slice for the current running process.  We want
-this interrupt to be handled by the kernel, because a user program may
-ignore it so that it doesn't have to give up the processor.
+back.
 .PP
 A word on terminology: Although the official x86 term is interrupt,
 x86 refers to all of these as traps, largely because it was the term
 used by the PDP11/40 and therefore is the conventional Unix term.
 This chapter uses the terms trap and interrupt interchangeably, but it
-is important to remember that traps pertain to the current process
+is important to remember that traps are caused by the current process
 running on a processor (e.g., the process makes a system call and as a
-result generates a trap), and interrupts pertain to devices and may
-have no relation to the program running on the processor when the
-interrupts occurs.  For example, a disk may generate an interrupt when
-it is done retrieving a block for a process that is currently not
-running on any processor because the kernel descheduled it to run
-another process while the process was waiting for the disk.  This
+result generates a trap), and interrupts are caused by devices and may
+not be related to the currently running process.
+For example, a disk may generate an interrupt when
+it is done retrieving a block for one process, but
+at the time of the interrupt some other process may be running.
+This
 property of interrupts makes thinking about interrupts more difficult
 than thinking about traps, because interrupts happen
 concurrently with other activities, and requires the designer to think
@@ -83,13 +83,13 @@ and system calls.
 .PP
 The last chapter ended with 
 .code initcode.S
-invoke a system call.
+invoking a system call.
 Let's look at that again
 .line initcode.S:/'T_SYSCALL'/ .
-Remember from Chapter \*[CH:MEM] that the process pushed the arguments
+The process pushed the arguments
 for an 
 .code exec
-call on the process's stack, and
+call on the process's stack, and put the
 system call number in
 .code %eax .
 The system call numbers match the entries in the syscalls array,
@@ -112,7 +112,7 @@ interrupts and exceptions.
 Xv6 must set up the x86 hardware to do something sensible
 on encountering an
 .code int
-instruction, which the hardware views as an interrupt, initiated by a program.
+instruction, which causes the processor to generate a trap.
 The x86 allows for 256 different interrupts.
 Interrupts 0-31 are defined for software
 exceptions, like divide errors or attempts to access invalid memory addresses.
@@ -141,7 +141,7 @@ sets up the 256 entries in the table
 Interrupt
 .code i
 is handled by the
-.code %eip
+code at the address in
 .code vectors[i] .
 Each entry point is different, because the x86 provides
 does not provide the trap number to the interrupt handler.
@@ -159,91 +159,110 @@ Trap gates don't clear the
 .code IF_FL
 flag, allowing other interrupts during the system call handler.
 .PP
-The kernel also sets for the system call gate the privilege to
+The kernel also sets the system call gate privilege to
 .code DPL_USER ,
 which allows a user program to generate
 the trap with an explicit
 .code int
 instruction.
-If xv6 didn't set the privilege, then if the user program would invoke 
-.code int ,
-the processor would generate a general protection exception, which
+xv6 doesn't allow processes to raise other interrupts (e.g., device
+interrupts) with
+.code int ;
+if they try, they will encounter
+a general protection exception, which
 goes to vector 13. 
 .PP
 When changing protection levels from user to kernel mode, the kernel
-shouldn't use the stack of the user process, because who knows if the
-stack is a valid one. The user process may have been malicious or
-contain an error, and supplied a value in
-.code esp ,
-which doesn't correspond to a stack.
+shouldn't use the stack of the user process, because it may not be valid.
+The user process may be malicious or
+contain an error that causes the user
+.code esp 
+to contain an address that is not part of the process's user memory.
 Xv6 programs the x86 hardware to perform a stack switch on a trap by
-setting up a task segment descriptor through which the hardware loads an stack
+setting up a task segment descriptor through which the hardware loads a stack
 segment selector and a new value for
 .code %esp .
 The function
 .code switchuvm
 .line vm.c:/^switchuvm/ 
 stores the address of the top of the kernel stack of the user
-process into the task segment descriptor, and the x86 
-will
-load that address in
-.code %esp
-on a trap.
+process into the task segment descriptor.
 .ig
 TODO: Replace SETGATE with real code.
 ..
 .PP
-The 256 different handlers must behave differently:
-for some traps, the x86 pushes an extra error code on the stack,
-but for most it doesn't.
-The handlers for the traps without error codes
-push a fake one on the stack explicitly, to make the
-stack layout uniform.
-Instead of writing 256 different functions by hand, we use a
-Perl script
+When a trap occurs, the processor hardware does the following.
+If the processor was executing in user mode,
+it loads
+.code %esp
+and
+.code %ss
+from the task segment descriptor,
+pushes the old user
+.code %ss
+and
+.code %esp
+onto the new stack.
+If the processor was executing in kernel mode,
+none of the above happens.
+The processor then pushes the
+.code eflags ,
+.code %cs ,
+and
+.code %eip
+registers.
+For some traps, the processor also pushes an error word.
+The processor then loads
+.code %eip
+and
+.code %cs
+from the relevant IDT entry.
+.PP
+xv6 uses a Perl script
 .line vectors.pl:1
-to generate the entry points.  Each entry pushes an error code
+to generate the entry points that the IDT entries point to.
+Each entry pushes an error code
 if the processor didn't, pushes the interrupt number, and then
 jumps to
-.code alltraps ,
-a common body.
+.code alltraps .
 .PP
 .code Alltraps
 .line trapasm.S:/^alltraps/
-continues to save processor state: it pushes
+continues to save processor registers: it pushes
 .code %ds ,
 .code %es ,
 .code %fs ,
 .code %gs ,
 and the general-purpose registers
 .lines trapasm.S:/Build.trap.frame/,/pushal/ .
-The result of this effort is that the kernel stack now contains
-a
+The result of this effort is that the kernel stack now contains a
 .code struct
 .code trapframe 
 .line x86.h:/trapframe/
-describing the precise user mode processor state
-at the time of the trap.
+containing the processor registers at the time of the trap.
 .ig
 XXX picture.
 ..
-The processor pushed 
+The processor pushes
+.code ss ,
+.code esp ,
+.code eflags ,
 .code cs , 
-.code eip , 
-and 
-.code eflags .
-The processor or the trap vector pushed an error number,
+and
+.code eip .
+The processor or the trap vector pushes an error number,
 and 
 .code alltraps 
-pushed the rest.
+pushes the rest.
 The trap frame contains all the information necessary
-to restore the user mode processor state
-when the trap handler is done,
+to restore the user mode processor registers
+when the kernel returns to the current process,
 so that the processor can continue exactly as it was when
 the trap started.
 .PP
-In the case of the first system call, the saved eip will the address
-of the instruction right after the 
+In the case of the first system call, the saved 
+.code eip
+is the address of the instruction right after the 
 .code int
 instruction.
 .code cs 
@@ -254,26 +273,26 @@ is the content of the eflags register at the point of executing the
 instruction.
 As part of saving the general-purpose registers,
 .code alltraps
-also saved 
+also saves 
 .code %eax ,
-which contains the system call number, and now that number is also in
-the trapframe on the kernel stack.
+which contains the system call number for the kernel
+to inspect later.
 .PP
-Now that the user mode processor state is saved,
+Now that the user mode processor registers are saved,
 .code alltraps
-can finishing setting up processor for running kernel code.
+can finishing setting up the processor to run kernel C code.
 The processor set the selectors
 .code %cs
 and
 .code %ss
 before entering the handler;
 .code alltraps
-must set
+sets
 .code %ds
 and
 .code %es
 .lines "'trapasm.S:/movw.*SEG_KDATA/,/%es/'" .
-It also sets 
+It sets 
 .code %fs
 and
 .code %gs
@@ -281,7 +300,6 @@ to point at the
 .code SEG_KCPU
 per-CPU data segment
 .lines "'trapasm.S:/movw.*SEG_KCPU/,/%gs/'" .
-Chapter \*[CH:MEM] will revisit that segment.  \" TODO is CH:MEM right?
 .PP
 Once the segments are set properly,
 .code alltraps
@@ -289,7 +307,7 @@ can call the C trap handler
 .code trap .
 It pushes
 .code %esp,
-which points at the trap frame we just constructed,
+which points at the trap frame it just constructed,
 onto the stack as an argument to
 .code trap
 .line "'trapasm.S:/pushl.%esp/'" .
@@ -309,21 +327,19 @@ label
 We traced through this code in Chapter \*[CH:MEM]
 when the first user process ran it to exit to user space.
 The same sequence happens here: popping through
-the trap frame restores the user mode register state and then
+the trap frame restores the user mode registers and then
 .code iret
 jumps back into user space.
 .PP
-The discussion so far has talked about trap saving
-the user mode processor state, but traps can happen
-while the kernel is executing too.  The same code runs;
-the only difference is that the saved
-.code %cs ,
-.code %eip ,
-.code %esp ,
-and segment registers are all kernel values.
-When the final
+The discussion so far has talked about traps occurring in user mode,
+but traps can also happen while the kernel is executing.
+In that case the hardware does not switch stacks or save
+the stack pointer or stack segment selector;
+otherwise the same steps occur as in traps from user mode,
+and the same xv6 trap handling code executes.
+When 
 .code iret
-restores a kernel mode 
+later restores a kernel mode 
 .code %cs ,
 the processor continues executing in kernel mode.
 .\"
