@@ -78,6 +78,148 @@ This chapter examines the xv6 trap handlers,
 covering hardware interrupts, software exceptions,
 and system calls.
 .\"
+.section "X86 protection"
+.\"
+.PP
+The x86 has 4 protection levels, numbered 0 (most privilege) to 3
+(least privilege).  In practice, most operating systems use only 2
+levels: 0 and 3, which are then called "kernel" and "user" mode,
+respectively.  The current privilege level with which the x86 executes
+instructions is stored in
+.code %cs
+register,
+in the field CPL.
+.PP
+On the x86, interrupt handlers are defined in the interrupt descriptor
+table (IDT). The IDT has 256 entries, each giving the
+.code %cs
+and
+.code %eip
+to be used when handling the corresponding interrupt.
+.ig
+pointer to the IDT table.
+..
+.PP
+To make a system call on the x86, a program invokes the 
+.code int
+.italic n
+instruction, where 
+.italic n 
+specifies the index into the IDT. The
+.code int
+instruction performs the following steps:
+.IP \[bu] 
+Fetch the 
+.italic n 'th
+descriptor from the IDT,
+where 
+.italic n
+is the argument of
+.code int .
+.IP \[bu] 
+Check that CPL in 
+.code %cs
+is <= DPL,
+where DPL is the privilege level in the descriptor.
+.IP \[bu] 
+Save
+.code %esp
+and
+.code %ss
+in a CPU-internal registers, but only if the target segment
+selector's PL < CPL.
+.IP \[bu] 
+Load
+.code %ss
+and
+.code %esp
+from a task segment descriptor.
+.IP \[bu] 
+Push
+.code %ss .
+.IP \[bu] 
+Push
+.code %esp .
+.IP \[bu] 
+Push
+.code %eflags .
+.IP \[bu] 
+Push
+.code %cs .
+.IP \[bu] 
+Push
+.code %eip .
+.IP \[bu] 
+Clear some bits of
+.code %eflags .
+.IP \[bu] 
+Set 
+.code %cs
+and
+.code %eip
+to the values in the descriptor.
+.PP
+The
+.code int
+instruction is a complex instruction, and one might wonder whether all
+these actions are necessary.  The check CPL <= DPL allows the kernel to
+forbid systems for some privilege levels.  For example, for a user
+program to execute 
+.code int 
+instruction succesfully, the DPL must be 3.
+If the user program doesn't have the appropriate privilege, then 
+.code int
+instruction will result in
+.code int 
+13, which is a general protection fault.
+As another example, the
+.code int
+instruction cannot use the user stack to save values, because the user
+might not have set up an appropriate stack so that hardware uses the
+stack specified in the task segments, which is setup in kernel mode.
+.PP
+When an 
+.code int
+instruction completes and there was a privilege-level change (the privilege
+level in the descriptor is lower than CPL), the following values are
+on the stack specified in the task segment:
+.P1
+        ss
+        esp
+        eflags
+        cs
+        eip
+esp ->  error code
+.P2
+If the 
+.code int
+instruction didn't require a privilege-level change, the following
+values are on the original stack:
+.P1
+         eflags
+         cs
+         eip
+esp ->   error code
+.P2
+After both cases, 
+.code %eip
+is pointing to the address specified in the descriptor table, and the
+instruction at that address is the next instruction to be executed and
+the first instruction of the handler for
+.code int
+.italic n .
+It is job of the operating system to implement these handlers, and
+below we will see what xv6 does.
+.PP
+An operating system can use the
+.code iret
+instruction to return from an
+.code int
+instruction. It pops the saved values during the 
+.code int
+instruction from the stack, and resumes execution at the saved 
+.code %eip .
+.\"
 .section "Code: The first system call"
 .\"
 .PP
@@ -120,16 +262,6 @@ Xv6 maps the 32 hardware interrupts to the range 32-63
 and uses interrupt 64 as the system call interrupt.
 .ig
 pointer to the x86 exception table with vector numbers (DE, DB, ...)
-..
-.PP
-On the x86, interrupt handlers are defined in the interrupt descriptor
-table (IDT). The IDT has 256 entries, each giving the
-.code %cs
-and
-.code %eip
-to be used when handling the corresponding interrupt.
-.ig
-pointer to the IDT table.
 ..
 .PP
 .code Tvinit
