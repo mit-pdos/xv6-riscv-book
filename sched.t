@@ -9,36 +9,40 @@ with the illusion that it has its own virtual processor, and have the
 operating system multiplex multiple virtual processors on a single
 physical processor.
 .PP
-Xv6 adopts this approach.  If two different processes are competing
-for a single CPU, xv6 multiplexes them, switching many times per
-second between executing one and the other.  Xv6 uses multiplexing to
-create the illusion that each process has its own CPU, just as xv6
+Xv6 adopts this approach.  If two processes want to run on
+a single CPU, xv6 multiplexes them, switching many times per
+second between executing one and the other.  This multiplexing
+creates the illusion that each process has its own CPU, just as xv6
 used the memory allocator and hardware segmentation to create the
 illusion that each process has its own memory.
 .PP
 Implementing multiplexing has a few challenges. First, how to switch
-from process to another? Xv6 uses the standard mechanism of context
+from one process to another? Xv6 uses the standard mechanism of context
 switching; although the idea is simple, the code to implement is
 typically among the most opaque code in an operating system. Second,
 how to do context switching transparently?  Xv6 uses the standard
 technique of using the timer interrupt handler to drive context switches.
-Third, may processes may be switching concurrently, and a locking plan
-is necessary to avoid races. Fourth, when a process has completed its
-execution, it shouldn't continue to run and be multiplexed
-with other processes, but
-cleaning a process is not easy: it cannot clean up after itself since
-doing so would require it to be running.  Xv6 tries to solve these problems as
+Third, many CPUs may be switching among processes concurrently, and a locking plan
+is necessary to avoid races. Fourth, when a process has exited its
+memory and other resources must be freed, but it cannot do all of
+this itself because (for example) it can't free its own kernel
+stack while still using it.
+Xv6 tries to solve these problems as
 simply as possible, but nevertheless the resulting code is
 tricky.
 .PP
-Once there are multiple processes executing, xv6 must also provide
-some way for them to coordinate among themselves. Often it is
-necessary for one process to wait for another to perform some action.
+xv6 must provide
+ways for processes to coordinate among themselves. For example,
+a parent process may need to wait for one of its children to
+exit, or a process reading on a pipe may need to wait for
+some other process to write the pipe.
 Rather than make the waiting process waste CPU by repeatedly checking
-whether that action has happened, xv6 allows a process to sleep
-waiting for an event and allows another process to wake the first
-process. Because processes run in parallel, there is a risk of losing
-a wake up event. As an example of these problems and their solution, this
+whether the desired event has happened, xv6 allows a process to give
+up the CPU and sleep
+waiting for an event, and allows another process to wake the first
+process up. Care is needed to avoid races that result in
+the loss of event notifications.
+As an example of these problems and their solution, this
 chapter examines the implementation of pipes.
 .\"
 .section "Code: Scheduler"
@@ -61,10 +65,11 @@ At the beginning of the loop,
 .code scheduler
 enables interrupts with an explicit
 .code sti
-.line "'proc.c:/sti!(!)/'" ,
-so that if a hardware interrupt is waiting
-to be handled, the scheduler's CPU
-will handle it before continuing.
+.line "'proc.c:/sti!(!)/'" ;
+this is important for the special case in which no process
+is currently runnable and some processes are waiting for I/O interrupts:
+if interrupts are disabled for the entire scheduler
+loop, the system will never run another process.
 Then the scheduler
 loops over the process table
 looking for a runnable process, one that has
@@ -73,9 +78,9 @@ looking for a runnable process, one that has
 .code RUNNABLE .
 Once it finds a process, it sets the per-CPU current process
 variable
-.code cp ,
-updates the user segments with
-.code usegment ,
+.code proc ,
+switches to the process's page table with
+.code switchuvm ,
 marks the process as
 .code RUNNING ,
 and then calls
@@ -91,18 +96,18 @@ Chapter \*[CH:MEM].
 Each CPU has its own kernel stack to use when running
 the scheduler.
 .code Swtch
-saves the scheduler's context—its stack and registers—and
-switches to the chosen process's context.
+saves the scheduler's context-its stack pointer and registers—and
+switches to the chosen process's kernel thread context.
 When it is time for the process to give up the CPU,
-the process will call
+the process's kernel thread will call
 .code swtch
 to save its own context and return to the scheduler context.
 Each context is represented by a
 .code struct
 .code context* ,
-a pointer to a structure stored on the stack involved.
+a pointer to a structure stored on the kernel stack involved.
 .code Swtch
-takes two arguments
+takes two arguments:
 .code struct
 .code context
 .code **old
@@ -111,7 +116,7 @@ and
 .code context
 .code *new ;
 it saves the current context, storing a pointer to it in
-.code *old
+.code *old ,
 and then restores the context described by
 .code new .
 .PP
@@ -130,10 +135,10 @@ in turn calls
 which calls
 .code swtch
 to save the current context in
-.code cp->context
+.code proc->context
 and switch to the scheduler context previously saved in 
-.code c->context
-.line "'proc.c:/swtch!(.cp-/'" .
+.code cpu->scheduler
+.line proc.c:/swtch..proc/ .
 .PP
 .code Swtch
 .line swtch.S:/swtch/
@@ -205,21 +210,21 @@ and then returns
 Because 
 .code swtch
 has changed the stack pointer, the values restored
-and the address returned to
+and the instruction address returned to
 are the ones from the new context.
 .PP
 In our example, 
-.code sched 's
+.code sched
 called
 .code swtch
 to switch to
-.code c->context ,
+.code cpu->scheduler ,
 the per-CPU scheduler context.
 That new context had been saved by 
 .code scheduler 's
 call to
 .code swtch
-.line "'proc.c:/swtch!(.c-/'" .
+.line proc.c:/swtch..cpu/ .
 When the
 .code swtch
 we have been tracing returns,
@@ -227,7 +232,7 @@ it returns not to
 .code sched
 but to 
 .code scheduler ,
-and its stack pointer points at the
+and its stack pointer points at the current CPU's
 scheduler stack, not
 .code initproc 's
 kernel stack.
@@ -241,13 +246,13 @@ now let's take
 .code swtch
 as a given and examine the conventions involved
 in switching from process to scheduler and back to process.
-The convention in xv6 is that a process
+A process
 that wants to give up the CPU must
 acquire the process table lock
 .code ptable.lock ,
 release any other locks it is holding,
 update its own state
-.code cp->state ), (
+.code proc->state ), (
 and then call
 .code sched .
 .code Yield
@@ -258,7 +263,7 @@ and
 .code exit ,
 which we will examine later.
 .code Sched
-double checks those conditions
+double-checks those conditions
 .lines "'proc.c:/if..holding/,/running/'"
 and then an implication of those conditions:
 since a lock is held, the CPU should be
@@ -268,16 +273,16 @@ Finally,
 calls
 .code swtch
 to save the current context in 
-.code cp->context
+.code proc->context
 and switch to the scheduler context in
-.code c->context .
+.code cpu->scheduler .
 .code Swtch
 returns on the scheduler's stack
 as though
 .code scheduler 's
 .code swtch
 had returned
-.line proc.c:/swtch..c-/ .
+.line proc.c:/swtch..cpu/ .
 The scheduler continues the 
 .code for
 loop, finds a process to run, 
@@ -295,44 +300,39 @@ convention is the thread that acquires a lock is also responsible of
 releasing the lock, which makes it easier to reason about correctness.
 For context switching is necessary to break the typical convention because
 .code ptable.lock
-protects the 
+protects invariants on the process's
 .code state
 and
 .code context
-fields in each process structure.
-Without the lock, it could happen that a process
-decided to yield, set its state to
-.code RUNNABLE ,
-and then before it could
-.code swtch
-to give up the CPU, a different CPU would
-try to run it using 
+fields that are not true while executing in
 .code swtch .
-This other CPU's call to
-.code swtch
-would use a stale context, the one from the
-last time the process was started, causing time
-to appear to move backward.
-It would also cause two CPUs to be executing
-on the same stack.  Both are incorrect.
-.PP
-To avoid this problem, xv6 follows the convention that the thread that
-releases a processor acquires the 
+One example of a problem that could arise if
 .code ptable.lock
-lock and the thread that receives
-that processor next releases the lock.
-To make this convention clear, a thread gives up its
-processor always in
-.code sched ,
-switches always to the same location in the scheduler thread, which
-returns a processor always in
+were not held during
+.code swtch :
+a different CPU might decide
+to run the process after 
+.code yield
+had set its state to
+.code RUNNABLE ,
+but before 
+.code swtch
+caused it to stop using its own kernel stack.
+The result would be two CPUs running on the same stack,
+which cannot be right.
+.PP
+A kernel thread always gives up its
+processor in
+.code sched 
+and always switches to the same location in the scheduler, which
+(almost) always switches to a process in
 .code sched . 
 Thus, if one were to print out the line numbers where xv6 switches
 threads, one would observe the following simple pattern:
-.line 'proc.c:/swtch\(&c/' ,
-.line 'proc.c:/swtch\(&cp/' ,
-.line 'proc.c:/swtch\(&c/' ,
-.line 'proc.c:/swtch\(&cp/' ,
+.line proc.c:/swtch..cpu/ ,
+.line proc.c:/swtch..proc/ ,
+.line proc.c:/swtch..cpu/ ,
+.line proc.c:/swtch..proc/ ,
 and so on.  The procedures in which this stylized switching between
 two threads happens are sometimes referred to as co-routines; in this
 example,
@@ -604,7 +604,7 @@ and marks it as
 .line proc.c:/^sleep/
 begins with a few sanity checks:
 there must be a current process
-.lines "'proc.c:/cp == 0/,/sleep/'"
+.line proc.c:/proc.==.0/
 and
 .code sleep
 must have been passed a lock
@@ -979,7 +979,7 @@ the special case we saw above.
 acquires
 .code ptable.lock
 and then wakes the current process's parent
-.line "'proc.c:/wakeup1!(cp->parent!)/'" .
+.line "'proc.c:/wakeup1!(proc->parent!)/'" .
 This may look premature, since 
 .code exit
 has not marked the current process as a

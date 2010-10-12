@@ -56,7 +56,7 @@ address of argumentN
 address of argument0             -- argv[0]
 address of address of argument0  -- argv argument to main()
 argc                             -- argc argument to main()
-0                                -- return PC for main() call
+0xffffffff                       -- return PC for main() call
 .P2
 .\"
 .section "Code"
