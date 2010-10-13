@@ -354,6 +354,59 @@ exists only to honor this convention by releasing the
 .code ptable.lock ;
 otherwise, the new process could start at
 .code trapret .
+.PP
+One way to think about the structure of the scheduling code is
+that it arranges to enforce a set of invariants about each process,
+and holds
+.code ptable.lock
+whenever those invariants are not true.
+One invariant is that if a process is
+.code RUNNING ,
+things must be set up so that a timer interrupt's
+.code yield
+can correctly switch away from the process;
+this means that the CPU registers must hold the process's register values
+(i.e. they aren't actually in a
+.code context ),
+.code cr3
+must refer to the process's pagetable,
+.code esp
+must refer to the process's kernel stack so that
+.code swtch
+can push registers correctly, and
+.code proc
+must refer to the process's
+.code proc[]
+slot.
+Another invariant is that if a process is
+.code RUNNABLE ,
+things must be set up so that an idle CPU's
+.code scheduler
+can run it;
+this means that 
+.code p->context
+must hold the process's kernel thread variables,
+that no CPU is executing on the process's kernel stack,
+that no CPU's
+.code cr3
+refers to the process's page table,
+and that no CPU's
+.code proc
+refers to the process.
+.code ptable.lock
+protects lots of other things as well:
+allocation of process IDs and free process table slots,
+the interplay between
+.code exit
+and
+.code wait ,
+the machinery to avoid lost wakeups (see next section),
+and probably other things too.
+It might be worth thinking about whether the various
+different functions of
+.code ptable.lock
+could be split up, certainly for clarity and perhaps
+for performance.
 .\"
 .section "Sleep and wakeup"
 .\"
