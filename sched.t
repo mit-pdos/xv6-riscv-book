@@ -394,7 +394,7 @@ and that no CPU's
 .code proc
 refers to the process.
 .code ptable.lock
-protects lots of other things as well:
+protects other things as well:
 allocation of process IDs and free process table slots,
 the interplay between
 .code exit
@@ -402,7 +402,7 @@ and
 .code wait ,
 the machinery to avoid lost wakeups (see next section),
 and probably other things too.
-It might be worth thinking about whether the various
+It might be worth thinking about whether the 
 different functions of
 .code ptable.lock
 could be split up, certainly for clarity and perhaps
@@ -418,6 +418,9 @@ for processes to communicate.
 Sleep and wakeup fill that void, allowing one process to 
 sleep waiting for an event and another process to wake it up
 once the event has happened.
+Sleep and wakeup are often called sequence coordination
+mechanisms, and there are many other such mechanisms
+in the operating systems literature.
 .PP
 To illustrate what we mean, let's consider a
 simple producer/consumer queue.
@@ -534,7 +537,13 @@ and
   219	}
 .P2
 .PP
-This code is more efficient but no longer correct, because it suffers
+.code recv
+now gives up the CPU instead of spinning, which is nice.
+However, it turns out not to be straightforward to design
+.code sleep
+and 
+.code wakeup
+with this interface without suffering
 from what is known as the "lost wake up" problem.
 Suppose that
 .code recv
@@ -554,7 +563,7 @@ it changes
 .code q->ptr
 to be nonzero and calls
 .code wakeup ,
-which finds no processes sleeping.
+which finds no processes sleeping and thus does nothing.
 Now
 .code recv
 continues executing at line 216:
@@ -591,10 +600,7 @@ the example above.
 Once the calling process is awake again
 .code sleep
 reacquires the lock before returning.
-The following code is correct and makes
-efficient use of the CPU when 
-.code recv
-must wait:
+We would like to be able to have the following code:
 .P1
   300	struct q {
   301	  struct spinlock lock;
@@ -626,7 +632,27 @@ must wait:
   327	}
 .P2
 .PP
-A complete implementation would also sleep
+The fact that
+.code recv
+holds
+.code q->lock
+prevents 
+.code send
+from trying to wake it up between 
+.code recv 's
+check of
+.code q->ptr
+and its call to
+.code sleep .
+Of course, the receiving process had better not hold
+.code q->lock
+while it is sleeping, since that would prevent the sender
+from waking it up, and lead to deadlock.
+So what we want is for sleep to atomically release
+.code q->lock
+and put the receiving process to sleep.
+.PP
+A complete sender/receiver implementation would also sleep
 in
 .code send
 when waiting for a receiver to consume
@@ -695,7 +721,7 @@ will not run until it can acquire
 .code ptable.lock ,
 so it must wait until
 .code sleep
-is done,
+has finished putting the process to sleep,
 keeping the
 .code wakeup
 from missing the
@@ -769,6 +795,24 @@ it changes that process's state to
 .code RUNNABLE .
 The next time the scheduler runs, it will
 see that the process is ready to be run.
+.PP
+.code wakeup
+must always be called while holding a lock that
+prevents observation of whatever the wakeup
+condition is; in the example above that lock is
+.code q->lock .
+The complete argument for why the sleeping process won't
+miss a wakeup is that at all times from before when it
+checks the condition until after it is asleep, it holds either
+the lock on the condition or the
+.code ptable.lock 
+or both.
+Since
+.code wakeup
+executes while holding both of those locks,
+the wakeup must execute either before the potential
+sleeper checks the condition, or after the potential
+sleeper has completed putting itself to sleep.
 .PP
 There is another complication: spurious wakeups.
 .\"
