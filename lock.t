@@ -26,7 +26,15 @@ at a time is accessing the data structure.
 In this situation, we say that the lock protects
 the data structure.
 .PP
-As an example, consider the implementation of a simple linked list:
+As an example, consider several processors sharing a single disk, such
+as the IDE disk in xv6.  The disk driver maintains a linked list of
+the outstanding disk requests 
+.line ide.c:/idequeue/
+and processors may add new
+requests to the list concurrently
+.line ide.c:/^iderw/ .
+If there were no
+concurrent requests, you might implement the linked list as follows:
 .P1
     1	struct list {
     2	  int data;
@@ -290,43 +298,80 @@ Locks force themselves into our abstractions.
 .\"
 .section "Code: Using locks"
 .\"
-The hardest part about using locks is deciding how many locks
+A hard part about using locks is deciding how many locks
 to use and which data and invariants each lock protects.
 There are a few basic principles.
 First, any time a variable can be written by one CPU
 at the same time that another CPU can read or write it,
 a lock should be introduced to keep the two
 operations from overlapping.
-Second, remeber that locks protect invariants:
+Second, remember that locks protect invariants:
 if an invariant involves multiple data structures,
 typically all of the structures need to be protected
 by a single lock to ensure the invariant is maintained.
 .PP
-The rules above say when locks are necessary
-but say nothing about when locks are unnecessary,
-and it is important for efficiency not to lock too much.
-For protecting kernel data structures, it would suffice
-to create a single lock that must be acquired
-on entering the kernel and released on exiting the kernel.
-Many uniprocessor operating systems have been 
-converted to run on multiprocessors using this approach,
-sometimes called a ``giant kernel lock,''
-but the approach sacrifices true concurrency:
-only one CPU can execute in the kernel at a time.
-If the kernel does any heavy computation, it would be
-more efficient to use a larger set of more fine-grained
-locks, so that the kernel could execute on multiple
-CPUs simultaneously.
+The rules above say when locks are necessary but say nothing about
+when locks are unnecessary, and it is important for efficiency not to
+lock too much.  If efficiency wasn't important, then one could use a
+uniprocessor computer and no worry at all about locks.  For protecting
+kernel data structures, it would suffice to create a single lock that
+must be acquired on entering the kernel and released on exiting the
+kernel.  Many uniprocessor operating systems have been converted to
+run on multiprocessors using this approach, sometimes called a ``giant
+kernel lock,'' but the approach sacrifices true concurrency: only one
+CPU can execute in the kernel at a time.  If the kernel does any heavy
+computation, it would be more efficient to use a larger set of more
+fine-grained locks, so that the kernel could execute on multiple CPUs
+simultaneously.
 .PP
-Ultimately, the choice of lock granularity is more art than science.
-Xv6 uses a few coarse data-structure specific locks.
-Hopefully, the examples of xv6 will help convey a feeling
-for some of the art.
-.ig
-examples from xv6.  places where kernel holds many locks (idelock,
-ptable); is there a longer chain?.
-...
+Ultimately, the choice of lock granularity is an exercise in parallel
+programming.  Xv6 uses a few coarse data-structure specific locks; for
+example, xv6 uses a single lock protecting the process table and its
+invariants, which are described in Chapter \*[CH:SCHED].  A more
+fine-grained approach would be to have a lock per entry in the process
+table so that threads working on different entries in the process
+table can proceed in parallel.  However, it complicates operations
+that have invariants over the whole process table, since they might
+have to take out several locks. Hopefully, the examples of xv6 will
+help convey how to use locks.
 .\"
+.section "Lock ordering"
+.\"
+If a code path through the kernel must take out several locks, it is
+important that all code paths acquire the locks in the same order.  If
+they don't, there is a risk of deadlock.  Let's say two code paths in
+xv6 needs locks A and B, but code path 1 acquires locks in the order A
+and B, and the other code acquires them in the order B and A. This
+situation can result in a deadlock, because code path 1 might acquire
+lock A and before it acquires lock B, code path 2 might acquire lock
+B. Now neither code path can proceed, because code path 1 needs lock
+B, which code path 2 holds, and code path 2 needs lock A, which code
+path 1 holds.  To avoid such deadlocks, all code paths must acquire
+locks in the same order. Deadlock avoidance is another example
+illustrating why locks must be part of a function's specification: the
+caller must invoke functions in a consistent order so that the
+functions acquire locks in the same order.
+.PP
+Because xv6 uses coarse-grained locks and xv6 is simple, xv6 has
+few lock-order chains.  The longest chain is only two deep. For
+example,
+.code ideintr
+holds the ide lock while calling 
+.code wakeup ,
+which acquires the ptable lock.
+There are a number of other examples involving 
+.code
+sleep
+and
+.code
+wakeup .
+These orderings come about because
+.code
+sleep
+and 
+.code
+wakeup
+have a complicated invariant, as discussed in Chapter \*[CH:SCHED].
 .section "Interrupt handlers"
 .\"
 Xv6 uses locks to protect interrupt handlers
@@ -348,21 +393,24 @@ single variable.
 .PP
 Locks are useful not just for synchronizing multiple CPUs
 but also for synchronizing interrupt and non-interrupt code
-on the same CPU.
+on the 
+.italic same
+CPU.
 The 
 .code ticks
 variable is used by the interrupt handler and
 also by the non-interrupt function
 .code sys_sleep ,
-as we just saw.
-If the non-interrupt code is manipulating a shared
-data structure, it may not be safe for the CPU to
-interrupt that code and start running an interrupt
-handler that will use the data structure.
-Xv6's disables interrupts on a CPU when that CPU holds a lock;
-this ensures proper data access and also avoids deadlocks:
-an interrupt handler can never acquire a lock aleady held
-by the code it interrupted.
+as we just saw.  If the non-interrupt code is manipulating a shared
+data structure, it may not be safe for the CPU to interrupt that code
+and start running an interrupt handler that will use the data
+structure.  Xv6's disables interrupts on a CPU when that CPU holds a
+lock; this ensures proper data access and also avoids deadlocks: an
+interrupt handler can never acquire a lock already held by the code it
+interrupted.  One way to think about this is that locks
+provide atomicity between code running on different processors and
+turning off interrupts provides atomicity between code running on
+the same processor.
 .PP
 Before attempting to acquire a lock,
 .code acquire
@@ -396,16 +444,57 @@ to undo two calls to
 this way, if code acquires two different locks,
 interrupts will not be reenabled until both
 locks have been released.
+.PP
+The interaction between interrupt handlers and non-interrupt code
+provides a nice example why recursive locks are problematic.  If xv6
+used recursive locks (a second acquire on a CPU is allowed if the
+first acquire happened on that CPU too), then interrupt handlers could
+run while non-interrupt code is in a critical section.  This could
+create havoc, since when the interrupt handler runs, invariants that
+the handler relies on might be temporarily violated.  For example,
+.code ideintr
+.line ide.c:/^ideintr/
+assumes that the linked list with outstanding requests is well-formed.
+If xv6 would have used recursive locks, then 
+.code ideintr
+might run while 
+.code iderw
+is in the middle of manipulating the linked list, and the linked list
+will end up in an incorrect state.
 .\"
 .section "Memory ordering"
 .\"
 .PP
-A section about ordering of reads and writes,
-reordering and such.  not too much detail, just enough
-to explain the comments in spinlock.c and to give
-a sense that the general problem is wicked complicated
-and that it's not worth avoiding locks,
-which hide memory details.
+This chapter has assumed that processors start and complete
+instructions in the order in which they appear in the program.  Many
+processors, however, execute instructions out of order to achieve
+higher performance.  If an instruction takes many cycles to complete,
+a processor may want to issue the instruction early so that it can
+overlap with other instructions and avoid processor stalls. For
+example, a processor may notice that in a serial sequence of
+instruction A and B are not dependent on each other and start
+instruction B before A so that it will be completed when the processor
+completes A.  Concurrency, however, may expose this reordering to
+software, which lead to incorrect behavior.
+.PP
+For example, one might wonder what happens if
+.code release
+just assigned 0 to
+.code lk->locked ,
+instead of using
+.code xchg .
+The answer to this question is unclear, because different generations
+of x86 processors make different guarantees about memory ordering.  If
+.code lk->locked=0 ,
+were allowed to be re-ordered say after
+.code popcli ,
+than 
+.code acquire 
+might break, because to another thread interrupts would be enabled
+before a lock is released. To avoid relying on unclear processor
+specifications about memory ordering, xv6 takes no risk and uses
+.code xchg ,
+which processors must guarantee not to reorder.
 .\"
 .section "Real world"
 .\"
