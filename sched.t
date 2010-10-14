@@ -45,59 +45,35 @@ the loss of event notifications.
 As an example of these problems and their solution, this
 chapter examines the implementation of pipes.
 .\"
-.section "Code: Scheduler"
-.\"
-Chapter \*[CH:MEM] breezed through the scheduler on the way to user space.
-Let's take a closer look at it.
-Each processor runs
-.code mpmain
-at boot time; the last thing 
-.code mpmain
-does is call
-.code scheduler
-.line "'main.c:/scheduler!(!)/'" .
-.PP
-.code Scheduler
-.line proc.c:/^scheduler/ 
-runs a simple loop:
-find a process to run, run it until it stops, repeat.
-At the beginning of the loop, 
-.code scheduler
-enables interrupts with an explicit
-.code sti
-.line "'proc.c:/sti!(!)/'" ;
-this is important for the special case in which no process
-is currently runnable and some processes are waiting for I/O interrupts:
-if interrupts are disabled for the entire scheduler
-loop, the system will never run another process.
-Then the scheduler
-loops over the process table
-looking for a runnable process, one that has
-.code p->state 
-.code ==
-.code RUNNABLE .
-Once it finds a process, it sets the per-CPU current process
-variable
-.code proc ,
-switches to the process's page table with
-.code switchuvm ,
-marks the process as
-.code RUNNING ,
-and then calls
-.code swtch
-to start running it
-.lines proc.c:/Switch.to/,/swtch/ .
-.\"
 .section "Code: Context switching"
 .\"
 .PP
+At a low level, xv6 performs two kinds of context switches:
+from a process's kernel thread to the current CPU's scheduler
+thread, and from the scheduler thread to a process's kernel thread.
+xv6 never directly switches from one user-space process to
+another; this happens by way of a user-kernel transition (system
+call or interrupt), a context switch to the scheduler, a context
+switch to a new process's kernel thread, and a trap return.
+In this section we'll example the mechanics of switching
+between a kernel thread and a scheduler thread.
+.PP
 Every xv6 process has its own kernel stack and register set, as we saw in
 Chapter \*[CH:MEM].
-Each CPU has its own kernel stack to use when running
-the scheduler.
-.code Swtch
-saves the scheduler's context-its stack pointer and registers—and
-switches to the chosen process's kernel thread context.
+Each CPU has a separate scheduler thread for use when it is executing
+the scheduler rather than any process's kernel thread.
+Switching from one thread to another involves saving the old thread's
+CPU registers, and restoring previously-saved registers of the
+new thread; the fact that
+.code esp
+and
+.code eip
+are saved and restored means that the CPU will switch stacks and
+switch what code it is executing.
+.PP
+.code swtch
+doesn't directly know about threads; it just saves and
+restores register sets, called contexts.
 When it is time for the process to give up the CPU,
 the process's kernel thread will call
 .code swtch
@@ -114,11 +90,17 @@ takes two arguments:
 and
 .code struct
 .code context
-.code *new ;
-it saves the current context, storing a pointer to it in
-.code *old ,
-and then restores the context described by
-.code new .
+.code *new .
+It pushes the current CPU register onto the stack
+and saves the stack pointer in
+.code *old .
+Then
+.code swtch
+copies
+.code new
+to 
+.code esp ,
+pops previously saved registers, and returns.
 .PP
 Instead of following the scheduler into
 .code swtch ,
@@ -220,7 +202,7 @@ called
 to switch to
 .code cpu->scheduler ,
 the per-CPU scheduler context.
-That new context had been saved by 
+That context had been saved by 
 .code scheduler 's
 call to
 .code swtch
@@ -355,6 +337,53 @@ exists only to honor this convention by releasing the
 otherwise, the new process could start at
 .code trapret .
 .PP
+.code Scheduler
+.line proc.c:/^scheduler/ 
+runs a simple loop:
+find a process to run, run it until it stops, repeat.
+.code scheduler
+holds
+.code ptable.lock
+for most of its actions,
+but releases the lock (and explicitly enables interrupts)
+once in each iteration of its outer loop.
+This is important for the special case in which this CPU
+is idle (can find no
+.code RUNNABLE
+process).
+If an idling scheduler looped with
+the lock continuously held, no other CPU that
+was running a process could ever perform a context
+switch or any process-related system call,
+and in particular could never mark a process as
+.code RUNNABLE
+so as to break the idling CPU out of its scheduling loop.
+The reason to enable interrupts periodically on an idling
+CPU is that there might be no
+.code RUNNABLE
+process because processes (e.g., the shell) are
+waiting for I/O;
+if the scheduler left interrupts disabled all the time,
+the I/O would never arrive.
+.PP
+The scheduler
+loops over the process table
+looking for a runnable process, one that has
+.code p->state 
+.code ==
+.code RUNNABLE .
+Once it finds a process, it sets the per-CPU current process
+variable
+.code proc ,
+switches to the process's page table with
+.code switchuvm ,
+marks the process as
+.code RUNNING ,
+and then calls
+.code swtch
+to start running it
+.lines proc.c:/Switch.to/,/swtch/ .
+.PP
 One way to think about the structure of the scheduling code is
 that it arranges to enforce a set of invariants about each process,
 and holds
@@ -393,6 +422,31 @@ refers to the process's page table,
 and that no CPU's
 .code proc
 refers to the process.
+.PP
+Maintaining the above invariants is the reason why xv6 acquires 
+.code ptable.lock
+in one thread (often in
+.code yield)
+and releases the lock in a different thread
+(the scheduler thread or another next kernel thread).
+Once the code has started to modify a running process's state
+to make it
+.code RUNNABLE ,
+it must hold the lock until it has finished restoring
+the invariants: the earliest correct release point is after
+.code scheduler
+stops using the process's page table and clears
+.code proc .
+Similarly, once 
+.code scheduler
+starts to convert a runnable process to
+.code RUNNING ,
+the lock cannot be released until the kernel thread
+is completely running (after the
+.code swtch ,
+e.g. in
+.code yield ).
+.PP
 .code ptable.lock
 protects other things as well:
 allocation of process IDs and free process table slots,
@@ -488,29 +542,29 @@ The receiver's CPU could find more productive work
 if there were a way for the receiver to be notified when the
 .code send
 had delivered a pointer.
-.code Sleep
+.PP
+Let's imagine a pair of calls, 
+.code sleep
 and
-.code wakeup 
-provide such a mechanism.
+.code wakeup ,
+that work as follows.
 .code Sleep(chan)
-sleeps on the pointer
+sleeps on the arbitrary value
 .code chan ,
-called the wait channel,
-which may be any kind of pointer;
-the sleep/wakeup code uses this pointer only as an identifying address
-and never dereferences it.
+called the wait channel.
 .code Sleep
 puts the calling process to sleep, releasing the CPU
 for other work.
-It does not return until the process is awake again.
 .code Wakeup(chan)
-wakes all the processes 
-sleeping on
+wakes all processes sleeping on
 .code chan
-(if any),
-causing their
+(if any), causing their
 .code sleep
 calls to return.
+If no processes are waiting on
+.code chan ,
+.code wakeup
+does nothing.
 We can change the queue implementation to use
 .code sleep
 and
@@ -610,12 +664,12 @@ We would like to be able to have the following code:
   305	void*
   306	send(struct q *q, void *p)
   307	{
-  308	  lock(&q->lock);
+  308	  acquire(&q->lock);
   309	  while(q->ptr != 0)
   310	    ;
   311	  q->ptr = p;
   312	  wakeup(q);
-  313	  unlock(&q->lock);
+  313	  release(&q->lock);
   314	}
   315	
   316	void*
@@ -623,11 +677,11 @@ We would like to be able to have the following code:
   318	{
   319	  void *p;
   320	
-  321	  lock(&q->lock);
+  321	  acquire(&q->lock);
   322	  while((p = q->ptr) == 0)
   323	    sleep(q, &q->lock);
   324	  q->ptr = 0;
-  325	  unlock(&q->lock);
+  325	  release(&q->lock);
   326	  return p;
   327	}
 .P2
@@ -777,13 +831,13 @@ makes sure that
 and
 .code wakeup
 do not miss each other.
-.code Wakeup1 "" (
+.code Wakeup1
 is a separate function because
 sometimes the scheduler needs to
 execute a wakeup when it already
 holds the 
 .code ptable.lock ;
-we will see an example of this later.)
+we will see an example of this later.
 .code Wakeup1
 .line proc.c:/^wakeup1/
 loops over the process table.
@@ -802,7 +856,7 @@ prevents observation of whatever the wakeup
 condition is; in the example above that lock is
 .code q->lock .
 The complete argument for why the sleeping process won't
-miss a wakeup is that at all times from before when it
+miss a wakeup is that at all times from before it
 checks the condition until after it is asleep, it holds either
 the lock on the condition or the
 .code ptable.lock 
@@ -814,7 +868,34 @@ the wakeup must execute either before the potential
 sleeper checks the condition, or after the potential
 sleeper has completed putting itself to sleep.
 .PP
-There is another complication: spurious wakeups.
+It is sometimes the case that multiple processes are sleeping
+on the same channel; for example, more than one process
+trying to read from a pipe.
+A single call to 
+.code wakeup
+will wake them all up.
+One of them will run first and acquire the lock that
+.code sleep
+was called with, and (in the case of pipes) read whatever
+data is waiting in the pipe.
+The other processes will find that, despite being woken up,
+there is no data to be read.
+From their point of view the wakeup was "spurious," and
+they must sleep again.
+For this reason sleep is always called inside a loop that
+checks the condition.
+.PP
+Callers of sleep and wakeup can use any mutually convenient
+number as the channel; in practice xv6 often uses the address
+of a kernel data structure involved in the waiting, such as a disk buffer.
+No harm is done if two uses of sleep/wakeup accidentally
+choose the same channel: they will see spurious wakeups,
+but looping as described above will tolerate this problem.
+Much of the charm of sleep/wakeup is that it is both
+lightweight (no need to create special data
+structures to act as sleep channels) and provides a layer
+of indirection (callers need not know what specific process
+they are interacting with).
 .\"
 .section "Code: Pipes"
 .\"
@@ -956,7 +1037,6 @@ calls
 .line pipe.c:/piperead-wakeup/
 to wake any sleeping writers
 before it returns to its caller.
-.PP
 .code Wakeup
 finds a process sleeping on
 .code &p->nwrite ,
@@ -966,62 +1046,26 @@ but stopped when the buffer filled.
 It marks that process as
 .code RUNNABLE .
 .PP
-Let's suppose that the scheduler on the other CPU
-has decided to run some other process,
-so
-.code pipewrite
-does not start running again immediately.
-Instead,
-.code piperead
-returns to its caller, who then calls
-.code piperead
-again. 
-Let's also suppose that the first
-.code piperead
-consumed all the data from the pipe buffer,
-so now
+The pipe code uses separate sleep channels for reader and writer
+(
 .code p->nread
-.code ==
-.code p->nwrite .
-.code Piperead
-sleeps on
-.code &p->nread
-to await more data
-.line pipe.c:/piperead-sleep/ .
-Once the process calling
-.code piperead
-is asleep, the CPU can run
-.code pipewrite 's
-process, causing 
-.code sleep
-to return
-.line pipe.c:/pipewrite-sleep/ .
-.code Pipewrite
-finishes its loop, copying the remainder of
-its data into the buffer
-.line "'pipe.c:/nwrite!+!+/'" .
-Before returning,
-.code pipewrite
-calls
-.code wakeup
-in case there are any readers
-waiting for the new data
-.line pipe.c:/pipewrite-wakeup1/ .
-There is one, the
-.code piperead
-we just left.
-It continues running
-.line pipe.c/piperead-sleep/
-and copies the new data out of the pipe.
+and
+.code p->nwrite );
+this might make the system more efficient in the unlikely
+event that there are lots of
+readers and writers waiting for the same pipe.
+The pipe code sleeps inside a loop checking the
+sleep condition; if there are multiple readers
+or writers, all but the first process to wake up
+will see the condition is still false and sleep again.
 .\"
 .section "Code: Wait and exit"
 .\"
 .code Sleep
 and
 .code wakeup
-do not have to be used for implementing queues.
-They work for any condition that can be checked
-in code and needs to be waited for.
+can be used in many kinds of situations involving a condition
+that can be checked needs to be waited for.
 As we saw in Chapter \*[CH:UNIX],
 a parent process can call
 .code wait
@@ -1141,34 +1185,27 @@ of the cleanup during
 .code exit ,
 but it is important that the parent 
 process be the one to free
-.code p->kstack :
+.code p->kstack 
+and 
+.code p->pgdir :
 when the child runs
 .code exit ,
 its stack sits in the memory allocated as
-.code p->kstack .
-The stack can only be freed once the child process
-has called
+.code p->kstack 
+and it uses its own pagetable.
+They can only be freed after the child process has
+finished running for the last time by calling
 .code swtch
 (via
-.code sched )
-and moved off it.
-This reason is the main one that the scheduler procedure runs on its
-own stack, and that xv6 organizes 
-.code sched
-and
-.code scheduler
-as co-routines.
-Xv6 couldn't invoke the procedure
-.code scheduler
-directly from the child, because that procedure would then be running on a stack
-that might be removed by the parent process calling
-.code wait .
+.code sched ).
+This is one reason that the scheduler procedure runs on its
+own stack rather than on the stack of the thread
+that called
+.code sched .
 .\"
 .section "Scheduling concerns"
 .\"
 .PP
-XXX spurious wakeups
-
 XXX checking p->killed
 
 XXX thundering herd
@@ -1278,7 +1315,7 @@ with
 .P1
 release(lk);
 acquire(&ptable.lock);
- .P2
+.P2
 Doing this would break
 .code sleep .
 How?
