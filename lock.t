@@ -370,8 +370,12 @@ These orderings come about because
 sleep
 and 
 .code
-wakeup
-have a complicated invariant, as discussed in Chapter \*[CH:SCHED].
+wakeup have a complicated invariant, as discussed in Chapter
+\*[CH:SCHED].  In the file system there are a number of examples of
+chains of two because the file system must, for example, acquire a
+lock on a directory and the lock on a file in that directory to unlink
+a file from its parent directory correctly.  xv6 always acquires the
+locks in the order first parent directory and then the file.
 .section "Interrupt handlers"
 .\"
 Xv6 uses locks to protect interrupt handlers
