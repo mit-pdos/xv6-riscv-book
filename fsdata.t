@@ -23,18 +23,29 @@ programs.
 Xv6, following Unix, provides a hierarchical file system that allows
 programs to treat storage as a tree of named files, each containing
 a variable length sequence of bytes.
-The file system is implemented in four steps.
-The first step is the block allocator.  It manages disk blocks, keeping
+The file system is implemented in four layers:
+.P1
+-------------
+   pathnames
+-------------
+  directories
+-------------
+    inodes
+-------------
+    blocks
+-------------
+.P2
+The first layer is the block allocator.  It manages disk blocks, keeping
 track of which blocks are in use,
 just as the memory allocator in Chapter \*[CH:MEM] tracks which
 memory pages are in use.
-The second step is unnamed files called inodes (pronounced i-node).
+The second layer is unnamed files called inodes (pronounced i-node).
 Inodes are a collection of allocated blocks holding a variable length
 sequence of bytes.
-The third step is directories.  A directory is a special kind
+The third layer is directories.  A directory is a special kind
 of inode whose content is a sequence of directory entries, 
 each of which lists a name and a pointer to another inode.
-The last step is hierarchical path names like
+The last layer is hierarchical path names like
 .code /usr/rtm/xv6/fs.c ,
 a convenient syntax for identifying particular files or directories.
 .\"
@@ -658,7 +669,7 @@ set correctly.
 The more complex loop in 
 .code dirlookup
 does not save any disk i/o—the buffer cache
-avoids redundant reads—but doe savoid repeated
+avoids redundant reads—but does avoid repeated
 locking and unlocking of
 .code bcache.lock
 in
