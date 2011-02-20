@@ -300,7 +300,7 @@ all in under 512 bytes of machine code.
 .PP
 The first instruction in the boot sector is
 .opcode cli
-.line bootasm.S:/Disable.interrupts/ ,
+.line bootasm.S:/cli.*interrupts/ ,
 which disables processor interrupts.
 Interrupts are a way for hardware devices to invoke
 operating system functions called interrupt handlers.
@@ -386,7 +386,7 @@ is low, the 21st physical address bit is always cleared;
 if high, the 21st bit acts normally.
 The boot sector must enable the 21st address bit using I/O to the keyboard
 controller on ports 0x64 and 0x60
-.lines bootasm.S:/Enable.A20/,/outb.*%al,.0x60/ .
+.lines bootasm.S:/A20/,/outb.*%al,.0x60/ .
 .PP
 Real mode's 16-bit general-purpose and segment registers
 make it awkward for a program to use more than 65,536 bytes

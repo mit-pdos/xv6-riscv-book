@@ -47,9 +47,9 @@ Here are the values that
 .code exec
 places at the top of the stack:
 .P1
-"argumentN"                      -- nul-terminated string
- ...
 "argument0"
+ ...
+"argumentN"                      -- nul-terminated string
 0                                -- argv[argc]
 address of argumentN             
  ...
@@ -124,30 +124,25 @@ Now
 .code exec
 allocates and initializes the user stack.
 It assumes that one page of stack is enough.
-It is going to put the arguments passed to the system
-call at the top of the stack, so it first calculates
-how much space they will need
-.line exec.c:/arglen.=..arg/
-and at what user address they will start
-.line exec.c:/argp.=.sz.-.a/ .
+If not,
+.code copyout
+will return \-1, as will 
+.code exec .
+.code Exec
+first copies the argument strings to the top of the stack
+one at a time, recording the pointers to them in 
+.code ustack .
 It places a null pointer at the end of what will be the
 .code argv
 list passed to
-.code main ,
-and then copies each argument string to its place in
-the stack
-.line exec.c:/memmove.mem.sp/ ,
-and places a pointer to each argument string to
-the right place in the
-.code argv
-array
-.line exec.c:/uint...mem.argp.*argv/ .
-Finally
-.code exec
-pushes
-.code argv ,
+.code main .
+The first three entries in 
+.code ustack
+are the fake return PC,
 .code argc ,
-and a fake return program counter onto the stack.
+and
+.code argv
+pointer.
 .PP
 During the preparation of the new memory image,
 if 

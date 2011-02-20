@@ -876,7 +876,7 @@ holds 4096.
 These are virtual addresses in the process's address space.
 The processor's paging hardware translates them into physical addresses
 (we'll ignore segments since xv6 sets them up with the identity mapping
-.line vm.c:/^ksegment/ ).
+.line vm.c:/^seginit/ ).
 .code allocuvm
 set up the PTE for the page at virtual address zero to
 point to the physical memory allocated for this process,
