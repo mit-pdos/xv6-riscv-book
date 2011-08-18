@@ -63,9 +63,10 @@ the memory of other processes. xv6 also arranges for each process's
 memory to be contiguous and to start at virtual address zero. The C
 language definition and the Gnu linker expect process memory to be
 contiguous. Process memory starts at zero because that is traditional.
-A process's view of memory is called an address space.
+A process's view of memory is called an
+.italic "address space."
 .PP
-The xv6 boot has loader set up the segmentation hardware so that virtual and
+The xv6 boot loader has set up the segmentation hardware so that virtual and
 physical addresses are always the same value: the segment descriptors
 all have a base of zero and the maximum possible limit.
 xv6 sets up the x86 paging hardware to translate (or "map") virtual to physical
@@ -105,6 +106,148 @@ paging hardware translates to physical addresses, and then
 sends to the DRAM hardware to read or write storage.
 At this level of discussion there is no such thing as virtual memory,
 only virtual addresses.
+.\"
+.section "Code: entry page table"
+.\"
+The boot loader has loaded the xv6 kernel into memory at physical address
+.address 0x100000 ,
+but the xv6 Makefile has linked the kernel at a high address, namely
+.address 0xF0100000 .
+The reason that the kernel is linked high is so that user programs can use the
+low virtual addresses, from
+.address 0, till
+.address 0xF0100000 .
+xv6 uses
+.code KERNBASE 
+(see
+.file "memlayout.h"
+.sheet memlayout.h )
+to refer to this address.  We want such a large part of the address space for
+user programs because we want to put the user stack high so that it can grow
+down with plenty of space before it runs into the program's data structures.  We
+would like to put the program text and data structures low so that they can
+start at 0, a convenient convention.  We want to put the kernel and user program
+in a single address space so that the kernel can easily transfer data from the
+user program to the kernel, and back.   xv6 arrives at such an address space
+layout in a few steps.
+.PP
+xv6 uses the paging hardware to arrange that the link address (
+.code KERNBASE )
+maps to the load address, because any memory reference xv6 makes will use a high
+address.  Thus, the first thing the 
+.code entry
+.line 'bootmain.c:/entry.=/'
+does is setting up a page table for this mapping and enabling the paging
+hardware so that it can enter the C part of the kernel.
+The entry page table is defined 
+in main.c
+.line 'main.c:/enterpgdir/' .
+It is 2^10 (1024) entries, instead of 2^20, because it takes advantage of super
+pages, which are pages that are 4 Mbyte (2^22) large.  Entry 0 maps virtual address
+.address 0
+to
+.address 0x400000
+to physical address
+.address 0
+to 
+.address 0x400000.
+This part ensures that low addresses are mapped to low addresses; this is
+important to do because the boot loader started running the kernel at low
+addresses (e.g., the 
+.code %eip
+is set to 0x100020 ).
+The pages are mapped as present
+.code PTE_P
+(present),
+.code PTE_W
+(writeable),
+and
+.code PTE_PS
+(super page).
+The flags and all other page hardware related structures are defined in
+.file "mmu.h"
+.sheet memlayout.h .
+.PP
+Entry 240
+maps virtual address
+.address 0xF0000000
+to 
+.address 0xF0400000
+to physical address
+.address 0
+to 
+.address 0x400000.
+This entry ensures that the high are mapped to the physical addresses where the
+kernel is loaded.  Thus, when the kernel starts to using high addresses, they
+will map to the correct physical addresses.  Note that this mapping restricts
+the kernel to the size of 4Mbyte, but that is sufficient for xv6.
+.PP
+Returning to
+.code entry,
+the kernel first tells the paging hardware to allow super pages by setting the flag
+.code CR_PSE 
+(page size extension) in the control register
+.code %cr4.
+Next it loads the physical address of
+.code enterpgdir
+into control register
+.code %cr3.
+The paging hardware must know the physical address of
+.code pgdir, 
+because it doesn't know how to translate virtual addresses yet; it doesn't have
+a page table yet.
+The macro
+.code V2P_WO
+.line 'memlayout.h:/V2P_WO/' 
+computes the physical address.
+To enable the paging hardware, xv6 sets the flags
+.code CR0_PE|CR0_PG|CR0_WP
+in the control register
+.code %cr0.
+.PP
+After executing this instruction the processor increases 
+.code %eip
+to compute the address of the next instruction
+and the paging hardware will translate that address.
+Since we set up
+.code entrypgdir
+to translate low address one to one, this instructions will execute correctly.
+If xv6 had omitted entry 0 from
+.code entrypgdir,
+the hardware could not have translated the address in
+.code %eip
+and it would stop executing instructions (i.e., the computer would crash).
+.PP
+Fortunately xv6 has set up the paging hardware correctly, and it loads
+.code $relocated 
+into
+.code %eax.
+The address
+.code $relocated
+is a high address. But, now xv6 has set up the paging hardware, it will translate
+to a low physical address, where the value for 
+.code $relocated
+is actually located.
+xv6 also loads a high address for the stack
+into 
+.code %esp;
+the stack is located in low memory, but the paging hardware is set up.
+Then, it calls
+.code main,
+which is also a high address.  The call will pushes the return address (a low
+value!) on the stack.
+After the call both
+.code %eip
+and
+.code %esp
+contain high values and the kernel is running in the high part of the virtual
+address space.  Now xv6 can get remove the mapping for the lower virtual
+addresses, so that it can use that part of the address space for user programs.
+As we will see next, xv6 does so by setting up another page table.
+.PP
+.\"
+.section "Code: kernel page table"
+.\"
 .PP
 xv6 uses page tables to implement process address spaces as
 follows. Each process has a separate page table, and xv6 tells
