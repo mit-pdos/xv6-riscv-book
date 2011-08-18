@@ -1,16 +1,7 @@
 .so book.mac
-.chapter CH:BOOT Bootstrap
+.chapter CH:BOOT "Boot loader"
 .ig
 	notes:
-	
-	somewhere there needs to be an overview of
-	what a processor is, what memory is, how buses
-	connect processors to memory and devices, etc.
-	the view can be just from the processor's vantage point
-	(memory and devices are just magic wires that
-	you send addresses to and get back data) but
-	those details need to be somewhere.
-	
 	this chapter is an attempt to demand page that
 	information as needed while going through the source,
 	because no one wants to read the intel manual first
@@ -21,26 +12,78 @@
 
 	there isn't really anything called "32-bit mode".
 ..
-.section Hardware
-.ig
-The core of a computer system is its
-computer's central processing unit (simply, its
-processor or CPU).  The operating system deals with
-the processor in great detail but deals with the other
-components of the system—the memory, the disks,
-the network and graphics controllers—in comparatively less detail.
-Those other components are mostly abstracted away.
-The hardware details necessary to understand an operating
-system are therefore focused on the processor itself.
-XXX rtm: the above is true of xv6 but false for most operating
-systems, which have far more code for device handling
-than for CPU management.
-XXX rsc: yes and no.  i didn't mean the volume of code but the level of detail.
-the os works with the cpu on a much lower level than it
-does with the device hardware.  for example, it doesn't
-have to deal with explicit ram refreshes, the pci bus protocol,
-managing each device's internal traps, and so on.
-..
+
+.PP
+This book takes a bottom-up approach to describing how to implement a Unix-like
+interface.  It starts with what happens when a user powers on a computer, which
+for this book we will assume is a personal computer (PC) with an Intel x86
+processor.  Before the operating system can manage the PC, the PC must load it.
+Loading the kernel is the job of the
+.italic "boot loader"  .  
+The xv6 kernel has its own minimal boot loader (see files
+.file bootasm.S ; (
+.sheet bootasm.S )
+and 
+.file bootmain.c ; (
+.sheet bootmain.c ),
+to eliminate any mysteries about how an operating system starts.  The boot
+loader is a separate program from xv6 itself and in principle could be used to
+load the kernel for other operating systems too.  This chapter examines the
+operation of the xv6 boot loader, from the time the a PC starts to the time it
+transfers control to the kernel proper.
+.PP
+The boot loader is a microcosm of a kernel itself: it contains low-level
+assembly and C code, it manages its own memory, and it even has a device driver,
+all in under 512 bytes of machine code.  This small size and simple function
+makes it a good starting point to learn about kernels; in the process, you will
+learn enough about PC hardware and x86 assembly to understand the boot loader
+and xv6.  If you are already familiar with PC hardware and x86 assembly, you can
+skip forward to the next chapter, where xv6 starts.
+.\"
+.\" -------------------------------------------
+.\"
+.section "A personal computer"
+.PP
+A personal computer is a computer that adheres to several industrial standards,
+allowing different manufacturers to build them and have some hope that an
+operating system for a particular PC can run on all of them.  These standard
+evolve over time and a PC from 1990s doesn't look like a PC now. 
+.PP
+From the outside a PC is a box with a keyboard, a screen, and various devices
+(e.g., CD-rom, etc.).  In the inside the box, a PC has a digital computer board,
+the "mother" board, which has one or more processors that provide an Intel x86
+instruction set, memory chips, and devices for keyboard, display, disk, clock,
+etc.  The devices are wired together by a
+.italic bus , 
+which defines a protocol for the devices to communicate.  The bus protocol
+adheres to an industrial standard so that manufacturers can focus on particular
+devices and have them work with PCs produced by PC manufactures.  There are
+several bus standards (e.g., PCI, etc.) and they evolve over time as new
+requirements emerge (e.g., higher speeds).
+.PP
+From our point of view, we can all abstract this sea of devices on a PC board
+into three components: a processor, memory, and input/output (I/O) devices.  The
+processor performs computation, the memory contains programs that describe the
+computation, and the processor can issue I/O instructions to make devices to
+their job.  Some of the wires, called lines, from the processor carry address
+bits; some carry data bits.  These are lines used to read/write data to specific
+locations.
+.PP
+To read a value from main memory, the processor sends high or low voltages
+representing 1 or 0 bits on the address lines and a 1 on the ``read'' line for a
+prescribed amount of time and then reads back the value by interpreting the
+voltages on the data lines.  To write a value to main memory, the processor
+sends appropriate bits on the address and data lines and a 1 on the ``write''
+line for a prescribed amount of time.  This model is an accurate description of
+the earliest x86 chips, but it is a drastic oversimplification of a modern
+system.  Even so, thanks to the processor-centric view the operating system has
+of the rest of the computer, this simple model suffices to understand a modern
+operating system.  The details of modern I/O buses are the province of computer
+architecture textbooks.
+.\"
+.\" -------------------------------------------
+.\"
+.section "Processor and memory"
 .PP
 A computer's CPU (central processing unit, or processor)
 runs a conceptually simple loop:
@@ -65,7 +108,17 @@ register is a storage cell inside the processor itself,
 capable of holding a machine word-sized value (typically 16,
 32, or 64 bits).  Data stored in registers can typically be
 read or written quickly, in a single CPU cycle.
-The x86
+.PP
+PCs have a processor that implements the x86 instruction set, which was
+originally defined by Intel and has become a standard.  Several manufacturers
+produce processors that implement the instruction set.  Like all other PC
+standards, this standard is also evolving but newer standards are backwards
+compatible with past standards. The boot loader has to deal with some of this
+evolution because every PC processor starts simulating an Intel 8088, the CPU
+chip in the original IBM PC released in 1981.  However, for most of xv6 you will
+be concerned with the modern x86 instruction set.
+.PP
+The modern x86
 provides eight general purpose 32-bit registers—\c
 .register eax ,
 .register ebx ,
@@ -199,30 +252,13 @@ the memory hierarchy.
 The exceptions—the only reasons an x86 operating system
 needs to worry about the memory cache—are concurrency
 (Chapter \*[CH:LOCK]) and device drivers (Chapter \*[CH:DISK]).
-.PP
 One reason memory access is so much slower than register
 access is that the memory is a set of chips physically
 separate from the processor chip.
-To allow the processor to communicate with the
-memory, there is a collection of wires, called a bus, running
-between the two.  A simple mental model is that some of the wires,
-called lines, carry address
-bits; some carry data bits.  To read a value from main
-memory, the processor sends high or low voltages
-representing 1 or 0 bits on the address lines and a 1 on the
-``read'' line for a prescribed amount of time and then reads
-back the value by interpreting the voltages on the data
-lines.
-To write a value to main memory, the processor sends
-appropriate bits on the address and data lines and a 1 on
-the ``write'' line for a prescribed amount of time. 
-This model is an accurate description of the earliest x86 chips,
-but it is a drastic oversimplification of a modern system.
-Even so, thanks to the processor-centric view the
-operating system has of the rest of the computer,
-this simple model suffices to understand a modern operating
-system.  The details of modern I/O buses are the province of
-computer architecture textbooks.
+.\"
+.\" -------------------------------------------
+.\"
+.section "I/O"
 .PP
 Processors must communicate not just with memory but with
 hardware devices too.  The x86 processor provides special
@@ -247,8 +283,9 @@ instructions.  Instead the devices have fixed memory
 addresses and the processor communicates with the device (at
 the operating system's behest) by reading and writing values
 at those addresses.  In fact, modern x86 architectures use
-this technique, called memory-mapped I/O, for most
-high-speed devices such as network, disk, and graphics
+this technique, called 
+.italic "memory-mapped I/O" , 
+for most high-speed devices such as network, disk, and graphics
 controllers.  For reasons of backwards compatibility,
 though, the old
 .opcode in
@@ -260,7 +297,7 @@ IDE disk controller, which we will see shortly.
 .\"
 .\" -------------------------------------------
 .\"
-.section Bootstrap
+.section "Boot loader"
 .PP
 When an x86 PC boots, it starts executing a program called the BIOS,
 which is stored in flash memory on the motherboard.
@@ -268,35 +305,25 @@ The BIOS's job is to prepare the hardware and
 then transfer control to the operating system.
 Specifically, it transfers control to code loaded from the boot sector,
 the first 512-byte sector of the boot disk.
+In xv6, the boot sector contains a complete, but simple boot loader.
 The BIOS loads a copy of that sector into memory at
 .address 0x7c00
 and then jumps (sets the processor's
 .register ip )
-to that address.
-When the boot sector begins executing, the processor is
-simulating an Intel 8088, the CPU chip in the
-original IBM PC released in 1981.
-The xv6 boot sector's job is to put the processor in a more
-modern operating mode, to load the xv6 kernel from disk into memory,
-and then to transfer control to the kernel.
-In xv6, the boot sector comprises two source files,
-one written in a combination of 16-bit and 32-bit x86 assembly
+to that address.  When the boot loader begins executing, the processor is
+simulating an Intel 8088, and the loader's job is to put the processor in a more
+modern operating mode, to load the xv6 kernel from disk into memory, and then to
+transfer control to the kernel.  In xv6, the boot sector comprises two source
+files, one written in a combination of 16-bit and 32-bit x86 assembly
 .file bootasm.S ; (
 .sheet bootasm.S )
 and one written in C
 .file bootmain.c ; (
 .sheet bootmain.c ).
-This chapter examines the operation of the xv6 boot sector,
-from the time the BIOS starts it to the time it transfers control
-to the kernel proper.
-The boot sector is a microcosm of the kernel itself:
-it contains low-level assembly and C code,
-it manages its own memory, and it even has a device driver,
-all in under 512 bytes of machine code.
 .\"
 .\" -------------------------------------------
 .\"
-.section "Code: Assembly bootstrap
+.section "Code: Assembly bootstrap"
 .PP
 The first instruction in the boot sector is
 .opcode cli
@@ -307,7 +334,7 @@ operating system functions called interrupt handlers.
 The BIOS is a tiny operating system, and it might have
 set up its own interrupt handlers as part of the initializing
 the hardware.
-But the BIOS isn't running anymore—xv6 is, or will be—so it
+But the BIOS isn't running anymore—the boot loader is—so it
 is no longer appropriate or safe to handle interrupts from
 hardware devices.
 When xv6 is ready (in Chapter \*[CH:TRAP]), it will
@@ -336,9 +363,9 @@ data reads and writes use
 and stack reads and writes use
 .register ss .
 We'll call the addresses the processor chip sends to memory
-"physical addresses,"
+.italic "physical addresses" ,
 and the addresses that programs directly manipulate
-"virtual addresses."
+.italic "virtual addresses" ,
 People often write a full real-mode virtual memory reference as
 \fIsegment\fP:\fIoffset\fP,
 indicating the value of the relevant segment register and
@@ -384,7 +411,7 @@ hardware.
 If the second bit of the keyboard controller's output port
 is low, the 21st physical address bit is always cleared;
 if high, the 21st bit acts normally.
-The boot sector must enable the 21st address bit using I/O to the keyboard
+The boot loader must enable the 21st address bit using I/O to the keyboard
 controller on ports 0x64 and 0x60
 .lines bootasm.S:/A20/,/outb.*%al,.0x60/ .
 .PP
@@ -429,7 +456,7 @@ register with the value
 which in turns points at the table
 .code gdt .
 .PP
-Once it has loaded the GDT register, the boot sector enables
+Once it has loaded the GDT register, the boot loader enables
 protected mode by
 setting the 1 bit
 (\c
@@ -459,11 +486,11 @@ to refer to the code descriptor entry in
 .code gdt .
 The entry describes a 32-bit code segment,
 so the processor switches into 32-bit mode.
-The boot sector code has nursed the processor
+The boot loader has nursed the processor
 through an evolution from 8088 through 80286 
 to 80386.
 .PP
-The boot sector's first action in 32-bit mode is to
+The boot loader's first action in 32-bit mode is to
 initialize the data segment registers with
 .code SEG_KDATA
 .lines bootasm.S:/movw.*SEG_KDATA/,/Stack.Segment/ .
@@ -484,7 +511,7 @@ through
 .address 0x7d00 .
 Essentially any other section of memory would be a fine
 location for the stack.
-The boot sector chooses
+The boot loader chooses
 .address 0x7c00
 (known in this file as
 .code $start )
@@ -493,7 +520,7 @@ the stack will grow down from there, toward
 .address 0x0000 ,
 away from the boot sector code.
 .PP
-Finally the boot sector calls the C function
+Finally the boot loader calls the C function
 .code bootmain
 .line bootasm.S:/call.*bootmain/ .
 .code Bootmain 's
@@ -505,17 +532,17 @@ on port
 .lines bootasm.S:/bootmain.returns/,/spin:/-1 .
 On real hardware, there is no device connected
 to that port, so this code does nothing.
-If the boot sector is running inside the PC simulator Bochs, port 
+If the boot loader is running inside a PC simulator, port 
 .address 0x8a00
-is connected to Bochs itself; the code sequence triggers
-a Bochs debugger breakpoint.
-Bochs or not, the code then executes an infinite loop
+is connected to the simulator itself and can transfer control
+back to the simulator.
+Simulator or not, the code then executes an infinite loop
 .lines bootasm.S:/^spin:/,/jmp/ .
 A real boot sector might attempt to print an error message first.
 .\"
 .\" -------------------------------------------
 .\"
-.section "Code: C bootstrap
+.section "Code: C bootstrap"
 .PP
 The C part of the boot sector,
 .file bootmain.c
@@ -545,19 +572,12 @@ a gross overestimation of the amount needed
 It places the in-memory copy at address
 .address 0x10000 ,
 another out-of-the-way memory address.
-.ig
 .PP
 We've now seen two arbitrarily chosen addresses: the stack
 growing down from
 .address 0x7c00
 and the ELF header placed at
 .address 0x10000 .
-It would be difficult to remember many more of
-these addresses, but there is only one more: the kernel is
-linked to start at address
-.address 0x100000 ,
-far beyond the ELF
-header just loaded into memory.
 In ordinary programs, it is bad style to pick arbitrary memory addresses:
 one should obtain memory from a memory allocator like C's
 .code malloc .
@@ -566,9 +586,7 @@ is a self-contained program that must fit in 512 bytes and
 run without an operating system.
 There is no room for a full memory allocator and really no need.
 The kernel itself does implement and use a memory allocator,
-described in Chapter CH:PROC.
-XXX but the boot code doesn't mention 0x100000.
-..
+described in Chapter \*[CH:MEM].
 .PP
 .code bootmain
 casts freely between pointers and integers
@@ -581,7 +599,7 @@ C allows these conversions, in contrast to languages like Pascal and Java,
 precisely because one of the first uses of C was to write an
 operating system: Unix.
 .PP
-Back in the boot sector, what should be an ELF binary header
+Back to the boot loader, what should be an ELF binary header
 has been loaded into memory at address
 .code 0x10000
 .line bootmain.c:/readseg/ .
@@ -614,10 +632,12 @@ running kernel image.
 Each
 .code proghdr
 gives a virtual address
-.code va ), (
+.code vaddr ), (
+the location where the program should be loaded in memory
+.code paddr ), (
 the location where the section's content lies on the disk
 relative to the start of the ELF header
-.code offset ), (
+.code off ), (
 the number of bytes to load
 from the file
 .code filesz ), (
@@ -631,40 +651,35 @@ is larger than
 the bytes not loaded from the file are to be zeroed.  This is
 more efficient, both in space and I/O, than storing the
 zeroed bytes directly in the binary.  As an example, the xv6
-kernel has two loadable program sections, code and data:
+kernel has one loadable program section:
 .P1
-# objdump -p kernel
-
+# objdump -p kernel (last version)
 kernel:     file format elf32-i386
 
 Program Header:
-LOAD off    0x00001000 vaddr 0x00100000 paddr 0x00100000 align 2**12
-   filesz 0x000063ca memsz 0x000063ca flags r-x
-LOAD off    0x000073e0 vaddr 0x001073e0 paddr 0x001073e0 align 2**12
-   filesz 0x0000079e memsz 0x000067e4 flags rw-
- STACK off    0x00000000 vaddr 0x00000000 paddr 0x00000000 align 2**2
-   filesz 0x00000000 memsz 0x00000000 flags rwx
+    LOAD off    0x00001000 vaddr 0xf0100000 paddr 0x00100000 align 2**12
+         filesz 0x0000b57e memsz 0x000126d0 flags rwx
 .P2
-Notice that the second section, the data section, has a
+Notice that the program section has a
 .code memsz
 larger than its
 .code filesz :
 the first
-.code 0x79e
+.code 0xb57e
 bytes are
 loaded from the kernel binary and the remaining
-.code 0x6046
+.code 0x7152
 bytes are zeroed.
 .PP
 .code Bootmain
 uses the addresses in the
 .code proghdr
 to direct the loading of the kernel.
-It reads each section's content starting from the disk location
-.code offset
+It reads the section's content starting from the disk location
+.code off
 bytes after the start of the ELF header,
 and writes to memory starting at address
-.code va .
+.code paddr .
 .code Bootmain
 calls
 .code readseg
@@ -688,33 +703,24 @@ reads at least
 bytes from the disk
 .code offset
 into memory at
-.code va .
+.code pa .
 The x86 IDE disk interface
 operates in terms of 512-byte chunks called sectors, so
 .code readseg
 may read not only the desired section of memory but
 also some bytes before and after, depending on alignment.
-For the second program segment in the example above, the
-boot sector will call 
-.code "readseg((uchar*)0x1073e0, 0x73e0, 0x79e)" .
-Due to sector granularity, this call is equivalent to
-.code "readseg((uchar*)0x107200, 0x7200, 0xa00)" :
-it reads
-.code 0x1e0
-bytes before the desired memory region and
-.code 0x82
-bytes afterward.
-In practice, this sloppy behavior turns out not to be a problem
-(see exercise XXX).
+For the program segment in the example above, the
+boot loader will call 
+.code "readseg((uchar*)0x100000, 0xb57e, 0x1000)" .
 .code Readseg
-begins by computing the ending virtual address, the first memory
+begins by computing the ending physical address, the first memory
 address above 
-.code va
+.code paddr
 that doesn't need to be loaded from disk
-.line bootmain.c:/eva.=/ ,
+.line bootmain.c:/epa.=/ ,
 and rounding
-.code va
-down to a sector-aligned disk offset .
+.code pa
+down to a sector-aligned disk offset.
 Then it
 converts the offset from a byte offset to
 a sector offset;
@@ -729,6 +735,10 @@ to read each sector into memory.
 .line bootmain.c:/^readsect/
 reads a single disk sector.
 It is our first example of a device driver, albeit a tiny one.
+A 
+.italic "device driver"
+is the program code and data that manages an I/O device such as disk, display, etc.
+It is a piece of code that issues the I/O instructions to interact with a device.
 .code Readsect
 begins by calling
 .code waitdisk
@@ -743,7 +753,8 @@ to
 .line bootmain.c:/^waitdisk/
 reads the status byte until the bits are set that way.
 Chapter \*[CH:DISK] will examine more efficient ways to wait for hardware
-status changes, but busy waiting like this (also called polling)
+status changes, but busy waiting like this (also called 
+.italic polling )
 is fine for the boot sector.
 .PP
 Once the disk is ready,
@@ -798,7 +809,9 @@ are not ordinary C functions.  They are
 inlined functions whose bodies are assembly language
 fragments
 .line "x86.h:/^inb/ x86.h:/^outb/ x86.h:/^insl/" .
-When gcc sees the call to
+When 
+.code gcc 
+(the C compiler xv6 uses) sees the call to
 .code inb
 .line 'bootmain.c:/inb!(/' ,
 the inlined assembly causes it to emit a single
@@ -845,8 +858,9 @@ bytes, in 32-bit chunks, from port
 .register dx
 into memory starting at address
 .register edi .
-The register annotations tell GCC to prepare for the assembly
-sequence by storing
+The register annotations tell 
+.code gcc 
+to prepare for the assembly sequence by storing
 .code dst
 in
 .register edi ,
@@ -902,37 +916,66 @@ point, the
 .code %eip
 where the kernel expects to be started
 (just as the boot loader expected to be started at
-.address 0x7c00 ).
+.address 0x7c00 ).  
+For xv6 the entry address is as follows:
+.P1
+# objdump -f kernel
+
+kernel:     file format elf32-i386
+architecture: i386, flags 0x00000112:
+EXEC_P, HAS_SYMS, D_PAGED
+start address 0xf0100020
+.P2
 .code Bootmain
-casts the entry point integer to a function pointer
-and calls that function, essentially jumping to the kernel's entry point
+masks off the leading 
+.address 0xf 
+of the entry address.  The reason is that the boot loader uses physical
+addresses, but the xv6 kernel uses virtual addresses. The xv6 Makefile
+instructs the linker (which produces the ELF headers)
+using the file 
+.file "kernel.ld"
+to link the kernel at the virtual address 
+.address 0xf0100000
+and to load the kernel at physical address 
+.address 0x100000 .
+The xv6 kernel will set up a mapping that translates the virtual address
+.address 0xf0000000 
+and up to physical address 
+.address 0x0
+and up. Thus,
+.address 0xf0100020 
+will map to 
+.address 0x100020 , 
+20 bytes after where the boot loader loaded the xv6 kernel into memory.  Thus,
+the first instruction of the xv6 is at physical address 
+.address 0x100020 , 
+and since the boot loader uses physical addresses, it uses
+that address.  Why xv6 links at the high virtual address 0xf0000000 
+is explained in \*[CH:MEM].
+.PP
+The boot loader casts the physical entry address to
+a function pointer, and then calls that function, essentially jumping to the kernel's entry point
 .lines 'bootmain.c:/entry.=/,/entry!(!)/' .
 The kernel should not return, but if it does,
 .code bootmain
 will return, and then
 .file bootasm.S
-will attempt a Bochs breakpoint and then loop forever.
+will attempt to return to the simulator and then loop forever.
 .PP
-Where is the kernel in memory?
-.code Bootmain
-does not directly decide;
-it just follows the directions in the ELF headers.
-The "linker" creates the ELF headers, and the xv6 Makefile
-that calls the linker tells it that the kernel should
-start at 
-.code 0x100000 .
-.PP
-Assuming all has gone well, the kernel entry pointer will refer to
-the kernel's
-.code main
-function (see
-.file main.c ).
-The next chapter
-continues there.
+The xv6 Makefile also specifies the entry point to the linker
+using 
+.code "-e entry" ,
+which is the function
+.code entry .
+This function is defined in the file
+.file entry.S 
+(see sheet
+.sheet entry.S ).
+Chapter \*[CH:MEM] continues there.
 .\"
 .\" -------------------------------------------
 .\"
-.section "Real world
+.section "Real world"
 .PP
 The boot sector described in this chapter compiles to around
 470 bytes of machine code, depending on the optimizations
@@ -963,8 +1006,12 @@ I wonder if the Mac has an A20 line.
 .\"
 .section "Exercises
 .exercise
-Look at the kernel load addresses;
-why doesn't the sloppy readsect cause problems?
+Due to sector granularity, the call to 
+.code readseg 
+in the text is equivalent to
+.code "readseg((uchar*)0x100000, 0xb500, 0x1000)".
+In practice, this sloppy behavior turns out not to be a problem
+Why doesn't the sloppy readsect cause problems?
 .answer
 Answer is a combination of non-overlapping code/data pages
 and aligned virtual address/file offsets.
