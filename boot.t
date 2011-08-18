@@ -365,11 +365,25 @@ and stack reads and writes use
 We'll call the addresses the processor chip sends to memory
 .italic "physical addresses" ,
 and the addresses that programs directly manipulate
-.italic "virtual addresses" ,
-People often write a full real-mode virtual memory reference as
+.italic "virtual addresses" .
+.PP
+The x86 defines, however, 3 types of addresses: logical addresses which
+translate to linear addresses using segments.  If the paging hardware is enabled
+(see Chapter \*[CH:MEM]), the linear addresses are translated to physical addresses by
+the paging hardware; if the paging hardware is not enabled, the linear
+addresses are used as physical addresses.
+.PP
+People often write logical addresses as
 \fIsegment\fP:\fIoffset\fP,
 indicating the value of the relevant segment register and
 the address supplied by the program.
+The boot loader never enables the paging hardware so it issues only logical
+addresses, which the segmentation hardware translates to linear addresses, which
+then are used directly as physical addresses.
+In most of xv6, we don't care about the distinction  between logical and linear,
+because xv6 configures an x86 processor to translate logical to linear one to one, and 
+we use the common term "virtual address" instead.  In the boot loader, all 3
+addresses are identical in most instructions.
 .PP
 The BIOS does not guarantee anything about the 
 contents of 
@@ -435,7 +449,7 @@ can be used to make sure that one program cannot access
 memory belonging to another program.
 .PP 
 xv6 makes almost no use of segments (it uses the paging hardware
-instead, as the next chapter describes).
+instead, as Chapter \*[CH:MEM] describes).
 The boot code sets up the segment descriptor table
 .code gdt
 .lines bootasm.S:/^gdt:/,/data.seg/
@@ -445,6 +459,9 @@ The table has a null entry, one entry for executable
 code, and one entry to data.
 The code segment descriptor has a flag set that indicates
 that the code should run in 32-bit mode.
+With this setup, when the boot loader enters protected mode, logical addresses map
+one-to-one to physical addresses.
+.PP
 The boot code executes an
 .opcode lgdt
 instruction 
@@ -465,7 +482,7 @@ in register
 .register cr0
 .lines bootasm.S:/movl.*%cr0/,/movl.*,.%cr0/ .
 Enabling protected mode does not immediately change how the processor
-translates virtual to physical addresses or whether
+translates logical to physical addresses or whether
 it is in 32-bit mode;
 it is only when one loads a new value into a segment register
 that the processor reads the GDT and changes its internal
@@ -494,7 +511,7 @@ The boot loader's first action in 32-bit mode is to
 initialize the data segment registers with
 .code SEG_KDATA
 .lines bootasm.S:/movw.*SEG_KDATA/,/Stack.Segment/ .
-Virtual address now map directly to physical addresses.
+Logical address now map directly to physical addresses.
 The only step left before
 executing C code is to set up a stack
 in an unused region of memory.
@@ -929,8 +946,8 @@ start address 0xf0100020
 .code Bootmain
 masks off the leading 
 .address 0xf 
-of the entry address.  The reason is that the boot loader uses physical
-addresses, but the xv6 kernel uses virtual addresses. The xv6 Makefile
+of the entry address.  The reason is that the boot loader hasn't enabled the
+paging hardware, but the xv6 kernel assumes that it runs with paging. The xv6 Makefile
 instructs the linker (which produces the ELF headers)
 using the file 
 .file "kernel.ld"
@@ -938,6 +955,11 @@ to link the kernel at the virtual address
 .address 0xf0100000
 and to load the kernel at physical address 
 .address 0x100000 .
+(If we were precise, 
+.address 0x100000 
+is a logical address, but because the boot loader has set up to make
+logical addresses identical to physical addresses
+we use the term physical address here.)
 The xv6 kernel will set up a mapping that translates the virtual address
 .address 0xf0000000 
 and up to physical address 
@@ -949,11 +971,11 @@ will map to
 20 bytes after where the boot loader loaded the xv6 kernel into memory.  Thus,
 the first instruction of the xv6 is at physical address 
 .address 0x100020 , 
-and since the boot loader uses physical addresses, it uses
+and since the boot loader doesn't use paging it, it uses
 that address.  Why xv6 links at the high virtual address 0xf0000000 
 is explained in \*[CH:MEM].
 .PP
-The boot loader casts the physical entry address to
+The boot loader casts the entry address to
 a function pointer, and then calls that function, essentially jumping to the kernel's entry point
 .lines 'bootmain.c:/entry.=/,/entry!(!)/' .
 The kernel should not return, but if it does,

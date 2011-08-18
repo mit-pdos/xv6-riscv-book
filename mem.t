@@ -20,11 +20,30 @@
 .chapter CH:MEM "Processes"
 .PP
 One of an operating system's central roles
-is to allow multiple programs to share the CPUs
+is to allow multiple programs to share the processors
 and main memory safely, isolating them so that
 one errant program cannot break others.
 To that end, xv6 provides the concept of a process,
 as described in Chapter \*[CH:UNIX].
+To run a program
+.code sh
+and 
+.code wc ,
+xv6 creates one process for each of them.
+Each executes as if it has the computer to itself, and xv6
+transparently multiplexes the computer resources between them.
+For example, if the computer has one on more processors, xv6 will arrange that
+each process will run periodically on one of the processors.
+Furthermore, xv6 ensures that a bug in 
+.code sh 
+will not break 
+.code wc .
+That is, if 
+.code sh
+has a program error that causes it to write to an arbitrary memory location,
+that wild write won't effect 
+.code wc .
+.PP
 This chapter examines how xv6 allocates
 memory to hold process code and data,
 how it creates a new process,
@@ -33,7 +52,7 @@ hardware to give each process the illusion that
 it has a private memory address space.
 The next few chapters will examine how xv6 uses hardware
 support for interrupts and context switching to create
-the illusion that each process has its own private CPU.
+the illusion that each process has its own private processor.
 .\"
 .section "Address Spaces"
 .\"
@@ -46,35 +65,27 @@ language definition and the Gnu linker expect process memory to be
 contiguous. Process memory starts at zero because that is traditional.
 A process's view of memory is called an address space.
 .PP
-x86 protected mode defines three kinds of addresses. Executing
-software uses
-virtual addresses when fetching instructions or reading and writing
-memory.
-The segmentation hardware translates virtual to linear addresses.
-Finally, the paging hardware (when enabled) translates linear to physical
-addresses.
-Software cannot directly use a linear or physical address.
-xv6 sets up the segmentation hardware so that virtual and
-linear addresses are always the same: the segment descriptors
+The xv6 boot has loader set up the segmentation hardware so that virtual and
+physical addresses are always the same value: the segment descriptors
 all have a base of zero and the maximum possible limit.
-xv6 sets up the x86 paging hardware to translate (or "map") linear to physical
+xv6 sets up the x86 paging hardware to translate (or "map") virtual to physical
 addresses in a way that implements process address spaces with
 the properties outlined in the previous paragraph.
 .PP
-The paging hardware uses a page table to translate linear to
+The paging hardware uses a page table to translate virtual to
 physical addresses. A page table is logically an array of 2^20
 (1,048,576) page table entries (PTEs). Each PTE contains a
 20-bit physical page number (PPN) and some flags. The paging
-hardware translates a linear address by using its top 20 bits
+hardware translates a virtual address by using its top 20 bits
 to index into the page table to find a PTE, and replacing
 those bits with the PPN in the PTE.  The paging hardware
-copies the low 12 bits unchanged from the linear to the
+copies the low 12 bits unchanged from the virtual to the
 translated physical address.  Thus a page table gives
-the operating system control over linear-to-physical address translations
+the operating system control over virtual-to-physical address translations
 at the granularity of aligned chunks of 4096 (2^12) bytes.
 .PP
 Each PTE contains flag bits that tell the paging hardware
-to restrict how the associated linear address is used.
+to restrict how the associated virtual address is used.
 .code PTE_P
 controls whether the PTE is valid: if it is
 not set, a reference to the page causes a fault (i.e. is not allowed).
@@ -94,9 +105,6 @@ paging hardware translates to physical addresses, and then
 sends to the DRAM hardware to read or write storage.
 At this level of discussion there is no such thing as virtual memory,
 only virtual addresses.
-Because xv6 sets up segments to make virtual and linear addresses
-always identical, from now on we'll stop distinguishing between
-them and use virtual for both.
 .PP
 xv6 uses page tables to implement process address spaces as
 follows. Each process has a separate page table, and xv6 tells
