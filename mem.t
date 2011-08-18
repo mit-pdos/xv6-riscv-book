@@ -1210,3 +1210,7 @@ until you get to
 at virtual address zero.
 
 2. Look at real operating systems to see how they size memory.
+
+3. If xv6 had not used super pages, what would be the right declaration for
+.code entrypgdir?
+
