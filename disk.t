@@ -52,7 +52,7 @@ purpose is to enable safe cooperation between processes.
 .section "Code: Data structures"
 .PP
 Disk hardware traditionally presents the data on the disk
-as a numbered sequence of 512-byte blocks called sectors:
+as a numbered sequence of 512-byte blocks (also called sectors):
 sector 0 is the first 512 bytes, sector 1 is the next, and so on.
 The disk drive and buffer cache coordinate the use of disk sectors
 with a data structure called a buffer,

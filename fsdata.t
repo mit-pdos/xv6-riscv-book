@@ -16,6 +16,15 @@
 ..
 .chapter CH:FSDATA "File system data structures"
 .PP
+This chapter describes xv6's on-disk file-system layout:
+the on-disk data structures that 
+implement xv6's files, directories, and free lists.
+Layout is not a very interesting topic in itself. 
+Much more interesting is the question of how to update
+on-disk file system structures in a way that is safe
+if interrupted by a crash; that is the topic of the next
+chapter, which describes xv6's file system log.
+.PP
 The disk driver and buffer cache (Chapter \*[CH:DISK]) provide safe, synchronized
 access to disk blocks.
 Individual blocks are still a very low-level interface, too raw for most
@@ -35,196 +44,181 @@ The file system is implemented in four layers:
     blocks
 -------------
 .P2
-The first layer is the block allocator.  It manages disk blocks, keeping
-track of which blocks are in use,
-just as the memory allocator in Chapter \*[CH:MEM] tracks which
-memory pages are in use.
-The second layer is unnamed files called inodes (pronounced i-node).
-Inodes are a collection of allocated blocks holding a variable length
-sequence of bytes.
-The third layer is directories.  A directory is a special kind
+The lowest layer is the block allocator, which
+keeps track of which blocks are in use.
+The second layer implements unnamed files, each consisting
+of an ``inode'' and a sequence of blocks holding the file's data.
+The third layer implements directories of named files.
+A directory is a special kind
 of inode whose content is a sequence of directory entries, 
-each of which lists a name and a pointer to another inode.
-The last layer is hierarchical path names like
-.code /usr/rtm/xv6/fs.c ,
-a convenient syntax for identifying particular files or directories.
+each of which contains a name and a reference to the named file's inode.
+The highest layer provides hierarchical path names like
+.code /usr/rtm/xv6/fs.c .
 .\"
 .\" -------------------------------------------
 .\"
 .section "File system layout"
 .PP
 Xv6 lays out its file system as follows.
-Block 0 is unused, left available for use by the operating system boot sequence.
+The file system does not use block 0 (it holds the boot sector).
 Block 1 is called the superblock; it contains metadata about the
 file system.
-After block 1 comes a sequence of inodes blocks, each containing
-inode headers.
+Blocks starting at 2 hold inodes,
+with multiple inodes per block.
 After those come bitmap blocks tracking which data
-blocks are in use, and then the data blocks themselves.
+blocks are in use. Most of the remaining blocks are data blocks,
+which hold file and directory contents.
+The blocks at the very end of the disk hold the log.
 .PP
 The header
 .code fs.h
 .line fs.h:1
 contains constants and data structures describing the layout of the file system.
-The superblock contains three numbers: the file system size in blocks,
-the number of data blocks, and the number of inodes.
+For example, the superblock contains four numbers: the file system size in blocks,
+the number of data blocks, the number of inodes, and the number of blocks
+in the log.
 .\"
 .\" -------------------------------------------
 .\"
 .section "Code: Block allocator"
 .PP
-The block allocator is made up of the two functions:
+xv6's block allocator
+maintains a free bitmap on disk, with one bit per block. 
+A zero bit indicates that the corresponding block is free;
+a one bit indicates that it is in use.
+The bits corresponding to the boot sector, superblock, inode
+blocks, and bitmap blocks are always set.
+.PP
+The block allocator provides two functions:
 .code balloc
-allocates a new disk block and
+allocates a new disk block, and
 .code bfree
-frees one.
+frees a block.
 .code Balloc
 .line fs.c:/^balloc/
 starts by calling
 .code readsb
-to read the superblock.
-.code Readsb "" (
-.line fs.c:/^readsb/
-is almost trivial: it reads the block,
-copies the contents into 
-.code sb ,
-and releases the block.)
-Now that 
+to read the superblock from the disk (or buffer cache) into
+.code sb .
 .code balloc
-knows the number of inodes in the file system,
-it can consult the in-use bitmaps to find a free data block.
+decides which blocks hold the data block free bitmap
+by calculating how many blocks are consumed by the
+boot sector, the superblock, and the inodes (using 
+.code BBLOCK ).
 The loop
 .line fs.c:/^..for.b.=.0/
 considers every block, starting at block 0 up to 
 .code sb.size ,
-the number of blocks in the file system,
-checking for a block whose bitmap bit is zero,
-indicating it is free.
+the number of blocks in the file system.
+It looks for a block whose bitmap bit is zero,
+indicating that it is free.
 If
 .code balloc
 finds such a block, it updates the bitmap 
-and returns the block
+and returns the block.
 For efficiency, the loop is split into two 
-pieces: the inner loop checks all the bits in
-a single bitmap block—there are
-.code BPB \c
-—and the outer loop considers all the blocks in increments of
-.code BPB .
-There may be multiple processes calling
-.code balloc
-simultaneously, and yet there is no explicit locking.
-Instead,
-.code balloc
-relies on the fact that the buffer cache
-.code bread "" (
-and
-.code brelse )
-only let one process use a buffer at a time.
-When reading and writing a bitmap block
-.lines 'fs.c:/for.bi.=.0/,/^....}/' ,
-.code balloc
-can be sure that it is the only process in the system
-using that block.
+pieces.
+The outer loop reads each block of bitmap bits.
+The inner loop checks all 
+.code BPB
+bits in a single bitmap block.
+The race that might occur if two processes try to allocate
+a block at the same time is prevented by the fact that
+the buffer cache only lets one process use a block at a time.
 .PP
 .code Bfree
 .line fs.c:/^bfree/
-is the opposite of 
-.code balloc
-and has an easier job: there is no search.
-It finds the right bitmap block, clears the right bit, and is done.
+finds the right bitmap block and clears the right bit.
 Again the exclusive use implied by
 .code bread
 and
 .code brelse
 avoids the need for explicit locking.
-.PP
-When blocks are loaded in memory, they are referred to
-by pointers to
-.code buf
-structures; as we saw in the last chapter, a more
-permanent reference is the block's address on disk,
-its block number.
 .\"
 .\" -------------------------------------------
 .\"
 .section "Inodes
 .PP
-In Unix technical jargon,
-the term inode refers to an unnamed file in the file system,
-but the precise meaning can be one of three, depending on context.
-First, there is the on-disk data structure, which contains
-metadata about the inode, like its size and the list of blocks storing its data.
-Second, there is the in-kernel data structure, which contains
-a copy of the on-disk structure but adds extra metadata needed
+The term ``inode'' can have one of two related meanings.
+It might refer to the on-disk data structure containing
+a file's size and list of data block numbers.
+Or ``inode'' might refer to an in-memory inode, which contains
+a copy of the on-disk inode as well as extra information needed
 within the kernel.
-Third, there is the concept of an inode as the whole unnamed file,
-including not just the header but also its content, the sequence of bytes
-in the data blocks.
-Using the one word to mean all three related ideas can be confusing at first
-but should become natural.
 .PP
-Inode metadata is stored in an inode structure, and all the inode
-structures for the file system are packed into a separate section
+All of the on-disk inodes
+are packed into a contiguous area
 of disk called the inode blocks.
-Every inode structure is the same size, so it is easy, given a
-number n, to find the nth inode structure on the disk.
+Every inode is the same size, so it is easy, given a
+number n, to find the nth inode on the disk.
 In fact, this number n, called the inode number or i-number,
 is how inodes are identified in the implementation.
 .PP
-The on-disk inode structure is a 
+The on-disk inode is defined by a
 .code struct
 .code dinode
 .line fs.h:/^struct.dinode/ .
 The 
 .code type
-field in the inode header doubles as an allocation bit:
-a type of zero means the inode is available for use.
+field distinguishes between files, directories, and special
+files (devices).
+A type of zero indicates that an on-disk inode is free.
+.PP
 The kernel keeps the set of active inodes in memory;
 its
 .code struct
 .code inode
+.line file.h:/^struct.inode/
 is the in-memory copy of a 
 .code struct
 .code dinode
 on disk.
-The access rules for in-memory inodes are similar to the rules for
-buffers in the buffer cache:
-there is an inode cache,
+The kernel stores an inode in memory only if there are
+C pointers referring to that inode. The
+.code ref
+field counts the number of C pointers referring to the
+in-memory inode, and the kernel discards the inode from
+memory if the reference count drops to zero.
+The
 .code iget
-fetches an inode from the cache, and
+and
 .code iput
-releases an inode.
-Unlike in the buffer cache,
+functions acquire and release pointers to an inode,
+modifying the reference count.
+Pointers to an inode can come from file descriptors,
+current working directories, and transient kernel code
+such as
+.code exec .
+.PP
+The
+.code struct
+.code inode
+that 
 .code iget
-returns an unlocked inode:
-it is the caller's responsibility to lock the inode with
+returns may not have any useful content.
+In order to ensure it holds a copy of the on-disk
+inode, code must call
+.code ilock .
+This locks the inode (so that no other process can
 .code ilock
-before reading or writing metadata or content
-and then to unlock the inode with
+it) and reads the inode from the disk,
+if it has not already been read.
 .code iunlock
-before calling
-.code iput .
-Leaving locking to the caller allows the file system calls
-(described in Chapter \*[CH:FSCALL]) to manage the atomicity of
-complex operations.
-Multiple processes can hold a reference to an inode
-.code ip
+releases the lock on the inode.
+Separating acquisition of inode pointers from locking
+helps avoid deadlock in some situations, for example during
+directory lookup.
+Multiple processes can hold a C pointer to an inode
 returned by 
-.code iget
-.code ip->ref "" (
-counts exactly how many),
+.code iget ,
 but only one process can lock the inode at a time.
 .PP
-The inode cache is not a true cache: its only purpose is to
-synchronize access by multiple processes to shared inodes.
-It does not actually cache inodes when they are not being used;
-instead it assumes that the buffer cache is doing a good job
-of avoiding unnecessary disk acceses and makes no effort to avoid
-calls to
-.code bread .
-The in-memory copy of the inode augments the disk fields with the
-device and inode number, the reference count mentioned earlier,
-and a set of flags.
+The inode cache only caches inodes to which kernel code
+or data structures hold C pointers.
+Its main job is really synchronizing access by multiple processes,
+not caching.
+If an inode is used frequently, the buffer cache will probably
+keep it in memory if it isn't kept by the inode cache.
 .\"
 .\" -------------------------------------------
 .\"
@@ -310,18 +304,25 @@ bit and wakes any processes sleeping in
 .PP
 .code Iput
 .line fs.c:/^iput/
-releases a reference to an inode
+releases a C pointer to an inode
 by decrementing the reference count
 .line 'fs.c:/^..ip->ref--/' .
-If this is the last reference, so that the count would become zero,
-the inode is about to become 
-unreachable: its disk data needs to be reclaimed.
+If this is the last reference, the inode's
+slot in the inode cache is now free and can be re-used
+for a different inode.
+.PP
+If 
+.code iput
+sees that there are no C pointer references to an inode
+and that the inode has no links to it (occurs in no
+directory), then the inode and its data blocks must
+be freed.
 .code Iput
 relocks the inode;
 calls
 .code itrunc
 to truncate the file to zero bytes, freeing the data blocks;
-sets the type to 0 (unallocated);
+sets the inode type to 0 (unallocated);
 writes the change to disk;
 and finally unlocks the inode
 .lines 'fs.c:/ip..ref.==.1/,/^..}/' .
@@ -329,7 +330,7 @@ and finally unlocks the inode
 The locking protocol in 
 .code iput
 deserves a closer look.
-The first part with examining is that when locking
+The first part worth examining is that when locking
 .code ip ,
 .code iput
 simply assumed that it would be unlocked, instead of using a sleep loop.
@@ -394,8 +395,7 @@ It does this by zeroing
 The on-disk inode structure,
 .code struct
 .code dinode ,
-contains a 
-a size and a list of block numbers.
+contains a size and an array of block numbers.
 The inode data is found in the blocks listed
 in the
 .code dinode 's
@@ -554,7 +554,7 @@ system call
 .PP
 Xv6 implements a directory as a special kind of file:
 it has type
-.code T_DEV
+.code T_DIR
 and its data is a sequence of directory entries.
 Each entry is a
 .code struct
@@ -563,25 +563,18 @@ Each entry is a
 which contains a name and an inode number.
 The name is at most
 .code DIRSIZ
-(14) letters;
+(14) characters;
 if shorter, it is terminated by a NUL (0) byte.
-Directory entries with inode number zero are unallocated.
+Directory entries with inode number zero are free.
 .PP
 .code Dirlookup
 .line fs.c:/^dirlookup/
-searches the directory for an entry with the given name.
-If it finds one, it returns the corresponding inode, unlocked,
+searches a directory for an entry with the given name.
+If it finds one, it returns a pointer to the corresponding inode, unlocked,
 and sets 
 .code *poff
 to the byte offset of the entry within the directory,
 in case the caller wishes to edit it.
-The outer for loop
-.line 'fs.c:/^..for.off.=.0.*dp->size.*BSIZE/'
-considers each block in the directory in turn; the inner
-loop 
-.line 'fs.c:/^....for.de.=..struct.dirent/'
-considers each directory entry in the block,
-ignoring entries with inode number zero.
 If
 .code dirlookup
 finds an entry with the right name,
@@ -616,11 +609,6 @@ and then lock
 .code ip ,
 ensuring that it only holds one lock at a time.
 .PP
-If
-.code dirlookup
-is read,
-.code dirlink
-is write.
 .code Dirlink
 .line fs.c:/^dirlink/
 writes a new directory entry with the given name and inode number into the
@@ -646,72 +634,6 @@ then adds a new entry to the directory
 by writing at offset
 .code off
 .lines 'fs.c:/^..strncpy/,/panic/' .
-.PP
-.code Dirlookup
-and
-.code dirlink
-use different loops to scan the directory:
-.code dirlookup
-operates a block at a time, like
-.code balloc
-and
-.code ialloc ,
-while
-.code dirlink
-operates one entry at a time by calling
-.code readi .
-The latter approach calls
-.code bread
-more often—once per entry instead of once per block—but is
-simpler and makes it easy to exit the loop with
-.code off
-set correctly.
-The more complex loop in 
-.code dirlookup
-does not save any disk i/o—the buffer cache
-avoids redundant reads—but does avoid repeated
-locking and unlocking of
-.code bcache.lock
-in
-.code bread .
-The extra work may have been deemed necessary in
-.code dirlooup
-but not 
-.code dirlink
-because the former is so much more common than the latter.
-(TODO: Make this paragraph into an exercise?)
-.\"
-.\"
-.\"
-.section "Path names
-.PP
-The code examined so far implements a hierarchical file system.
-The earliest Unix systems, such as the version described
-in Thompson and Ritchie's earliest paper, stops here.
-Those systems looked up names in the current directory only;
-to look in another directory, a process needed to first move
-into that directory.
-Before long, it became clear that it would be useufl to refer to
-directories further away:
-the name
-.code xv6/fs.c
-means first look up
-.code xv6 ,
-which must be a directory,
-and then look up
-.code fs.c 
-in that directory.
-A path beginning with a slash is called rooted.
-The name
-.code /xv6/fs.c
-is like
-.code xv6/fs.c
-but starts the lookup 
-at the root of the file system tree instead of the current directory.
-Now, decades later, hierarchical, optionally rooted path names
-are so commonplace that it is easy to forgoet
-that they had to be invented; Unix did that.
-(TODO: Is this really true?)
 .\"
 .\"
 .\"
@@ -837,7 +759,7 @@ should expect failures and handle them more gracefully,
 so that the loss of a block in one file doesn't affect the
 use of the rest of the files system.
 .PP
-Xv6, like most operating systems, requires that the file system
+Xv6 requires that the file system
 fit on one disk device and not change in size.
 As large databases and multimedia files drive storage
 requirements ever higher, operating systems are developing ways
