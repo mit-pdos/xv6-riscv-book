@@ -333,7 +333,8 @@ DRAFT as of \*[date]: Copyright 2009 Cox, Kaashoek, Morris
 .ds CH:SCHED 5
 .ds CH:DISK 6
 .ds CH:FSDATA 7
-.ds CH:FSCALL 8
-.ds CH:EXEC 9
+.ds CH:FSCRASH 8
+.ds CH:FSCALL 9
+.ds CH:EXEC 10
 .ds APP:C A
 .ds APP:HW B

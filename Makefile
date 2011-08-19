@@ -7,6 +7,7 @@ PDF=\
 	sched.pdf\
 	disk.pdf\
 	fsdata.pdf\
+        fscrash.pdf\
 	fscall.pdf\
 	exec.pdf\
 

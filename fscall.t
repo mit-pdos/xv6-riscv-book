@@ -8,17 +8,17 @@
 ..
 .chapter CH:FSCALL  "File system calls"
 .PP
-The previous chapter layed described the file system data structures,
-and how they are used to implemented files and directories.  This
-chapter completes the file system by explaning how the system calls
-for file operations are implemented.  In this chapter, "file" means an
-open file.
+The previous chapter described the file system data structures,
+and how they are used to implement files and directories.  This
+chapter completes the file system by explaining how the system calls
+for file operations are implemented.
 .\"
 .\"
 .\"
-.section "Code: Files"
+.section "Code: File descriptors"
 .PP
-Xv6 gives each process its own table of open files, as we saw in
+Xv6 gives each process its own table of open files, or
+file descriptors, as we saw in
 Chapter \*[CH:UNIX].
 Each open file is represented by a
 .code struct
@@ -58,7 +58,7 @@ fields track this.
 All the open files in the system are kept in a global file table,
 the 
 .code ftable .
-Like the inode cache, the file table
+The file table
 has a function to allocate a file
 .code filealloc ), (
 create a duplicate reference
@@ -495,13 +495,6 @@ which is the topic of the next chapter.
 .\"
 .section "Real world
 .PP
-The file system interface in this chapter has proved remarkably durable:
-modern systems such as BSD and Linux continue to be based on the
-same core system calls.
-In those systems, multiple processes (sometimes called threads)
-can share a file descriptor table.  That introduces another level
-of locking and complicates the reference counting here.
-.PP
 Xv6 has two different file implementations: pipes and inodes.
 Modern Unix systems have many: pipes, network connections, and
 inodes from many different types of file systems, including
@@ -519,10 +512,6 @@ implementation of the call.
 Network file systems and user-level file systems 
 provide functions that turn those calls into network RPCs
 and wait for the response before returning.
-Network file systems are now an everyday occurrence,
-but networking in general is beyond the scope of this book.
-On the other hand, the World Wide Web is in some ways
-a global-scale hierarchical file system.
 .\"
 .\"
 .\"

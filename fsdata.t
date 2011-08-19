@@ -451,7 +451,7 @@ blocks are listed in the inode itself
 .lines 'fs.c:/^..if.bn.<.NDIRECT/,/^..}/' .
 The next 
 .code NINDIRECT
-blocks are litsed in the indirect block at
+blocks are listed in the indirect block at
 .code ip->addrs[NDIRECT] .
 .code Bmap
 reads the indirect block
@@ -469,7 +469,7 @@ allocates block as needed.
 Unallocated blocks are denoted by a block number of zero.
 As
 .code bmap
-encouters zeros, it replaces them with the numbers of fresh blocks,
+encounters zeros, it replaces them with the numbers of fresh blocks,
 allocated on demand.
 .line "'fs.c:/^....if..addr.=.*==.0/,/./' 'fs.c:/^....if..addr.*NDIRECT.*==.0/,/./'" .
 .PP
@@ -639,20 +639,10 @@ by writing at offset
 .\"
 .section "Code: Path names
 .PP
-The final section of
-.code fs.c
-interprets hierarchical path names.
-.code Skipelem
-.line fs.c:/^skipelem/
-helps parse them.
-It copies the first element of
-.code path
-to 
-.code name
-and retrns a pointer to the remainder of
-.code path ,
-skipping over leading slashes.
-Appendix \*[APP:C] examines the implementation in detail.
+Lookup of full pathnames in the directory hierarchy
+is the job of
+.code namei
+and related functions.
 .PP
 .code Namei
 .line fs.c:/^namei/
@@ -763,7 +753,7 @@ Xv6 requires that the file system
 fit on one disk device and not change in size.
 As large databases and multimedia files drive storage
 requirements ever higher, operating systems are developing ways
-to eliminate the ``one disk per file system'' bttleneck.
+to eliminate the ``one disk per file system'' bottleneck.
 The basic approach is to combine many disks into a single
 logical disk.  Hardware solutions such as RAID are still the 
 most popular, but the current trend is moving toward implementing
