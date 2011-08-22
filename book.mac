@@ -335,6 +335,5 @@ DRAFT as of \*[date]: Copyright 2009 Cox, Kaashoek, Morris
 .ds CH:FSDATA 7
 .ds CH:FSCRASH 8
 .ds CH:FSCALL 9
-.ds CH:EXEC 10
 .ds APP:C A
 .ds APP:HW B
