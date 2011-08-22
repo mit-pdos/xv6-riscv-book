@@ -241,21 +241,44 @@ After the call both
 and
 .code %esp
 contain high values and the kernel is running in the high part of the virtual
-address space.  Now xv6 can get remove the mapping for the lower virtual
-addresses, so that it can use that part of the address space for user programs.
-As we will see next, xv6 does so by setting up another page table.
+address space.
 .PP
+The function
+.code main 
+initializes the kernel subsystems before it starts running user processes.  It
+starts out by removing the mapping for the lower kernel virtual addresses, so
+that it can use that part of the address space for user programs.  The function
+.code kvmalloc
+does so by setting up a new page table for the kernel (see
+.code setupkvm )
+and then switching to it  (see
+.code switchkvm )
+by loading into
+.code %cr3 
+the physical address of the new page table.
 .\"
-.section "Code: kernel page table"
+.section "A process's address space"
 .\"
+The function
+.code setupkvm  
+is not only invoked by xv6 during initialization, but every time xv6 creates a
+new user process.   So, this is a good point to understand how xv6 uses the
+paging hardware for isolating user processes.
 .PP
-xv6 uses page tables to implement process address spaces as
-follows. Each process has a separate page table, and xv6 tells
+Each process has a separate page table, and xv6 tells
 the page table hardware to switch
 page tables when xv6 switches between processes.
 A process's memory starts at virtual address
-zero and can have size of at most 640 kilobytes
-(160 pages).
+zero and can grow to the address
+.address USERTOP  
+(see
+.file "memlayout.h"
+.sheet memlayout.h ),
+allowing for a 3,932,156 Kbyte user process.
+.address USERTOP
+is 4096 bytes below 
+.address KERNBASE ,
+to ensure that the user process has at least a 4 Kbyte stack.
 xv6 sets up the PTEs for the process's virtual addresses to point
 to whatever pages of physical memory xv6 has allocated for
 the process's memory, and sets the 
@@ -264,26 +287,44 @@ the process's memory, and sets the
 and 
 .code PTE_P
 flags in these PTEs.
-If a process has asked xv6 for less than 640 kilobytes,
+If a process has asked xv6 for less memory than
+.address USERTOP  , 
 xv6 will leave 
 .code PTE_P
-clear in the remainder of the first 160 PTEs.
+clear in the remainder of the PTEs.
 .PP
-Different processes' page tables translate the first 160 pages to
-different pages of physical memory, so that each process has
+Different processes' page tables translate the addresses till 
+.address USERTOP
+to different pages of physical memory, so that each process has
 private memory.
 However, xv6 sets up every process's page table to translate virtual addresses
-above 640 kilobytes in the same way.
-To a first approximation, all processes' page tables map virtual
-addresses above 640 kilobytes directly to physical addresses,
-which makes it easy to address physical memory.
+above
+.address KERNBASE
+in the same way.
+It maps all the addresses from virtual address
+.address KERNBASE
+to 
+.address KERNBASE+PHYSTOP
+to
+.address 0
+to
+.address PHYSTOP.
+This allows the kernel to address all of physical memory.
 However, xv6 does not set the
 .code PTE_U
-flag in the PTEs above 640 kilobytes,
+flag in the PTEs above
+.address KERNBASE.
 so only the kernel can use them.
 For example, the kernel can use its own instructions and data
-(at virtual/physical addresses starting at one megabyte).
-The kernel can also read and write the physical memory beyond
+(at virtual addresses starting at 
+.address KERNBASE+ 0x100000),
+since the boot loader loaded the kernel al physical address 
+.address 0x100000, 
+and the kernel maps
+.address KERNBASE+ 0x100000
+to 
+.address 0x100000.
+ The kernel can also read and write the physical memory beyond
 the end of its data segment.
 .PP 
 Every process's page table simultaneously contains
@@ -306,38 +347,110 @@ bit only on PTEs of virtual addresses that refer to the process's own memory.
 It implements the second using the ability of page tables to translate
 a virtual address to a different physical address.
 .\"
+.section "Code: creating an address space"
+.\"
+.PP
+The function
+.code setupkvm
+sets up the kernel-part of an address space (i.e., starting from
+.address KERNBASE )
+allocates a page of memory (which we will discuss in the next subsection) to hold the page directory.
+It then calls
+.code mappages
+to install translations for ranges of memory that the kernel
+will use; these translations all map each virtual address to the
+same physical address.  The translations include the kernel's
+instructions and data, physical memory up to
+.code PHYSTOP ,
+and memory ranges which are actually I/O devices.
+.code setupkvm
+does not install any mappings for the process's memory;
+this will happen later.
+.PP
+.code mappages
+.line vm.c:/^mappages/
+installs mappings into a page table
+for a range of virtual addresses to
+a corresponding range of physical addresses.
+It does this separately for each virtual address in the range,
+at page intervals.
+For each virtual address to be mapped,
+.code mappages
+calls
+.code walkpgdir
+to find the address of the PTE that should the address's translation.
+It then initializes the PTE to hold the relevant physical page
+number, the desired permissions (
+.code PTE_W
+and/or
+.code PTE_U ),
+and 
+.code PTE_P
+to mark the PTE as valid
+.line vm.c:/perm...PTE_P/ .
+.PP
+.code walkpgdir
+.line vm.c:/^walkpgdir/
+mimics the actions of the x86 paging hardware as it
+looks up the PTE for a virtual address.
+It uses the upper 10 bits of the virtual address to find
+the page directory entry
+.line vm.c:/pde.=..pgdir/ .
+If the page directory entry isn't valid, then
+the required page table page hasn't yet been allocated;
+if the
+.code alloc
+argument is set,
+.code walkpgdir
+goes ahead and allocates it.
+Finally it uses the next 10 bits of the virtual address
+to find the address of the PTE in the page table page
+.line vm.c:/return..pgtab/ .
+The code uses the physical addresses in the page directory entries
+as virtual addresses. This works because the kernel allocates
+page directory pages and page table pages from an area of physical
+memory (between the end of the kernel and
+.code PHYSTOP)
+for which the kernel has direct virtual to physical mappings.
+.\"
 .section "Memory allocation"
 .\"
 .PP
-xv6 needs to allocate physical memory at run-time to store its own data structures
-and to store processes' memory. There are three main questions
-to be answered when allocating memory. First,
-what physical memory (i.e. DRAM storage cells) are to be used?
-Second, at what virtual address or addresses is the newly
-allocated physical memory to be mapped? And third, how
-does xv6 know what physical memory is free and what memory
-is already in use?
+The functions
+.code setupkvm
+and
+.code walkpgdir
+allocate physical memory to hold the page directory and pages of the page table.
+The kernel also needs to allocate physical to store processes' memory.
+The functions
+.code setupkvm
+and
+.code walkpgdir
+call a function 
+.code alloc 
+to allocate physical memory, but how it work?
+There are three main questions to be answered when allocating
+memory. First, what physical memory (i.e. DRAM storage cells) are to be used?
+Second, at what virtual address or addresses is the newly allocated physical
+memory to be mapped? And third, how does xv6 know what physical memory is free
+and what memory is already in use?
 .PP
-xv6 maintains a pool of physical memory available for run-time allocation.
-It uses the physical memory beyond the end of the loaded kernel's
-data segment. xv6 allocates (and frees) physical memory at page (4096-byte)
-granularity. It keeps a linked list of free physical pages;
-xv6 deletes newly allocated pages from the list, and adds freed
-pages back to the list.
-.PP
-When the kernel allocates physical memory that only it will use, it
-does not need to make any special arrangement to be able to
-refer to that memory with a virtual address: the kernel sets up
-all page tables so that virtual addresses map directly to physical
-addresses for addresses above 640 KB. Thus if the kernel allocates
-the physical page at physical address 0x200000 for its internal use,
-it can use that memory via virtual address 0x200000 without further ado.
+xv6 maintains a pool of physical memory available for run-time allocation.  It
+uses the physical memory beyond the end of the loaded kernel's data segment. xv6
+allocates (and frees) physical memory at page (4096-byte) granularity. It keeps
+a linked list of free physical pages; xv6 deletes newly allocated pages from the
+list, and adds freed pages back to the list.  Note  that although we refer to this
+memory pool as a pool of physical memory, the kernel addresses this memory using
+virtual addresses.
 .PP
 What if a process allocates memory with
 .code sbrk ?
 Suppose that the current size of the process is 12 kilobytes,
 and that xv6 finds a free page of physical memory at physical address
-0x201000. In order to ensure that process memory remains contiguous,
+.address 0x201000,
+which the kernel references using virtual address
+.address 0xF0201000. 
+In order to ensure that process memory remains contiguous,
 that physical page should appear at virtual address 0x3000 when
 the process is running.
 This is the time (and the only time) when xv6 uses the paging hardware's
@@ -354,9 +467,11 @@ in that PTE.
 Now the process will be able to use 16 kilobytes of contiguous
 memory starting at virtual address zero.
 Two different PTEs now refer to the physical memory at 0x201000:
-the PTE for virtual address 0x201000 and the PTE for virtual address
-0x3000. The kernel can use the memory with either of these 
-addresses; the process can only use the second.
+the PTE for virtual address 0xF0201000 and the PTE for virtual address
+0x3000. The kernel can uses the first and the second
+address; the process can use only the second one.
+.PP
+XXX two memory allocators
 .\"
 .section "Code: Memory allocator"
 .\"
@@ -507,65 +622,6 @@ This two-level structure allows a page table to omit entire
 page table pages in the common case in which large ranges of
 virtual addresses have no mappings.
 .PP
-.code setupkvm
-allocates a page of memory to hold the page directory.
-It then calls
-.code mappages
-to install translations for ranges of memory that the kernel
-will use; these translations all map each virtual address to the
-same physical address.  The translations include the kernel's
-instructions and data, physical memory up to
-.code PHYSTOP ,
-and memory ranges which are actually I/O devices.
-.code setupkvm
-does not install any mappings for the process's memory;
-this will happen later.
-.PP
-.code mappages
-.line vm.c:/^mappages/
-installs mappings into a page table
-for a range of virtual addresses to
-a corresponding range of physical addresses.
-It does this separately for each virtual address in the range,
-at page intervals.
-For each virtual address to be mapped,
-.code mappages
-calls
-.code walkpgdir
-to find the address of the PTE that should the address's translation.
-It then initializes the PTE to hold the relevant physical page
-number, the desired permissions (
-.code PTE_W
-and/or
-.code PTE_U ),
-and 
-.code PTE_P
-to mark the PTE as valid
-.line vm.c:/perm...PTE_P/ .
-.PP
-.code walkpgdir
-.line vm.c:/^walkpgdir/
-mimics the actions of the x86 paging hardware as it
-looks up the PTE for a virtual address.
-It uses the upper 10 bits of the virtual address to find
-the page directory entry
-.line vm.c:/pde.=..pgdir/ .
-If the page directory entry isn't valid, then
-the required page table page hasn't yet been created;
-if the
-.code create
-flag is set,
-.code walkpgdir
-goes ahead and creates it.
-Finally it uses the next 10 bits of the virtual address
-to find the address of the PTE in the page table page
-.line vm.c:/return..pgtab/ .
-The code uses the physical addresses in the page directory entries
-as virtual addresses. This works because the kernel allocates
-page directory pages and page table pages from an area of physical
-memory (between the end of the kernel and
-.code PHYSTOP)
-for which the kernel has direct virtual to physical mappings.
 .PP
 .code vmenable
 .line vm.c:/^vmenable/
