@@ -393,7 +393,27 @@ to mark the PTE as valid
 .line vm.c:/^walkpgdir/
 mimics the actions of the x86 paging hardware as it
 looks up the PTE for a virtual address.
-It uses the upper 10 bits of the virtual address to find
+An x86 page table is stored in physical memory, in the form of a
+4096-byte "page directory" that contains 1024 PTE-like references to 
+"page table pages."
+Each page table page is an array of 1024 32-bit PTEs.
+The paging hardware uses the top 10 bits of a virtual address to
+select a page directory entry.
+If the page directory entry is marked
+.code PTE_P ,
+the paging hardware uses the next 10 bits of the virtual
+address to select a PTE from the page table page that the
+page directory entry refers to.
+If either of the page directory entry or the PTE has no
+.code PTE_P ,
+the paging hardware raises a fault.
+This two-level structure allows a page table to omit entire
+page table pages in the common case in which large ranges of
+virtual addresses have no mappings.
+.PP
+Returning to 
+.code walkpgdir ,
+it uses the upper 10 bits of the virtual address to find
 the page directory entry
 .line vm.c:/pde.=..pgdir/ .
 If the page directory entry isn't valid, then
@@ -402,16 +422,10 @@ if the
 .code alloc
 argument is set,
 .code walkpgdir
-goes ahead and allocates it.
+goes ahead, allocates it, and puts its physical address in the page directory.
 Finally it uses the next 10 bits of the virtual address
 to find the address of the PTE in the page table page
 .line vm.c:/return..pgtab/ .
-The code uses the physical addresses in the page directory entries
-as virtual addresses. This works because the kernel allocates
-page directory pages and page table pages from an area of physical
-memory (between the end of the kernel and
-.code PHYSTOP)
-for which the kernel has direct virtual to physical mappings.
 .\"
 .section "Memory allocation"
 .\"
@@ -421,7 +435,8 @@ The functions
 and
 .code walkpgdir
 allocate physical memory to hold the page directory and pages of the page table.
-The kernel also needs to allocate physical to store processes' memory.
+The kernel also needs to allocate physical to store processes' memory, and for
+several kernel data structures.
 The functions
 .code setupkvm
 and
@@ -447,9 +462,9 @@ What if a process allocates memory with
 .code sbrk ?
 Suppose that the current size of the process is 12 kilobytes,
 and that xv6 finds a free page of physical memory at physical address
-.address 0x201000,
+.address 0x601000,
 which the kernel references using virtual address
-.address 0xF0201000. 
+.address 0xF0601000. 
 In order to ensure that process memory remains contiguous,
 that physical page should appear at virtual address 0x3000 when
 the process is running.
@@ -457,7 +472,7 @@ This is the time (and the only time) when xv6 uses the paging hardware's
 ability to translate a virtual address to a different physical address.
 xv6 modifies the 3rd PTE (which covers virtual addresses 0x3000 through 0x3fff)
 in the process's page table
-to refer to physical page number 0x201 (the upper 20 bits of 0x201000),
+to refer to physical page number 0x601 (the upper 20 bits of 0x601000),
 and sets
 .code PTE_U ,
 .code PTE_W ,
@@ -466,17 +481,52 @@ and
 in that PTE.
 Now the process will be able to use 16 kilobytes of contiguous
 memory starting at virtual address zero.
-Two different PTEs now refer to the physical memory at 0x201000:
-the PTE for virtual address 0xF0201000 and the PTE for virtual address
+Two different PTEs now refer to the physical memory at 0x601000:
+the PTE for virtual address 0xF0601000 and the PTE for virtual address
 0x3000. The kernel can uses the first and the second
 address; the process can use only the second one.
 .PP
-XXX two memory allocators
+There is a small bootstrap problem left: how does xv6 allocate memory before the
+free list of physical memory is initialized?  One option is to initialize this
+list immediately after the kernel starts, but the problem is that xv6 runs with
+.code bootpgdir,
+which maps only 4Mbyte of physical memory; at entry, xv6 cannot address all the
+memory up to
+.address PHYSTOP .
+The other option is to set up the kernel address space to map all of physical
+memory, but setting up that address space requires physical memory to allocate a
+page for the page directory and to allocate pages for the page table pages.  xv6
+solves this bootstrap problem by using a separate page allocator during entry,
+which allocates memory right after the kernel's end of its data segment by just
+moving the end of the data segment every time it needs a page.  This allocator
+cannot allocate more than 4 Mbyte (including kernel image), but that is enough
+physical memory to allocate a kernel page table.
 .\"
 .section "Code: Memory allocator"
 .\"
 .PP
-The xv6 kernel calls
+During entry, the xv6 kernel calls
+.code enter_alloc
+to allocate physical memory while running with 
+.code enterpgdir
+as the address space.
+This memory allocator moves the end of the kernel by 1 page.
+.code enter_alloc
+uses the symbol
+.code end ,
+which the linker causes to have an address that is just beyond
+the end of the kernel's data segment.
+A PTE can only refer to a physical address that is aligned
+on a 4096-byte boundary (is a multiple of 4096), so
+.code enter_alloc
+uses
+.code PGROUNDUP
+to ensure that it allocates only aligned physical addresses.
+The returned memory is never freed and so there is no corresponding call to free memory
+allocated with 
+.code enter_alloc .
+.PP
+Once the address space is setup, the xv6 kernel calls
 .code kalloc
 and
 .code kfree
@@ -513,7 +563,8 @@ and
 Chapter \*[CH:LOCK] will examine
 locking in detail.
 .PP
-.code Main
+The function
+.code main
 calls 
 .code kinit
 to initialize the allocator
@@ -523,19 +574,15 @@ ought to determine how much physical
 memory is available, but this
 turns out to be difficult on the x86.
 Instead it assumes that the machine has
-16 megabytes
+240 megabytes
 .code PHYSTOP ) (
 of physical memory, and uses all the memory between the end of the kernel
 and 
 .code PHYSTOP
 as the initial pool of free memory.
-.code kinit
-uses the symbol
-.code end ,
-which the linker causes to have an address that is just beyond
-the end of the kernel's data segment.
 .PP
-.code Kinit
+The function
+.code kinit
 .line kalloc.c:/^kinit/
 calls
 .code kfree
@@ -546,18 +593,13 @@ and
 This will cause
 .code kfree
 to add those pages to the allocator's free list.
-A PTE can only refer to a physical address that is aligned
-on a 4096-byte boundary (is a multiple of 4096), so
-.code kinit
-uses
-.code PGROUNDUP
-to ensure that it frees only aligned physical addresses.
 The allocator starts with no memory;
 these initial calls to
 .code kfree
 gives it some to manage.
 .PP
-.code Kfree
+The function
+.code kfree
 .line kalloc.c:/^kfree/
 begins by setting every byte in the 
 memory being freed to the value 1.
@@ -576,66 +618,8 @@ records the old start of the free list in
 .code r->next ,
 and sets the free list equal to
 .code r .
-.code Kalloc
+.code kalloc
 removes and returns the first element in the free list.
-.\"
-.section "Code: Page Table Initialization"
-.\"
-.PP
-.code mainc
-.line main.c:/kvmalloc/
-creates a page table for the kernel's use with a call to
-.code kvmalloc ,
-and
-.code mpmain
-.line main.c:/vmenable/
-causes the x86 paging hardware to start using that
-page table with a call to 
-.code vmenable .
-This page table maps most virtual addresses to the same
-physical address, so turning on paging with it in place does not 
-disturb execution of the kernel.
-.PP
-.code kvmalloc
-.line vm.c:/^kvmalloc/
-calls
-.code setupkvm
-and stores a pointer to the resulting page table in
-.code kpgdir ,
-since it will be used later.
-.PP
-An x86 page table is stored in physical memory, in the form of a
-4096-byte "page directory" that contains 1024 PTE-like references to 
-"page table pages."
-Each page table page is an array of 1024 32-bit PTEs.
-The paging hardware uses the top 10 bits of a virtual address to
-select a page directory entry.
-If the page directory entry is marked
-.code PTE_P ,
-the paging hardware uses the next 10 bits of the virtual
-address to select a PTE from the page table page that the
-page directory entry refers to.
-If either of the page directory entry or the PTE has no
-.code PTE_P ,
-the paging hardware raises a fault.
-This two-level structure allows a page table to omit entire
-page table pages in the common case in which large ranges of
-virtual addresses have no mappings.
-.PP
-.PP
-.code vmenable
-.line vm.c:/^vmenable/
-loads
-.code kpgdir
-into the x86
-.register cr3
-register, which is where the hardware looks for
-the physical address of the current page directory.
-It then sets
-.code CR0_PG
-in
-.register cr0
-to enable paging.
 .\"
 .section "Code: Process creation"
 .\"
@@ -689,7 +673,7 @@ indicates whether the process is allocated, ready
 to run, running, waiting for I/O, or exiting.
 .PP
 The story of the creation of the first process starts when
-.code mainc
+.code main
 .line main.c:/userinit/ 
 calls
 .code userinit
@@ -840,7 +824,8 @@ calls
 .code setupkvm
 .line vm.c:/^setupkvm/
 to create a page table for the process with (at first) mappings
-only for memory that the kernel uses.
+only for memory that the kernel uses.  This function is the same one that the
+kernel used to setup its page table.
 .PP
 The initial contents of the first process's memory are
 the compiled form of
@@ -861,6 +846,7 @@ which allocates one page of physical memory,
 maps virtual address zero to that memory,
 and copies the binary to that page
 .line vm.c:/^inituvm/ .
+.PP
 Then 
 .code userinit
 sets up the trap frame with the initial user mode state:
@@ -885,6 +871,7 @@ The
 .code FL_IF
 is set to allow hardware interrupts;
 we will reexamine this in Chapter \*[CH:TRAP].
+.PP
 The stack pointer 
 .code esp
 is the process's largest valid virtual address,
@@ -896,9 +883,10 @@ Note that
 is not an ELF binary and has no ELF header.
 It is just a small headerless binary that expects
 to run at address 0,
-just as the boot sector is a small headerless binary
+just as the boot loader is a small headerless binary
 that expects to run at address
 .code 0x7c00 .
+.PP
 .code Userinit
 sets
 .code p->name
@@ -1195,23 +1183,10 @@ to the per-CPU data area, but the x86 has so few general
 registers that the extra effort required to use segmentation
 is worthwhile.
 .PP
-xv6's address space layout is awkward.
-The user stack is at a relatively low address and grows down,
-which means it cannot grow very much.
-User memory cannot grow beyond 640 kilobytes.
-Most operating systems avoid both of these problems by
-locating the kernel instructions and data at high
-virtual addresses (e.g. starting at 0x80000000) and
-putting the top of the user stack just beneath the
-kernel. Then the user stack can grow down from high
-addresses, user data (via
-.code sbrk )
-can grow up from low addresses, and there is hundreds of megabytes of
-growth potential between them.
-It is also potentially awkward for the kernel to map all of
-physical memory into the virtual address space; for example
-that would leave zero virtual address space for user mappings
-on a 32-bit machine with 4 gigabytes of DRAM.
+xv6's address space layout has some downsides.  For example, it is potentially
+awkward for the kernel to map all of physical memory into the virtual address
+space. This leave zero virtual address space for user mappings on a 32-bit
+machine with 4 gigabytes of DRAM.
 .PP
 In the earliest days of operating systems,
 each operating system was tailored to a specific
@@ -1229,13 +1204,11 @@ memory out of a known 16-bit location in the PC's non-volatile RAM;
 and the third is to look in BIOS memory
 for a memory layout table left as
 part of the multiprocessor tables.
-None of these is guaranteed to be reliable,
-so modern x86 operating systems typically
-augment one or more of them with complex
-sanity checks and heuristics.
+Reading the memory layout table
+is complicated.
 In the interest of simplicity, xv6 assumes
-that the machine it runs on has at least 16 megabytes
-of memory.
+that the machine it runs on has at least 240 megabytes
+of memory, and that it is all contiguous.
 A real operating system would have to do a better job.
 .PP
 Memory allocation was a hot topic a long time ago, the basic problems being
