@@ -452,6 +452,11 @@ and permission bits for the segment.
 These permissions are the protection in protected mode: they
 can be used to make sure that one program cannot access
 memory belonging to another program.
+.F1
+.EPS fig/x86_seg.eps 50
+.F2
+Segments in protected mode.
+.F3
 .PP 
 xv6 makes almost no use of segments (it uses the paging hardware
 instead, as Chapter \*[CH:MEM] describes).
