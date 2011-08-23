@@ -520,7 +520,7 @@ If it was the kernel running, there must be a kernel bug:
 prints details about the surprise and then calls
 .code panic .
 .PP
-[[Sidebar about panic:
+[[ XXX Sidebar about panic:
 panic is the kernel's last resort: the impossible has happened and the
 kernel does not know how to proceed.  In xv6, panic does ...]]
 .PP
@@ -541,11 +541,14 @@ contains the saved
 and indexes into the system call tables.
 For the first system call, 
 .code %eax
-contains the value 9,
+contains the value 
+.code SYS_exec
+.line syscall.h:/'SYS_exec'/ ,
 and
 .code syscall
-will invoke the 9th entry of the system call table, which corresponds
-to invoking
+will invoke the 
+.code SYS_exec 'th 
+entry of the system call table, which corresponds to invoking
 .code sys_exec .
 .PP
 .code Syscall
@@ -639,7 +642,6 @@ are typically wrappers: they decode the arguments using
 and 
 .code argstr
 and then call the real implementations.
-.PP
 In chapter \*[CH:MEM],
 .code sys_exec
 uses these functions to get at its arguments.
