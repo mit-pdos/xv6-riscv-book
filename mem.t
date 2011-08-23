@@ -85,10 +85,30 @@ the operating system control over virtual-to-physical address translations
 at the granularity of aligned chunks of 4096 (2^12) bytes.
 .so fig/x86_pagetable.t
 .PP
+On the x86, the translation from virtual to physical happens in two steps
+(except when super pages are used, which we discuss below).
+An x86 page table is stored in physical memory, in the form of a
+4096-byte 
+.italic "page directory" 
+that contains 1024 PTE-like references to 
+.italic "page table pages".
+Each page table page is an array of 1024 32-bit PTEs.
+The paging hardware uses the top 10 bits of a virtual address to
+select a page directory entry.
+If the page directory entry is present,
+the paging hardware uses the next 10 bits of the virtual
+address to select a PTE from the page table page that the
+page directory entry refers to.
+If either of the page directory entry or the PTE is not present,
+the paging hardware raises a fault.
+This two-level structure allows a page table to omit entire
+page table pages in the common case in which large ranges of
+virtual addresses have no mappings.
+.PP
 Each PTE contains flag bits that tell the paging hardware
 to restrict how the associated virtual address is used.
 .code PTE_P
-controls whether the PTE is valid: if it is
+indicates whether the PTE is present: if it is
 not set, a reference to the page causes a fault (i.e. is not allowed).
 .code PTE_W
 controls whether instructions are allowed to issue
@@ -143,8 +163,9 @@ hardware so that it can enter the C part of the kernel.
 The entry page table is defined 
 in main.c
 .line 'main.c:/enterpgdir/' .
-It is 2^10 (1024) entries, instead of 2^20, because it takes advantage of super
-pages, which are pages that are 4 Mbyte (2^22) large.  Entry 0 maps virtual address
+It is 2^10 (1024) entries, instead of 2^20, because it takes advantage of 
+.italic "super pages" , 
+which are pages that are 4 Mbyte (2^22) large.  Entry 0 maps virtual address
 .address 0
 to
 .address 0x400000
@@ -394,30 +415,11 @@ to mark the PTE as valid
 .line vm.c:/^walkpgdir/
 mimics the actions of the x86 paging hardware as it
 looks up the PTE for a virtual address (see Fig. \n[pagetablefig]).
-An x86 page table is stored in physical memory, in the form of a
-4096-byte "page directory" that contains 1024 PTE-like references to 
-"page table pages".
-Each page table page is an array of 1024 32-bit PTEs.
-The paging hardware uses the top 10 bits of a virtual address to
-select a page directory entry.
-If the page directory entry is marked
-.code PTE_P ,
-the paging hardware uses the next 10 bits of the virtual
-address to select a PTE from the page table page that the
-page directory entry refers to.
-If either of the page directory entry or the PTE has no
-.code PTE_P ,
-the paging hardware raises a fault.
-This two-level structure allows a page table to omit entire
-page table pages in the common case in which large ranges of
-virtual addresses have no mappings.
-.PP
-Returning to 
-.code walkpgdir ,
-it uses the upper 10 bits of the virtual address to find
+.code walkpgdir
+uses the upper 10 bits of the virtual address to find
 the page directory entry
 .line vm.c:/pde.=..pgdir/ .
-If the page directory entry isn't valid, then
+If the page directory entry isn't present, then
 the required page table page hasn't yet been allocated;
 if the
 .code alloc
