@@ -372,6 +372,11 @@ translate to linear addresses using segments.  If the paging hardware is enabled
 (see Chapter \*[CH:MEM]), the linear addresses are translated to physical addresses by
 the paging hardware; if the paging hardware is not enabled, the linear
 addresses are used as physical addresses.
+.F1
+.EPS fig/x86_translation.eps 50
+.F2
+The relationship between logical, linear, and physical addresses.
+.F3
 .PP
 People often write logical addresses as
 \fIsegment\fP:\fIoffset\fP,
