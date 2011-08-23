@@ -1002,8 +1002,15 @@ so the
 .code ret
 starts executing
 .code forkret .
-.code Forkret
+On the first invocation (that is this one),
+.code forkret
 .line proc.c:/^forkret/
+runs initialization functions that cannot be run from 
+.code main 
+because they must be run in the context of a regular process with its own
+kernel stack. 
+Then,
+.code forkret
 releases the 
 .code ptable.lock
 (see Chapter \*[CH:LOCK])
