@@ -1,0 +1,52 @@
+#!/bin/sh
+
+# The heirloom dit output is denser than the Plan 9.
+sed 's/\(.\)x X/\1\nx X/; s/^wV\([0-9]+\)$/w\nV\1/' "$@" | 
+awk '
+BEGIN { capture = 0; nlines = 0; nshift = 0 }
+
+function flushpage()
+{
+	for(i=0; i<nline; i++)
+		print line[i]
+	nline = 0
+	nshift = 0
+	capture = 0
+}
+
+function shiftlines(n)
+{
+	for(; nshift<nline; nshift++)
+		if(line[nshift] ~ /^V/)
+			line[nshift] = "V" (substr(line[nshift], 2)+n)
+}	
+
+/^p[0-9]/ {
+	flushpage();
+}
+
+/^V/ {
+	capture = 1
+}
+
+!capture {
+	print
+}
+
+/^x X shift / {
+	shiftlines($4)
+	next
+}
+
+/^wh[0-9]+x X shift / {
+	shiftlines($4)
+	next
+}
+
+capture {
+	line[nline++] = $0
+}
+
+END { flushpage() }
+
+'
