@@ -83,7 +83,11 @@ copies the low 12 bits unchanged from the virtual to the
 translated physical address.  Thus a page table gives
 the operating system control over virtual-to-physical address translations
 at the granularity of aligned chunks of 4096 (2^12) bytes.
-.so mem-fig1.t
+.F1
+.EPS fig/x86_pagetable.eps 50
+.F2
+How memory works on the x86.
+.F3
 .PP
 Each PTE contains flag bits that tell the paging hardware
 to restrict how the associated virtual address is used.
