@@ -303,13 +303,9 @@ run as root.
 .PP
 A file descriptor is a small integer representing a kernel-managed object
 that a process may read from or write to.
-A file descriptor is obtained by calling 
-.code open 
-with a pathname as argument.
-The pathname may refer to a data file, a directory, a pipe, or
-the console.
-It is conventional to call whatever object a file
-descriptor refers to a file.
+A process may obtain a file descriptor by opening a file, directory,
+or device, or by creating a pipe, or by duplicating an existing
+descriptor.
 Internally, the xv6 kernel uses the file descriptor
 as an index into a per-process table,
 so that every process has a private space of file descriptors
@@ -335,7 +331,7 @@ The call
 .code n)
 reads at most
 .code n
-bytes from the open file corresponding to the file descriptor
+bytes from the file descriptor
 .code fd ,
 copies them into
 .code buf ,
@@ -360,7 +356,7 @@ writes
 .code n
 bytes from
 .code buf
-to the open file named by the file descriptor
+to the file descriptor
 .code fd
 and returns the number of bytes written.
 Fewer than
@@ -379,7 +375,7 @@ The following program fragment (which forms the essence of
 .code cat )
 copies data from its standard input
 to its standard output.  If an error occurs, it writes a message
-on standard error.
+to the standard error.
 .P1
 char buf[512];
 int n;
@@ -400,7 +396,7 @@ for(;;){
 .P2
 The important thing to note in the code fragment is that
 .code cat
-doesn't know whether it is reading from a file, console, or whatever.
+doesn't know whether it is reading from a file, console, or a pipe.
 Similarly 
 .code cat
 doesn't know whether it is printing to a console, a file, or whatever.
@@ -419,8 +415,7 @@ releases a file descriptor, making it free for reuse by a future
 or
 .code dup
 system call (see below).
-An important Unix rule is that 
-a newly allocated file descriptor 
+A newly allocated file descriptor 
 is always the lowest-numbered unused
 descriptor of the current process.
 .PP
@@ -459,8 +454,7 @@ for the newly opened
 then executes with file descriptor 0 (standard input) referring to
 .code input.txt .
 .PP
-The code for I/O redirection in the xv6 shell works exactly in this way; see
-the case at
+The code for I/O redirection in the xv6 shell works exactly in this way
 .line sh.c:/case.REDIR/ .
 Recall that at this point in the code the shell has already forked the
 child shell and that 
@@ -503,7 +497,7 @@ picks up where the child's
 .code write
 left off.
 This behavior helps produce useful results from sequences
-of shell command, like
+of shell commands, like
 .code (echo
 .code hello;
 .code echo
@@ -512,7 +506,8 @@ of shell command, like
 .PP
 The
 .code dup
-system call duplicates an existing file descriptor onto a new one.
+system call duplicates an existing file descriptor,
+returning a new one that refers to the same underlying I/O object.
 Both file descriptors share an offset, just as the file descriptors
 duplicated by
 .code fork
@@ -595,8 +590,8 @@ if(fork() == 0) {
 }
 .P2
 The program calls
-.code pipe
-to create a new pipe and record the read and write
+.code pipe ,
+which creates a new pipe and records the read and write
 file descriptors in the array
 .code p .
 After
@@ -633,8 +628,7 @@ file descriptors referred to the write end of the pipe,
 .code wc
 would never see end-of-file.
 .PP
-The xv6 shell implements pipes in similar manner as the above code
-fragment; see 
+The xv6 shell implements pipes in a manner similar to the above code
 .line sh.c:/case.PIPE/ .
 The child process creates a pipe to connect the left end of the pipe
 with the right end of the pipe. Then it calls
@@ -732,10 +726,6 @@ The first changes the process's current directory to
 .code /a/b ;
 the second neither refers to nor modifies the process's current directory.
 .PP
-The
-.code open
-system call evaluates the path name of an existing file or directory
-and prepares that file for use by the calling process.
 .PP
 There are multiple system calls to create a new file or directory:
 .code mkdir
@@ -768,12 +758,11 @@ diverts
 and
 .code write
 system calls to the kernel device implementation
-instead of passing them through to the file system.
+instead of passing them to the file system.
 .PP
-The
 .code fstat
-system call queries an open file descriptor to find out
-what kind of file it is.
+retrieves information about the object a file
+descriptor refers to.
 It fills in a
 .code struct
 .code stat ,
@@ -784,8 +773,8 @@ as:
 .so ../xv6/stat.h
 .P2
 .PP
-In xv6, a file's name is separated from its content;
-the same content, called an inode, can have multiple names,
+A file's name is separated from the file object itself;
+the same object, called an inode, can have multiple names,
 called links.
 The
 .code link
