@@ -10,24 +10,23 @@ is being used.
 It also multiplexes the hardware, allowing many programs
 to share the computer and run (or appear to run) at the same time.
 Finally, operating systems provide controlled ways for programs
-to interact with each other, so that programs can share data or work together.
+to interact, so that they can share data or work together.
 .PP
-This description of an operating system does not say exactly what
-interface the operating system provides to user programs.  Operating
-systems researchers have experimented and continue to experiment with
-a variety of interfaces.  Designing a good interface turns out to be a
-difficult challenge.  On the one hand, we would like the interface to be
+An operating system provides services to user programs through some interface.
+Designing a good interface turns out to be
+difficult.  On the one hand, we would like the interface to be
 simple and narrow because that makes it easier to get the
 implementation right.  On the other hand,
-application writers want to offer many features to users. The trick in
+we may be tempted to offer many sophisticated features to applications.
+The trick in
 resolving this tension is to design interfaces that rely on a few
-mechanism that can be combined in ways to provide much generality.
+mechanisms that can be combined to provide much generality.
 .PP
 This book uses a single operating system as a concrete example to
 illustrate operating system concepts.  That operating system,
 xv6, provides the basic interfaces introduced by Ken Thompson and
 Dennis Ritchie's Unix operating system, as well as mimicking Unix's
-internal design.  The Unix operating system provides an an example of
+internal design.  Unix provides a
 narrow interface whose mechanisms combine well, offering a surprising
 degree of generality.  This interface has been so successful that
 modern operating systems—BSD, Linux, Mac OS X, Solaris, and even, to a
@@ -42,10 +41,9 @@ services to running programs.
 Each running program, called a
 .italic process ,
 has memory containing instructions, data, and a stack. The
-instructions correspond to the machine instructions that implement the
-program's computation.  The data corresponds to the data structures
-that the program uses to implement its computation. The stack allows
-the program to invoke procedure calls.  
+instructions implement the
+program's computation.  The data are the variables on which
+the computation acts. The stack organizes the program's procedure calls.
 .PP
 When a
 process needs to invoke a kernel service, it invokes a procedure call
@@ -95,25 +93,24 @@ write(fd, buf, n)	Write n bytes to an open file
 close(fd)	Release open file fd
 dup(fd)	Duplicate fd
 pipe(p)	Create a pipe and return fd's in p
-chdir(s)	Change directory to directory s
-mkdir(s)	Create a new directory s
-mknod(s, major, minor)	Create a device file
+chdir(dirname)	Change the current directory
+mkdir(dirname)	Create a new directory
+mknod(name, major, minor)	Create a device file
 fstat(fd)	Return info about an open file
-link(s1, s2)	Create another name (s2) for the file s1
+link(f1, f2)	Create another name (f2) for the file f1
 unlink(filename)	Remove a file
 .TE
 .PP
 The rest of this chapter outlines xv6's services—\c
-processes, memory, file descriptors, pipes, and a file system—\c
-by using the system call interface in small code examples, and
-explaining how the shell uses the system call interface. 
-The shell's use of the system calls illustrates how carefully the system calls
+processes, memory, file descriptors, pipes, and file system—\c
+and illustrates them with code snippets and discussions
+of how the shell uses them.
+The shell's use of system calls illustrates how carefully they
 have been designed.
 .PP
-The shell is an ordinary program that
-reads commands from the user
-and executes them.
-It is the main interactive way that users use traditional Unix-like systems.
+The shell is an ordinary program that reads commands from the user
+and executes them, and is the primary user interface to
+traditional Unix-like systems.
 The fact that the shell is a user program, not part of the kernel, 
 illustrates the power of the system call interface: there is nothing
 special about the shell.
@@ -121,8 +118,8 @@ It also means that the shell is easy to replace, and
 modern Unix systems have a variety of
 shells to choose from, each with its own syntax and semantics.
 The xv6 shell is a simple implementation of the essence of
-the Unix Bourne shell.  It's implementation can be found at sheet
-.sheet sh.c .
+the Unix Bourne shell.  Its implementation can be found at line
+.line sh.c:1 .
 .\"
 .\"	Processes and memory
 .\"
@@ -168,7 +165,8 @@ if(pid > 0){
 .P2
 The
 .code exit
-system call causes the calling process to exit (stop executing).
+system call causes the calling process to stop executing and
+to release resources such as memory and open files.
 The
 .code wait
 system call returns the pid of an exited child of the
@@ -193,12 +191,7 @@ parent: child 1234 is done
 .P2
 Note that the parent and child were executing with
 different memory and different registers:
-changing a variable in the parent does not affect the
-child, nor does the child affect the parent.
-The main form of direct communication between parent and child is
-.code wait
-and
-.code exit .
+changing a variable in one does not affect the other.
 .PP
 The
 .code exec
@@ -255,23 +248,17 @@ had typed "echo hello" at the prompt,
 would have been called with "echo hello" as the argument.
 .code runcmd 
 .line sh.c:/runcmd/
-runs the actual command. For the simple example, it would call
+runs the actual command. For "echo hello", it would call
 .code exec 
 on line 
-.line sh.c:/exec.ecmd/ ,
-which loads and starts the program
-.code echo ,
-changing the program counter to the first instruction of
-.code echo .
+.line sh.c:/exec.ecmd/ .
 If
 .code exec
-succeeds then the child will be running
+succeeds then the child will execute instructions from
 .code echo
-and the child will not execute the next line of
+instead of
 .code runcmd .  
-Instead, it will be running instructions of
-.code echo
-and at some point in the future,
+At some point
 .code echo
 will call
 .code exit ,
