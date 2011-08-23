@@ -1,7 +1,9 @@
 #!/bin/sh
 
 # The heirloom dit output is denser than the Plan 9.
-sed 's/\(.\)x X/\1\nx X/; s/^wV\([0-9]+\)$/w\nV\1/' "$@" | 
+sed 's/\(.\)x X/\1\
+x X/; s/^wV\([0-9]+\)$/w\
+V\1/' "$@" | 
 awk '
 BEGIN { capture = 0; nlines = 0; nshift = 0 }
 

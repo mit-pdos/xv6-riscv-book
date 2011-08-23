@@ -388,8 +388,6 @@ DRAFT as of \*[date]: Copyright 2009 Cox, Kaashoek, Morris
 .nr y (\\n[ury]p-\\n[lly]p)*\\n[eps_scale]/100
 .nr x (\\n[urx]p-\\n[llx]p)*\\n[eps_scale]/100
 .nr z (\\n[line-length]u-\\nxu)/2
-.tm \\nxu, \\nyu, \\nzu
-.tm psbb \\nxu \\nyu \\n[eps_scale]
 .PI \\$1 "\\nyu,\\nxu,0,\\nzu"
 .sp \\nyu
 ..
