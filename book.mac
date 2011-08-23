@@ -323,6 +323,75 @@ DRAFT as of \*[date]: Copyright 2009 Cox, Kaashoek, Morris
 .de TE
 ..
 .\"
+.\"	macro/strings: KS, KQ, KF, FQ, KP, KE, RQ, KK, KJ
+.\"	numbers: KN, IK, TB, KV, NF, TC
+.\"
+.so tmac.skeep
+.de KX
+.mk ~K
+.\" .tm need \\n(dn
+\X'foo'
+\X'shift \\\\n(dn'
+.sp |1i
+.mk x
+.\" .tm in KE: return to \\nx
+..
+.de KY
+.mk x
+.\" .tm now at \\nx
+.nr ~K \\n(~K+\\n(dn
+.sp |\\n(~Ku
+.sp 1v
+.mk x
+.\" .tm finish at \\nx
+..
+.\"	F1/F2/F3 - Figures
+.\"
+.\"	.F1 name
+.\"	Figure
+.\"	.F2
+.\"	Caption
+.\"	.F3
+.\"
+.nr Fignum 0
+.de F1
+.nr Fignum \\n[Fignum]+1
+.if !'\\$1'' .nr \\$1 \\n[Fignum]
+.\" TODO: name
+.KS
+..
+.de F2
+.LP
+.ps -2
+.vs -2
+\fBFigure \\n[Fignum]\fP.
+..
+.de F3
+.br
+.ps +2
+.vs +2
+\D'l \n[line-length]u 0'
+.sp 0.125i
+.KE
+..
+.\"
+.\"	EPS - Encapsulated PostScript
+.\"
+.\"	.EPS file [scale]
+.\"
+.\"	scale is a percentage (25 means 1/4)
+.\"
+.de EPS
+.psbb \\$1
+.nr eps_scale 100
+.if !'\\$2'' .nr eps_scale \\$2
+.nr y (\\n[ury]p-\\n[lly]p)*\\n[eps_scale]/100
+.nr x (\\n[urx]p-\\n[llx]p)*\\n[eps_scale]/100
+.tm psbb \\nxu \\nyu \\n[eps_scale]
+.PI \\$1 "\\nyu,\\nxu"
+.sp \\nyu
+..
+.\"
 .\"	table of contents
 .\"
 .ds CH:UNIX 0

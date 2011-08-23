@@ -640,7 +640,7 @@ and
 .code argstr
 and then call the real implementations.
 .PP
-In chapter  \*[CH:EXEC],
+In chapter \*[CH:MEM],
 .code sys_exec
 uses these functions to get at its arguments.
 .\"
@@ -760,7 +760,7 @@ enables interrupts on a processor.  Xv6 disables interrupts during
 booting of the main cpu
 .line bootasm.S:/cli/
 and the other processors
-.line bootother.S:/cli/ .
+.line entryother.S:/cli/ .
 The scheduler on each processor enables interrupts
 .line proc.c:/sti/ .
 To control that certain code fragments are not interrupted, xv6

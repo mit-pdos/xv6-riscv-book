@@ -83,6 +83,7 @@ copies the low 12 bits unchanged from the virtual to the
 translated physical address.  Thus a page table gives
 the operating system control over virtual-to-physical address translations
 at the granularity of aligned chunks of 4096 (2^12) bytes.
+.so mem-fig1.t
 .PP
 Each PTE contains flag bits that tell the paging hardware
 to restrict how the associated virtual address is used.
@@ -96,6 +97,7 @@ instruction fetches are allowed.
 .code PTE_U
 controls whether user programs are allowed to use the
 page; if clear, only the kernel is allowed to use the page.
+Figure \n[Fignum] shows how it all works.
 .PP
 A few notes about terms.
 Physical memory refers to storage cells in DRAM.
@@ -1002,8 +1004,15 @@ so the
 .code ret
 starts executing
 .code forkret .
-.code Forkret
+On the first invocation (that is this one),
+.code forkret
 .line proc.c:/^forkret/
+runs initialization functions that cannot be run from 
+.code main 
+because they must be run in the context of a regular process with its own
+kernel stack. 
+Then,
+.code forkret
 releases the 
 .code ptable.lock
 (see Chapter \*[CH:LOCK])

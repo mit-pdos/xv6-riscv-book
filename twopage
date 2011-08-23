@@ -1,0 +1,18 @@
+#!/bin/sh
+
+# Post-process troff output to insert an extra page 
+# if needed to make an even number of pages
+
+awk '
+/^p[0-9]/ {
+	npage++;
+	lastpage = substr($0, 2)
+}
+{ print }
+
+END {
+	if(npage%2){
+		printf "p%d\n", lastpage+1
+	}
+}
+' "$@"
