@@ -2,7 +2,7 @@
 .\"
 .\"
 .\"
-.chapter CH:CRASH "File system crash recovery"
+.chapter CH:FSCRASH "File system crash recovery"
 .PP
 One of the most interesting aspects of file system design is crash
 recovery. The problem arises because many file system operations

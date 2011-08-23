@@ -635,7 +635,7 @@ as identication.
 If the ELF header has the right magic number, the boot
 sector assumes that the binary is well-formed.
 There are many other sanity checks that a proper ELF loader would do,
-as we will see in Chapter \*[CH:EXEC],
+as we will see in Chapter \*[CH:MEM],
 but the boot sector doesn't have the code space.
 Checking the magic number guards against simply
 forgetting to write a kernel to the disk, not against

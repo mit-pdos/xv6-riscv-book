@@ -9,7 +9,6 @@ PDF=\
 	fsdata.pdf\
         fscrash.pdf\
 	fscall.pdf\
-	exec.pdf\
 
 all: $(PDF)
 
