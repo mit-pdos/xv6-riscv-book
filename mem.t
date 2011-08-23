@@ -83,7 +83,7 @@ copies the low 12 bits unchanged from the virtual to the
 translated physical address.  Thus a page table gives
 the operating system control over virtual-to-physical address translations
 at the granularity of aligned chunks of 4096 (2^12) bytes.
-.F1
+.F1 pagetablefig
 .EPS fig/x86_pagetable.eps 50
 .F2
 How memory works on the x86.
@@ -101,7 +101,7 @@ instruction fetches are allowed.
 .code PTE_U
 controls whether user programs are allowed to use the
 page; if clear, only the kernel is allowed to use the page.
-Figure \n[Fignum] shows how it all works.
+Figure \n[pagetablefig] shows how it all works.
 .PP
 A few notes about terms.
 Physical memory refers to storage cells in DRAM.
