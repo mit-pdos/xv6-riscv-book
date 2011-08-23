@@ -86,7 +86,7 @@ at the granularity of aligned chunks of 4096 (2^12) bytes.
 .F1 pagetablefig
 .EPS fig/x86_pagetable.eps 50
 .F2
-How memory works on the x86.
+Page tables on x86.
 .F3
 .PP
 Each PTE contains flag bits that tell the paging hardware
