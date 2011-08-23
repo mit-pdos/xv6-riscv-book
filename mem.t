@@ -83,11 +83,7 @@ copies the low 12 bits unchanged from the virtual to the
 translated physical address.  Thus a page table gives
 the operating system control over virtual-to-physical address translations
 at the granularity of aligned chunks of 4096 (2^12) bytes.
-.F1 pagetablefig
-.EPS fig/x86_pagetable.eps 50
-.F2
-Page tables on x86.
-.F3
+.so fig/x86_pagetable.t
 .PP
 Each PTE contains flag bits that tell the paging hardware
 to restrict how the associated virtual address is used.
@@ -397,10 +393,10 @@ to mark the PTE as valid
 .code walkpgdir
 .line vm.c:/^walkpgdir/
 mimics the actions of the x86 paging hardware as it
-looks up the PTE for a virtual address.
+looks up the PTE for a virtual address (see Fig. \n[pagetablefig]).
 An x86 page table is stored in physical memory, in the form of a
 4096-byte "page directory" that contains 1024 PTE-like references to 
-"page table pages."
+"page table pages".
 Each page table page is an array of 1024 32-bit PTEs.
 The paging hardware uses the top 10 bits of a virtual address to
 select a page directory entry.

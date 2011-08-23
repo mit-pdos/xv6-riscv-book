@@ -366,17 +366,13 @@ We'll call the addresses the processor chip sends to memory
 .italic "physical addresses" ,
 and the addresses that programs directly manipulate
 .italic "virtual addresses" .
+.so fig/x86_translation.t
 .PP
 The x86 defines, however, 3 types of addresses: logical addresses which
-translate to linear addresses using segments.  If the paging hardware is enabled
+translate to linear addresses using segments (see Fig. \n[translatefig]).  If the paging hardware is enabled
 (see Chapter \*[CH:MEM]), the linear addresses are translated to physical addresses by
 the paging hardware; if the paging hardware is not enabled, the linear
 addresses are used as physical addresses.
-.F1
-.EPS fig/x86_translation.eps 50
-.F2
-The relationship between logical, linear, and physical addresses.
-.F3
 .PP
 People often write logical addresses as
 \fIsegment\fP:\fIoffset\fP,
@@ -443,20 +439,16 @@ physical addresses to have many more bits, and a
 and most integer arithmetic to be carried out with 32 bits
 rather than 16.
 The xv6 boot sequence enables both modes as follows.
+.so fig/x86_seg.t
 .PP
 In protected mode, a segment
-register is an index into a segment descriptor table.
+register is an index into a segment descriptor table (see Fig. \n[segfig]).
 Each table entry specifies a base physical address,
 a maximum virtual address called the limit,
 and permission bits for the segment.
 These permissions are the protection in protected mode: they
 can be used to make sure that one program cannot access
 memory belonging to another program.
-.F1
-.EPS fig/x86_seg.eps 50
-.F2
-Segments in protected mode.
-.F3
 .PP 
 xv6 makes almost no use of segments (it uses the paging hardware
 instead, as Chapter \*[CH:MEM] describes).
