@@ -773,8 +773,8 @@ as:
 .so ../xv6/stat.h
 .P2
 .PP
-A file's name is separated from the file object itself;
-the same object, called an inode, can have multiple names,
+A file's name is distinct from the file itself;
+the same underlying file, called an inode, can have multiple names,
 called links.
 The
 .code link
@@ -811,19 +811,18 @@ count will be set to 2.
 .PP
 The
 .code unlink
-system call removes a name from the file system,
-but does not free the underlying inode or file content.
-Adding
+system call removes a name from the file system.
+The file's inode and the disk space holding its content
+are only freed when the file's link count is zero and
+no file descriptors refer to it.
+Thus adding
 .P1
 unlink("a");
 .P2
 to the last code sequence leaves the inode
 and file content accessible as
 .code b .
-Xv6 frees an inode and associated file content when
-all the inode's names have been unlinked and all file
-descriptors referring to it have been closed.
-Thus,
+Furthermore,
 .P1
 fd = open("/tmp/xyz", O_CREATE|O_RDWR);
 unlink("/tmp/xyz");
@@ -845,7 +844,7 @@ such commands into the shell (and built the shell into the kernel).
 .PP
 One exception is
 .code cd ,
-which built into the shell; see line 
+which built into the shell
 .line sh.c:/if.buf.0..==..c./ .
 The reason is that cd must change the current working directory of the
 shell itself.  If
@@ -872,17 +871,16 @@ and the shell was the first so-called ``scripting language.''
 The Unix system call interface persists today in systems like
 BSD, Linux, and Mac OS X.
 .PP
-Xv6 has a very simple interface.
-It doesn't implement modern features like networking
-or computer graphics.  Current Unix derivatives have
-many more system calls, especially in those newer areas.
-Unix's early devices, such as terminals, are modeled as 
-special files, like the
+Modern kernels provide many more system calls, and
+many more kinds of kernel services, than xv6.
+For the most part, modern Unix-derived operating systems
+have not followed the early
+Unix model of exposing devices as special files, like the
 .code console
 device file discussed above.
 The authors of Unix went on to build Plan 9,
 which applied the ``resources are files''
-concept to even these modern facilities,
+concept to modern facilities,
 representing networks, graphics, and other resources
 as files or file trees.
 .PP
