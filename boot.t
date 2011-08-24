@@ -14,23 +14,24 @@
 ..
 
 .PP
-This book takes a bottom-up approach to describing how to implement a Unix-like
-interface.  It starts with what happens when a user powers on a computer, which
-for this book we will assume is a personal computer (PC) with an Intel x86
-processor.  Before the operating system can manage the PC, the PC must load it.
-Loading the kernel is the job of the
-.italic "boot loader"  .  
-The xv6 kernel has its own minimal boot loader (see files
-.file bootasm.S ; (
-.sheet bootasm.S )
-and 
-.file bootmain.c ; (
-.sheet bootmain.c ),
-to eliminate any mysteries about how an operating system starts.  The boot
-loader is a separate program from xv6 itself and in principle could be used to
-load the kernel for other operating systems too.  This chapter examines the
-operation of the xv6 boot loader, from the time the a PC starts to the time it
-transfers control to the kernel proper.
+This book takes a narrative approach to describing the xv6 kernel,
+starting with what happens when the the computer powers on.
+Xv6 is written for an Intel x86 processor, so many of the details
+in the first few chapters will be specific to the x86.
+This chapter explains how the xv6 kernel is loaded from disk into
+memory and how it first starts executing.
+.PP
+At power-up, 
+the standard personal computer (PC) hardware on which xv6 runs
+loads the first 512 bytes of data from the disk and executes it.
+The instructions in that 512 bytes must arrange to load the full
+operating system, in this case the xv6 kernel.
+The 512 bytes are called the
+.italic "boot loader" .
+The code for xv6's boot loader is in files
+.code bootasm.S
+and
+.code bootmain.c .
 .PP
 The boot loader is a microcosm of a kernel itself: it contains low-level
 assembly and C code, it manages its own memory, and it even has a device driver,
