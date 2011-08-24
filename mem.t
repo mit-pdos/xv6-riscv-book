@@ -339,13 +339,28 @@ For example, the kernel can use its own instructions and data
 (at virtual addresses starting at 
 .address KERNBASE+ 0x100000),
 since the boot loader loaded the kernel al physical address 
-.address 0x100000, 
+.address 0x100000 , 
 and the kernel maps
 .address KERNBASE+ 0x100000
 to 
 .address 0x100000.
- The kernel can also read and write the physical memory beyond
-the end of its data segment.
+The reason that the kernel is at 
+.address 0x100000
+in physical memory is because the address range from
+.address 0xa0000
+(640 Kbyte)
+till 
+.address 0x100000
+contains many older I/O devices.
+The newer devices live in the device memory
+at the top of the physical address space, starting
+at 
+.address 0xFE000000 .
+The kernel can also read and write the physical memory beyond the end of its
+data segment, where it allocates physical pages for user text, data, etc for a
+process.  As mentioned above, xv6 maps these physical pages into the lower part
+of the address space so that the user process can reference its own physical
+memory (but not the physical pages of other processes).
 .PP 
 Every process's page table simultaneously contains
 translations for both all of the process's memory and all
@@ -484,8 +499,8 @@ Now the process will be able to use 16 kilobytes of contiguous
 memory starting at virtual address zero.
 Two different PTEs now refer to the physical memory at 0x601000:
 the PTE for virtual address 0xF0601000 and the PTE for virtual address
-0x3000. The kernel can uses the first and the second
-address; the process can use only the second one.
+0x3000. The kernel can use both
+addresses; the process can use only the second one.
 .PP
 There is a small bootstrap problem left: how does xv6 allocate memory before the
 free list of physical memory is initialized?  One option is to initialize this
@@ -909,7 +924,7 @@ marks it available for scheduling by setting
 to
 .code RUNNABLE .
 .\"
-.section "Code: Running a process
+.section "Code: Running a process"
 .\"
 Now that the first process's state is prepared,
 it is time to run it.
