@@ -14,23 +14,24 @@
 ..
 
 .PP
-This book takes a bottom-up approach to describing how to implement a Unix-like
-interface.  It starts with what happens when a user powers on a computer, which
-for this book we will assume is a personal computer (PC) with an Intel x86
-processor.  Before the operating system can manage the PC, the PC must load it.
-Loading the kernel is the job of the
-.italic "boot loader"  .  
-The xv6 kernel has its own minimal boot loader (see files
-.file bootasm.S ; (
-.sheet bootasm.S )
-and 
-.file bootmain.c ; (
-.sheet bootmain.c ),
-to eliminate any mysteries about how an operating system starts.  The boot
-loader is a separate program from xv6 itself and in principle could be used to
-load the kernel for other operating systems too.  This chapter examines the
-operation of the xv6 boot loader, from the time the a PC starts to the time it
-transfers control to the kernel proper.
+This book takes a narrative approach to describing the xv6 kernel,
+starting with what happens when the computer powers on.
+Xv6 is written for a personal computer (PC) 
+with an Intel x86 processor, so many of the details
+in the first few chapters will be specific to that platform.
+This chapter explains how the xv6 kernel is loaded from disk into
+memory and how it first starts executing.
+.PP
+At power-up, a PC
+loads the first 512 bytes of data from the disk and executes it.
+The instructions in that 512 bytes must arrange to load the full
+operating system, in this case the xv6 kernel.
+The 512 bytes are called the
+.italic "boot loader" .
+The code for xv6's boot loader is in files
+.code bootasm.S
+and
+.code bootmain.c .
 .PP
 The boot loader is a microcosm of a kernel itself: it contains low-level
 assembly and C code, it manages its own memory, and it even has a device driver,
@@ -44,24 +45,20 @@ skip forward to the next chapter, where xv6 starts.
 .\"
 .section "A personal computer"
 .PP
-A personal computer is a computer that adheres to several industrial standards,
-allowing different manufacturers to build them and have some hope that an
-operating system for a particular PC can run on all of them.  These standard
+A PC is a computer that adheres to several industry standards,
+with the goal that a given piece of software can run on PCs
+sold by multiple vendors.
+These standards
 evolve over time and a PC from 1990s doesn't look like a PC now. 
 .PP
 From the outside a PC is a box with a keyboard, a screen, and various devices
-(e.g., CD-rom, etc.).  In the inside the box, a PC has a digital computer board,
-the "mother" board, which has one or more processors that provide an Intel x86
-instruction set, memory chips, and devices for keyboard, display, disk, clock,
-etc.  The devices are wired together by a
-.italic bus , 
-which defines a protocol for the devices to communicate.  The bus protocol
-adheres to an industrial standard so that manufacturers can focus on particular
-devices and have them work with PCs produced by PC manufactures.  There are
-several bus standards (e.g., PCI, etc.) and they evolve over time as new
-requirements emerge (e.g., higher speeds).
+(e.g., CD-rom, etc.).  Inside the box is a circuit board (the "motherboard")
+with CPU chips, memory chips, graphic chips, I/O controller chips,
+and busses through which the chips communicate.
+The busses adhere to standard protocols (e.g., PCI and USB)
+so that devices will work with PCs from multiple vendors.
 .PP
-From our point of view, we can all abstract this sea of devices on a PC board
+From our point of view, we can abstract the PC
 into three components: a processor, memory, and input/output (I/O) devices.  The
 processor performs computation, the memory contains programs that describe the
 computation, and the processor can issue I/O instructions to make devices to
