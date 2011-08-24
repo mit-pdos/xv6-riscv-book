@@ -152,8 +152,8 @@ in a single address space so that the kernel can easily transfer data from the
 user program to the kernel, and back.   xv6 arrives at such an address space
 layout in a few steps.
 .PP
-xv6 uses the paging hardware to arrange that the link address (
-.code KERNBASE )
+xv6 uses the paging hardware to arrange that the link address
+.code KERNBASE ) (
 maps to the load address, because any memory reference xv6 makes will use a high
 address.  Thus, the first thing the 
 .code entry
@@ -286,21 +286,19 @@ The function
 is not only invoked by xv6 during initialization, but every time xv6 creates a
 new user process.   So, this is a good point to understand how xv6 uses the
 paging hardware for isolating user processes.
+.so fig/xv6_layout.t
 .PP
 Each process has a separate page table, and xv6 tells
 the page table hardware to switch
 page tables when xv6 switches between processes.
-A process's memory starts at virtual address
+As shown in Figure \n[layoutfig],
+a process's memory starts at virtual address
 zero and can grow to the address
-.address USERTOP  
+.address KERNBASE
 (see
 .file "memlayout.h"
 .sheet memlayout.h ),
-allowing for a 3,932,156 Kbyte user process.
-.address USERTOP
-is 4096 bytes below 
-.address KERNBASE ,
-to ensure that the user process has at least a 4 Kbyte stack.
+allowing for a 3,932,160 Kbyte user process.
 xv6 sets up the PTEs for the process's virtual addresses to point
 to whatever pages of physical memory xv6 has allocated for
 the process's memory, and sets the 
@@ -310,13 +308,13 @@ and
 .code PTE_P
 flags in these PTEs.
 If a process has asked xv6 for less memory than
-.address USERTOP  , 
+.address KERNBASE , 
 xv6 will leave 
 .code PTE_P
 clear in the remainder of the PTEs.
 .PP
 Different processes' page tables translate the addresses till 
-.address USERTOP
+.address KERNBASE
 to different pages of physical memory, so that each process has
 private memory.
 However, xv6 sets up every process's page table to translate virtual addresses
@@ -1165,8 +1163,8 @@ in the boot loader from Chapter \*[CH:BOOT].
 The additional complexity comes from setting up the stack.
 The user memory image of an executing process looks like:
 .P1
-         _________
-USERTOP: |       |
+KERNBASE:_________
+         |       |
          | ...   |
          | heap  |
          | stack |
@@ -1245,7 +1243,7 @@ and loads each segment into memory with
 .code allocuvm
 checks that the virtual addresses requested
 is below
-.address USERTOP .
+.address KERNBASE .
 .code loaduvm
 .line vm.c:/^loaduvm/
 uses

@@ -258,6 +258,27 @@
        inkscape:vp_y="0 : 1000 : 0"
        inkscape:vp_x="0 : 0.5 : 1"
        sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective4535"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective4562"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective4591"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
   </defs>
   <sodipodi:namedview
      id="base"
@@ -266,17 +287,17 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="0.85839035"
-     inkscape:cx="305.91298"
-     inkscape:cy="418.88398"
+     inkscape:zoom="0.92"
+     inkscape:cx="434.69454"
+     inkscape:cy="443.17108"
      inkscape:document-units="mm"
      inkscape:current-layer="layer1"
      showgrid="false"
      units="mm"
-     inkscape:window-width="1163"
-     inkscape:window-height="1023"
-     inkscape:window-x="370"
-     inkscape:window-y="180"
+     inkscape:window-width="1286"
+     inkscape:window-height="1046"
+     inkscape:window-x="167"
+     inkscape:window-y="75"
      inkscape:window-maximized="0"
      showguides="true"
      inkscape:guide-bbox="true"
@@ -326,19 +347,7 @@
      inkscape:groupmode="layer"
      id="layer2"
      inkscape:label="Background"
-     style="display:inline">
-    <text
-       id="text13400"
-       y="53.161423"
-       x="380.78345"
-       style="font-size:40px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;display:inline;font-family:Bitstream Vera Sans"
-       xml:space="preserve"><tspan
-         style="font-size:20px;text-align:center;text-anchor:middle"
-         y="53.161423"
-         x="380.78345"
-         id="tspan13402"
-         sodipodi:role="line">JOS Virtual Memory Map</tspan></text>
-  </g>
+     style="display:inline" />
   <g
      inkscape:groupmode="layer"
      id="layer3"
@@ -398,33 +407,23 @@
        style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
        d="m 332.19627,203.09901 -212.59843,0 0,37.33558 4.42914,3.11127 -8.85827,6.22262 8.85827,6.22259 -8.85827,6.22258 8.85827,6.22261 -8.85827,6.22258 4.42913,3.1113 0,448.02678 4.42914,3.11131 -8.85827,6.22259 8.85827,6.2226 -8.85827,6.22261 8.85827,6.22257 -8.85827,6.2226 4.42913,3.1113 0,186.67782 212.59843,0 0,-186.67782 -4.42913,-3.1113 8.85827,-6.2226 -8.85827,-6.22257 8.85827,-6.22261 -8.85827,-6.2226 8.85827,-6.22259 -4.42914,-3.11131 0,-448.02678 -4.42913,-3.1113 8.85827,-6.22258 -8.85827,-6.22261 8.85827,-6.22258 -8.85827,-6.22259 8.85827,-6.22262 -4.42914,-3.11127 0,-37.33558 z"
        sodipodi:nodetypes="ccccccccccccccccccccccccccccccccccccc" />
-    <image
-       y="660.24854"
-       x="522.26465"
-       id="image3303"
-       height="279.68161"
-       width="223"
-       xlink:href="file:///Users/kaashoek/classes/6828/xv6-book.git/fig/inkscape_pasted_image_20110823_212329.png" />
     <text
        xml:space="preserve"
        style="font-size:14px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
-       x="480.47321"
-       y="939.24634"
+       x="481.56015"
+       y="964.24634"
        id="text3321"><tspan
          sodipodi:role="line"
          id="tspan3323"
-         x="480.47321"
-         y="939.24634">0</tspan></text>
-    <text
-       xml:space="preserve"
-       style="font-size:14px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
-       x="566.17596"
-       y="762.83063"
-       id="text3553"><tspan
-         sodipodi:role="line"
-         id="tspan3555"
-         x="566.17596"
-         y="762.83063">Unused/Non-existing</tspan></text>
+         x="481.56015"
+         y="964.24634">0</tspan></text>
+    <rect
+       style="fill:none;stroke-width:1.5;stroke-miterlimit:4;stroke-dasharray:12, 12;stroke-dashoffset:0"
+       id="rect2960"
+       width="210.48911"
+       height="312.22552"
+       x="527.97687"
+       y="621.64404" />
   </g>
   <g
      inkscape:label="Layer 1"
@@ -468,7 +467,7 @@
        id="path3338" />
     <path
        style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       d="m 524.83218,782.31132 212.59843,0"
+       d="m 531.32339,782.85478 199.61602,0"
        id="path3358" />
     <text
        xml:space="preserve"
@@ -505,17 +504,6 @@
        id="path4162"
        d="m 118.60851,683.17753 212.59843,0"
        style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
-    <text
-       id="text4168"
-       y="716.27979"
-       x="21.564592"
-       style="font-size:40px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
-       xml:space="preserve"><tspan
-         style="font-size:14px;text-align:start;text-anchor:start"
-         y="716.27979"
-         x="21.564592"
-         id="tspan4170"
-         sodipodi:role="line">USERTOP</tspan></text>
     <path
        style="fill:none;stroke:#000000;stroke-width:0.99921262;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker-end:url(#Arrow1Mend)"
        d="m 103.04627,627.16548 17.71654,0"
@@ -668,13 +656,6 @@
          x="334.73734"
          id="tspan5612"
          sodipodi:role="line">PGSIZE</tspan></text>
-    <image
-       y="690.3241"
-       x="336.48135"
-       id="image3063"
-       height="11"
-       width="49"
-       xlink:href="file:///Users/kaashoek/classes/6828/xv6-book.git/fig/inkscape_pasted_image_20110823_210417.png" />
     <text
        xml:space="preserve"
        style="font-size:40px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
@@ -772,65 +753,26 @@
        height="1"
        width="214"
        xlink:href="file:///Users/kaashoek/classes/6828/xv6-book.git/fig/inkscape_pasted_image_20110823_212505.png" />
-    <image
-       y="709.69073"
-       x="96.012375"
-       id="image3377"
-       height="5"
-       width="20"
-       xlink:href="file:///Users/kaashoek/classes/6828/xv6-book.git/fig/inkscape_pasted_image_20110823_212526.png" />
-    <image
-       y="943.19"
-       x="499.92743"
-       id="image3391"
-       height="5"
-       width="20"
-       xlink:href="file:///Users/kaashoek/classes/6828/xv6-book.git/fig/inkscape_pasted_image_20110823_212547.png" />
     <text
        xml:space="preserve"
        style="font-size:14px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
-       x="419.38962"
-       y="949.84485"
+       x="420.47656"
+       y="945.49701"
        id="text3395"><tspan
          sodipodi:role="line"
          id="tspan3397"
-         x="419.38962"
-         y="949.84485">0x100000</tspan></text>
-    <image
-       y="858.14709"
-       x="503.75226"
-       id="image3424"
-       height="5"
-       width="20"
-       xlink:href="file:///Users/kaashoek/classes/6828/xv6-book.git/fig/inkscape_pasted_image_20110823_212627.png" />
+         x="420.47656"
+         y="945.49701">0x100000</tspan></text>
     <text
        xml:space="preserve"
        style="font-size:14px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
        x="429.87436"
-       y="863.63708"
+       y="786.4632"
        id="text3428"><tspan
          sodipodi:role="line"
          id="tspan3430"
          x="429.87436"
-         y="863.63708">PHYSTOP</tspan></text>
-    <text
-       xml:space="preserve"
-       style="font-size:14px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
-       x="578.99066"
-       y="709.86078"
-       id="text3432"><tspan
-         sodipodi:role="line"
-         id="tspan3434"
-         x="578.99066"
-         y="709.86078"
-         style="font-size:18px">Physical</tspan></text>
-    <image
-       y="943.52002"
-       x="524.41437"
-       id="image3459"
-       height="1"
-       width="214"
-       xlink:href="file:///Users/kaashoek/classes/6828/xv6-book.git/fig/inkscape_pasted_image_20110823_212812.png" />
+         y="786.4632">PHYSTOP</tspan></text>
     <image
        y="858.47711"
        x="524.93982"
@@ -838,41 +780,26 @@
        height="1"
        width="214"
        xlink:href="file:///Users/kaashoek/classes/6828/xv6-book.git/fig/inkscape_pasted_image_20110823_212912.png" />
-    <image
-       y="779.42407"
-       x="406.65851"
-       id="image3514"
-       height="11"
-       width="86"
-       xlink:href="file:///Users/kaashoek/classes/6828/xv6-book.git/fig/inkscape_pasted_image_20110823_212923.png" />
-    <image
-       y="780.75397"
-       x="502.58731"
-       id="image3541"
-       height="5"
-       width="20"
-       xlink:href="file:///Users/kaashoek/classes/6828/xv6-book.git/fig/inkscape_pasted_image_20110823_213020.png" />
     <text
        xml:space="preserve"
        style="font-size:14px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
-       x="585.98047"
-       y="696.42725"
-       id="text3545"
-       transform="translate(0,62.362323)"><tspan
+       x="590.32831"
+       y="731.61566"
+       id="text3545"><tspan
          sodipodi:role="line"
          id="tspan3547"
-         x="585.98047"
-         y="696.42725">Devices</tspan></text>
+         x="590.32831"
+         y="731.61566">Devices</tspan></text>
     <text
        xml:space="preserve"
        style="font-size:14px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
-       x="572.00085"
-       y="903.24597"
+       x="556.78345"
+       y="866.28943"
        id="text3549"><tspan
          sodipodi:role="line"
          id="tspan3551"
-         x="572.00085"
-         y="903.24597">Extended memory</tspan></text>
+         x="556.78345"
+         y="866.28943">Extended memory</tspan></text>
     <image
        y="998.60358"
        x="502.58731"
@@ -910,12 +837,213 @@
     <text
        xml:space="preserve"
        style="font-size:14px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
-       x="584.79517"
-       y="989.76349"
+       x="582.62128"
+       y="996.28522"
        id="text3621"><tspan
          sodipodi:role="line"
          id="tspan3623"
-         x="584.79517"
-         y="989.76349">Base memory</tspan></text>
+         x="582.62128"
+         y="996.28522">Base memory</tspan></text>
+    <rect
+       style="fill:none;stroke-width:1.5;stroke-miterlimit:4;stroke-dasharray:12, 12;stroke-dashoffset:0"
+       id="rect2962"
+       width="219.25951"
+       height="326.25809"
+       x="519.20648"
+       y="616.38184"
+       transform="translate(0,62.362323)" />
+    <rect
+       style="fill:#ffffff;opacity:0;stroke:#000000;stroke-opacity:0.89655173"
+       id="rect3744"
+       width="215.75134"
+       height="324.504"
+       x="529.7309"
+       y="614.62775"
+       transform="translate(0,62.362323)" />
+    <rect
+       style="opacity:0;fill:#ffffff;stroke:#000000;stroke-opacity:0.89655172999999999;stroke-width:0.9992126;stroke-miterlimit:4;stroke-dasharray:none"
+       id="rect4474"
+       width="224.5217"
+       height="342.0448"
+       x="513.94421"
+       y="600.59515"
+       transform="translate(0,62.362323)" />
+    <rect
+       style="opacity:0;fill:#ffffff;stroke:#000000;stroke-width:7.37716535;stroke-miterlimit:4;stroke-opacity:0.89655174999999998;stroke-dasharray:none"
+       id="rect4484"
+       width="217.50545"
+       height="335.02847"
+       x="522.7146"
+       y="607.61145"
+       transform="translate(0,62.362323)" />
+    <rect
+       style="opacity:0;fill:#ffffff;stroke:#000000;stroke-width:7.37716532;stroke-miterlimit:4;stroke-opacity:0.89655175;stroke-dasharray:none"
+       id="rect4486"
+       width="236.80025"
+       height="422.7323"
+       x="947.20099"
+       y="355.02454"
+       transform="translate(0,62.362323)" />
+    <rect
+       style="opacity:0;fill:#ffffff;stroke:#000000;stroke-width:7.37716532;stroke-miterlimit:4;stroke-opacity:0.89655175;stroke-dasharray:none"
+       id="rect4488"
+       width="336.78256"
+       height="292.93066"
+       x="848.97272"
+       y="340.99191"
+       transform="translate(0,62.362323)" />
+    <rect
+       style="opacity:0;fill:#ffffff;stroke:#000000;stroke-width:7.37716532;stroke-miterlimit:4;stroke-opacity:0.89655175;stroke-dasharray:none"
+       id="rect4490"
+       width="357.83148"
+       height="263.11139"
+       x="994.56104"
+       y="472.54761"
+       transform="translate(0,62.362323)" />
+    <rect
+       style="opacity:0;fill:#ffffff;stroke:#000000;stroke-width:7.37716532;stroke-miterlimit:4;stroke-opacity:0.89655175;stroke-dasharray:none"
+       id="rect4492"
+       width="326.25812"
+       height="289.42252"
+       x="927.90613"
+       y="411.15497"
+       transform="translate(0,62.362323)" />
+    <rect
+       style="opacity:0;fill:#ffffff;stroke:#000000;stroke-width:7.37716532;stroke-miterlimit:4;stroke-opacity:0.89655175;stroke-dasharray:none"
+       id="rect4494"
+       width="210.48911"
+       height="345.55295"
+       x="501.66571"
+       y="583.05438"
+       transform="translate(0,62.362323)" />
+    <rect
+       style="opacity:1;fill:none;stroke:#000000;stroke-width:1.12749999999999995;stroke-miterlimit:4;stroke-opacity:0.89655174999999998;stroke-dasharray:none"
+       id="rect4496"
+       width="199.96465"
+       height="357.83148"
+       x="531.48499"
+       y="605.85736"
+       transform="translate(0,62.362323)"
+       ry="0" />
+    <text
+       xml:space="preserve"
+       style="font-size:18;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       x="582.35321"
+       y="554.9892"
+       id="text4498"
+       transform="translate(0,62.362323)"><tspan
+         sodipodi:role="line"
+         id="tspan4500"
+         x="582.35321"
+         y="554.9892" /></text>
+    <text
+       xml:space="preserve"
+       style="font-size:18px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       x="578.35046"
+       y="647.93579"
+       id="text4502"><tspan
+         sodipodi:role="line"
+         id="tspan4504"
+         x="578.35046"
+         y="647.93579">Physical</tspan></text>
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:2, 4;stroke-dashoffset:0"
+       d="M 335.69561,682.25231 C 526.88988,1019.0349 528.64396,1020.789 528.64396,1020.789 l 0,0 -1.75408,0"
+       id="path4506" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:3.99999992, 3.99999992;stroke-dashoffset:9.3999998"
+       d="m 333.2744,364.76457 c 197.12362,418.0054 197.12362,418.0054 197.12362,418.0054"
+       id="path4510" />
+    <image
+       y="-938.73187"
+       x="529.78259"
+       id="image4537"
+       height="1"
+       width="203.13043"
+       xlink:href="file:///Users/kaashoek/classes/6828/xv6-book.git/fig/inkscape_pasted_image_20110824_091227.png"
+       transform="scale(1,-1)" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:0.99921262;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker-end:url(#Arrow1Mend)"
+       d="m 502.63137,782.978 17.71654,0"
+       id="path4597"
+       sodipodi:nodetypes="cc" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:0.99921262;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker-end:url(#Arrow1Mend)"
+       d="m 505.89224,1022.1084 17.71654,0"
+       id="path4599"
+       sodipodi:nodetypes="cc" />
+    <image
+       transform="scale(1,-1)"
+       xlink:href="file:///Users/kaashoek/classes/6828/xv6-book.git/fig/inkscape_pasted_image_20110824_091227.png"
+       width="203.13043"
+       height="1"
+       id="image4601"
+       x="527.6087"
+       y="-783.29712" />
+    <image
+       y="-783.29712"
+       x="527.6087"
+       id="image4603"
+       height="1"
+       width="203.13043"
+       xlink:href="file:///Users/kaashoek/classes/6828/xv6-book.git/fig/inkscape_pasted_image_20110824_091227.png"
+       transform="scale(1,-1)" />
+    <image
+       transform="scale(1,-1)"
+       xlink:href="file:///Users/kaashoek/classes/6828/xv6-book.git/fig/inkscape_pasted_image_20110824_091227.png"
+       width="203.13043"
+       height="1"
+       id="image4605"
+       x="526.52173"
+       y="-784.38403" />
+    <image
+       transform="scale(1,-1)"
+       xlink:href="file:///Users/kaashoek/classes/6828/xv6-book.git/fig/inkscape_pasted_image_20110824_091227.png"
+       width="203.13043"
+       height="1"
+       id="image4607"
+       x="529.78259"
+       y="-938.73187" />
+    <image
+       y="-938.73187"
+       x="529.78259"
+       id="image4609"
+       height="1"
+       width="203.13043"
+       xlink:href="file:///Users/kaashoek/classes/6828/xv6-book.git/fig/inkscape_pasted_image_20110824_091227.png"
+       transform="scale(1,-1)" />
+    <path
+       id="path4611"
+       d="m 533.49731,940.46347 199.61602,0"
+       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:0.99921262;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker-end:url(#Arrow1Mend)"
+       d="m 501.54441,942.76061 17.71654,0"
+       id="path4615"
+       sodipodi:nodetypes="cc" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="m 530.23644,968.72434 199.61602,0"
+       id="path4617" />
+    <path
+       sodipodi:nodetypes="cc"
+       id="path4619"
+       d="m 99.7854,682.60026 17.71654,0"
+       style="fill:none;stroke:#000000;stroke-width:0.99921262;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker-end:url(#Arrow1Mend)" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="m 119.69547,888.61231 212.59843,0"
+       id="path4623" />
+    <text
+       id="text2980"
+       y="667.37469"
+       x="490.95636"
+       style="font-size:40px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       xml:space="preserve"><tspan
+         style="font-size:14px;text-align:start;text-anchor:start"
+         y="667.37469"
+         x="490.95636"
+         id="tspan2982"
+         sodipodi:role="line">4 Gig</tspan></text>
   </g>
 </svg>
