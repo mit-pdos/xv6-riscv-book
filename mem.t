@@ -1382,7 +1382,8 @@ xv6 does use segments for the common trick of
 implementing per-cpu variables such as
 .code proc
 that are at a fixed address but have different values
-on different CPUs.
+on different CPUs (see
+.code seginit ).
 Implementations of per-CPU (or per-thread) storage on non-segment
 architectures would dedicate a register to holding a pointer
 to the per-CPU data area, but the x86 has so few general
