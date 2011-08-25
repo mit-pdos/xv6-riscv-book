@@ -1,8 +1,6 @@
 .so book.mac
 .chapter CH:TRAP "Traps, interrupts, and drivers"
-.ig
-	in progress
-..
+.PP
 When running a process, a processor executes the normal processor loop: read an
 instruction, advance the program counter, execute the instruction, repeat.  But
 there are events on which control from a user program must transferred back to
@@ -836,7 +834,7 @@ state a sector.
 The IDE device provides access to disks connected to the
 PC standard IDE controller.
 IDE is now falling out of fashion in favor of SCSI and SATA,
-but the interface is very simple and lets us concentrate on the
+but the interface is simple and lets us concentrate on the
 overall structure of a driver instead of the details of a
 particular piece of hardware.
 .PP
@@ -1045,25 +1043,51 @@ must pass the next waiting buffer to the disk
 .\"
 .section "Real world"
 .\"
-Supporting all the devices on a PC motherboard in its full glory is
-much work, because the drivers to manage the devices can get complex.
+Supporting all the devices on a PC motherboard in its full glory is much work,
+because there are many devices, the devices have many features, and the protocol
+between device and driver is complex.  In many operating systems, the drivers
+together account for more code in the operating system than the core kernel.
+.PP
+Most of the devices in this chapter used I/O instructions to program them, which
+reflects the older nature of these devices.  All modern devices are programmed
+using memory-mapped I/O.  
+.PP
+Some drivers dynamically switch between polling and interrupts, because using
+interrupts can be expensive, but using polling can introduce delay until the
+driver processes an event.  For example, for a network driver that receives a
+burst of packets, may switch from interrupts to polling since it knows that more
+packets must be processed and it is less expensive to process them using polling.
+Once no more packets need to be processed, the driver may switch back to
+interrupts, so that it will be alerted immediately when a new packet arrives.
+.PP
+The IDE driver routed interrupts statically to a particular processor.  Some
+drivers have a sophisticated algorithm for routing interrupts to processor so
+that the load of processing packets is well balanced but good locality is
+achieved too.  For example, a network driver might arrange to deliver interrupts
+for packets of one network connection to the processor that is managing that
+connection, while interrupts for packets of another connection are delivered to
+another processor.  This routing can get quite sophisticated; for example, if
+some network connections are short lived while others are long lived and the
+operating system wants to keep all processors busy to achieve high throughput.
+.PP
+If user process reads a file, the data for that file is copied twice.  First, it
+is copied from the disk to kernel memory by the driver, and then later it is
+copied from kernel space to user space by the 
+.code read
+system call.  If the user process, then sends the data on the network, then
+the data is copied again twice: once from user space to kernel space and from
+kernel space to the network device.  To support applications for which low
+latency is important (e.g., a Web serving static Web pages), operating systems
+use special code paths to avoid these many copies.
+.\"
+.section "Exercises"
+.\"
+1. Set a breakpoint at the first instruction of syscall() to catch the very
+first system call (e.g., br syscall). What values are on the stack at this
+point?  Explain the output of x/37x $esp at that breakpoint with each value
+labeled as to what it is (e.g., saved %ebp for trap, trapframe.eip, scratch
+space, etc.).
 
-polling
+2. Add a new system call
 
-memory-mapped I/O versus I/O instructions
-
-interrupt handler (trap) table driven.
-
-Interrupt masks.
-Interrupt routing.
-On multiprocessor, different hardware but same effect.
-
-interrupts can move.
-
-more complicated routing.
-
-more system calls.
-
-have to copy system call strings.
-
-even harder if memory space can be adjusted.
+3. Add a network driver
