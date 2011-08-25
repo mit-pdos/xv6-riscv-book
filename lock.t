@@ -430,41 +430,53 @@ The lock
 synchronizes access by the two CPUs to the
 single variable.
 .PP
-Locks are useful not just for synchronizing multiple CPUs
-but also for synchronizing interrupt and non-interrupt code
-on the 
-.italic same
-CPU.
-The 
-.code ticks
-variable is used by the interrupt handler and
-also by the non-interrupt function
-.code sys_sleep ,
-as we just saw.  If the non-interrupt code is manipulating a shared
-data structure, it may not be safe for the CPU to interrupt that code
-and start running an interrupt handler that will use the data
-structure.  Xv6's disables interrupts on a CPU when that CPU holds a
-lock; this ensures proper data access and also avoids deadlocks: an
-interrupt handler can never acquire a lock already held by the code it
-interrupted.  One way to think about this is that locks
-provide atomicity between code running on different processors and
-turning off interrupts provides atomicity between code running on
-the same processor.
+Interrupts can cause concurrency even on a single processor:
+if interrupts are enabled, kernel code can be stopped
+at any moment to run an interrupt handler instead.
+Suppose
+.code iderw
+held the
+.code idelock
+and then got interrupted to run
+.code ideintr.
+.code Ideintr
+would try to lock
+.code idelock ,
+see it was held, and wait for it to be released.
+In this situation,
+.code idelock
+will never be released—only
+.code iderw
+can release it, and
+.code iderw
+will not continue running until
+.code ideintr
+returns—so the processor, and eventually the whole system, will deadlock.
 .PP
-Before attempting to acquire a lock,
-.code acquire
+To avoid this situation, if a lock is used by an interrupt handler,
+a processor must never hold that lock with interrupts enabled.
+Xv6 is more conservative: it never holds any lock with interrupts enabled.
+It uses
+.code pushcli
+.line spinlock.c:/^pushcli/
+and
+.code popcli
+.line spinlock.c:/^popcli/
+to manage a stack of ``disable interrupts'' operations
+.code cli "" (
+is the x86 instruction that disables interrupts,
+as we saw in Chapter \*[CH:BOOT]).
+.code Acquire
 calls
 .code pushcli
-.line spinlock.c:/pushcli/
-to disable interrupts.
-.code Release
+before trying to acquire a lock
+.line spinlock.c:/pushcli/ ,
+and 
+.code release
 calls
 .code popcli
-.line spinlock.c:/popcli/ 
-to allow them to be enabled.
-(The underlying x86 instruction to
-disable interrupts is named
-.code cli .)
+after releasing the lock
+.line spinlock.c:/popcli/ .
 .code Pushcli
 .line spinlock.c:/^pushcli/
 and
@@ -483,6 +495,27 @@ to undo two calls to
 this way, if code acquires two different locks,
 interrupts will not be reenabled until both
 locks have been released.
+.PP
+It is important that
+.code acquire
+call
+.code pushcli
+before the 
+.code xchg
+that might acquire the lock
+.line spinlock.c:/while.xchg/ .
+If the two were reversed, there would be
+a few instruction cycles when the lock
+was held with interrupts enabled, and
+an unfortunately timed interrupt would deadlock the system.
+Similarly, it is important that
+.code release
+call
+.code popcli
+only after the
+.code xchg
+that releases the lock
+.line spinlock.c:/xchg.*0/ .
 .PP
 The interaction between interrupt handlers and non-interrupt code
 provides a nice example why recursive locks are problematic.  If xv6
@@ -537,23 +570,33 @@ which processors must guarantee not to reorder.
 .\"
 .section "Real world"
 .\"
-locking is hard and not well understood.
-
-approaches to synchronization still an active topic
-of research.
-
-best to use locks as the base for higher-level constructs
-like synchronized queues, although xv6 does not do this.
-
-user space locks too; xv6 doesn't let processes share memory
-so no need.
-
-semaphores.
-
-no need for atomicity really; lamport's algorithm.
-
-lock-free algorithms.
-
+Concurrency primitives and parallel programming are active areas of of research,
+because programming with locks is challenging.  It is best to use locks as the
+base for higher-level constructs like synchronized queues, although xv6 does not
+do this.  If you program with locks, it is wise to use a tool that attempts to
+identify race conditions, because it is easy to miss an invariant that requires
+a lock.
+.PP
+User-level programs need locks too, but in xv6 applications have one thread of
+execution and processes don't share memory, and so there is no need for locks in
+xv6 applications.
+.PP
+It is possible to implement locks without atomic instructions, but it is
+expensive, and most operating systems use atomic instructions.
+.PP
+Atomic instructions are not free either when a lock is contented.  If one
+processor has a lock cached in its local cache, and another processor must
+acquire the lock, then the atomic instruction to update the line that holds the
+lock must move the line from the one processor's cache to the other processor's
+cache, and perhaps invalidate any other copies of the cache line.  Fetching a
+cache line from another processor's cache can be orders of magnitude more
+expensive than fetching a line from a local cache.
+.PP
+To avoid the expenses associated with locks, many operating systems use
+lock-free data structures and algorithms, and try to avoid atomic operations in
+those algorithms.  For example, it is possible to implemented a link list like
+the one in the beginning of the chapter that requires no locks during list
+searches, and one atomic instruction to insert an item in the list.
 .\"
 .section "Exercises"
 .\"
@@ -565,3 +608,22 @@ observe it when booting xv6 and run stressfs?  increase critical section with a
 dummy loop; what do you see now?  explain.
 
 3. do posted homework question.
+
+4.  Setting a bit in a buffer's
+.code flags
+is not an atomic operation: the processor makes a copy of 
+.code flags
+in a register, edits the register, and writes it back.
+Thus it is important that two processes are not writing to
+.code flags
+at the same time.
+xv6 edits the
+.code B_BUSY
+bit only while holding
+.code buflock
+but edits the 
+.code B_VALID
+and
+.code B_WRITE
+flags without holding any locks.
+Why is this safe?
