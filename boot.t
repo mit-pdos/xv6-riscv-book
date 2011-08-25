@@ -17,7 +17,7 @@
 This book takes a narrative approach to describing the xv6 kernel,
 starting with what happens when the computer powers on.
 Xv6 is written for a personal computer (PC) 
-with an Intel x86 processor, so many of the details
+with an Intel x86 CPU, so many of the details
 in the first few chapters will be specific to that platform.
 This chapter explains how the xv6 kernel is loaded from disk into
 memory and how it first starts executing.
@@ -59,24 +59,22 @@ The busses adhere to standard protocols (e.g., PCI and USB)
 so that devices will work with PCs from multiple vendors.
 .PP
 From our point of view, we can abstract the PC
-into three components: a processor, memory, and input/output (I/O) devices.  The
-processor performs computation, the memory contains programs that describe the
-computation, and the processor can issue I/O instructions to make devices to
-their job.  Some of the wires, called lines, from the processor carry address
-bits; some carry data bits.  These are lines used to read/write data to specific
-locations.
+into three components: CPU, memory, and input/output (I/O) devices.  The
+CPU performs computation, the memory contains instructions and data
+for that computation, and devices allow the CPU to interact with
+hardware for storage, communication, and other functions.
 .PP
-To read a value from main memory, the processor sends high or low voltages
+You can think of main memory as connected to the CPU
+with a set of wires, or lines, some for address bits, some for
+data bits, and some for control flags.
+To read a value from main memory, the CPU sends high or low voltages
 representing 1 or 0 bits on the address lines and a 1 on the ``read'' line for a
 prescribed amount of time and then reads back the value by interpreting the
-voltages on the data lines.  To write a value to main memory, the processor
+voltages on the data lines.  To write a value to main memory, the CPU
 sends appropriate bits on the address and data lines and a 1 on the ``write''
-line for a prescribed amount of time.  This model is an accurate description of
-the earliest x86 chips, but it is a drastic oversimplification of a modern
-system.  Even so, thanks to the processor-centric view the operating system has
-of the rest of the computer, this simple model suffices to understand a modern
-operating system.  The details of modern I/O buses are the province of computer
-architecture textbooks.
+line for a prescribed amount of time.  Real memory interfaces are more
+complex than this, but the details are only important if you need to
+achieve high performance.
 .\"
 .\" -------------------------------------------
 .\"
@@ -84,18 +82,17 @@ architecture textbooks.
 .PP
 A computer's CPU (central processing unit, or processor)
 runs a conceptually simple loop:
-it inspects the value of a register called the program counter,
+it consults an address in a register called the program counter,
 reads a machine instruction from that address in memory,
-advances the program counter past the instuction,
+advances the program counter past the instruction,
 and executes the instruction.
 Repeat.
 If the execution of the instruction does not modify the
 program counter, this loop will interpret the
 memory pointed at by the program counter as a 
 sequence of machine instructions to run one after the other.
-Instructions that do change the program counter implement
-conditional branches, unconditional branches,
-and function calls.
+Instructions that do change the program counter include
+branches and function calls.
 .PP
 The execution engine is useless without the ability to store
 and modify program data.
@@ -209,6 +206,8 @@ The next conceptual level of storage is the main
 random-access memory (RAM).  Main memory is 10-100x slower
 than a register, but it is much cheaper, so there can be more
 of it.
+One reason main memory is relatively slow is that it is
+physically separate from the processor chip.
 An x86 processor has a few dozen registers,
 but a typical PC today has gigabytes of main memory. 
 Because of the enormous differences in both access
@@ -249,16 +248,13 @@ the memory hierarchy.
 The exceptions—the only reasons an x86 operating system
 needs to worry about the memory cache—are concurrency
 (Chapter \*[CH:LOCK]) and device drivers (Chapter \*[CH:DISK]).
-One reason memory access is so much slower than register
-access is that the memory is a set of chips physically
-separate from the processor chip.
 .\"
 .\" -------------------------------------------
 .\"
 .section "I/O"
 .PP
-Processors must communicate not just with memory but with
-hardware devices too.  The x86 processor provides special
+Processors must communicate with devices as well as memory.
+The x86 processor provides special
 .opcode in
 and
 .opcode out
@@ -297,20 +293,21 @@ IDE disk controller, which we will see shortly.
 .section "Boot loader"
 .PP
 When an x86 PC boots, it starts executing a program called the BIOS,
-which is stored in flash memory on the motherboard.
+which is stored in non-volatile memory on the motherboard.
 The BIOS's job is to prepare the hardware and
 then transfer control to the operating system.
 Specifically, it transfers control to code loaded from the boot sector,
 the first 512-byte sector of the boot disk.
-In xv6, the boot sector contains a complete, but simple boot loader.
-The BIOS loads a copy of that sector into memory at
+The boot sector contains the boot loader:
+instructions that load the kernel into memory.
+The BIOS loads the boot sector at memory address
 .address 0x7c00
 and then jumps (sets the processor's
 .register ip )
 to that address.  When the boot loader begins executing, the processor is
 simulating an Intel 8088, and the loader's job is to put the processor in a more
 modern operating mode, to load the xv6 kernel from disk into memory, and then to
-transfer control to the kernel.  In xv6, the boot sector comprises two source
+transfer control to the kernel.  The xv6 boot loader comprises two source
 files, one written in a combination of 16-bit and 32-bit x86 assembly
 .file bootasm.S ; (
 .sheet bootasm.S )
@@ -360,14 +357,19 @@ data reads and writes use
 and stack reads and writes use
 .register ss .
 We'll call the addresses the processor chip sends to memory
-.italic "physical addresses" ,
-and the addresses that programs directly manipulate
-.italic "virtual addresses" .
+.italic "physical addresses" .
 .so fig/x86_translation.t
 .PP
-The x86 defines, however, 3 types of addresses: logical addresses which
-translate to linear addresses using segments (see Fig. \n[translatefig]).  If the paging hardware is enabled
-(see Chapter \*[CH:MEM]), the linear addresses are translated to physical addresses by
+The x86 defines to more kinds of address: logical
+addresses and linear addresses
+(see Fig. \n[translatefig]).
+Programs use logical addresses, which consist of a segment
+selector (usually implicit) and an offset (often in a
+general-purpose register).
+The segmentation hardware translates logical addresses to linear
+addresses.
+If the paging hardware is enabled
+(see Chapter \*[CH:MEM]), linear addresses are translated to physical addresses by
 the paging hardware; if the paging hardware is not enabled, the linear
 addresses are used as physical addresses.
 .PP
@@ -375,13 +377,18 @@ People often write logical addresses as
 \fIsegment\fP:\fIoffset\fP,
 indicating the value of the relevant segment register and
 the address supplied by the program.
-The boot loader never enables the paging hardware so it issues only logical
-addresses, which the segmentation hardware translates to linear addresses, which
-then are used directly as physical addresses.
-In most of xv6, we don't care about the distinction  between logical and linear,
-because xv6 configures an x86 processor to translate logical to linear one to one, and 
-we use the common term "virtual address" instead.  In the boot loader, all 3
-addresses are identical in most instructions.
+The boot loader does not enable the paging hardware;
+the logical addresses that it uses are translated to linear
+addresses by the segmentation harware, and then used directly
+as physical addresses.
+Xv6 configures the segmentation hardware to translate logical
+to linear addresses without change, so that they are always equal.
+For historical reasons we will use the term "virtual address" to
+refer to addresses manipulated by programs; an xv6 virtual address
+is the same as an x86 logical address, and is equal to the
+linear address to which the segmentation hardware maps it.
+Once paging is enabled, the only interesting address mapping
+in the system will be linear to physical.
 .PP
 The BIOS does not guarantee anything about the 
 contents of 
