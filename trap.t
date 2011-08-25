@@ -1048,6 +1048,31 @@ because there are many devices, the devices have many features, and the protocol
 between device and driver is complex.  In many operating systems, the drivers
 together account for more code in the operating system than the core kernel.
 .PP
+Actual device drivers are far more complex than the disk driver in this chapter,
+but the basic ideas are the same:
+typically devices are slower than CPU, so the hardware uses
+interrupts to notify the operating system of status changes.
+Modern disk controllers typically
+accept multiple outstanding disk requests at a time and even reorder
+them to make most efficient use of the disk arm.
+When disks were simpler, operating system often reordered the
+request queue themselves.
+.PP
+Other hardware is surprisingly similar to disks: network device buffers
+hold packets, audio device buffers hold sound samples, graphics card
+buffers hold video data and command sequences.
+High-bandwidth devices—disks, graphics cards, and network cards—often use
+direct memory access (DMA) instead of the explicit I/O
+.opcode insl , (
+.opcode outsl )
+in this driver.
+DMA allows the disk or other controllers direct access to physical memory.
+The driver gives the device the physical address of the buffer's data field and
+the device copies directly to or from main memory,
+interrupting once the copy is complete.
+Using DMA means that the CPU is not involved at all in the transfer,
+which can be more efficient and is less taxing for the CPU's memory caches.
+.PP
 Most of the devices in this chapter used I/O instructions to program them, which
 reflects the older nature of these devices.  All modern devices are programmed
 using memory-mapped I/O.  
@@ -1078,7 +1103,11 @@ system call.  If the user process, then sends the data on the network, then
 the data is copied again twice: once from user space to kernel space and from
 kernel space to the network device.  To support applications for which low
 latency is important (e.g., a Web serving static Web pages), operating systems
-use special code paths to avoid these many copies.
+use special code paths to avoid these many copies.  As one example,
+in real-world operating systems, 
+buffers typically match the hardware page size, so that
+read-only copies can be mapped into a process's address space
+using the paging hardware, without any copying.
 .\"
 .section "Exercises"
 .\"
