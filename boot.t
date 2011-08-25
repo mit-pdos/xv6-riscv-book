@@ -360,7 +360,7 @@ We'll call the addresses the processor chip sends to memory
 .italic "physical addresses" .
 .so fig/x86_translation.t
 .PP
-The x86 defines to more kinds of address: logical
+The x86 defines two more kinds of address: logical
 addresses and linear addresses
 (see Fig. \n[translatefig]).
 Programs use logical addresses, which consist of a segment
