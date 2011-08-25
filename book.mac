@@ -80,14 +80,22 @@
 .\"
 .\"	init - run-time initialization
 .\"
+.de notrap
+.wh 0
+.wh -\\n[footer-margin]u
+.wh -\\n[footer-margin]u/2u
+..
+.de trap
+.wh 0 new-page
+.wh -\\n[footer-margin]u page-footer
+.wh -\\n[footer-margin]u/2u page-bottom
+..
 .de init
 .ll \\n[line-length]u
 .po \\n[left-margin]u
 .pl \\n[page-length]u
 .new-page
-.wh 0 new-page
-.wh -\\n[footer-margin]u page-footer
-.wh -\\n[footer-margin]u/2u page-bottom
+.trap
 .nr A0 0
 .nr page-number 1
 ..
@@ -101,8 +109,28 @@
 .ll \\n[line-length]u
 .ad c
 'tl '\\*[left-header]'\\*[center-header]'\\*[right-header]'
+.nr top \\n[header-margin]
+.if \\n[have-KJ] \{
+.ad l
+.PS
+.mk prekj
+.rn KJ KL
+.nr have-KJ 0
+.ds KJ "
+.sp 0
+'KL
+.rm KL
+.mk postkj
+.tm \\n[prekj] \\n[postkj]
+.\}
 .ev
-'sp |\\n[header-margin]u
+'sp |\\n[top]u
+..
+.nr have-KJ 0
+.de KJ
+..
+.de KD
+.nr top +\\$1
 ..
 .\"
 .\"	page footer
@@ -331,6 +359,7 @@ DRAFT as of \*[date]: Copyright 2009 Cox, Kaashoek, Morris
 .mk ~K
 .\" .tm need \\n(dn
 \X'foo'
+.sp 0.00001
 \X'shift \\\\n(dn'
 .sp |1i
 .mk x
@@ -358,7 +387,7 @@ DRAFT as of \*[date]: Copyright 2009 Cox, Kaashoek, Morris
 .nr Fignum \\n[Fignum]+1
 .if !'\\$1'' .nr \\$1 \\n[Fignum]
 .\" TODO: name
-.KS
+.KF
 ..
 .de F2
 .LP
