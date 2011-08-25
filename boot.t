@@ -247,7 +247,7 @@ worry about the distinctions between the different levels of
 the memory hierarchy.
 The exceptions—the only reasons an x86 operating system
 needs to worry about the memory cache—are concurrency
-(Chapter \*[CH:LOCK]) and device drivers (Chapter \*[CH:DISK]).
+(Chapter \*[CH:LOCK]) and device drivers (Chapter \*[CH:TRAP]).
 .\"
 .\" -------------------------------------------
 .\"
