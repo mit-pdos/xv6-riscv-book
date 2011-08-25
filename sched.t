@@ -1,4 +1,12 @@
 .so book.mac
+.ig
+XXX checking p->killed
+..
+.ig
+cox and mullender, semaphores.
+
+pike et al, sleep and wakeup
+..
 .chapter CH:SCHED "Scheduling"
 .PP
 Any operating system is likely to run with more processes than the
@@ -6,15 +14,21 @@ computer has processors, and so some plan is needed to time share the
 processors between the processes. An ideal plan is transparent to user
 processes.  A common approach is to provide each process
 with the illusion that it has its own virtual processor, and have the
-operating system multiplex multiple virtual processors on a single
-physical processor.
+operating system 
+.italic multiplex 
+multiple virtual processors on a single physical processor.
+This chapter how xv6 multiplexes a processor among several processes.
+.\"
+.section "Multiplexing"
+.\"
 .PP
-Xv6 adopts this approach.  If two processes want to run on
-a single CPU, xv6 multiplexes them, switching many times per
-second between executing one and the other.  This multiplexing
-creates the illusion that each process has its own CPU, just as xv6
-used the memory allocator and hardware segmentation to create the
-illusion that each process has its own memory.
+Xv6 adopts this multiplexing approach.  When a process is waiting for disk
+request, xv6 puts it to sleep, and schedules another process to run.
+Furthermore, xv6 using timer interrupts to force a process to stop running on a
+processor after a fixed-amount of time (100 msec), so that it can schedule
+another process on the processor.  This multiplexing creates the illusion that
+each process has its own CPU, just as xv6 used the memory allocator and hardware
+page tables to create the illusion that each process has its own memory.
 .PP
 Implementing multiplexing has a few challenges. First, how to switch
 from one process to another? Xv6 uses the standard mechanism of context
@@ -316,8 +330,9 @@ threads, one would observe the following simple pattern:
 .line proc.c:/swtch..cpu/ ,
 .line proc.c:/swtch..proc/ ,
 and so on.  The procedures in which this stylized switching between
-two threads happens are sometimes referred to as co-routines; in this
-example,
+two threads happens are sometimes referred to as 
+.italic co-routines ; 
+in this example,
 .code sched
 and
 .code scheduler
@@ -397,9 +412,9 @@ can correctly switch away from the process;
 this means that the CPU registers must hold the process's register values
 (i.e. they aren't actually in a
 .code context ),
-.code cr3
+.code %cr3
 must refer to the process's pagetable,
-.code esp
+.code %esp
 must refer to the process's kernel stack so that
 .code swtch
 can push registers correctly, and
@@ -417,7 +432,7 @@ this means that
 must hold the process's kernel thread variables,
 that no CPU is executing on the process's kernel stack,
 that no CPU's
-.code cr3
+.code %cr3
 refers to the process's page table,
 and that no CPU's
 .code proc
@@ -472,12 +487,18 @@ for processes to communicate.
 Sleep and wakeup fill that void, allowing one process to 
 sleep waiting for an event and another process to wake it up
 once the event has happened.
-Sleep and wakeup are often called sequence coordination
+Sleep and wakeup are often called 
+.italic "sequence coordination"
+or 
+.italic "conditional synchronization"
 mechanisms, and there are many other such mechanisms
 in the operating systems literature.
 .PP
 To illustrate what we mean, let's consider a
 simple producer/consumer queue.
+This queue is similar to the one used by the IDE driver to synchronize a
+processor and device driver (see Chapter \*[CH:TRAP]), but abstracts all
+IDE-specific code away.
 The queue allows one process to send a nonzero pointer
 to another process.
 Assuming there is only one sender and one receiver
@@ -533,7 +554,7 @@ only writes to the pointer when it is nonzero,
 so they do not step on each other.
 .PP
 The implementation above may be correct,
-but it is very expensive.  If the sender sends
+but it is expensive.  If the sender sends
 rarely, the receiver will spend most
 of its time spinning in the 
 .code while
@@ -591,7 +612,7 @@ and
   219	}
 .P2
 .PP
-.code recv
+.code Recv
 now gives up the CPU instead of spinning, which is nice.
 However, it turns out not to be straightforward to design
 .code sleep
@@ -850,7 +871,7 @@ it changes that process's state to
 The next time the scheduler runs, it will
 see that the process is ready to be run.
 .PP
-.code wakeup
+.code Wakeup
 must always be called while holding a lock that
 prevents observation of whatever the wakeup
 condition is; in the example above that lock is
@@ -899,14 +920,21 @@ they are interacting with).
 .\"
 .section "Code: Pipes"
 .\"
-The simple queue we used earlier in this Chapter
-was a toy, but xv6 contains a real queue
+The simple queue we used earlier in this chapter
+was a toy, but xv6 contains two real queues
 that uses
 .code sleep
 and
 .code wakeup
 to synchronize readers and writers.
-That queue is the implementation of pipes.
+One is in the IDE driver: processes add a disk requests to a queue and then
+calls
+.code sleep .
+The interrupt handler uses
+.code wakeup
+to alert the process that its request has completed.
+.PP
+An more complex example is the implementation of pipes.
 We saw the interface for pipes in Chapter \*[CH:UNIX]:
 bytes written to one end of a pipe are copied
 in an in-kernel buffer and then can be read out
@@ -1203,16 +1231,29 @@ own stack rather than on the stack of the thread
 that called
 .code sched .
 .\"
-.section "Scheduling concerns"
-.\"
-.PP
-XXX checking p->killed
-
-XXX thundering herd
-
-.\"
 .section "Real world"
 .\"
+.PP
+The xv6 scheduler implements a simple scheduling policy, which runs each process
+in turn.  This policy is called
+.italic "round robin" .
+Real operating systems implement more sophisticated policies that, for example,
+allow processes to have priorities.  The idea is that a runnable high-priority process
+will be preferred by the scheduler over a runnable low-priority thread.   These
+policies can become complex quickly because there are often competing goals: for
+example, the operating might also want to guarantee fairness and
+high-throughput.  In addition, complex policies may lead to unintended
+interactions such as
+.italic "priority inversion"
+and 
+.italic "convoys" .
+Priority inversion can happen when a low-priority and high-priority process
+share a lock, which when acquired by the low-priority process can cause the
+high-priority process to not run.  A long convoy can form when many
+high-priority processes are waiting for a low-priority process that acquires a
+shared lock; once a convoy has formed they can persist for long period of time.
+To avoid these kinds of problems additional mechanisms are necessary in
+sophisticated schedulers.
 .PP
 .code Sleep
 and
@@ -1242,8 +1283,6 @@ The Linux kernel's
 .code sleep
 uses an explicit process queue instead of
 a wait channel; the queue has its own internal lock.
-(XXX Looking at the code that seems not
-to be enough; what's going on?)
 .PP
 Scanning the entire process list in
 .code wakeup
@@ -1278,6 +1317,21 @@ All of these mechanisms share the same
 flavor: the sleep condition is protected by
 some kind of lock dropped atomically during sleep.
 .PP
+The implementation of
+.code wakeup
+wakes up all processes that are waiting on a particular channel, and it might be
+the case that many processes are waiting for that particular channel.   The
+operating system will schedules all these processes and they will race to check
+the sleep condition.  Processes that behave in this way are sometimes called a
+.italic "thundering herd" ,
+and it is best avoided.
+Most condition variables have two primitives for
+.code wakeup :
+.code signal ,
+which wakes up one process, and
+.code broadcast ,
+which wakes up all processes waiting.
+.PP
 Semaphores are another common coordination
 mechanism.
 A semaphore is an integer value with two operations,
@@ -1295,12 +1349,11 @@ avoids the ``missed wakeup'' problem:
 there is an explicit count of the number
 of wakeups that have occurred.
 The count also avoids the spurious wakeup
-and thundering herd problems inherent in 
-condition variables.
-
-Exercises:
-
-Sleep has to check lk != &ptable.lock
+and thundering herd problems.
+.\"
+.section "Exercises"
+.\"
+1. Sleep has to check lk != &ptable.lock
 to avoid a deadlock
 .lines proc.c:/sleeplock0/,/^..}/ .
 It could eliminate the special case by 
@@ -1320,7 +1373,7 @@ Doing this would break
 .code sleep .
 How?
 
-Most process cleanup could be done by either
+2. Most process cleanup could be done by either
 .code exit
 or
 .code wait ,
@@ -1334,15 +1387,9 @@ must be the one to close the open files.
 Why?
 The answer involves pipes.
 
-Implement semaphores in xv6.
+3. Implement semaphores in xv6.
 You can use mutexes but do not use sleep and wakeup.
 Replace the uses of sleep and wakeup in xv6
 with semaphores.  Judge the result.
 
-
-Additional reading:
-
-cox and mullender, semaphores.
-
-pike et al, sleep and wakeup
 
