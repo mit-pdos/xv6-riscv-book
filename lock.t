@@ -1,12 +1,6 @@
 .so book.mac
 .chapter CH:LOCK "Locking"
 .PP
-.ig
-ide.c has a linked list. rewrite this text to focus
-araound xv6 more.  see homework questions and slamfs.
-show what happens if the link listed as a race (a user process might
-never be woken up.
-..
 Xv6 runs on multiprocessors, computers with
 multiple CPUs executing code independently.
 These multiple CPUs operate on a single physical
@@ -16,7 +10,8 @@ from interfering with each other.
 Even on a uniprocessor, xv6 must use some mechanism
 to keep interrupt handlers from interfering with
 non-interrupt code.
-Xv6 uses the same low-level concept for both: locks.
+Xv6 uses the same low-level concept for both: 
+.italic locks.
 Locks provide mutual exclusion, ensuring that only one CPU at a time
 can hold a lock.
 If xv6 only accesses a data structure 
@@ -24,9 +19,13 @@ while holding a particular lock,
 then xv6 can be sure that only one CPU
 at a time is accessing the data structure.
 In this situation, we say that the lock protects
-the data structure.
+the data structure.  The rest of this chapters why xv6 needs locks, how xv6
+implements them, and how it uses them.
+.\"
+.section "Race conditions"
+.\"
 .PP
-As an example, consider several processors sharing a single disk, such
+As an example on why we need locks, consider several processors sharing a single disk, such
 as the IDE disk in xv6.  The disk driver maintains a linked list of
 the outstanding disk requests 
 .line ide.c:/idequeue/
@@ -74,7 +73,8 @@ happen at line 16,
 the second one will overwrite the first;
 the node involved in the first assignment
 will be lost.
-This kind of problem is called a race condition.
+This kind of problem is called a 
+.italic "race condition".
 The problem with races is that they depend on
 the exact timing of the two CPUs involved and
 are consequently difficult to reproduce.
@@ -127,7 +127,7 @@ and that each node's
 field points at the next node.
 The implementation of
 .code insert
-vioilates this invariant temporarily: line X creates a new
+vioilates this invariant temporarily: line 13 creates a new
 list element
 .code l
 with the intent that
@@ -150,7 +150,6 @@ Proper use of a lock ensures that only one CPU at a time
 can operate on the data structure, so that
 no CPU will execute a data structure operation when the 
 data structure's invariants do not hold.
-.PP
 .\"
 .section "Code: Locks"
 .\"
@@ -248,15 +247,23 @@ it is best when a caller does not need to know how a
 callee implements particular functionality.
 Locks interfere with this modularity.
 For example, if a CPU holds a particular lock,
-it cannot call any function f that will try to 
+it cannot call any function 
+.code f 
+that will try to 
 reacquire that lock: since the caller can't release
-the lock until f returns, if f tries to acquire
+the lock until 
+.code f 
+returns, if 
+.code f 
+tries to acquire
 the same lock, it will spin forever, or deadlock.
 .PP
 There are no transparent solutions that allow the
 caller and callee to hide which locks they use.
 One common, transparent, but unsatisfactory solution
-is ``recursive locks,'' which allow a callee to
+is 
+.italic "recursive locks" ,
+which allow a callee to
 reacquire a lock already held by its caller.
 The problem with this solution is that recursive
 locks can't be used to protect invariants.
@@ -293,11 +300,40 @@ Since there is no ideal transparent solution,
 we must consider locks part of the function's
 specification.
 The programmer must arrange that function doesn't
-invoke a function f while holding a lock that f needs.
+invoke a function 
+.code f 
+while holding a lock that 
+.code f 
+needs.
 Locks force themselves into our abstractions.
 .\"
 .section "Code: Using locks"
 .\"
+Xv6 is carefully programmed with locks to avoid race conditions.  A simple
+example is in the IDE driver
+.sheet ide.c .
+As mentioned in the beginning of the chapter,
+.code iderw 
+.line ide.c:/^iderw/ 
+has a queue of disk requests
+and processors may add new
+requests to the list concurrently
+.line ide.c:/DOC:insert-queue/ .
+To protect this list and other invariants in the driver,
+.code iderw
+acquires the
+.code idelock 
+.line ide.c:/DOC:acquire-lock/
+and 
+releases at the end of the function.
+Exercise 1 explores how to trigger the race condition that we saw at the
+beginning of the chapter by moving the 
+.code acquire
+to after the queue manipulation.
+It is worthwhile to try the exercise because it will make clear that it is not
+that easy to trigger the race, suggesting that it is difficult to find
+race-conditions bugs.  It is not unlikely that xv6 has some races.
+.PP
 A hard part about using locks is deciding how many locks
 to use and which data and invariants each lock protects.
 There are a few basic principles.
@@ -312,7 +348,7 @@ by a single lock to ensure the invariant is maintained.
 .PP
 The rules above say when locks are necessary but say nothing about
 when locks are unnecessary, and it is important for efficiency not to
-lock too much.  If efficiency wasn't important, then one could use a
+lock too much, because locks reduce parallelism.  If efficiency wasn't important, then one could use a
 uniprocessor computer and no worry at all about locks.  For protecting
 kernel data structures, it would suffice to create a single lock that
 must be acquired on entering the kernel and released on exiting the
@@ -358,23 +394,22 @@ example,
 .code ideintr
 holds the ide lock while calling 
 .code wakeup ,
-which acquires the ptable lock.
+which acquires the 
+.code ptable 
+lock.
 There are a number of other examples involving 
-.code
-sleep
+.code sleep
 and
-.code
-wakeup .
+.code wakeup .
 These orderings come about because
-.code
-sleep
+.code sleep
 and 
-.code
-wakeup have a complicated invariant, as discussed in Chapter
+.code wakeup 
+have a complicated invariant, as discussed in Chapter
 \*[CH:SCHED].  In the file system there are a number of examples of
 chains of two because the file system must, for example, acquire a
 lock on a directory and the lock on a file in that directory to unlink
-a file from its parent directory correctly.  xv6 always acquires the
+a file from its parent directory correctly.  Xv6 always acquires the
 locks in the order first parent directory and then the file.
 .section "Interrupt handlers"
 .\"
@@ -525,7 +560,8 @@ lock-free algorithms.
 
 1. get rid off the xchg in acquire. explain what happens when you run xv6?
 
-2. move the acquire in iderw to before sleep.  is there a race? why
-don't you observe it when booting xv6 and run slamfs?   increase critical section with a dummy loop; what do you see now?  explain.
+2. move the acquire in iderw to before sleep.  is there a race? why don't you
+observe it when booting xv6 and run stressfs?  increase critical section with a
+dummy loop; what do you see now?  explain.
 
 3. do posted homework question.
