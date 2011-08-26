@@ -808,24 +808,8 @@ These values are a
 .code struct
 .code trapframe
 which stores the user registers.
-.PP
-Here is the state of the new process's kernel stack:
-.P1
- ----------  <-- top of new process's kernel stack
-| esp      |
-| ...      |
-| eip      |
-| ...      |
-| edi      | <-- p->tf (new proc's user registers)
-| trapret  | <-- address forkret will return to
-| eip      |
-| ...      |
-| edi      | <-- p->context (new proc's kernel registers)
-|          |
-| (empty)  |
-|          |
- ----------  <-- p->kstack
-.P2
+Figure \n[newkernelstackfig] shows the state of the new process's kernel stack.
+.so fig/newkernelstack.t
 .PP
 The first process is going to execute a small program
 .code initcode.S ; (
