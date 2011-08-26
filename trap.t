@@ -356,6 +356,7 @@ Each entry pushes an error code
 if the processor didn't, pushes the interrupt number, and then
 jumps to
 .code alltraps .
+.so fig/trapframe.t
 .PP
 .code Alltraps
 .line trapasm.S:/^alltraps/
@@ -370,10 +371,7 @@ The result of this effort is that the kernel stack now contains a
 .code struct
 .code trapframe 
 .line x86.h:/trapframe/
-containing the processor registers at the time of the trap.
-.ig
-XXX picture.
-..
+containing the processor registers at the time of the trap (see Figure \n[trapframefig]).
 The processor pushes
 .code ss ,
 .code esp ,
@@ -674,9 +672,6 @@ way interrupts are provided has evolved too.  The early boards had a
 simple programmable interrupt controler (called the PIC), and you can
 find the code to manage it in
 .code picirq.c .
-.ig
-picture?
-..
 .PP
 With the advent of multiprocessor PC boards, a new way of handling
 interrupts was needed, because each CPU needs an interrupt controller
@@ -690,9 +685,6 @@ local APIC,
 Xv6 is designed for a
 board with multiple processors, and each processor must be programmed
 to receive interrupts.
-.ig
-picture?
-..
 .PP
 To also work correctly on uniprocessors, Xv6 programs the programmable
 interrupt controler (PIC)
