@@ -1,4 +1,7 @@
 .so book.mac
+.ig
+figure for race example.
+..
 .chapter CH:LOCK "Locking"
 .PP
 Xv6 runs on multiprocessors, computers with
