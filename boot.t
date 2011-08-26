@@ -937,7 +937,8 @@ point, the
 where the kernel expects to be started
 (just as the boot loader expected to be started at
 .address 0x7c00 ).  
-For xv6 the entry address is as follows:
+For xv6 the entry address is
+.address 0xf0100020 : 
 .P1
 # objdump -f kernel
 
@@ -946,37 +947,33 @@ architecture: i386, flags 0x00000112:
 EXEC_P, HAS_SYMS, D_PAGED
 start address 0xf0100020
 .P2
-.code Bootmain
-masks off the leading 
-.address 0xf 
-of the entry address.  The reason is that the boot loader hasn't enabled the
-paging hardware, but the xv6 kernel assumes that it runs with paging. The xv6 Makefile
-instructs the linker (which produces the ELF headers)
-using the file 
+The intent is that the kernel eventually execute at high
+virtual addresses, above address
+.address 0xf010000 ,
+as explained in Chapter \*[CH:MEM].
+However, at this time in the boot process, virtual addresses
+map directly to physical addresses, and there may be no
+memory at that address.
+For this reason, the xv6 Makefile
+uses the file 
 .file "kernel.ld"
-to link the kernel at the virtual address 
-.address 0xf0100000
-and to load the kernel at physical address 
-.address 0x100000 .
-(If we were precise, 
+to instruct the linker (which produces the ELF headers)
+to load the kernel at address 
 .address 0x100000 
-is a logical address, but because the boot loader has set up to make
-logical addresses identical to physical addresses
-we use the term physical address here.)
-The xv6 kernel will set up a mapping that translates the virtual address
-.address 0xf0000000 
-and up to physical address 
-.address 0x0
-and up. Thus,
-.address 0xf0100020 
-will map to 
-.address 0x100020 , 
-20 bytes after where the boot loader loaded the xv6 kernel into memory.  Thus,
-the first instruction of the xv6 is at physical address 
-.address 0x100020 , 
-and since the boot loader doesn't use paging it, it uses
-that address.  Why xv6 links at the high virtual address 0xf0000000 
-is explained in \*[CH:MEM].
+even though it expects to execute starting at
+.address 0xf0100000 .
+This makes the reasonable assumption that there is memory at physical address
+.address 0x100000 .
+In order to find the address of the kernel entry point
+as loaded into memory, the kernel subtracts
+.address 0xf000000
+from the ELF entry point, yielding
+.address 0x100020 .
+The kernel will soon enable the paging hardware and map
+virtual addresses starting at
+.address 0xf010000
+to physical addresses at
+.address 0x10000 .
 .PP
 The boot loader casts the entry address to
 a function pointer, and then calls that function, essentially jumping to the kernel's entry point
@@ -1023,6 +1020,16 @@ less space-constrained BIOS for disk access rather than
 trying to drive the disk itself.  Then the full loader,
 relieved of the 512-byte limit, can implement the complexity
 needed to locate, load, and execute the desired kernel.
+.PP
+This chapter is written as if the only thing that happens
+between power on and the execution of the boot loader
+is that the BIOS loads the boot sector.
+In fact the BIOS does a huge amount of initialization
+in order to make the complex hardware of a modern
+computer look like a simple standard PC.
+Perhaps a more modern design would have the BIOS read
+a larger boot loader from the disk, and start it in
+protected and 32-bit mode.
 .PP
 TODO: Also, x86 does not imply BIOS: Macs use EFI.
 I wonder if the Mac has an A20 line.
