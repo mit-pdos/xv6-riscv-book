@@ -245,9 +245,6 @@ operating system, so we can think of the processor as having
 just two kinds of storage—registers and memory—and not
 worry about the distinctions between the different levels of
 the memory hierarchy.
-The exceptions—the only reasons an x86 operating system
-needs to worry about the memory cache—are concurrency
-(Chapter \*[CH:LOCK]) and device drivers (Chapter \*[CH:TRAP]).
 .\"
 .\" -------------------------------------------
 .\"
@@ -436,9 +433,10 @@ controller on ports 0x64 and 0x60
 Real mode's 16-bit general-purpose and segment registers
 make it awkward for a program to use more than 65,536 bytes
 of memory, and impossible to use more than a megabyte.
-Modern x86 processors have a "protected mode" which allows
-physical addresses to have many more bits, and a
-"32-bit" mode that causes registers, virtual addresses,
+x86 processors since the 80286 have a "protected mode" which allows
+physical addresses to have many more bits, and 
+(since the 80386)
+a "32-bit" mode that causes registers, virtual addresses,
 and most integer arithmetic to be carried out with 32 bits
 rather than 16.
 The xv6 boot sequence enables protected mode and 32-bit mode as follows.
