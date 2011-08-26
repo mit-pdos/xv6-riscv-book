@@ -186,30 +186,20 @@ As another example, the
 instruction cannot use the user stack to save values, because the user
 might not have set up an appropriate stack so that hardware uses the
 stack specified in the task segments, which is setup in kernel mode.
+.so fig/intkstack.t
 .PP
-When an 
+Figure \n[intkstackfig] shows the stack after
+an 
 .code int
 instruction completes and there was a privilege-level change (the privilege
-level in the descriptor is lower than CPL), the following values are
-on the stack specified in the task segment:
-.P1
-        ss
-        esp
-        eflags
-        cs
-        eip
-esp ->  error code
-.P2
+level in the descriptor is lower than CPL).
 If the 
 .code int
-instruction didn't require a privilege-level change, the following
-values are on the original stack:
-.P1
-         eflags
-         cs
-         eip
-esp ->   error code
-.P2
+instruction didn't require a privilege-level change, the x86
+won't save
+.code ss
+and
+.code esp .
 After both cases, 
 .code %eip
 is pointing to the address specified in the descriptor table, and the
