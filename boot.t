@@ -651,9 +651,10 @@ describing the sections that make up the
 running kernel image.
 Each
 .code proghdr
-gives a virtual address
+supplies the address at which the program expects the
+section to appear in memory
 .code vaddr ), (
-the location where the program should be loaded in memory
+the address at which the section should be loaded in memory
 .code paddr ), (
 the location where the section's content lies on the disk
 relative to the start of the ELF header
@@ -965,7 +966,7 @@ even though it expects to execute starting at
 This makes the reasonable assumption that there is memory at physical address
 .address 0x100000 .
 In order to find the address of the kernel entry point
-as loaded into memory, the kernel subtracts
+as loaded into memory, the boot loader subtracts
 .address 0xf000000
 from the ELF entry point, yielding
 .address 0x100020 .
@@ -973,7 +974,9 @@ The kernel will soon enable the paging hardware and map
 virtual addresses starting at
 .address 0xf010000
 to physical addresses at
-.address 0x10000 .
+.address 0x10000 ,
+so that instructions and data will appear at the virtual addresses at
+which the kernel code expects them.
 .PP
 The boot loader casts the entry address to
 a function pointer, and then calls that function, essentially jumping to the kernel's entry point
