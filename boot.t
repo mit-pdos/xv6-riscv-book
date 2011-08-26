@@ -245,9 +245,6 @@ operating system, so we can think of the processor as having
 just two kinds of storage—registers and memory—and not
 worry about the distinctions between the different levels of
 the memory hierarchy.
-The exceptions—the only reasons an x86 operating system
-needs to worry about the memory cache—are concurrency
-(Chapter \*[CH:LOCK]) and device drivers (Chapter \*[CH:TRAP]).
 .\"
 .\" -------------------------------------------
 .\"
@@ -319,7 +316,7 @@ and one written in C
 .\"
 .section "Code: Assembly bootstrap"
 .PP
-The first instruction in the boot sector is
+The first instruction in the boot loader is
 .opcode cli
 .line bootasm.S:/cli.*interrupts/ ,
 which disables processor interrupts.
@@ -356,27 +353,26 @@ data reads and writes use
 .register ds ,
 and stack reads and writes use
 .register ss .
-We'll call the addresses the processor chip sends to memory
-.italic "physical addresses" .
 .so fig/x86_translation.t
 .PP
-The x86 defines two more kinds of address: logical
-addresses and linear addresses
+The addresses that an x86 program manipulates are called
+.italic "logical addresses" 
 (see Fig. \n[translatefig]).
-Programs use logical addresses, which consist of a segment
-selector (usually implicit) and an offset (often in a
-general-purpose register).
-The segmentation hardware translates logical addresses to linear
-addresses.
-If the paging hardware is enabled
-(see Chapter \*[CH:MEM]), linear addresses are translated to physical addresses by
-the paging hardware; if the paging hardware is not enabled, the linear
-addresses are used as physical addresses.
+A logical address consists of a segment selector and
+an offset, and is sometimes written as
+\fIsegment\fP:\fIoffset\fP.
+More often, the segment is implicit and the program only
+directly manipulates the offset.
+The segmentation hardware performs the translation
+described above to generate
+.italic "linear addresses" .
+The addresses that the processor chip sends to main memory
+are called
+.italic "physical addresses" .
+If the paging hardware is enabled (see Chapter \*[CH:MEM]), it
+translates linear addresses to physical addresses;
+otherwise the processor uses linear addresses as physical addresses.
 .PP
-People often write logical addresses as
-\fIsegment\fP:\fIoffset\fP,
-indicating the value of the relevant segment register and
-the address supplied by the program.
 The boot loader does not enable the paging hardware;
 the logical addresses that it uses are translated to linear
 addresses by the segmentation harware, and then used directly
@@ -437,12 +433,13 @@ controller on ports 0x64 and 0x60
 Real mode's 16-bit general-purpose and segment registers
 make it awkward for a program to use more than 65,536 bytes
 of memory, and impossible to use more than a megabyte.
-Modern x86 processors have a "protected mode" which allows
-physical addresses to have many more bits, and a
-"32-bit" mode that causes registers, virtual addresses,
+x86 processors since the 80286 have a "protected mode" which allows
+physical addresses to have many more bits, and 
+(since the 80386)
+a "32-bit" mode that causes registers, virtual addresses,
 and most integer arithmetic to be carried out with 32 bits
 rather than 16.
-The xv6 boot sequence enables both modes as follows.
+The xv6 boot sequence enables protected mode and 32-bit mode as follows.
 .so fig/x86_seg.t
 .PP
 In protected mode, a segment
@@ -450,13 +447,13 @@ register is an index into a segment descriptor table (see Fig. \n[segfig]).
 Each table entry specifies a base physical address,
 a maximum virtual address called the limit,
 and permission bits for the segment.
-These permissions are the protection in protected mode: they
-can be used to make sure that one program cannot access
-memory belonging to another program.
+These permissions are the protection in protected mode: the
+kernel can use them to ensure that a program uses only its
+own memory.
 .PP 
-xv6 makes almost no use of segments (it uses the paging hardware
-instead, as Chapter \*[CH:MEM] describes).
-The boot code sets up the segment descriptor table
+xv6 makes almost no use of segments; it uses the paging hardware
+instead, as Chapter \*[CH:MEM] describes.
+The boot loader sets up the segment descriptor table
 .code gdt
 .lines bootasm.S:/^gdt:/,/data.seg/
 so that all segments have a base address of zero and the maximum possible
@@ -464,19 +461,20 @@ limit (four gigabytes).
 The table has a null entry, one entry for executable
 code, and one entry to data.
 The code segment descriptor has a flag set that indicates
-that the code should run in 32-bit mode.
+that the code should run in 32-bit mode
+.line asm.h:/SEG.ASM/ .
 With this setup, when the boot loader enters protected mode, logical addresses map
 one-to-one to physical addresses.
 .PP
-The boot code executes an
+The boot loader executes an
 .opcode lgdt
 instruction 
 .line bootasm.S:/lgdt/
-to set the processor's global descriptor table (GDT)
+to load the processor's global descriptor table (GDT)
 register with the value
 .code gdtdesc
 .lines bootasm.S:/^gdtdesc:/,/address.gdt/ ,
-which in turns points at the table
+which points to the table
 .code gdt .
 .PP
 Once it has loaded the GDT register, the boot loader enables
@@ -488,26 +486,25 @@ in register
 .register cr0
 .lines bootasm.S:/movl.*%cr0/,/movl.*,.%cr0/ .
 Enabling protected mode does not immediately change how the processor
-translates logical to physical addresses or whether
-it is in 32-bit mode;
+translates logical to physical addresses;
 it is only when one loads a new value into a segment register
 that the processor reads the GDT and changes its internal
 segmentation settings.
-Thus the processor continues to execute in 16-bit mode with the same
-segment translations as before.
-The switch to 32-bit mode happens when
-the code executes a far jump
-(\c
-.opcode ljmp )
+One cannot directly modify
+.register cs ,
+so instead the code executes an
+.opcode ljmp 
+(far jump)
 instruction
-.line bootasm.S:/ljmp/ .
+.line bootasm.S:/ljmp/ ,
+which allows a code segment selector to be specified.
 The jump continues execution at the next line
 .line bootasm.S:/^start32/
 but in doing so sets 
 .register cs
 to refer to the code descriptor entry in
 .code gdt .
-The entry describes a 32-bit code segment,
+That descriptor describes a 32-bit code segment,
 so the processor switches into 32-bit mode.
 The boot loader has nursed the processor
 through an evolution from 8088 through 80286 
@@ -528,7 +525,7 @@ to
 is typically littered with device memory regions,
 and the xv6 kernel expects to be placed at
 .address 0x100000.
-The boot sector itself is at
+The boot loader itself is at
 .address 0x7c00
 through
 .address 0x7d00 .
@@ -541,7 +538,7 @@ The boot loader chooses
 as the top of the stack;
 the stack will grow down from there, toward
 .address 0x0000 ,
-away from the boot sector code.
+away from the boot loader.
 .PP
 Finally the boot loader calls the C function
 .code bootmain
@@ -561,13 +558,13 @@ is connected to the simulator itself and can transfer control
 back to the simulator.
 Simulator or not, the code then executes an infinite loop
 .lines bootasm.S:/^spin:/,/jmp/ .
-A real boot sector might attempt to print an error message first.
+A real boot loader might attempt to print an error message first.
 .\"
 .\" -------------------------------------------
 .\"
 .section "Code: C bootstrap"
 .PP
-The C part of the boot sector,
+The C part of the boot loader,
 .file bootmain.c
 .line bootmain.c:1 ,
 loads a kernel from an IDE disk
@@ -604,7 +601,7 @@ and the ELF header placed at
 In ordinary programs, it is bad style to pick arbitrary memory addresses:
 one should obtain memory from a memory allocator like C's
 .code malloc .
-But the boot sector is not an ordinary program: it
+But the boot loader is not an ordinary program: it
 is a self-contained program that must fit in 512 bytes and
 run without an operating system.
 There is no room for a full memory allocator and really no need.
@@ -642,7 +639,7 @@ If the ELF header has the right magic number, the boot
 sector assumes that the binary is well-formed.
 There are many other sanity checks that a proper ELF loader would do,
 as we will see in Chapter \*[CH:MEM],
-but the boot sector doesn't have the code space.
+but the boot loader doesn't have the code space.
 Checking the magic number guards against simply
 forgetting to write a kernel to the disk, not against
 malicious binaries.
@@ -654,9 +651,10 @@ describing the sections that make up the
 running kernel image.
 Each
 .code proghdr
-gives a virtual address
+supplies the address at which the program expects the
+section to appear in memory
 .code vaddr ), (
-the location where the program should be loaded in memory
+the address at which the section should be loaded in memory
 .code paddr ), (
 the location where the section's content lies on the disk
 relative to the start of the ELF header
@@ -778,7 +776,7 @@ reads the status byte until the bits are set that way.
 Chapter \*[CH:DISK] will examine more efficient ways to wait for hardware
 status changes, but busy waiting like this (also called 
 .italic polling )
-is fine for the boot sector.
+is fine for the boot loader.
 .PP
 Once the disk is ready,
 .code readsect
@@ -940,7 +938,8 @@ point, the
 where the kernel expects to be started
 (just as the boot loader expected to be started at
 .address 0x7c00 ).  
-For xv6 the entry address is as follows:
+For xv6 the entry address is
+.address 0xf0100020 : 
 .P1
 # objdump -f kernel
 
@@ -949,37 +948,35 @@ architecture: i386, flags 0x00000112:
 EXEC_P, HAS_SYMS, D_PAGED
 start address 0xf0100020
 .P2
-.code Bootmain
-masks off the leading 
-.address 0xf 
-of the entry address.  The reason is that the boot loader hasn't enabled the
-paging hardware, but the xv6 kernel assumes that it runs with paging. The xv6 Makefile
-instructs the linker (which produces the ELF headers)
-using the file 
+The intent is that the kernel eventually execute at high
+virtual addresses, above address
+.address 0xf010000 ,
+as explained in Chapter \*[CH:MEM].
+However, at this time in the boot process, virtual addresses
+map directly to physical addresses, and there may be no
+memory at that address.
+For this reason, the xv6 Makefile
+uses the file 
 .file "kernel.ld"
-to link the kernel at the virtual address 
-.address 0xf0100000
-and to load the kernel at physical address 
-.address 0x100000 .
-(If we were precise, 
+to instruct the linker (which produces the ELF headers)
+to load the kernel at address 
 .address 0x100000 
-is a logical address, but because the boot loader has set up to make
-logical addresses identical to physical addresses
-we use the term physical address here.)
-The xv6 kernel will set up a mapping that translates the virtual address
-.address 0xf0000000 
-and up to physical address 
-.address 0x0
-and up. Thus,
-.address 0xf0100020 
-will map to 
-.address 0x100020 , 
-20 bytes after where the boot loader loaded the xv6 kernel into memory.  Thus,
-the first instruction of the xv6 is at physical address 
-.address 0x100020 , 
-and since the boot loader doesn't use paging it, it uses
-that address.  Why xv6 links at the high virtual address 0xf0000000 
-is explained in \*[CH:MEM].
+even though it expects to execute starting at
+.address 0xf0100000 .
+This makes the reasonable assumption that there is memory at physical address
+.address 0x100000 .
+In order to find the address of the kernel entry point
+as loaded into memory, the boot loader subtracts
+.address 0xf000000
+from the ELF entry point, yielding
+.address 0x100020 .
+The kernel will soon enable the paging hardware and map
+virtual addresses starting at
+.address 0xf010000
+to physical addresses at
+.address 0x10000 ,
+so that instructions and data will appear at the virtual addresses at
+which the kernel code expects them.
 .PP
 The boot loader casts the entry address to
 a function pointer, and then calls that function, essentially jumping to the kernel's entry point
@@ -1005,10 +1002,10 @@ Chapter \*[CH:MEM] continues there.
 .\"
 .section "Real world"
 .PP
-The boot sector described in this chapter compiles to around
+The boot loader described in this chapter compiles to around
 470 bytes of machine code, depending on the optimizations
 used when compiling the C code.  In order to fit in that
-small amount of space, the xv6 boot sector makes a major
+small amount of space, the xv6 boot loader makes a major
 simplifying assumption, that the kernel has been written to
 the boot disk contiguously starting at sector 1.  More
 commonly, kernels are stored in ordinary file systems, where
@@ -1019,13 +1016,23 @@ understand various file systems and network protocols.  In
 other words, the boot loader itself must be a small
 operating system.  Since such complicated boot loaders
 certainly won't fit in 512 bytes, most PC operating systems
-use a two-step boot process.  First, a simple boot sector
+use a two-step boot process.  First, a simple boot loader
 like the one in this chapter loads a full-featured
 boot-loader from a known disk location, often relying on the
 less space-constrained BIOS for disk access rather than
 trying to drive the disk itself.  Then the full loader,
 relieved of the 512-byte limit, can implement the complexity
 needed to locate, load, and execute the desired kernel.
+.PP
+This chapter is written as if the only thing that happens
+between power on and the execution of the boot loader
+is that the BIOS loads the boot sector.
+In fact the BIOS does a huge amount of initialization
+in order to make the complex hardware of a modern
+computer look like a simple standard PC.
+Perhaps a more modern design would have the BIOS read
+a larger boot loader from the disk, and start it in
+protected and 32-bit mode.
 .PP
 TODO: Also, x86 does not imply BIOS: Macs use EFI.
 I wonder if the Mac has an A20 line.
