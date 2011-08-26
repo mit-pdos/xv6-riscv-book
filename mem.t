@@ -789,6 +789,7 @@ and for creating the first process, though in
 the latter case the process will start executing at
 location zero rather than at a return from
 .code fork .
+.so fig/newkernelstack.t
 .PP
 As we will see in Chapter \*[CH:TRAP],
 the way that control transfers from user software to the kernel
@@ -809,7 +810,6 @@ These values are a
 .code trapframe
 which stores the user registers.
 Figure \n[newkernelstackfig] shows the state of the new process's kernel stack.
-.so fig/newkernelstack.t
 .PP
 The first process is going to execute a small program
 .code initcode.S ; (
