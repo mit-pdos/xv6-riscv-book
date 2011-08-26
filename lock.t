@@ -56,6 +56,7 @@ concurrent requests, you might implement the linked list as follows:
    16	  list = l;
    17	}
 .P2
+.so fig/race.t
 Proving this implementation correct is a typical
 exercise in a data structures and algorithms class.
 Even though this implementation can be proved
@@ -64,7 +65,7 @@ If two different CPUs execute
 .code insert
 at the same time,
 it could happen that both execute line 15
-before either executes 16.
+before either executes 16 (see Figure \n[racefig]).
 If this happens, there will now be two
 list nodes with
 .code next
@@ -80,7 +81,8 @@ This kind of problem is called a
 .italic "race condition".
 The problem with races is that they depend on
 the exact timing of the two CPUs involved and
-are consequently difficult to reproduce.
+how their memory operations are ordered by the memory system,
+and are consequently difficult to reproduce.
 For example, adding print statements while debugging
 .code insert
 might change the timing of the execution enough
