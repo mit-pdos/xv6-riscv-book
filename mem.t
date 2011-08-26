@@ -1148,6 +1148,7 @@ ordinary system calls, as we will see in Chapter \*[CH:TRAP].  As
 before, this setup avoids special-casing the first process (in this
 case, its first system call), and instead reuses code that xv6 must
 provide for standard operation.
+
 .\"
 .section "Exec"
 .\"
@@ -1160,17 +1161,9 @@ file descriptors, process id, and parent process the same.
 is thus little more than a binary loader, just like the one 
 in the boot loader from Chapter \*[CH:BOOT].
 The additional complexity comes from setting up the stack.
-The user memory image of an executing process looks like:
-.P1
-KERNBASE:_________
-         |       |
-         | ...   |
-         | heap  |
-         | stack |
-         | data  |
-0:       | text  |
-         ---------
-.P2
+.so fig/processlayout.t
+.PP
+Figure \n[processlayoutfig] shows the user memory image of an executing process.
 The heap is above the stack so that it can expand (with
 .code sbrk ).
 The stack is a single page—4096 bytes—long.
@@ -1183,21 +1176,9 @@ as if the function call
 .code main(argc,
 .code argv)
 had just started.
-Here are the values that
+The figure als shows the values that
 .code exec
-places at the top of the stack:
-.P1
-"argument0"
- ...
-"argumentN"                      -- nul-terminated string
-0                                -- argv[argc]
-address of argumentN             
- ...
-address of argument0             -- argv[0]
-address of address of argument0  -- argv argument to main()
-argc                             -- argc argument to main()
-0xffffffff                       -- return PC for main() call
-.P2
+places at the top of the stack.
 .\"
 .section "Code: exec"
 .\"
