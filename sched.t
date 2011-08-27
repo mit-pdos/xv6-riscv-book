@@ -60,8 +60,10 @@ chapter examines the implementation of pipes.
 .\"
 .section "Code: Context switching"
 .\"
+.so fig/switch.t
 .PP
-At a low level, xv6 performs two kinds of context switches:
+As shown in Figure \n[switchfig], to switch between processes, xv6 performs two
+kinds of context switches at a low level:
 from a process's kernel thread to the current CPU's scheduler
 thread, and from the scheduler thread to a process's kernel thread.
 xv6 never directly switches from one user-space process to
