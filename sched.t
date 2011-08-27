@@ -1,8 +1,7 @@
 .so book.mac
 .ig
 XXX checking p->killed
-..
-.ig
+
 cox and mullender, semaphores.
 
 pike et al, sleep and wakeup
@@ -611,6 +610,7 @@ and
   218	  return p;
   219	}
 .P2
+.so fig/deadlock.t
 .PP
 .code Recv
 now gives up the CPU instead of spinning, which is nice.
@@ -619,7 +619,7 @@ However, it turns out not to be straightforward to design
 and 
 .code wakeup
 with this interface without suffering
-from what is known as the "lost wake up" problem.
+from what is known as the "lost wake up" problem (see Figure \n[deadlockfig]).
 Suppose that
 .code recv
 finds that
@@ -654,7 +654,8 @@ The next
 will sleep waiting for 
 .code recv
 to consume the pointer in the queue,
-at which point the system will be deadlocked.
+at which point the system will be 
+.italic "deadlocked" .
 .PP
 The root of this problem is that the
 invariant that
