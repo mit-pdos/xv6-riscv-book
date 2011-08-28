@@ -351,26 +351,6 @@ DRAFT as of \*[date]: Copyright 2009 Cox, Kaashoek, Morris
 ..
 .de TE
 ..
-.\"
-.\"	macro/strings: KS, KQ, KF, FQ, KP, KE, RQ, KK, KJ
-.\"	numbers: KN, IK, TB, KV, NF, TC
-.\"
-.so tmac.skeep
-.de KX
-.mk ~K
-.\" .tm need \\n(dn
-\X'foo'
-.sp 0.00001
-\X'shift \\\\n(dn'
-.sp |1i
-.mk x
-.\" .tm in KE: return to \\nx
-..
-.de KY
-.nr ~K \\n(~K+\\n(dn
-.sp |\\n(~Ku
-.sp 1v
-..
 .\"	F1/F2/F3 - Figures
 .\"
 .\"	.F1
