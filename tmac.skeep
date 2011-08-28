@@ -32,6 +32,7 @@
 ..
 .	\"FQ real floating keep processor
 .de FQ
+.nr oldtrap \\n(.t
 .notrap
 .nr KI \\n(.i
 .ev 2
@@ -62,7 +63,7 @@
 .nr KI \\n(.i
 .di
 .nr NF 0
-.if \\n(dn-\\n(.t .nr NF 1
+.if \\n(dn-\\n[oldtrap] .nr NF 1
 .if \\n(TC .nr NF 1
 .if \\n(KV .nr NF 1 \" if KV on full page needed, doesn't fit
 .if \\n(NF .if !\\n(TB .sp 11i

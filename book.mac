@@ -121,7 +121,6 @@
 'KL
 .rm KL
 .mk postkj
-.tm \\n[prekj] \\n[postkj]
 .\}
 .ev
 'sp |\\n[top]u
@@ -366,13 +365,9 @@ DRAFT as of \*[date]: Copyright 2009 Cox, Kaashoek, Morris
 .\" .tm in KE: return to \\nx
 ..
 .de KY
-.mk x
-.\" .tm now at \\nx
 .nr ~K \\n(~K+\\n(dn
 .sp |\\n(~Ku
 .sp 1v
-.mk x
-.\" .tm finish at \\nx
 ..
 .\"	F1/F2/F3 - Figures
 .\"
@@ -386,13 +381,13 @@ DRAFT as of \*[date]: Copyright 2009 Cox, Kaashoek, Morris
 .de F1
 .nr Fignum \\n[Fignum]+1
 .if !'\\$1'' .nr \\$1 \\n[Fignum]
-.\" TODO: name
 .KF
 ..
 .de F2
 .LP
 .ps -2
 .vs -2
+.br
 \fBFigure \\n[Fignum]\fP.
 ..
 .de F3
@@ -417,8 +412,15 @@ DRAFT as of \*[date]: Copyright 2009 Cox, Kaashoek, Morris
 .nr y (\\n[ury]p-\\n[lly]p)*\\n[eps_scale]/100
 .nr x (\\n[urx]p-\\n[llx]p)*\\n[eps_scale]/100
 .nr z (\\n[line-length]u-\\nxu)/2
-.PI \\$1 "\\nyu,\\nxu,0,\\nzu"
-.sp \\nyu
+.\" Troff sees the PI request as a character on a line.
+.\" Tell it the line height is the same height as the
+.\" EPS file, and then adjust the EPS file upward
+.\" to match.
+.vs \\nyu
+.PI \\$1 "\\nyu,\\nxu,-\\nyu,\\nzu"
+.br
+.\" Reset line height.
+.PS
 ..
 .\"
 .\"	table of contents
