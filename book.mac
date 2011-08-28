@@ -8,6 +8,8 @@
 .mediasize letter
 .hylang en_US
 .lc_ctype en_US.utf8
+.nr realnumbers 1
+.if \n[realnumbers] .pn \np
 .\"
 .\"	fonts
 .\"
@@ -241,7 +243,16 @@ DRAFT as of \*[date]: Copyright 2009 Cox, Kaashoek, Morris
 .ft B
 .ps 20
 .vs 24
+.if !'\\$1'' \\$1
+..
+.\"
+.\"	chapter-like heading
+.\"
+.de chapterlike
+.big-heading
 \\$1
+.sp
+.LP
 ..
 .\"
 .\"	chapter heading

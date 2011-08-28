@@ -3,4 +3,10 @@
 export GS_FONTPATH=font
 export TROFFONTS=font
 
-/usr/ucb/tbl $* | /usr/ucb/troff -mpictures | ./twopage | ./reorder | /usr/ucb/dpost
+chap=$1
+p=$(cat z.$chap.first | bc)
+/usr/ucb/tbl $chap.t |
+	/usr/ucb/troff -mpictures -rp$p book.mac - |
+	./twopage |
+	./savelast $chap |
+	./reorder >$chap.dit
