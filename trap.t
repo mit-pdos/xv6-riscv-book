@@ -185,9 +185,9 @@ As another example, the
 instruction cannot use the user stack to save values, because the user
 might not have set up an appropriate stack so that hardware uses the
 stack specified in the task segments, which is setup in kernel mode.
-.figure intkstackfig fig/intkstack.t
+.figure intkstack
 .PP
-Figure \n[intkstackfig] shows the stack after
+Figure \n[fig:intkstack] shows the stack after
 an 
 .code int
 instruction completes and there was a privilege-level change (the privilege
@@ -355,7 +355,7 @@ Each entry pushes an error code
 if the processor didn't, pushes the interrupt number, and then
 jumps to
 .code alltraps .
-.figure trapframefig fig/trapframe.t
+.figure trapframe
 .PP
 .code Alltraps
 .line trapasm.S:/^alltraps/
@@ -370,7 +370,7 @@ The result of this effort is that the kernel stack now contains a
 .code struct
 .code trapframe 
 .line x86.h:/trapframe/
-containing the processor registers at the time of the trap (see Figure \n[trapframefig]).
+containing the processor registers at the time of the trap (see Figure \n[fig:trapframe]).
 The processor pushes
 .code ss ,
 .code esp ,

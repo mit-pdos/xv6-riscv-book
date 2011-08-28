@@ -55,7 +55,7 @@ concurrent requests, you might implement the linked list as follows:
    16	  list = l;
    17	}
 .P2
-.figure racefig fig/race.t
+.figure race
 Proving this implementation correct is a typical
 exercise in a data structures and algorithms class.
 Even though this implementation can be proved
@@ -64,7 +64,7 @@ If two different CPUs execute
 .code insert
 at the same time,
 it could happen that both execute line 15
-before either executes 16 (see Figure \n[racefig]).
+before either executes 16 (see Figure \n[fig:race]).
 If this happens, there will now be two
 list nodes with
 .code next

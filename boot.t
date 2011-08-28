@@ -352,11 +352,11 @@ data reads and writes use
 .register ds ,
 and stack reads and writes use
 .register ss .
-.figure translatefig fig/x86_translation.t
+.figure x86_translation
 .PP
 The addresses that an x86 program manipulates are called
 .italic "logical addresses" 
-(see Fig. \n[translatefig]).
+(see Fig. \n[fig:x86_translation]).
 A logical address consists of a segment selector and
 an offset, and is sometimes written as
 \fIsegment\fP:\fIoffset\fP.
@@ -439,10 +439,10 @@ a "32-bit" mode that causes registers, virtual addresses,
 and most integer arithmetic to be carried out with 32 bits
 rather than 16.
 The xv6 boot sequence enables protected mode and 32-bit mode as follows.
-.figure segfig fig/x86_seg.t
+.figure x86_seg
 .PP
 In protected mode, a segment
-register is an index into a segment descriptor table (see Fig. \n[segfig]).
+register is an index into a segment descriptor table (see Fig. \n[fig:x86_seg]).
 Each table entry specifies a base physical address,
 a maximum virtual address called the limit,
 and permission bits for the segment.

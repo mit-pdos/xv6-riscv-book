@@ -414,16 +414,16 @@ DRAFT as of \*[date]: Copyright 2009 Cox, Kaashoek, Morris
 ..
 .de figure
 .if '\\$1'' .wa .figure needs name argument
-.if '\\$2'' .wa .figure needs file argument
+.if !'\\$2'' .wa .figure file is implied by name
 .\"	flush postponed figures
 .\"	to avoid reordering: want Figure 2 after Figure 1.
 .if \\n[have-postponed-figs] .bp
-.nr Fignum \\n[\\$1]
+.nr Fignum \\n[fig:\\$1]
 .nr Fight \\n[fig-\\n[Fignum]-height]
 .ds Figfile \\*[fig-\\n[Fignum]-file]
 .ie \\n[Fight]-\\n(.t \{
 .\"	postpone figure to next page.
-.wa "Figure \\n[Fignum] postponed \\n[Fight] from \\*[Figfile]
+.\".wa "Figure \\n[Fignum] postponed \\n[Fight] from \\*[Figfile]
 .nr have-postponed-figs 1
 .am postponed-figs
 \X'figure \\*[Figfile] \\n[Fight]'
@@ -432,7 +432,7 @@ DRAFT as of \*[date]: Copyright 2009 Cox, Kaashoek, Morris
 .\}
 .el \{
 .\"	put figure at top of this page.
-.wa "Figure \\n[Fignum] at top of this page from \\*[Figfile]
+.\".wa "Figure \\n[Fignum] at top of this page from \\*[Figfile]
 \X'top \\n[top]'
 \X'figure \\*[Figfile] \\n[Fight]'
 .nr top +\\n[Fight]

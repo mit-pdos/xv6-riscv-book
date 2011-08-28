@@ -82,7 +82,7 @@ copies the low 12 bits unchanged from the virtual to the
 translated physical address.  Thus a page table gives
 the operating system control over virtual-to-physical address translations
 at the granularity of aligned chunks of 4096 (2^12) bytes.
-.figure pagetablefig fig/x86_pagetable.t
+.figure x86_pagetable
 .PP
 On the x86, the translation from virtual to physical happens in two steps
 (except when super pages are used, which we discuss below).
@@ -116,7 +116,7 @@ instruction fetches are allowed.
 .code PTE_U
 controls whether user programs are allowed to use the
 page; if clear, only the kernel is allowed to use the page.
-Figure \n[pagetablefig] shows how it all works.
+Figure \n[fig:x86_pagetable] shows how it all works.
 .PP
 A few notes about terms.
 Physical memory refers to storage cells in DRAM.
@@ -285,12 +285,12 @@ The function
 is not only invoked by xv6 during initialization, but every time xv6 creates a
 new user process.   So, this is a good point to understand how xv6 uses the
 paging hardware for isolating user processes.
-.figure layoutfig fig/xv6_layout.t
+.figure xv6_layout
 .PP
 Each process has a separate page table, and xv6 tells
 the page table hardware to switch
 page tables when xv6 switches between processes.
-As shown in Figure \n[layoutfig],
+As shown in Figure \n[fig:xv6_layout],
 a process's memory starts at virtual address
 zero and can grow to the address
 .address KERNBASE
@@ -426,7 +426,7 @@ to mark the PTE as valid
 .code walkpgdir
 .line vm.c:/^walkpgdir/
 mimics the actions of the x86 paging hardware as it
-looks up the PTE for a virtual address (see Fig. \n[pagetablefig]).
+looks up the PTE for a virtual address (see Fig. \n[fig:x86_pagetable]).
 .code walkpgdir
 uses the upper 10 bits of the virtual address to find
 the page directory entry
@@ -788,7 +788,7 @@ and for creating the first process, though in
 the latter case the process will start executing at
 location zero rather than at a return from
 .code fork .
-.figure newkernelstackfig fig/newkernelstack.t
+.figure newkernelstack
 .PP
 As we will see in Chapter \*[CH:TRAP],
 the way that control transfers from user software to the kernel
@@ -808,7 +808,7 @@ These values are a
 .code struct
 .code trapframe
 which stores the user registers.
-Figure \n[newkernelstackfig] shows the state of the new process's kernel stack.
+Figure \n[fig:newkernelstack] shows the state of the new process's kernel stack.
 .PP
 The first process is going to execute a small program
 .code initcode.S ; (
@@ -1160,9 +1160,9 @@ file descriptors, process id, and parent process the same.
 is thus little more than a binary loader, just like the one 
 in the boot loader from Chapter \*[CH:BOOT].
 The additional complexity comes from setting up the stack.
-.figure processlayoutfig fig/processlayout.t
+.figure processlayout
 .PP
-Figure \n[processlayoutfig] shows the user memory image of an executing process.
+Figure \n[fig:processlayout] shows the user memory image of an executing process.
 The heap is above the stack so that it can expand (with
 .code sbrk ).
 The stack is a single page—4096 bytes—long.

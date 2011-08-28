@@ -33,7 +33,7 @@ lesser extent, Microsoft Windows—have Unix-like interfaces.
 Understanding xv6 is a good start toward understanding any of these
 systems and many others.
 .PP
-As shown in Figure \n[osfig], xv6 takes the traditional form of a
+As shown in Figure \n[fig:os], xv6 takes the traditional form of a
 .italic kernel ,
 a special program that provides
 services to running programs.
@@ -68,7 +68,7 @@ When a user program invokes a system call, the hardware
 raises the privilege level and starts executing a pre-arranged
 function in the kernel.
 Chapter \*[CH:TRAP] examines this sequence in more detail.
-.figure osfig fig/os.t
+.figure os
 .PP
 The collection of system calls that a kernel provides
 is the interface that user programs see.
