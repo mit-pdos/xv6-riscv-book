@@ -1,0 +1,11 @@
+#!/bin/sh
+
+export GS_FONTPATH=font
+export TROFFONTS=font
+
+chap=$1
+num=$2
+file=$3
+/usr/ucb/tbl $file | /usr/ucb/troff -mpictures -rp$num book.mac z.figs - | ./ditspaces >z.$chap.$num.fig
+echo .nr fig-$num-height $(grep 'x X end' z.$chap.$num.fig | awk '{print $NF}') >>z.figs
+echo .ds fig-$num-file z.$chap.$num.fig >>z.figs

@@ -1,4 +1,3 @@
-.so book.mac
 .ig
 XXX checking p->killed
 
@@ -60,7 +59,7 @@ chapter examines the implementation of pipes.
 .\"
 .section "Code: Context switching"
 .\"
-.so fig/switch.t
+.figure switchfig fig/switch.t
 .PP
 As shown in Figure \n[switchfig], to switch between processes, xv6 performs two
 kinds of context switches at a low level:
@@ -591,6 +590,7 @@ We can change the queue implementation to use
 .code sleep
 and
 .code wakeup :
+\X'P1 again'
 .P1
   201	void*
   202	send(struct q *q, void *p)
@@ -612,7 +612,7 @@ and
   218	  return p;
   219	}
 .P2
-.so fig/deadlock.t
+.figure deadlockfig fig/deadlock.t
 .PP
 .code Recv
 now gives up the CPU instead of spinning, which is nice.
@@ -679,6 +679,7 @@ Once the calling process is awake again
 .code sleep
 reacquires the lock before returning.
 We would like to be able to have the following code:
+\X'P1 coming up'
 .P1
   300	struct q {
   301	  struct spinlock lock;

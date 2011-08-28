@@ -1,4 +1,3 @@
-.so book.mac
 .ig
   terminology:
     process: refers to execution in user space, or maybe struct proc &c
@@ -83,7 +82,7 @@ copies the low 12 bits unchanged from the virtual to the
 translated physical address.  Thus a page table gives
 the operating system control over virtual-to-physical address translations
 at the granularity of aligned chunks of 4096 (2^12) bytes.
-.so fig/x86_pagetable.t
+.figure pagetablefig fig/x86_pagetable.t
 .PP
 On the x86, the translation from virtual to physical happens in two steps
 (except when super pages are used, which we discuss below).
@@ -286,7 +285,7 @@ The function
 is not only invoked by xv6 during initialization, but every time xv6 creates a
 new user process.   So, this is a good point to understand how xv6 uses the
 paging hardware for isolating user processes.
-.so fig/xv6_layout.t
+.figure layoutfig fig/xv6_layout.t
 .PP
 Each process has a separate page table, and xv6 tells
 the page table hardware to switch
@@ -789,7 +788,7 @@ and for creating the first process, though in
 the latter case the process will start executing at
 location zero rather than at a return from
 .code fork .
-.so fig/newkernelstack.t
+.figure newkernelstackfig fig/newkernelstack.t
 .PP
 As we will see in Chapter \*[CH:TRAP],
 the way that control transfers from user software to the kernel
@@ -1161,7 +1160,7 @@ file descriptors, process id, and parent process the same.
 is thus little more than a binary loader, just like the one 
 in the boot loader from Chapter \*[CH:BOOT].
 The additional complexity comes from setting up the stack.
-.so fig/processlayout.t
+.figure processlayoutfig fig/processlayout.t
 .PP
 Figure \n[processlayoutfig] shows the user memory image of an executing process.
 The heap is above the stack so that it can expand (with

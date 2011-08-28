@@ -2,7 +2,7 @@
 
 p=$1
 shift
-awk -vf'='z.$p.last ' 
+awk -v f'='z.$p.last ' 
 /^p[0-9]/ {
 	lastpage = substr($0, 2)
 }

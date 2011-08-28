@@ -1,4 +1,3 @@
-.so book.mac
 .ig
 figure for race example.
 ..
@@ -56,7 +55,7 @@ concurrent requests, you might implement the linked list as follows:
    16	  list = l;
    17	}
 .P2
-.so fig/race.t
+.figure racefig fig/race.t
 Proving this implementation correct is a typical
 exercise in a data structures and algorithms class.
 Even though this implementation can be proved

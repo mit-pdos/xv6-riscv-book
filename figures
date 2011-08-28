@@ -1,0 +1,77 @@
+#!/bin/sh
+
+# Insert figures into ditroff output.
+
+./ditspaces "$@" | 
+awk '
+BEGIN {
+	capture = 0
+	nlines = 0
+	nshift = 0
+}
+
+function flushpage()
+{
+
+	for(i=0; i<nline; i++)
+		print line[i]
+	nline = 0
+	nshift = 0
+	capture = 0
+}
+
+function shiftlines(n)
+{
+	for(i=nshift; i<nline; i++)
+		if(line[i] ~ /^V/)
+			line[i] = "V" (substr(line[i], 2)+n)
+	nshift=nline
+}
+
+/^p[0-9]/ {
+	flushpage()
+	top = 0
+}
+END {
+	flushpage()
+}
+
+/^[HV]/ {
+	capture = 1
+}
+
+!capture {
+	print
+}
+capture {
+	line[nline++] = $0
+}
+
+/x X top / {
+	top = $NF
+}
+
+/x X figure / {
+	print "x X ---- begin figure " top "----"
+	file=$(NF-1)
+	height=$NF
+	shiftlines(height)
+	trigger = 0
+	while(getline <file > 0) {
+		if(/^H/)
+			trigger = 1
+		if(!trigger)
+			continue
+		if(/^x X end/)
+			break
+		s = $0
+		if(/^V/) {
+			s = "V" (substr(s, 2)+top)
+		}
+		print s
+	}
+	top += height
+	print "x X ---- end figure ----"
+}
+
+'

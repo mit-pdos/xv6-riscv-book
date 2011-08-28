@@ -98,7 +98,6 @@
 .pl \\n[page-length]u
 .new-page
 .trap
-.nr A0 0
 .nr page-number 1
 ..
 .\"
@@ -112,26 +111,18 @@
 .ad c
 'tl '\\*[left-header]'\\*[center-header]'\\*[right-header]'
 .nr top \\n[header-margin]
-.if \\n[have-KJ] \{
+\X'top \\n[top]'
+.if \\n[have-postponed-figs] \{
+.br
 .ad l
-.PS
-.mk prekj
-.rn KJ KL
-.nr have-KJ 0
-.ds KJ "
-.sp 0
-'KL
-.rm KL
-.mk postkj
+.sp |\\n[top]u
+.postponed-figs
+.mk top
+.ds postponed-figs "
+.nr have-postponed-figs 0
 .\}
 .ev
 'sp |\\n[top]u
-..
-.nr have-KJ 0
-.de KJ
-..
-.de KD
-.nr top +\\$1
 ..
 .\"
 .\"	page footer
@@ -382,17 +373,20 @@ DRAFT as of \*[date]: Copyright 2009 Cox, Kaashoek, Morris
 ..
 .\"	F1/F2/F3 - Figures
 .\"
-.\"	.F1 name
+.\"	.F1
 .\"	Figure
 .\"	.F2
 .\"	Caption
 .\"	.F3
 .\"
-.nr Fignum 0
 .de F1
-.nr Fignum \\n[Fignum]+1
-.if !'\\$1'' .nr \\$1 \\n[Fignum]
-.KF
+.ll \\n[line-length]u
+.po \\n[left-margin]u
+.pl \\n[page-length]u
+.sp |0i
+.mk x
+\X'start \\nx'
+.nr Fignum \\np
 ..
 .de F2
 .LP
@@ -407,7 +401,43 @@ DRAFT as of \*[date]: Copyright 2009 Cox, Kaashoek, Morris
 .vs +2
 \D'l \n[line-length]u 0'
 .sp 0.125i
-.KE
+.mk x
+\X'end \\nx'
+..
+.\"
+.\"	figure - load figure from file
+.\"
+.\"	.figure name file
+.\"
+.nr have-postponed-figs 0
+.de postponed-figs
+..
+.de figure
+.if '\\$1'' .wa .figure needs name argument
+.if '\\$2'' .wa .figure needs file argument
+.\"	flush postponed figures
+.\"	to avoid reordering: want Figure 2 after Figure 1.
+.if \\n[have-postponed-figs] .bp
+.nr Fignum \\n[\\$1]
+.nr Fight \\n[fig-\\n[Fignum]-height]
+.ds Figfile \\*[fig-\\n[Fignum]-file]
+.ie \\n[Fight]-\\n(.t \{
+.\"	postpone figure to next page.
+.wa "Figure \\n[Fignum] postponed \\n[Fight] from \\*[Figfile]
+.nr have-postponed-figs 1
+.am postponed-figs
+\X'figure \\*[Figfile] \\n[Fight]'
+.sp \\n[Fight]u
+\\..
+.\}
+.el \{
+.\"	put figure at top of this page.
+.wa "Figure \\n[Fignum] at top of this page from \\*[Figfile]
+\X'top \\n[top]'
+\X'figure \\*[Figfile] \\n[Fight]'
+.nr top +\\n[Fight]
+.sp \\n[Fight]u
+.\}
 ..
 .\"
 .\"	EPS - Encapsulated PostScript
@@ -427,9 +457,8 @@ DRAFT as of \*[date]: Copyright 2009 Cox, Kaashoek, Morris
 .\" Tell it the line height is the same height as the
 .\" EPS file, and then adjust the EPS file upward
 .\" to match.
-.vs \\nyu
-.PI \\$1 "\\nyu,\\nxu,-\\nyu,\\nzu"
-.br
+.PI \\$1 "\\nyu,\\nxu,0,\\nzu"
+.sp \\nyu
 .\" Reset line height.
 .PS
 ..

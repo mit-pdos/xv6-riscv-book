@@ -1,4 +1,3 @@
-.so book.mac
 .chapter CH:UNIX "Operating system interfaces"
 .PP
 The job of an operating system is to share a computer among
@@ -69,7 +68,7 @@ When a user program invokes a system call, the hardware
 raises the privilege level and starts executing a pre-arranged
 function in the kernel.
 Chapter \*[CH:TRAP] examines this sequence in more detail.
-.so fig/os.t
+.figure osfig fig/os.t
 .PP
 The collection of system calls that a kernel provides
 is the interface that user programs see.

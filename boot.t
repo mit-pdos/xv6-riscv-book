@@ -1,4 +1,3 @@
-.so book.mac
 .chapter CH:BOOT "Boot loader"
 .ig
 	notes:
@@ -353,7 +352,7 @@ data reads and writes use
 .register ds ,
 and stack reads and writes use
 .register ss .
-.so fig/x86_translation.t
+.figure translatefig fig/x86_translation.t
 .PP
 The addresses that an x86 program manipulates are called
 .italic "logical addresses" 
@@ -440,7 +439,7 @@ a "32-bit" mode that causes registers, virtual addresses,
 and most integer arithmetic to be carried out with 32 bits
 rather than 16.
 The xv6 boot sequence enables protected mode and 32-bit mode as follows.
-.so fig/x86_seg.t
+.figure segfig fig/x86_seg.t
 .PP
 In protected mode, a segment
 register is an index into a segment descriptor table (see Fig. \n[segfig]).

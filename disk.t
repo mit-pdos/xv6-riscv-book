@@ -1,4 +1,3 @@
-.so book.mac
 .chapter CH:DISK "Buffer cache"
 .ig
 	notes:

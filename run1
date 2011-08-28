@@ -5,8 +5,12 @@ export TROFFONTS=font
 
 chap=$1
 p=$(cat z.$chap.first | bc)
+
+grep '^\.figure ' $chap.t | awk '{printf(".nr %s %d\n", $2, NR)}' >z.figs
+grep '^\.figure ' $chap.t | awk '{system("./runfig '$chap' " NR " " $3)}'
+
 /usr/ucb/tbl $chap.t |
-	/usr/ucb/troff -mpictures -rp$p book.mac - |
+	/usr/ucb/troff -mpictures -rp$p book.mac z.figs - |
 	./twopage |
 	./savelast $chap |
-	./reorder >$chap.dit
+	./figures >$chap.dit

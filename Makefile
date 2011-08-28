@@ -17,11 +17,18 @@ ORDER=\
 	acks\
 	$(CONTENTS)\
 
+SCRIPTS=\
+	run1\
+	twopage\
+	savelast\
+	figures\
+	runfig\
+
 PS=$(patsubst %,%.ps,$(ORDER))
 PDF=$(patsubst %,%.pdf,$(ORDER))
 DIT=$(patsubst %,%.dit,$(ORDER))
 
-all: pdf
+all: book.pdf
 pdf: $(PDF)
 ps: $(PS)
 dit: $(DIT)
@@ -30,7 +37,7 @@ dit: $(DIT)
 book.ps: $(DIT)
 	/usr/ucb/dpost $(DIT) >book.ps || rm -f book.ps
 
-%.dit: book.mac %.t z.%.first
+%.dit: book.mac %.t z.%.first $(SCRIPTS)
 	./run1 $*
 
 %.ps: %.dit
@@ -45,7 +52,7 @@ clean:
 xv6-code.pdf: ../xv6/xv6.pdf
 	cp $^ $@
 
-include $(shell make-pageorder $(ORDER))
+include $(shell ./make-pageorder $(ORDER))
 
 contents.dit: contents0.t
 

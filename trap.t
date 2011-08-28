@@ -1,4 +1,3 @@
-.so book.mac
 .chapter CH:TRAP "Traps, interrupts, and drivers"
 .PP
 When running a process, a processor executes the normal processor loop: read an
@@ -186,7 +185,7 @@ As another example, the
 instruction cannot use the user stack to save values, because the user
 might not have set up an appropriate stack so that hardware uses the
 stack specified in the task segments, which is setup in kernel mode.
-.so fig/intkstack.t
+.figure intkstackfig fig/intkstack.t
 .PP
 Figure \n[intkstackfig] shows the stack after
 an 
@@ -356,7 +355,7 @@ Each entry pushes an error code
 if the processor didn't, pushes the interrupt number, and then
 jumps to
 .code alltraps .
-.so fig/trapframe.t
+.figure trapframefig fig/trapframe.t
 .PP
 .code Alltraps
 .line trapasm.S:/^alltraps/
