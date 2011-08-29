@@ -23,6 +23,7 @@ SCRIPTS=\
 	savelast\
 	figures\
 	runfig\
+	ditspaces\
 
 PS=$(patsubst %,%.ps,$(ORDER))
 PDF=$(patsubst %,%.pdf,$(ORDER))
