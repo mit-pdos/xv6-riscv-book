@@ -1,4 +1,4 @@
-.chapter CH:DISK "File system"
+.chapter CH:FS "File system"
 .ig
 	have to decide on processor vs CPU, i/o vs I/O.
 	
@@ -6,65 +6,46 @@
 ..  
 
 .PP 
-One of an operating system's central roles is to enable safe cooperation between
-processes sharing a computer.  First, it must isolate the processes from each
-other, so that one errant process cannot harm the operation of others.  To do
-this, xv6 uses the x86 hardware's hardware page tables (Chapter \*[CH:MEM]).
-Second, an operating system must provide controlled mechanisms by which the
-now-isolated processes can overcome the isolation and cooperate.  We saw one
-mechanism already, namely pipes, which allows processes to communicate.  This
-chapters covers a second mechanism, which allows processes to share data with
-each other using files.  This chapter describes the challenges in implementing a
-file system, and how xv6 addresses these challenges.
-.\"
-.\" -------------------------------------------
-.\"
-.section "Overview and challenges"
-.PP
-Recall from Chapter \*[CH:UNIX] that
-a 
-.italic file
-is a linear array of bytes that is stored on some device.  That device typically
-provides 
+For users it is convenient to have a file system to store files and to share
+them with other users.  Unix supports files, directories, pathnames, etc. for
+this purpose (see Chapter \*[CH:UNIX]) .  The files live typically on a device
+that provides
 .italic persistent 
 storage so that after a shut down, and starting the system again, the file is
 still present.  An example device that provided persistent storage is the IDE
-disk, which we covered in \*[CH:TRAP].
+disk, which can read and write blocks (see Chapter \*[CH:TRAP]).
 .PP
-A
-.italic directory stores the mapping from name to file.  The directories
-form a system-wide hierarchical shared name space, so that one process can name
- a file that an unrelated process has created. For example, the compiler generates the
- binary 
-.code ls ,
-which a user can invoke by typing the string "ls" to the shell.  The name space
-is hierarchal to make it convenient to organize files; for example, all files of
-a particular user "smith" are in the directory 
-.code /user/smith ,
-and all binaries are in the directory
-.code /bin
+To support files, directories, and pathnames, the file system must address
+several challenges:
+
+.IP \[bu]  
+Files must be allowed to be larger than a single block.  The file system needs
+an on-disk data structure to keep track of all the blocks that belong to a
+single file.  Similarly, it needs a data structure to record which blocks are
+free.
+
+.IP \[bu] 
+Updating the on-disk data structures must be done in a way that if the file
+system crashes (e.g., due to a power failure) that the data structures aren't
+left in some incorrect intermediate state (e.g., blocks appear both on the free
+list and in a file, or in neither).
+
+.IP \[bu]  
+Different processes may access the same file and there must be a way to ensure
+that only one process at the same time can edit the file system data.
+
+.IP \[bu]  
+Reading and writing file data to disk is orders of magnitude slower than reading
+and writing from memory, and a file system must maintain an in-memory cache of
+popular blocks.
+
 .PP
-There are several challenges in implementing a file system:
-
-1. A failure may happen while a process is changing a file or directory.  The
-file system must ensure that the file system data structures stay consistent.
-That is, if a file appears in the name space, its block should not appear on the
-free block list.
-
-2. Different processes may access the same file and there must be a way to
-ensure that only one process at the tame can edit the file system data.
-
-3. Reading and writing file data to disk is orders of magnitude slower than
-reading and writing form memory, and a file system must have a way to not always
-read and write to disk.
-
-4. Data structures are needed to represent the files on disk and in memory.
-
-Addressing all of these challenges well can result in very complex file system.
-xv6 takes a simple approach to addressing these challenges that is correct but
-not the highest performing one.
+Addressing all of these challenges well can result in a complex implementation.
+xv6 implements simple solutions to address these challenges. The result is a
+correct file system (e.g., it handles failures during file system operations)
+but not the highest performing one.
 .PP
-The xv6 system is implemented in 6 layers:
+The xv6 system implements the file system using 6 layers:
 .P1
    file descriptors
 -------------
