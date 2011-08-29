@@ -111,7 +111,7 @@
 .ad c
 'tl '\\*[left-header]'\\*[center-header]'\\*[right-header]'
 .nr top \\n[header-margin]
-\X'top \\n[top]'
+\\X'top \\n[top]'
 .if \\n[have-postponed-figs] \{
 .br
 .ad l
@@ -365,7 +365,7 @@ DRAFT as of \*[date]: Copyright 2009 Cox, Kaashoek, Morris
 .pl \\n[page-length]u
 .sp |0i
 .mk x
-\X'start \\nx'
+\\X'start \\nx'
 .nr Fignum \\np
 ..
 .de F2
@@ -382,7 +382,7 @@ DRAFT as of \*[date]: Copyright 2009 Cox, Kaashoek, Morris
 \D'l \n[line-length]u 0'
 .sp 0.125i
 .mk x
-\X'end \\nx'
+\\X'end \\nx'
 ..
 .\"
 .\"	figure - load figure from file
@@ -406,15 +406,15 @@ DRAFT as of \*[date]: Copyright 2009 Cox, Kaashoek, Morris
 .\".wa "Figure \\n[Fignum] postponed \\n[Fight] from \\*[Figfile]
 .nr have-postponed-figs 1
 .am postponed-figs
-\X'figure \\*[Figfile] \\n[Fight]'
+\\X'figure \\*[Figfile] \\n[Fight]'
 .sp \\n[Fight]u
 \\..
 .\}
 .el \{
 .\"	put figure at top of this page.
 .\".wa "Figure \\n[Fignum] at top of this page from \\*[Figfile]
-\X'top \\n[top]'
-\X'figure \\*[Figfile] \\n[Fight]'
+\\X'top \\n[top]'
+\\X'figure \\*[Figfile] \\n[Fight]'
 .nr top +\\n[Fight]
 .sp \\n[Fight]u
 .\}
