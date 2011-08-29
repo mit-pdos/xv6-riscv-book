@@ -26,7 +26,7 @@ loads the first 512 bytes of data from the disk and executes it.
 The instructions in that 512 bytes must arrange to load the full
 operating system, in this case the xv6 kernel.
 The 512 bytes are called the
-.italic "boot loader" .
+.italic-index "boot loader" .
 The code for xv6's boot loader is in files
 .code bootasm.S
 and
@@ -273,7 +273,7 @@ addresses and the processor communicates with the device (at
 the operating system's behest) by reading and writing values
 at those addresses.  In fact, modern x86 architectures use
 this technique, called 
-.italic "memory-mapped I/O" , 
+.italic-index "memory-mapped I/O" , 
 for most high-speed devices such as network, disk, and graphics
 controllers.  For reasons of backwards compatibility,
 though, the old
@@ -288,9 +288,11 @@ IDE disk controller, which we will see shortly.
 .\"
 .section "Boot loader"
 .PP
+.index "boot loader
 When an x86 PC boots, it starts executing a program called the BIOS,
 which is stored in non-volatile memory on the motherboard.
 The BIOS's job is to prepare the hardware and
+.index "boot loader
 then transfer control to the operating system.
 Specifically, it transfers control to code loaded from the boot sector,
 the first 512-byte sector of the boot disk.
@@ -354,8 +356,9 @@ and stack reads and writes use
 .register ss .
 .figure x86_translation
 .PP
+.index "boot loader
 The addresses that an x86 program manipulates are called
-.italic "logical addresses" 
+.italic-index "logical addresses" 
 (see Fig. \n[fig:x86_translation]).
 A logical address consists of a segment selector and
 an offset, and is sometimes written as
@@ -364,10 +367,10 @@ More often, the segment is implicit and the program only
 directly manipulates the offset.
 The segmentation hardware performs the translation
 described above to generate
-.italic "linear addresses" .
+.italic-index "linear addresses" .
 The addresses that the processor chip sends to main memory
 are called
-.italic "physical addresses" .
+.italic-index "physical addresses" .
 If the paging hardware is enabled (see Chapter \*[CH:MEM]), it
 translates linear addresses to physical addresses;
 otherwise the processor uses linear addresses as physical addresses.
@@ -453,7 +456,7 @@ own memory.
 xv6 makes almost no use of segments; it uses the paging hardware
 instead, as Chapter \*[CH:MEM] describes.
 The boot loader sets up the segment descriptor table
-.code gdt
+.code-index gdt
 .lines bootasm.S:/^gdt:/,/data.seg/
 so that all segments have a base address of zero and the maximum possible
 limit (four gigabytes).
@@ -471,16 +474,18 @@ instruction
 .line bootasm.S:/lgdt/
 to load the processor's global descriptor table (GDT)
 register with the value
-.code gdtdesc
+.index "boot loader
+.index "global descriptor table
+.code-index gdtdesc
 .lines bootasm.S:/^gdtdesc:/,/address.gdt/ ,
 which points to the table
-.code gdt .
+.code-index gdt .
 .PP
 Once it has loaded the GDT register, the boot loader enables
 protected mode by
 setting the 1 bit
 (\c
-.code CR0_PE )
+.code-index CR0_PE )
 in register
 .register cr0
 .lines bootasm.S:/movl.*%cr0/,/movl.*,.%cr0/ .
@@ -502,7 +507,7 @@ The jump continues execution at the next line
 but in doing so sets 
 .register cs
 to refer to the code descriptor entry in
-.code gdt .
+.code-index gdt .
 That descriptor describes a 32-bit code segment,
 so the processor switches into 32-bit mode.
 The boot loader has nursed the processor
@@ -540,7 +545,7 @@ the stack will grow down from there, toward
 away from the boot loader.
 .PP
 Finally the boot loader calls the C function
-.code bootmain
+.code-index bootmain
 .line bootasm.S:/call.*bootmain/ .
 .code Bootmain 's
 job is to load and run the kernel.
@@ -711,7 +716,7 @@ to read each sector into memory.
 reads a single disk sector.
 It is our first example of a device driver, albeit a tiny one.
 A 
-.italic "device driver"
+.italic-index "device driver"
 is the program code and data that manages an I/O device such as disk,
 display, etc., typically using I/O instructions.
 .code Readsect
@@ -729,7 +734,7 @@ to
 reads the status byte until the bits are set that way.
 Chapter \*[CH:DISK] will examine more efficient ways to wait for hardware
 status changes, but busy waiting like this (also called 
-.italic polling )
+.italic-index polling )
 is fine for the boot loader.
 .PP
 Once the disk is ready,

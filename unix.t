@@ -12,6 +12,7 @@ Finally, operating systems provide controlled ways for programs
 to interact, so that they can share data or work together.
 .PP
 An operating system provides services to user programs through some interface.
+.index "interface design
 Designing a good interface turns out to be
 difficult.  On the one hand, we would like the interface to be
 simple and narrow because that makes it easier to get the
@@ -141,6 +142,7 @@ system call.
 .code Fork
 creates a new process, called the child, with exactly the same memory contents
 as the calling process, called the parent.
+.index "child process
 .code Fork
 returns in both the parent and the child.
 In the parent,

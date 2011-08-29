@@ -16,5 +16,5 @@
 		fi
 		prev=$i
 	done	
-)>pageorder
-echo pageorder
+)>z.pageorder
+echo z.pageorder

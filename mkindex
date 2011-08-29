@@ -1,0 +1,39 @@
+#!/usr/bin/perl
+
+while(<>) {
+	chomp;
+	if(/^p([0-9]+)/) {
+		$p = $1;
+	}
+	if(/x X index (.*)/) {
+		if(!defined($index{$1})) {
+			$index{$1} = [];
+		}
+		push @{$index{$1}}, $p;
+	}
+}
+
+foreach $key (sort {lc($a) cmp lc($b)} keys %index) {
+	my @a = @{$index{$key}};
+	my $last = 0;
+	$s = "";
+	for($i=0; $i<@a; $i++) {
+		if($i>0) {
+			$s .= ", ";
+		}
+		$lo = $a[$i];
+		$hi = $lo;
+		while($i+1<@a && $a[$i+1] <= $hi+1) {
+			$hi = $a[$i+1];
+			$i++;
+		}
+		$s .= $lo;
+		if($lo < $hi) {
+			$s .= "\\-$hi";
+		}
+	}
+	if($key =~ /(.*)\+code$/) {
+		$key = "\\fC$1\\fP";
+	}
+	print ".index-entry \"$key\" \"$s\n";
+}
