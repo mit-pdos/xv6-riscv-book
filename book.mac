@@ -146,8 +146,42 @@
 'lt \\n[line-length]u
 .po \\n[left-margin]u
 .if \\n%>0 .tl \(ts\\*[left-footer]\(ts\\*[center-footer]\(ts\\*[right-footer]\(ts
+.\" show index terms in upper right margin
+.ch page-bottom 20i
+.index-trap
 .ft \\n[save-ft]
 .ps \\n[save-ps]
+.sp |\\nxu
+.ch page-bottom -\\n[footer-margin]u/2u
+..
+.de index-trap
+.ev 1
+.mk x
+.sp |\\n[top]u
+.ad l
+.ps 9
+.vs 10.8
+.nr marginalia \\n[left-margin]u+\\n[line-length]u+0.2i
+.po \\n[marginalia]u
+.ll (8.4i-\\n[marginalia]u)
+.index-terms
+.br
+.ds index-terms "
+.po \\n[left-margin]u
+.ev
+..
+.de index-terms
+..
+.\"
+.\"	insert index term
+.\"	(no display, just creates the entry)
+.\"
+.de index
+.if !'\\$2'' .wa "likely missing quote in .index argument: \\$1 \\$2 \\$3 \\$4 \\$5
+.am index-terms xx
+\\h'-0.1i'\\$1\\X'index \\$1'
+.br
+.xx
 ..
 .\"
 .\"	bold
@@ -360,6 +394,7 @@ DRAFT as of \*[date]: Copyright 2009 Cox, Kaashoek, Morris
 .\"	.F3
 .\"
 .de F1
+.nr top 0
 .ll \\n[line-length]u
 .po \\n[left-margin]u
 .pl \\n[page-length]u
@@ -382,6 +417,7 @@ DRAFT as of \*[date]: Copyright 2009 Cox, Kaashoek, Morris
 \D'l \n[line-length]u 0'
 .sp 0.125i
 .mk x
+.index-trap
 \\X'end \\nx'
 ..
 .\"
@@ -403,7 +439,7 @@ DRAFT as of \*[date]: Copyright 2009 Cox, Kaashoek, Morris
 .ds Figfile \\*[fig-\\n[Fignum]-file]
 .ie \\n[Fight]-\\n(.t \{
 .\"	postpone figure to next page.
-.\".wa "Figure \\n[Fignum] postponed \\n[Fight] from \\*[Figfile]
+.wa "Figure \\n[Fignum] postponed \\n[Fight] from \\*[Figfile]
 .nr have-postponed-figs 1
 .am postponed-figs
 \\X'figure \\*[Figfile] \\n[Fight]'
@@ -412,7 +448,7 @@ DRAFT as of \*[date]: Copyright 2009 Cox, Kaashoek, Morris
 .\}
 .el \{
 .\"	put figure at top of this page.
-.\".wa "Figure \\n[Fignum] at top of this page from \\*[Figfile]
+.wa "Figure \\n[Fignum] at top of this page from \\*[Figfile]
 \\X'top \\n[top]'
 \\X'figure \\*[Figfile] \\n[Fight]'
 .nr top +\\n[Fight]

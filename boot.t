@@ -288,9 +288,11 @@ IDE disk controller, which we will see shortly.
 .\"
 .section "Boot loader"
 .PP
+.index "boot loader
 When an x86 PC boots, it starts executing a program called the BIOS,
 which is stored in non-volatile memory on the motherboard.
 The BIOS's job is to prepare the hardware and
+.index "boot loader
 then transfer control to the operating system.
 Specifically, it transfers control to code loaded from the boot sector,
 the first 512-byte sector of the boot disk.
@@ -354,6 +356,7 @@ and stack reads and writes use
 .register ss .
 .figure x86_translation
 .PP
+.index "boot loader
 The addresses that an x86 program manipulates are called
 .italic "logical addresses" 
 (see Fig. \n[fig:x86_translation]).
@@ -471,6 +474,8 @@ instruction
 .line bootasm.S:/lgdt/
 to load the processor's global descriptor table (GDT)
 register with the value
+.index "boot loader
+.index "global descriptor table
 .code gdtdesc
 .lines bootasm.S:/^gdtdesc:/,/address.gdt/ ,
 which points to the table
