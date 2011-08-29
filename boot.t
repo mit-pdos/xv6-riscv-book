@@ -1,5 +1,9 @@
 .chapter CH:BOOT "Boot loader"
 .ig
+
+aug 2011: let's cut this chapter altogether, probably move
+the bootasm.S etc. details to an appendix.
+
 	notes:
 	this chapter is an attempt to demand page that
 	information as needed while going through the source,

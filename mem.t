@@ -18,60 +18,30 @@
 .chapter CH:MEM "Processes"
 .PP
 One of an operating system's central roles
-is to allow multiple programs to share the processors
-and main memory safely, isolating them so that
-one errant program cannot break others.
-To that end, xv6 provides the concept of a process,
-as described in Chapter \*[CH:UNIX].
-To run a program
-.code sh
-and 
-.code wc ,
-xv6 creates one process for each of them.
-Each executes as if it has the computer to itself, and xv6
-transparently multiplexes the computer resources between them.
-For example, if the computer has one on more processors, xv6 will arrange that
-each process will run periodically on one of the processors.
-Furthermore, xv6 ensures that a bug in 
-.code sh 
-will not break 
-.code wc .
-That is, if 
-.code sh
-has a program error that causes it to write to an arbitrary memory location,
-that wild write won't effect 
-.code wc .
+is to allow multiple programs to share the computer
+safely, isolating them so that
+one buggy program cannot break others.
+To that end, xv6 provides processes,
+as introduced in Chapter \*[CH:UNIX].
+A process provides a program with what appear to be dedicated CPU and
+memory resources.
+Xv6 shares the hardware CPUs among runnable processes by periodically
+switching which processes are actively executing.
+Xv6 shares the computer's physical memory by partitioning it among
+the processes, providing each process with the illusion of private
+memory, and ensuring that a memory write by one
+process cannot modify a different process's memory.
 .PP
 This chapter examines how xv6 allocates
 memory to hold process code and data,
 how it creates a new process,
 and how it configures the processor's paging
-hardware to give each process the illusion that
-it has a private memory address space.
-The next few chapters will examine how xv6 uses hardware
-support for interrupts and context switching to create
-the illusion that each process has its own private processor.
+hardware to provide private memory address spaces.
 .\"
-.section "Address Spaces"
+.section "Paging hardware"
 .\"
 .PP
-xv6 ensures that each process can only read and write the memory that
-xv6 has allocated to it, and not for example the kernel's memory or
-the memory of other processes. xv6 also arranges for each process's
-memory to be contiguous and to start at virtual address zero. The C
-language definition and the Gnu linker expect process memory to be
-contiguous. Process memory starts at zero because that is traditional.
-A process's view of memory is called an
-.italic "address space."
-.PP
-The xv6 boot loader has set up the segmentation hardware so that virtual and
-physical addresses are always the same value: the segment descriptors
-all have a base of zero and the maximum possible limit.
-xv6 sets up the x86 paging hardware to translate (or "map") virtual to physical
-addresses in a way that implements process address spaces with
-the properties outlined in the previous paragraph.
-.PP
-The paging hardware uses a page table to translate virtual to
+The x86 paging hardware uses a page table to translate (or "map") virtual to
 physical addresses. A page table is logically an array of 2^20
 (1,048,576) page table entries (PTEs). Each PTE contains a
 20-bit physical page number (PPN) and some flags. The paging
@@ -84,10 +54,9 @@ the operating system control over virtual-to-physical address translations
 at the granularity of aligned chunks of 4096 (2^12) bytes.
 .figure x86_pagetable
 .PP
-On the x86, the translation from virtual to physical happens in two steps
-(except when super pages are used, which we discuss below).
-An x86 page table is stored in physical memory, in the form of a
-4096-byte 
+The actual translation happens in two steps.
+A page table is stored in physical memory as a two-level tree.
+The root of the tree is a 4096-byte 
 .italic "page directory" 
 that contains 1024 PTE-like references to 
 .italic "page table pages".
@@ -98,14 +67,14 @@ If the page directory entry is present,
 the paging hardware uses the next 10 bits of the virtual
 address to select a PTE from the page table page that the
 page directory entry refers to.
-If either of the page directory entry or the PTE is not present,
+If either the page directory entry or the PTE is not present,
 the paging hardware raises a fault.
 This two-level structure allows a page table to omit entire
 page table pages in the common case in which large ranges of
 virtual addresses have no mappings.
 .PP
 Each PTE contains flag bits that tell the paging hardware
-to restrict how the associated virtual address is used.
+how the associated virtual address is allowed to be used.
 .code PTE_P
 indicates whether the PTE is present: if it is
 not set, a reference to the page causes a fault (i.e. is not allowed).
@@ -122,43 +91,63 @@ A few notes about terms.
 Physical memory refers to storage cells in DRAM.
 A byte of physical memory has an address, called a physical address.
 A program uses virtual addresses, which the segmentation and
-paging hardware translates to physical addresses, and then
-sends to the DRAM hardware to read or write storage.
+paging hardware translate to physical addresses, and then
+send to the DRAM hardware to read or write storage.
 At this level of discussion there is no such thing as virtual memory,
 only virtual addresses.
 .\"
+.section "Address space overview"
+.\"
+.PP
+Xv6 uses the paging hardware to give each process its own view
+of memory, called an
+.italic "address space."
+Xv6 maintains a separate page table for each process that
+defines that process's address space.
+An address space includes the process's user memory starting
+at virtual address zero. Instructions usually come first,
+followed by global variables and a "heap" area (for malloc)
+that the process can expand as needed.
+.PP
+Each process's address space maps the kernel's instructions
+and data as well as the user program's memory.
+When a process invokes a system call, the system call
+executes in the kernel mappings of its address space.
+This arrangement exists so that the kernel's system call
+code can directly refer to user memory.
+In order to leave the most room for user memory to grow,
+xv6's address spaces map the kernel at high addresses,
+starting at
+.address 0xF0100000 .
+.\"
 .section "Code: entry page table"
 .\"
-The boot loader has loaded the xv6 kernel into memory at physical address
+The boot loader loads the xv6 kernel into memory at physical address
 .address 0x100000 ,
-but the xv6 Makefile has linked the kernel at a high address, namely
-.address 0xF0100000 .
-The reason that the kernel is linked high is so that user programs can use the
-low virtual addresses, from
-.address 0, till
-.address 0xF0100000 .
-xv6 uses
-.code KERNBASE 
-(see
-.file "memlayout.h"
-.sheet memlayout.h )
-to refer to this address.  We want such a large part of the address space for
-user programs because we want to put the user stack high so that it can grow
-down with plenty of space before it runs into the program's data structures.  We
-would like to put the program text and data structures low so that they can
-start at 0, a convenient convention.  We want to put the kernel and user program
-in a single address space so that the kernel can easily transfer data from the
-user program to the kernel, and back.   xv6 arrives at such an address space
-layout in a few steps.
-.PP
-xv6 uses the paging hardware to arrange that the link address
-.code KERNBASE ) (
-maps to the load address, because any memory reference xv6 makes will use a high
-address.  Thus, the first thing the 
+but the kernel expects to find its instructions and data starting at
+.address 0xF0100000 
+(called
+.code KERNLINK 
+.line memlayout.h:/define.KERNLINK/ ).
+The kernel also expects the address range
+.address 0xF0000000
+(
+.code KERNBASE )
+to
+.address 0xF00FFFFF
+to be mapped to some device hardware that appears
+at physical addresses
+.address 0x0
+to
+.address 0xFFFFFF .
+Thus, 
 .code entry
 .line 'bootmain.c:/entry.=/'
-does is setting up a page table for this mapping and enabling the paging
-hardware so that it can enter the C part of the kernel.
+sets up a page table that maps virtual addresses starting at
+.code KERNBASE
+to physical address
+.address 0x0
+and enables the paging hardware.
 The entry page table is defined 
 in main.c
 .line 'main.c:/enterpgdir/' .
@@ -278,7 +267,7 @@ by loading into
 .code %cr3 
 the physical address of the new page table.
 .\"
-.section "A process's address space"
+.section "Address space details"
 .\"
 The function
 .code setupkvm  
