@@ -566,11 +566,11 @@ A real boot loader might attempt to print an error message first.
 The C part of the boot loader,
 .file bootmain.c
 .line bootmain.c:1 ,
-loads a kernel from an IDE disk
-into memory and then starts executing it.
+expects to find a copy of the kernel executable on the
+disk starting at the second sector.
 The kernel is an ELF format binary, defined in
 .file elf.h .
-An ELF binary is an ELF file header,
+An ELF binary consists of an ELF header,
 .code struct
 .code elfhdr
 .line elf.h:/^struct.elfhdr/ ,
@@ -580,51 +580,35 @@ followed by a sequence of program section headers,
 .line elf.h:/^struct.proghdr/ .
 Each
 .code proghdr
-describes a section of the kernel that must be loaded into memory.
+describes a section of the kernel that must be loaded into memory;
+there is typically a section for instructions, and a few sections
+for different kinds of data.
 These headers typically take up the first hundred or so bytes
 of the binary.
 To get access to the headers,
 .code bootmain
-loads the first 4096 bytes of the file,
-a gross overestimation of the amount needed
+loads the first 4096 bytes of the ELF binary
 .line bootmain.c:/readseg/ .
 It places the in-memory copy at address
-.address 0x10000 ,
-another out-of-the-way memory address.
-.PP
-We've now seen two arbitrarily chosen addresses: the stack
-growing down from
-.address 0x7c00
-and the ELF header placed at
 .address 0x10000 .
-In ordinary programs, it is bad style to pick arbitrary memory addresses:
-one should obtain memory from a memory allocator like C's
-.code malloc .
-But the boot loader is not an ordinary program: it
-is a self-contained program that must fit in 512 bytes and
-run without an operating system.
-There is no room for a full memory allocator and really no need.
-The kernel itself does implement and use a memory allocator,
-described in Chapter \*[CH:MEM].
 .PP
 .code bootmain
-casts freely between pointers and integers
+casts between pointers and 
+.code int s
+and between different kinds of pointers
 .lines "bootmain.c:/elfhdr..0x10000/ 'bootmain.c:/readseg!(!(/' 'and so on'" .
-Programming languages distinguish the two to catch errors,
-but the underlying processor sees no difference.
-An operating system must work at the processor's level;
-occasionally it will need to treat a pointer as an integer or vice versa.
-C allows these conversions, in contrast to languages like Pascal and Java,
-precisely because one of the first uses of C was to write an
-operating system: Unix.
+These casts only make sense if the compiler and processor represent
+.code int s
+and all pointers in essentially the same way, which
+is not true for all hardware/compiler combinations.
+It is true for the x86 in 32-bit mode:
+.code int s
+are 32 bits wide, and all pointers are
+32-bit byte addresses.
 .PP
-Back to the boot loader, what should be an ELF binary header
-has been loaded into memory at address
-.code 0x10000
-.line bootmain.c:/readseg/ .
-The next step is to check that the first four bytes of the header,
-the so-called magic number,
-are the bytes
+The next step is a quick check that this probably is an
+ELF binary, and not an uninitialized disk.
+All correct ELF binaries start with the four-byte "magic number"
 .code 0x7F ,
 .code 'E' ,
 .code 'L' ,
@@ -632,34 +616,20 @@ are the bytes
 or
 .code ELF_MAGIC
 .line elf.h:/ELF_MAGIC/ .
-All ELF binary headers are required to begin with this magic number
-as identication.
 If the ELF header has the right magic number, the boot
-sector assumes that the binary is well-formed.
-There are many other sanity checks that a proper ELF loader would do,
-as we will see in Chapter \*[CH:MEM],
-but the boot loader doesn't have the code space.
-Checking the magic number guards against simply
-forgetting to write a kernel to the disk, not against
-malicious binaries.
+loader assumes that the binary is well-formed.
 .PP
-An ELF header points at a small number of program
-headers 
-.code proghdr s) (
-describing the sections that make up the
-running kernel image.
+The ELF header contains the offset in the binary of the
+.code proghdr s.
 Each
 .code proghdr
-supplies the address at which the program expects the
-section to appear in memory
-.code vaddr ), (
+supplies
 the address at which the section should be loaded in memory
 .code paddr ), (
 the location where the section's content lies on the disk
 relative to the start of the ELF header
 .code off ), (
 the number of bytes to load
-from the file
 .code filesz ), (
 and the number of bytes to allocate
 in memory
@@ -668,34 +638,19 @@ If
 .code memsz
 is larger than
 .code filesz ,
-the bytes not loaded from the file are to be zeroed.  This is
-more efficient, both in space and I/O, than storing the
-zeroed bytes directly in the binary.  As an example, the xv6
-kernel has one loadable program section:
+the bytes not loaded from the binary are to be zeroed.
+The xv6 kernel has one loadable program section:
 .P1
-# objdump -p kernel (last version)
+# objdump -p kernel
 kernel:     file format elf32-i386
 
 Program Header:
     LOAD off    0x00001000 vaddr 0xf0100000 paddr 0x00100000 align 2**12
          filesz 0x0000b57e memsz 0x000126d0 flags rwx
 .P2
-Notice that the program section has a
-.code memsz
-larger than its
-.code filesz :
-the first
-.code 0xb57e
-bytes are
-loaded from the kernel binary and the remaining
-.code 0x7152
-bytes are zeroed.
 .PP
 .code Bootmain
-uses the addresses in the
-.code proghdr
-to direct the loading of the kernel.
-It reads the section's content starting from the disk location
+reads the section's content starting from the disk location
 .code off
 bytes after the start of the ELF header,
 and writes to memory starting at address
@@ -725,7 +680,7 @@ bytes from the disk
 into memory at
 .code pa .
 The x86 IDE disk interface
-operates in terms of 512-byte chunks called sectors, so
+operates on 512-byte sectors, so
 .code readseg
 may read not only the desired section of memory but
 also some bytes before and after, depending on alignment.
@@ -757,8 +712,8 @@ reads a single disk sector.
 It is our first example of a device driver, albeit a tiny one.
 A 
 .italic "device driver"
-is the program code and data that manages an I/O device such as disk, display, etc.
-It is a piece of code that issues the I/O instructions to interact with a device.
+is the program code and data that manages an I/O device such as disk,
+display, etc., typically using I/O instructions.
 .code Readsect
 begins by calling
 .code waitdisk
@@ -930,13 +885,46 @@ which loops calling
 At the end of the loop,
 .code bootmain
 has loaded the kernel into memory.
-Now it is time to run the kernel.
-The ELF header specifies the kernel entry
-point, the
-.code %eip
-where the kernel expects to be started
-(just as the boot loader expected to be started at
-.address 0x7c00 ).  
+.PP
+The kernel has been compiled and linked so that it expects to
+find itself at virtual addresses starting at
+.code 0xf0100000 .
+That is, function call instructions mention destination addresses
+that look like
+.address 0xf01xxxxx ;
+you can see examples in
+.file kernel.asm .
+This address is configured in
+.file kernel.ld .
+.address 0xf0100000
+is a relatively high address, towards the end of the
+32-bit address space;
+Chapter \*[CH:MEM] explains the reasons for this choice.
+There may not be any physical memory at such a
+high address.
+Once the kernel starts executing, 
+it will set up the paging hardware to map virtual
+addresses starting at 
+.address 0xf0100000
+to physical addresses starting at
+.address 0x00100000 ;
+the kernel assumes that there is physical memory at
+this lower address.
+At this point in the boot process, however, paging
+is not enabled.
+Instead, 
+.file kernel.ld
+specifies that the ELF
+.code paddr
+start at
+.address 0x00100000 ,
+which causes the boot loader to copy the kernel to the
+low physical addresses to which the paging hardware
+will eventually point.
+.PP
+The boot loader's final step is to call the kernel's
+entry point, which is the instruction at which the
+kernel expects to start executing.
 For xv6 the entry address is
 .address 0xf0100020 : 
 .P1
@@ -947,55 +935,22 @@ architecture: i386, flags 0x00000112:
 EXEC_P, HAS_SYMS, D_PAGED
 start address 0xf0100020
 .P2
-The intent is that the kernel eventually execute at high
-virtual addresses, above address
-.address 0xf010000 ,
-as explained in Chapter \*[CH:MEM].
-However, at this time in the boot process, virtual addresses
-map directly to physical addresses, and there may be no
-memory at that address.
-For this reason, the xv6 Makefile
-uses the file 
-.file "kernel.ld"
-to instruct the linker (which produces the ELF headers)
-to load the kernel at address 
-.address 0x100000 
-even though it expects to execute starting at
-.address 0xf0100000 .
-This makes the reasonable assumption that there is memory at physical address
-.address 0x100000 .
-In order to find the address of the kernel entry point
-as loaded into memory, the boot loader subtracts
-.address 0xf000000
-from the ELF entry point, yielding
-.address 0x100020 .
-The kernel will soon enable the paging hardware and map
-virtual addresses starting at
-.address 0xf010000
-to physical addresses at
-.address 0x10000 ,
-so that instructions and data will appear at the virtual addresses at
-which the kernel code expects them.
-.PP
-The boot loader casts the entry address to
-a function pointer, and then calls that function, essentially jumping to the kernel's entry point
+The loader must correct this address to reflect the fact
+that it loaded the kernel at
+.address 0x00100000
+rather than at
+.address 0xf0100000 ,
+so it zeroes the high eight bits before calling the
+entry address
 .lines 'bootmain.c:/entry.=/,/entry!(!)/' .
-The kernel should not return, but if it does,
-.code bootmain
-will return, and then
-.file bootasm.S
-will attempt to return to the simulator and then loop forever.
 .PP
-The xv6 Makefile also specifies the entry point to the linker
-using 
+The xv6 Makefile specifies the entry point to the linker using 
 .code "-e entry" ,
-which is the function
+indicating that the entry point should be the function named
 .code entry .
 This function is defined in the file
 .file entry.S 
-(see sheet
-.sheet entry.S ).
-Chapter \*[CH:MEM] continues there.
+.line entry.S:/^entry/ .
 .\"
 .\" -------------------------------------------
 .\"
@@ -1022,16 +977,16 @@ less space-constrained BIOS for disk access rather than
 trying to drive the disk itself.  Then the full loader,
 relieved of the 512-byte limit, can implement the complexity
 needed to locate, load, and execute the desired kernel.
+Perhaps a more modern design would have the BIOS directly read
+a larger boot loader from the disk (and start it in
+protected and 32-bit mode).
 .PP
 This chapter is written as if the only thing that happens
 between power on and the execution of the boot loader
 is that the BIOS loads the boot sector.
 In fact the BIOS does a huge amount of initialization
 in order to make the complex hardware of a modern
-computer look like a simple standard PC.
-Perhaps a more modern design would have the BIOS read
-a larger boot loader from the disk, and start it in
-protected and 32-bit mode.
+computer look like a traditional standard PC.
 .PP
 TODO: Also, x86 does not imply BIOS: Macs use EFI.
 I wonder if the Mac has an A20 line.
@@ -1057,3 +1012,10 @@ Suppose you wanted bootmain() to load the kernel at 0x200000
 instead of 0x100000, and you did so by modifying bootmain()
 to add 0x100000 to the va of each ELF section. Something would
 go wrong. What?
+.exercise
+It seems potentially dangerous for the boot loader to copy the ELF
+header to memory at the arbitrary location
+.code 0x10000 .
+Why doesn't it call
+.code malloc
+to obtain the memory it needs?
