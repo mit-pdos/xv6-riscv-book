@@ -5,10 +5,7 @@ CONTENTS=\
 	trap\
 	lock\
 	sched\
-	disk\
-	fsdata\
-	fscrash\
-	fscall\
+	fs\
 	index\
 
 ORDER=\
