@@ -195,6 +195,10 @@
 .de code
 .font-change C "\\$1" "\\$2\\&" "\\$3"
 ..
+.de code-index
+.font-change C "\\$1" "\\$2\&" "\\$3"
+.index "\\$1+code
+..
 .\"
 .\"	font change
 .\"
@@ -207,6 +211,10 @@
 .\"
 .de italic
 .font-change I "\\$1" "\\$2\\&" "\\$3"
+..
+.de italic-index
+.font-change C "\\$1" "\\$2\&" "\\$3"
+.index "\\$1
 ..
 .\"
 .\"	left-adjust paragraph
@@ -439,7 +447,7 @@ DRAFT as of \*[date]: Copyright 2009 Cox, Kaashoek, Morris
 .ds Figfile \\*[fig-\\n[Fignum]-file]
 .ie \\n[Fight]-\\n(.t \{
 .\"	postpone figure to next page.
-.wa "Figure \\n[Fignum] postponed \\n[Fight] from \\*[Figfile]
+.\".wa "Figure \\n[Fignum] postponed \\n[Fight] from \\*[Figfile]
 .nr have-postponed-figs 1
 .am postponed-figs
 \\X'figure \\*[Figfile] \\n[Fight]'
@@ -448,7 +456,7 @@ DRAFT as of \*[date]: Copyright 2009 Cox, Kaashoek, Morris
 .\}
 .el \{
 .\"	put figure at top of this page.
-.wa "Figure \\n[Fignum] at top of this page from \\*[Figfile]
+.\".wa "Figure \\n[Fignum] at top of this page from \\*[Figfile]
 \\X'top \\n[top]'
 \\X'figure \\*[Figfile] \\n[Fight]'
 .nr top +\\n[Fight]

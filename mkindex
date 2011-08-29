@@ -13,7 +13,7 @@ while(<>) {
 	}
 }
 
-foreach $key (sort keys %index) {
+foreach $key (sort {lc($a) cmp lc($b)} keys %index) {
 	my @a = @{$index{$key}};
 	my $last = 0;
 	$s = "";
@@ -31,6 +31,9 @@ foreach $key (sort keys %index) {
 		if($lo < $hi) {
 			$s .= "\\-$hi";
 		}
+	}
+	if($key =~ /(.*)\+code$/) {
+		$key = "\\fC$1\\fP";
 	}
 	print ".index-entry \"$key\" \"$s\n";
 }
