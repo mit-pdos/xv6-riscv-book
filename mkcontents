@@ -1,15 +1,14 @@
 #!/bin/sh
 
-echo '.so contents0.t'
 for i in $*
 do
-	num=$(grep '^\.chapter ' $i.t | sed 1q | awk '{print $2}')
+	num=$(egrep '^\.(chapter|appendix) ' $i.t | sed 1q | awk '{print $2}')
 	case "$num" in
-	CH:*)
+	CH:* | APP:*)
 		num=$(awk '$1==".ds" && $2=="'"$num"'" {print $3}' book.mac)
 		;;
 	esac
-	title=$(egrep '^\.chapter(like)? ' $i.t | sed 1q | sed 's/^[^"]*//; s/"//g')
+	title=$(egrep '^\.(chapter(like)?|appendix) ' $i.t | sed 1q | sed 's/^[^"]*//; s/"//g')
 	p=$(cat z.$i.first)
 	echo .TOC '"'"$num"'"' '"'"$p"'"' '"'"$title"
 done
