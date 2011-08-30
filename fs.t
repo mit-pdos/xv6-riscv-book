@@ -927,8 +927,7 @@ begin by checking for
 .code ==
 .code T_DEV .
 This case handles special devices whose data does not
-live in the file system; we will return to this case in
-Chapter \*[CH:FSCALL].
+live in the file system; we will return to this case in the file descriptor layer.
 .PP
 .code Stati
 .line fs.c:/^stati/
@@ -937,8 +936,7 @@ copies inode metadata into the
 structure, which is exposed to user programs
 via the
 .code stat
-system call
-(see Chapter \*[CH:FSCALL]).
+system call.
 .\"
 .\"
 .\"
@@ -975,8 +973,7 @@ it updates
 .code *poff ,
 releases the block, and returns an unlocked inode
 obtained via
-.code iget 
-.line 'fs.c:/^......if.namecmp/,/^......}/' .
+.code iget .
 .code Dirlookup
 is the reason that 
 .code iget
@@ -1213,7 +1210,7 @@ use the i/o offset as the offset for the operation
 and then advance it
 .lines "'file.c:/readi/,/./' 'file.c:/writei/,/./'" .
 Pipes have no concept of offset.
-Remember from Chapter \*[CH:FSDATA] that the inode functions require the caller
+Recall that the inode functions require the caller
 to handle locking
 .lines "'file.c:/stati/-1,/iunlock/' 'file.c:/readi/-1,/iunlock/' 'file.c:/writei/-1,/iunlock/'" .
 The inode locking has the convenient side effect that the
