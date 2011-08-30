@@ -41,8 +41,11 @@ hardware to provide private memory address spaces.
 .section "Paging hardware"
 .\"
 .PP
-Xv6 runs on PC hardware and use hardware page tables supported by the x86 processor.
-The x86 paging hardware uses a page table to translate (or "map") 
+Xv6 runs on PC hardware and use hardware page tables supported by the x86
+processor. Appendix \*[APP:HW] provides a brief overview of PC hardware, if you
+are unfamiliar with it, but the text will introduce the x86 features that xv6
+specifically relies on as they come up.  The x86 paging hardware uses a page
+table to translate (or "map")
 .italic-index virtual 
 (the addresses that an x86 program manipulates) to
 .italic-index physical 
@@ -50,7 +53,7 @@ addresses (the addresses that the processor chip sends to main memory).
 .PP
 A page table is logically an array of 2^20
 (1,048,576) 
-.italic-index "page table entries (PTEs). 
+.italic-index "page table entries (PTEs)". 
 Each PTE contains a
 20-bit physical page number (PPN) and some flags. The paging
 hardware translates a virtual address by using its top 20 bits
@@ -65,9 +68,9 @@ at the granularity of aligned chunks of 4096 (2^12) bytes.
 As shown in Figure \n[x86_pagetable], the actual translation happens in two steps.
 A page table is stored in physical memory as a two-level tree.
 The root of the tree is a 4096-byte 
-.italic "page directory" 
+.italic-index "page directory" 
 that contains 1024 PTE-like references to 
-.italic "page table pages".
+.italic-index "page table pages".
 Each page table page is an array of 1024 32-bit PTEs.
 The paging hardware uses the top 10 bits of a virtual address to
 select a page directory entry.
@@ -109,7 +112,7 @@ only virtual addresses.
 .PP
 Xv6 uses the paging hardware to give each process its own view
 of memory, called an
-.italic "address space."
+.italic-index "address space" .
 Xv6 maintains a separate page table for each process that
 defines that process's address space.
 An address space includes the process's user memory starting
@@ -142,7 +145,7 @@ is to load the kernel into memory and starts the xv6 kernel at
 Xv6 has a tiny boot loader (a full
 description can be found in Appendix \*[APP:BOOT]).
 .PP
-The boot loader loads the xv6 kernel into memory at physical addres
+The boot loader loads the xv6 kernel into memory at physical address
 .address 0x100000 ,
 but the kernel expects to find its instructions and data starting at
 .address 0xF0100000 
@@ -171,7 +174,7 @@ The entry page table is defined
 in main.c
 .line 'main.c:/enterpgdir/' .
 It is 2^10 (1024) entries, instead of 2^20, because it takes advantage of 
-.italic "super pages" , 
+.italic-index "super pages" , 
 which are pages that are 4 Mbyte (2^22) large.  Entry 0 maps virtual address
 .address 0
 to

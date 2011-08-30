@@ -23,14 +23,14 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="0.45254832"
-     inkscape:cx="1148.5218"
+     inkscape:zoom="0.8359833"
+     inkscape:cx="543.11346"
      inkscape:cy="418.67866"
      inkscape:document-units="mm"
      inkscape:current-layer="layer1"
      showgrid="false"
-     inkscape:window-width="1280"
-     inkscape:window-height="756"
+     inkscape:window-width="1436"
+     inkscape:window-height="1141"
      inkscape:window-x="0"
      inkscape:window-y="16"
      inkscape:window-maximized="0"
@@ -104,32 +104,6 @@
          d="M 0,0 5,-5 -12.5,0 5,5 0,0 z"
          id="path3647" />
     </marker>
-    <filter
-       height="1.24"
-       y="-0.11999999"
-       width="1.24"
-       x="-0.12000001"
-       id="filter3629"
-       inkscape:collect="always"
-       color-interpolation-filters="sRGB">
-      <feGaussianBlur
-         id="feGaussianBlur3631"
-         stdDeviation="3.9862206"
-         inkscape:collect="always" />
-    </filter>
-    <filter
-       height="1.24"
-       y="-0.11999999"
-       width="1.24"
-       x="-0.12000001"
-       id="filter3629-4"
-       inkscape:collect="always"
-       color-interpolation-filters="sRGB">
-      <feGaussianBlur
-         id="feGaussianBlur3631-7"
-         stdDeviation="3.9862206"
-         inkscape:collect="always" />
-    </filter>
     <marker
        style="overflow:visible"
        id="Arrow2Lendv"
@@ -974,26 +948,15 @@
          style="font-size:10px;text-align:start;text-anchor:start">20</tspan></text>
     <text
        id="text9862"
-       y="357.92682"
-       x="136.96133"
+       y="347.16104"
+       x="293.66302"
        style="font-size:40px;font-style:normal;font-weight:normal;text-align:center;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
        xml:space="preserve"><tspan
          style="font-size:14px;text-align:center;text-anchor:middle"
-         y="357.92682"
-         x="136.96133"
+         y="347.16104"
+         x="293.66302"
          id="tspan9864"
-         sodipodi:role="line">Logical Address</tspan></text>
-    <text
-       xml:space="preserve"
-       style="font-size:40px;font-style:normal;font-weight:normal;text-align:center;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
-       x="290.08231"
-       y="351.2977"
-       id="text9876"><tspan
-         sodipodi:role="line"
-         id="tspan9878"
-         x="290.08231"
-         y="351.2977"
-         style="font-size:14px;text-align:center;text-anchor:middle">Linear Address</tspan></text>
+         sodipodi:role="line">VIrtual address</tspan></text>
     <text
        id="text9880"
        y="351.2977"
