@@ -3,91 +3,82 @@
 	have to decide on processor vs CPU, i/o vs I/O.
 	
 	be sure to say buffer, not block 
-..  
 
-.PP 
+	figure out a way to make the parallel between BUSY and locks clear
+        maybe don't use sleep/wakeup but having something ref counts to avoid
+        the race in bget.
+
+	TODO: Explain the name sys_mknod.
+	Perhaps mknod was for a while the only way to create anything?
+..  
 For users it is convenient to have a file system to store files and to share
 them with other users.  Unix supports files, directories, pathnames, etc. for
-this purpose (see Chapter \*[CH:UNIX]) .  The files live typically on a device
+this purpose (see Chapter \*[CH:UNIX]).  The files live typically on a device
 that provides
 .italic persistent 
 storage so that after a shut down, and starting the system again, the file is
 still present.  An example device that provided persistent storage is the IDE
 disk, which can read and write blocks (see Chapter \*[CH:TRAP]).
-.PP
 To support files, directories, and pathnames, the file system must address
 several challenges:
-
 .IP \[bu]  
 Files must be allowed to be larger than a single block.  The file system needs
 an on-disk data structure to keep track of all the blocks that belong to a
 single file.  Similarly, it needs a data structure to record which blocks are
 free.
-
 .IP \[bu] 
 Updating the on-disk data structures must be done in a way that if the file
 system crashes (e.g., due to a power failure) that the data structures aren't
 left in some incorrect intermediate state (e.g., blocks appear both on the free
 list and in a file, or in neither).
-
 .IP \[bu]  
 Different processes may access the same file and there must be a way to ensure
 that only one process at the same time can edit the file system data.
-
 .IP \[bu]  
 Reading and writing file data to disk is orders of magnitude slower than reading
 and writing from memory, and a file system must maintain an in-memory cache of
 popular blocks.
-
 .PP
-Addressing all of these challenges well can result in a complex implementation.
-xv6 implements simple solutions to address these challenges. The result is a
-correct file system (e.g., it handles failures during file system operations)
-but not the highest performing one.
-.PP
-The xv6 system implements the file system using 6 layers:
-.P1
-   file descriptors
--------------
-   pathnames
--------------
-   directories
--------------
-    file
--------------
-    logging
--------------
-    blocks cache
--------------
-.P2
-The lowest layer is the block allocator, which keeps track of which blocks are
-in use, and the buffer cache, which synchronizes access to disk blocks, making
-sure that only one kernel process at a time can edit the file system data in any
-particular buffer.  The second layer provides logging access to blocks on the
-disk so that modifications to a collection of disk blocks can happen atomically
-in a
-.italic transaction .
-The third layer implements unnamed files, each consisting
-of an 
+Addressing all of these challenges well can result in a complex implementation,
+but xv6 uses a simple approach: correct but slow.  The implementation is
+organized in 6 layers, as shown in Figure \n[fslayer].  The lowest layer
+provides block access through the buffer cache, which synchronizes access to
+disk blocks, making sure that only one kernel process at a time can edit the
+file system data in any particular buffer.  The second layer allows higher
+layers to wrap updates to several blocks in a
+.italic-index transaction ,
+to ensure that the blocks are updates atomically (i.e., all of them are updated
+or none).
+The third layer provides unnamed files, represented using
+an 
 .italic inode
 and a sequence of blocks holding the file's data.  The fourth
 layer implements directories of named files.  A directory is a special kind of
 inode whose content is a sequence of directory entries, each of which contains a
 name and a reference to the named file's inode.  The fifth layer provides
 hierarchical path names like
-.code /usr/rtm/xv6/fs.c .
-The final layer provides access for user processes to the file system through
-file descriptors.
-The rest of this chapter discusses each layer in turn, starting from the bottom.
+.code /usr/rtm/xv6/fs.c ,
+using recursive lookup.
+The final layer abstracts many Unix resources (e.g., pipes, devices,
+files, etc.) using the file system interface, simplifying the live of
+application programmers.
+.PP
+The rest of this chapter discusses each layer, starting from the bottom. Several
+layers are trivial because lower layers provide carefully chosen abstractions.
+The file system is a good example of how well designed abstractions lead to
+surprising generality.
+.figure fslayer
 .\"
 .\" -------------------------------------------
 .\"
-.section "Code: Buffer cache Layer"
+.section "Buffer cache Layer"
 .PP
-The buffer cache synchronizes access to disk blocks,
-making sure that only one kernel process at a time
-can edit the file system data in any particular buffer.
-The buffer cache does this by blocking processes in
+The buffer cache has two jobs: (1) it synchronizes access to disk blocks making
+sure that only one kernel process at a time can edit the file system data in any
+particular buffer; (2) it caches popular blocks so that they don't to be read
+from the slow disk.
+.PP
+The buffer cache synchronizes block access by blocking processes in
 .code bread
 (pronounced b-read):
 if two processes call
@@ -100,6 +91,17 @@ the first process has signaled that it is done with the buffer
 by calling
 .code brelse
 (b-release).
+.PP
+The buffer cache has a fixed number of buffers to hold disk blocks and so when
+the file system asks for a new block, the buffer cache must re-use a buffer.
+The buffer cache implements the recently-used replacement strategy: it uses the
+least-recently used buffer and uses that for the new block.  The implicit
+assumption is that the least recently used buffer is the one least likely to be
+used again soon.
+.\"
+.\" -------------------------------------------
+.\"
+.section "Code: Buffer cache"
 .PP
 The buffer cache is a doubly-linked list of buffers.
 .code Binit ,
@@ -261,13 +263,12 @@ The scan to pick a buffer to reuse picks the least recently used
 block by scanning backward
 (following 
 .code prev
-pointers);
-the implicit assumption is that the least recently used
-buffer is the one least likely to be used again soon.
+pointers).
 .\"
 .\" -------------------------------------------
 .\"
 .section "Logging layer"
+.PP
 One of the most interesting aspects of file system design is crash
 recovery. The problem arises because many file system operations
 involve multiple writes to the disk, and a crash after a subset of the
@@ -281,9 +282,12 @@ likely to cause serious problems after a reboot.
 Xv6 solves the problem of crashes during file system operations with a
 simple version of logging. An xv6 system call does not directly write
 the on-disk file system data structures. Instead, it places a
-description of all the disk writes it wishes to make in a ``log'' on
-the disk. Once the system call has logged its writes, it writes a
-special ``commit'' record to the disk indicating the the log contains
+description of all the disk writes it wishes to make in a 
+.italic-index log 
+on the disk. Once the system call has logged its writes, it writes a
+special 
+.italic-index commit
+record to the disk indicating the the log contains
 a complete operation. At that point the system call copies the writes
 to the on-disk file system data structures. After those writes have
 completed, the system call erases the log on disk.
@@ -309,7 +313,7 @@ operation's writes appear on the disk, or none of them appear.
 .\"
 .\"
 .\"
-.section "Design"
+.section "Log design"
 .PP
 The log resides at a known fixed location at the very end of the disk.
 It consists of a header block followed by a sequence
@@ -363,7 +367,7 @@ only one bitmap block.
 .\"
 .\"
 .\"
-.section "Code"
+.section "Code: logging"
 .PP
 A typical use of the log in a system call looks like this:
 .P1
@@ -413,7 +417,11 @@ will result in the recovery code ignoring the log.
 .PP
 .code recover_from_log
 .line log.c:/^recover_from_log/
-is called during a reboot.
+is called from 
+.code initlog
+.line log.c:/^initlog/ ,
+which is called during boot before the first user process runs.
+.line proc.c:/initlog/
 It reads the log header, and mimics the actions of
 .code commit_trans
 if the header indicates that the log contains a committed transaction.
@@ -448,25 +456,19 @@ before inode.
 .\"
 .\"
 .section "File layer"
+.figure fslayout
 .PP
-Xv6 lays out its file system as follows.
-The file system does not use block 0 (it holds the boot sector).
-Block 1 is called the superblock; it contains metadata about the
-file system.
-Blocks starting at 2 hold inodes,
-with multiple inodes per block.
-After those come bitmap blocks tracking which data
-blocks are in use. Most of the remaining blocks are data blocks,
-which hold file and directory contents.
-The blocks at the very end of the disk hold the log.
-.PP
-The header
-.code fs.h
-.line fs.h:1
-contains constants and data structures describing the layout of the file system.
-For example, the superblock contains four numbers: the file system size in blocks,
-the number of data blocks, the number of inodes, and the number of blocks
-in the log.
+The file layer represents unnamed files as an inode with several blocks.  This
+layer must be able to allocate inodes, file blocks, and decide which blocks have
+inodes and which have data blocks.  To do so, it divides the disk into several
+sections, as shown in Figure \n[fig:fslayout].  The file system does not use
+block 0 (it holds the boot sector).  Block 1 is called the superblock; it
+contains metadata about the file system (the file system size in blocks, the
+number of data blocks, the number of inodes, and the number of blocks in the
+log).  Blocks starting at 2 hold inodes, with multiple inodes per block.  After
+those come bitmap blocks tracking which data blocks are in use. Most of the
+remaining blocks are data blocks, which hold file and directory contents.  The
+blocks at the very end of the disk hold the log.
 .\"
 .\" -------------------------------------------
 .\"
@@ -940,10 +942,11 @@ system call
 .\"
 .\"
 .\"
-.section "Code: pathname layer"
+.section "Code: directory layer"
 .PP
-Xv6 implements a directory as a special kind of file:
-it has type
+The directory layer is simple, because a directory is nothing more
+that a special kind of file. 
+Its inode has type
 .code T_DIR
 and its data is a sequence of directory entries.
 Each entry is a
@@ -1027,13 +1030,13 @@ by writing at offset
 .\"
 .\"
 .\"
-.section "Code: Path names
+.section "Code: Path names"
 .PP
-Lookup of full pathnames in the directory hierarchy
-is the job of
+Like directories, path names require little extra code, because they just call
+.code dirlookup
+recursively, using
 .code namei
 and related functions.
-.PP
 .code Namei
 .line fs.c:/^namei/
 evaluates 
@@ -1098,13 +1101,15 @@ and prepares for the next iteration by setting
 .lines 'fs.c:/^....if..next.*dirlookup/,/^....ip.=.next/' .
 When the loop runs out of path elements, it returns
 .code ip .
-.PP
-TODO: It is possible that namei belongs with all its uses,
-like open and close, and not here in data structure land.
 .\"
 .\"
 .\"
 .section "File descriptor layer"
+.PP
+One of the cool aspect of the Unix interface is that most resources in Unix are
+represented as a file, including devices such as the console, pipes, and of
+course, real files.  The file descriptor layer is the layer that achieves this
+uniformity.
 .PP
 Xv6 gives each process its own table of open files, or
 file descriptors, as we saw in
@@ -1218,102 +1223,20 @@ cannot overwrite each other's data, though their writes may end up interlaced.
 .\"
 .\"
 .\"
-.section "Code: System calls
+.section "Code: System calls"
 .PP
-Chapter \*[CH:TRAP] introduced helper functions for
-implementing system calls: 
-.code argint ,
-.code argstr ,
-and
-.code argptr .
-The file system adds another:
-.code argfd
-.line sysfile.c:/^argfd/
-interprets the 
-.code n th
-argument as a file descriptor.
-It calls
-.code argint
-to fetch the integer
-.code fd
-and then checks that
-.code fd
-is a valid file table index.
-Although 
-.code argfd
-returns a reference to the file in
-.code *pf ,
-it does not increment the reference count:
-the caller shares the reference from the file table.
-As we will see, this convention avoids reference count
-operations in most system calls.
-.PP
-The function
-.code fdalloc
-.line sysfile.c:/^fdalloc/
-helps manage the current process's file table:
-it scans the table for an open slot, and if it finds one,
-inserts
-.code f
-and returns the index of the slot,
-which will serve as the file descriptor.
-It is up to the caller to manage the reference count.
-.PP
-Finally we are ready to implement system calls.
-The simplest is
-.code sys_dup
-.line sysfile.c:/^sys_dup/ ,
-which makes use of both of these helpers.
-It calls
-.code argfd
-to obtain the file corresponding to the system call argument
-and then calls
-.code fdalloc
-to assign it an additional file descriptor.
-If both are successful, it calls
-.code filedup
-to adjust the reference count:
-.code fdalloc
-has created a new reference.
-Similarly, 
-.code sys_close
-.line sysfile.c:/^sys_close/
-obtains a file, removes it from the file table,
-and releases the reference.
-.PP
-.code Sys_read
-.line sysfile.c:/^sys_read/
-parses its arguments as a file descriptor,
-a pointer, and a size and then calls
-.code fileread .
-Note that no reference count operations are
-necessary: 
-.code sys_read
-is piggybacking on the reference in the file table.
-The reference cannot disappear during the
-.code sys_read
-because each process has its own file table,
-and it is impossible for the process to call
-.code sys_close
-while it is in the middle of
-.code sys_read .
-.code Sys_write
-.line sysfile.c:/^sys_write/
-is identical to
-.code sys_read
-except that it calls
-.code filewrite .
-.code Sys_fstat
-.line sysfile.c:/^sys_fstat/
-is very similar to the previous two.
+With the functions that the lower layers provide the implementation for most
+systems is trivial (see
+.file sysfile.c  ). 
+There are a few calls that
+deserve a closer look.
 .PP
 .code Sys_link
 and
 .code sys_unlink
 edit directories, creating or removing references to inodes.
-They are another good example of the power of exposing
-the file system locking to higher-level functions.
-.PP
+They are another good example of the power of using 
+transactions. 
 .code Sys_link
 .line sysfile.c:/^sys_link/
 begins by fetching its arguments, two strings
@@ -1350,62 +1273,14 @@ If an error like this occurs,
 must go back and decrement
 .code ip->nlink .
 .PP
-.code Sys_link
-would have simpler control flow and error handling if it
-delayed the increment of
+Transactions simplify the implementation because it requires updating multiple
+disk blocks, but we don't have to worry about the order in which we do
+them. They either will all succeed or none.
+For example, without transactions updating
 .code ip->nlink
-until it had successfully created the link,
-but doing this would put the file system temporarily in an unsafe state.
-The low-level file system code in Chapter \*[CH:FSDATA] was
-careful not to write out pointers to disk blocks before writing
-the disk blocks themselves, lest the machine crash with a file system
-with pointers to old blocks.
-The same principle is being used here: to avoid dangling pointers,
-it is important that the link count always be at least as large
-as the true number of links.
-If the system crashed after
-.code sys_link
-creating the second link but before it incremented
-.code ip->nlink ,
-then the file system would have an inode with
-two links but a link count set to one.
-Removing one of the links would cause the inode to be 
-reused even though there was still a reference to it.
-.PP
-.code Sys_unlink
-.line sysfile.c:/^sys_unlink/
-is the opposite of
-.code sys_link :
-it removes the named
-.code path
-from the file system.
-It calls
-.code nameiparent
-to find the parent directory,
-.code sysfile.c:/nameiparent.path/ ,
-checks that the final element,
-.code name ,
-exists in the directory
-.line sysfile.c:/dirlookup.*==/ ,
-clears the directory entry
-.line sysfile.c:/writei/ ,
-and then updates the link count
-.line "'sysfile.c:/dp->nlink--/+5'" .
-As was the case for
-.code sys_link ,
-the order here is important:
-.code sys_unlink
-must update the link count only after the 
-directory entry has been removed.
-There are a few more steps if the entry
-being removed is a directory:
-it must be empty
-.line "'sysfile.c:/&& .isdirempty/'"
-and after it has been removed, the parent directory's
-link count must be decremented,
-to reflect that the child's
-.code ..
-entry is gone.
+before creating a link, would put the file system temporarily in an unsafe
+state, and a crash in between could result in havoc.
+With transactions we don't have to worry about this.
 .PP
 .code Sys_link
 creates a new name for an existing inode.
@@ -1419,7 +1294,7 @@ with the
 .code O_CREATE
 flag makes a new ordinary file,
 .code mkdir
-makes a new directory ,
+makes a new directoryy,
 and
 .code mkdev
 makes a new device file.
@@ -1498,11 +1373,6 @@ it is easy to implement
 .code sys_mkdir ,
 and
 .code sys_mknod .
-.ig
-(TODO: Explain the name sys_mknod.
-Perhaps mknod was for a while the only way to create anything?)
-..
-.PP
 .code Sys_open
 .line sysfile.c:/^sys_open/
 is the most complex, because creating a new file is only
@@ -1539,26 +1409,6 @@ in the current process's table,
 and these data structures are in memory, not on disk, so
 they don't persist across a machine crash.
 .PP
-.code Sys_mkdir
-.line sysfile.c:/^sys_mkdir/
-and
-.code sys_mknod
-.line sysfile.c:/^sys_mknod/
-are trivial:
-they parse their arguments, call
-.code create ,
-and release the inode it returns.
-.PP
-.code Sys_chdir
-.line sysfile.c:/^sys_chdir/
-changes the current directory, which is stored as
-.code cp->cwd
-rather than in the file table.
-It evaluates the new path, checks that it is a directory,
-releases the old
-.code cp->cwd ,
-and saves the new one in its place.
-.PP
 Chapter \*[CH:SCHED] examined the implementation of pipes
 before we even had a file system.
 .code Sys_pipe
@@ -1567,13 +1417,6 @@ by providing a way to create a pipe pair.
 Its argument is a pointer to space for two integers,
 where it will record the two new file descriptors.
 Then it allocates the pipe and installs the file descriptors.
-Chapter \*[CH:SCHED] did not examine
-.code pipealloc
-.line pipe.c:/^pipealloc/
-and
-.code pipeclose
-.line pipe.c:/^pipeclose/ ,
-but they should be straightforward after walking through the examples above.
 .\"
 .\" -------------------------------------------
 .\"
@@ -1684,10 +1527,16 @@ and wait for the response before returning.
 .\"
 .section "Exercises"
 .PP
-Exercise: why doesn't filealloc panic when it runs out of files?
+1. why panic in balloc?  Can we recover?
+.PP
+2. why panic in ialloc?  Can we recover?
+.PP
+3. inode generation numbers.
+.PP
+4. Why doesn't filealloc panic when it runs out of files?
 Why is this more common and therefore worth handling?
 .PP
-Exercise: suppose the file corresponding to 
+5. Suppose the file corresponding to 
 .code ip
 gets unlinked by another process
 between 
@@ -1699,7 +1548,7 @@ and
 Will the link be created correctly?
 Why or why not?
 .PP
-Exercise:
+6.
 .code create
 makes four function calls (one to
 .code ialloc
@@ -1713,7 +1562,7 @@ calls
 Why is this acceptable?
 Why can't any of those four calls fail?
 .PP
-Exercise: 
+7. 
 .code sys_chdir
 calls
 .code iunlock(ip)
