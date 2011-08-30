@@ -889,14 +889,6 @@ is the process's largest valid virtual address,
 .code p->sz .
 The instruction pointer is the entry point
 for the initcode, address 0.
-Note that
-.code initcode
-is not an ELF binary and has no ELF header.
-It is just a small headerless binary that expects
-to run at address 0,
-just as the boot loader is a small headerless binary
-that expects to run at address
-.code 0x7c00 .
 .PP
 .code Userinit
 sets
@@ -909,8 +901,7 @@ Setting
 sets the process's current working directory;
 we will examine
 .code namei
-in detail in Chapter \*[CH:FSDATA].
-.\" TODO: double-check: is it FSDATA or FSCALL?  namei might move.
+in detail in Chapter \*[CH:FS].
 .PP
 Once the process is initialized,
 .code userinit
@@ -1168,10 +1159,6 @@ As we saw in Chapter \*[CH:UNIX],
 replaces the memory and registers of the
 current process with a new program, but it leaves the
 file descriptors, process id, and parent process the same.
-.code Exec
-is thus little more than a binary loader, just like the one 
-in the boot loader from Chapter \*[CH:BOOT].
-The additional complexity comes from setting up the stack.
 .figure processlayout
 .PP
 Figure \n[fig:processlayout] shows the user memory image of an executing process.
@@ -1216,12 +1203,40 @@ opens the named binary
 using
 .code namei
 .line exec.c:/namei/ ,
-which is explained in Chapter \*[CH:FSDATA],
-and then reads the ELF header.
-Like the boot loader, it uses
-.code elf.magic
-to decide whether the binary is an ELF binary
-.line exec.c:/Check.ELF/,/ELF_MAGIC/+1 .
+which is explained in Chapter \*[CH:FS],
+and then reads the ELF header. Xv6 applications are described in the widely-used 
+.italic-index "ELF format" , 
+defined in
+.file elf.h .
+An ELF binary consists of an ELF header,
+.code struct
+.code elfhdr
+.line elf.h:/^struct.elfhdr/ ,
+followed by a sequence of program section headers,
+.code struct
+.code proghdr
+.line elf.h:/^struct.proghdr/ .
+Each
+.code proghdr
+describes a section of the application that must be loaded into memory;
+there is typically a section for instructions, and a few sections
+for different kinds of data.
+These headers typically take up the first hundred or so bytes
+of the binary.
+.PP
+The first step is a quick check that the binary  probably is an
+ELF binary, and not some other file.
+All correct ELF binaries start with the four-byte "magic number"
+.code 0x7F ,
+.code 'E' ,
+.code 'L' ,
+.code 'F' ,
+or
+.code ELF_MAGIC
+.line elf.h:/ELF_MAGIC/ .
+If the ELF header has the right magic number, xv6
+assumes that the binary is well-formed.
+.PP
 Then it allocates a new page table with no user mappings with
 .code setupkvm
 .line exec.c:/setupkvm/ ,

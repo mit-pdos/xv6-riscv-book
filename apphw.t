@@ -157,9 +157,7 @@ pseudo-registers
 .register gdtr
 and 
 .register ldtr .
-The control, segment selector, and descriptor table
-registers are important to any operating system, as we
-will see in this chapter.
+The control registers and segment registers are important to any operating system.
 The floating-point and debug registers are less interesting
 and not used by xv6.
 .PP

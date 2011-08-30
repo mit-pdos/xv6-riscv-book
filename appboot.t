@@ -331,37 +331,6 @@ are 32 bits wide, and all pointers are
 .PP
 The next step is a quick check that this probably is an
 ELF binary, and not an uninitialized disk.
-All correct ELF binaries start with the four-byte "magic number"
-.code 0x7F ,
-.code 'E' ,
-.code 'L' ,
-.code 'F' ,
-or
-.code ELF_MAGIC
-.line elf.h:/ELF_MAGIC/ .
-If the ELF header has the right magic number, the boot
-loader assumes that the binary is well-formed.
-.PP
-The ELF header contains the offset in the binary of the
-.code proghdr s.
-Each
-.code proghdr
-supplies
-the address at which the section should be loaded in memory
-.code paddr ), (
-the location where the section's content lies on the disk
-relative to the start of the ELF header
-.code off ), (
-the number of bytes to load
-.code filesz ), (
-and the number of bytes to allocate
-in memory
-.code memsz ). (
-If
-.code memsz
-is larger than
-.code filesz ,
-the bytes not loaded from the binary are to be zeroed.
 The xv6 kernel has one loadable program section:
 .P1
 # objdump -p kernel
@@ -432,11 +401,6 @@ to read each sector into memory.
 .code Readsect
 .line bootmain.c:/^readsect/
 reads a single disk sector.
-It is our first example of a device driver, albeit a tiny one.
-A 
-.italic-index "device driver"
-is the program code and data that manages an I/O device such as disk,
-display, etc., typically using I/O instructions.
 .code Readsect
 begins by calling
 .code waitdisk
@@ -450,9 +414,8 @@ to
 .code Waitdisk
 .line bootmain.c:/^waitdisk/
 reads the status byte until the bits are set that way.
-Chapter \*[CH:DISK] will examine more efficient ways to wait for hardware
-status changes, but busy waiting like this (also called 
-.italic-index polling )
+Chapter \*[CH:TRAP] uses efficient ways to wait for hardware
+status changes, but polling like this
 is fine for the boot loader.
 .PP
 Once the disk is ready,
