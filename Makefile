@@ -1,11 +1,12 @@
 CONTENTS_INDEXED=\
 	unix\
-	boot\
 	mem\
 	trap\
 	lock\
 	sched\
 	fs\
+	apphw\
+	appboot\
 
 CONTENTS=\
 	$(CONTENTS_INDEXED)\
@@ -55,7 +56,7 @@ book.ps: $(DIT)
 	ps2pdf $*.ps $*.pdf
 
 clean:
-	rm -f $(PS) $(PDF) $(DIT) z.* contents.t
+	rm -f $(PS) $(PDF) $(DIT) z.*
 
 xv6-code.pdf: ../xv6/xv6.pdf
 	cp $^ $@
