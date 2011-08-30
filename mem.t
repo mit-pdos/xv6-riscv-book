@@ -41,9 +41,17 @@ hardware to provide private memory address spaces.
 .section "Paging hardware"
 .\"
 .PP
-The x86 paging hardware uses a page table to translate (or "map") virtual to
-physical addresses. A page table is logically an array of 2^20
-(1,048,576) page table entries (PTEs). Each PTE contains a
+Xv6 runs on PC hardware and use hardware page tables supported by the x86 processor.
+The x86 paging hardware uses a page table to translate (or "map") 
+.italic-index virtual 
+(the addresses that an x86 program manipulates) to
+.italic-index physical 
+addresses (the addresses that the processor chip sends to main memory).
+.PP
+A page table is logically an array of 2^20
+(1,048,576) 
+.italic-index "page table entries (PTEs). 
+Each PTE contains a
 20-bit physical page number (PPN) and some flags. The paging
 hardware translates a virtual address by using its top 20 bits
 to index into the page table to find a PTE, and replacing
@@ -54,7 +62,7 @@ the operating system control over virtual-to-physical address translations
 at the granularity of aligned chunks of 4096 (2^12) bytes.
 .figure x86_pagetable
 .PP
-The actual translation happens in two steps.
+As shown in Figure \n[x86_pagetable], the actual translation happens in two steps.
 A page table is stored in physical memory as a two-level tree.
 The root of the tree is a 4096-byte 
 .italic "page directory" 
@@ -90,7 +98,7 @@ Figure \n[fig:x86_pagetable] shows how it all works.
 A few notes about terms.
 Physical memory refers to storage cells in DRAM.
 A byte of physical memory has an address, called a physical address.
-A program uses virtual addresses, which the segmentation and
+A program uses virtual addresses, which the 
 paging hardware translate to physical addresses, and then
 send to the DRAM hardware to read or write storage.
 At this level of discussion there is no such thing as virtual memory,
@@ -122,7 +130,19 @@ starting at
 .\"
 .section "Code: entry page table"
 .\"
-The boot loader loads the xv6 kernel into memory at physical address
+When a PC starts it runs with the paging hardware is disabled, and the
+kernel is not even in memory.   The PC hardware starts first executing a minimal
+operating systems, called the BIOS, which configures the hardware.  The BIOS
+loads a boot sector from disk, and the boot sector contains  a boot loader. The
+job of the
+.italic-index "boot loader"
+is to load the kernel into memory and starts the xv6 kernel at
+.code entry 
+.line entry.S:/^entry/ .
+Xv6 has a tiny boot loader (a full
+description can be found in Appendix \*[APP:BOOT]).
+.PP
+The boot loader loads the xv6 kernel into memory at physical addres
 .address 0x100000 ,
 but the kernel expects to find its instructions and data starting at
 .address 0xF0100000 
@@ -131,8 +151,7 @@ but the kernel expects to find its instructions and data starting at
 .line memlayout.h:/define.KERNLINK/ ).
 The kernel also expects the address range
 .address 0xF0000000
-(
-.code KERNBASE )
+.code KERNBASE ) (
 to
 .address 0xF00FFFFF
 to be mapped to some device hardware that appears
@@ -165,7 +184,8 @@ This part ensures that low addresses are mapped to low addresses; this is
 important to do because the boot loader started running the kernel at low
 addresses (e.g., the 
 .code %eip
-is set to 0x100020 ).
+is set to 
+.address 0x100020 ).
 The pages are mapped as present
 .code PTE_P
 (present),
