@@ -203,7 +203,7 @@ image loaded from a file stored in the file system.
 The file must have a particular format, which specifies which part of
 the file holds instructions, which part is data, at which instruction
 to start, etc.. The format xv6
-uses is called the ELF format, which Chapter \*[CH:BOOT] discusses in
+uses is called the ELF format, which Chapter \*[CH:MEM] discusses in
 more detail.
 When
 .code exec

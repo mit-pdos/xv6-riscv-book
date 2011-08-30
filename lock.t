@@ -468,8 +468,7 @@ and
 .line spinlock.c:/^popcli/
 to manage a stack of ``disable interrupts'' operations
 .code cli "" (
-is the x86 instruction that disables interrupts,
-as we saw in Chapter \*[CH:BOOT]).
+is the x86 instruction that disables interrupts.
 .code Acquire
 calls
 .code pushcli

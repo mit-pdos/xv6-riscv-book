@@ -14,6 +14,7 @@
   mention why still have SEG_UCODE/SEG_UDATA?
   do we ever really say what the low two bits of %cs do?
     in particular their interaction with PTE_U
+  show elf header for init
 ..
 .chapter CH:MEM "Processes"
 .PP
@@ -1078,9 +1079,7 @@ holds zero and
 .code %esp
 holds 4096.
 These are virtual addresses in the process's address space.
-The processor's paging hardware translates them into physical addresses
-(we'll ignore segments since xv6 sets them up with the identity mapping
-.line vm.c:/^seginit/ ).
+The processor's paging hardware translates them into physical addresses.
 .code allocuvm
 set up the PTE for the page at virtual address zero to
 point to the physical memory allocated for this process,
@@ -1364,8 +1363,7 @@ xv6 uses the linear scan
 (the first of many) for simplicity.
 .PP
 Like most operating systems, xv6 uses the paging hardware
-for memory protection and mapping and mostly ignores
-segmentation. Most operating systems make far more sophisticated
+for memory protection and mapping. Most operating systems make far more sophisticated
 use of paging than xv6; for example, xv6 lacks demand
 paging from disk, copy-on-write fork, shared memory,
 and automatically extending stacks.
