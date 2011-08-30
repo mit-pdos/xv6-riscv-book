@@ -10,6 +10,8 @@
 
 	TODO: Explain the name sys_mknod.
 	Perhaps mknod was for a while the only way to create anything?
+	
+	Mount
 ..  
 For users it is convenient to have a file system to store files and to share
 them with other users.  Unix supports files, directories, pathnames, etc. for
@@ -35,8 +37,8 @@ list and in a file, or in neither).
 Different processes may access the same file and there must be a way to ensure
 that only one process at the same time can edit the file system data.
 .IP \[bu]  
-Reading and writing file data to disk is orders of magnitude slower than reading
-and writing from memory, and a file system must maintain an in-memory cache of
+Accessing a disk is orders of magnitude slower than accessing
+memory, and a file system must maintain an in-memory cache of
 popular blocks.
 .PP
 Addressing all of these challenges well can result in a complex implementation,
@@ -53,7 +55,7 @@ The third layer provides unnamed files, represented using
 an 
 .italic inode
 and a sequence of blocks holding the file's data.  The fourth
-layer implements directories of named files.  A directory is a special kind of
+layer implements directories as a special kind of
 inode whose content is a sequence of directory entries, each of which contains a
 name and a reference to the named file's inode.  The fifth layer provides
 hierarchical path names like
@@ -62,21 +64,21 @@ using recursive lookup.
 The final layer abstracts many Unix resources (e.g., pipes, devices,
 files, etc.) using the file system interface, simplifying the live of
 application programmers.
+.figure fslayer
 .PP
 The rest of this chapter discusses each layer, starting from the bottom. Several
 layers are trivial because lower layers provide carefully chosen abstractions.
 The file system is a good example of how well designed abstractions lead to
 surprising generality.
-.figure fslayer
 .\"
 .\" -------------------------------------------
 .\"
 .section "Buffer cache Layer"
 .PP
-The buffer cache has two jobs: (1) it synchronizes access to disk blocks making
-sure that only one kernel process at a time can edit the file system data in any
-particular buffer; (2) it caches popular blocks so that they don't to be read
-from the slow disk.
+The buffer cache has two jobs: (1) synchronize access to disk blocks making sure
+that only one copy of a block is in memory and only one kernel process at a time
+can edit that copy; (2) cache popular blocks so that they don't to be read from
+the slow disk.
 .PP
 The buffer cache synchronizes block access by blocking processes in
 .code bread
@@ -90,7 +92,8 @@ the call in the other process will not return until
 the first process has signaled that it is done with the buffer
 by calling
 .code brelse
-(b-release).
+(b-release).  This ensures that only one copy of a block will be in memory
+and  that only one process can update it.
 .PP
 The buffer cache has a fixed number of buffers to hold disk blocks and so when
 the file system asks for a new block, the buffer cache must re-use a buffer.
@@ -164,6 +167,32 @@ a different disk sector.
 has no choice but to start over
 .line bio.c:/goto.loop/ ,
 hoping that the outcome will be different this time.
+.figure bufrace
+.PP
+To make the risks concrete, suppose we didn't have the
+.code goto
+statement, then the race in Figure \n[bufrace] could occur.
+The first process has a buffer and has loaded sector 3 in it.
+Now two other processes come along. The first one does a 
+.code get
+for buffer 3 and sleeps in the loop for cached blocks.  The second one does a
+.code get
+for buffer 4, and could sleep on the same buffer but in the loop for freshly
+allocated blocks because there are no free buffers and the buffer that holds 3
+is the one at the front of the list and is selected for reuse.   The first
+process releases the buffer and 
+.code wakeup
+happens to schedule process 3 first, and it will grab the buffer and load sector
+4 in it.   When it is done it will release the buffer (containing sector 4) and
+wakeup process 2.  Without the 
+.code goto
+statement process 2 will mark the buffer 
+.code BUSY ,
+and return from
+.code bget ,
+but the buffer contains sector 4, instead of 3.  This error could result in all
+kinds of havoc, because sectors 3 and 4 have different content; xv6 uses them
+for storing inodes.
 .PP
 If there is no buffer for the given sector,
 .code bget
@@ -466,9 +495,9 @@ block 0 (it holds the boot sector).  Block 1 is called the superblock; it
 contains metadata about the file system (the file system size in blocks, the
 number of data blocks, the number of inodes, and the number of blocks in the
 log).  Blocks starting at 2 hold inodes, with multiple inodes per block.  After
-those come bitmap blocks tracking which data blocks are in use. Most of the
-remaining blocks are data blocks, which hold file and directory contents.  The
-blocks at the very end of the disk hold the log.
+those come bitmap blocks tracking which data blocks are in use (i.e., it is part
+of some file). Most of the remaining blocks are data blocks, which hold file and
+directory contents.  The blocks at the very end of the disk hold the log.
 .\"
 .\" -------------------------------------------
 .\"
@@ -1222,8 +1251,8 @@ cannot overwrite each other's data, though their writes may end up interlaced.
 .\"
 .section "Code: System calls"
 .PP
-With the functions that the lower layers provide the implementation for most
-systems is trivial (see
+With the functions that the lower layers provide the implementation of most
+system calls is trivial (see
 .file sysfile.c  ). 
 There are a few calls that
 deserve a closer look.
@@ -1248,9 +1277,7 @@ exists and is not  a directory
 .code sys_link
 increments its 
 .code ip->nlink
-count—the number of directories in which it appears—\c
-and flushes the new count to disk
-.lines sysfile.c:/nlink!+!+/,/iupdate/ .
+count.
 Then
 .code sys_link
 calls
@@ -1273,7 +1300,7 @@ must go back and decrement
 Transactions simplify the implementation because it requires updating multiple
 disk blocks, but we don't have to worry about the order in which we do
 them. They either will all succeed or none.
-For example, without transactions updating
+For example, without transactions, updating
 .code ip->nlink
 before creating a link, would put the file system temporarily in an unsafe
 state, and a crash in between could result in havoc.
@@ -1398,13 +1425,8 @@ allocates a file and a file descriptor
 .line sysfile.c:/filealloc.*fdalloc/
 and then fills in the file
 .lines sysfile.c:/type.=.FD_INODE/,/writable/ .
-Since we have been so careful to initialize data structures
-before creating pointers to them, this sequence
-should feel wrong, but it is safe:
-no other process can access the partially initialized file since it is only
-in the current process's table, 
-and these data structures are in memory, not on disk, so
-they don't persist across a machine crash.
+Note that no other process can access the partially initialized file since it is only
+in the current process's table.
 .PP
 Chapter \*[CH:SCHED] examined the implementation of pipes
 before we even had a file system.

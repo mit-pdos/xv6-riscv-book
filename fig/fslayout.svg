@@ -59,14 +59,14 @@
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
      inkscape:zoom="0.70737049"
-     inkscape:cx="308.30061"
+     inkscape:cx="559.17846"
      inkscape:cy="511.61273"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="true"
      inkscape:window-width="1392"
      inkscape:window-height="1046"
-     inkscape:window-x="583"
+     inkscape:window-x="384"
      inkscape:window-y="0"
      inkscape:window-maximized="0">
     <inkscape:grid
@@ -128,7 +128,7 @@
            height="137.12758"
            x="39.583218"
            y="267.68219" /></flowRegion><flowPara
-         id="flowPara2862"></flowPara></flowRoot>    <rect
+         id="flowPara2862" /></flowRoot>    <rect
        style="fill:none;stroke:#000000;stroke-width:2;stroke-miterlimit:4;stroke-opacity:0.95454544;stroke-dasharray:none;stroke-dashoffset:0"
        id="rect2865"
        width="880"
@@ -235,7 +235,7 @@
          x="164"
          y="636.36218">1</tspan></text>
     <path
-       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       style="fill:none;stroke:#000000;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:8,8;stroke-dashoffset:0"
        d="m 300,532.36218 c 0,80 0,80 0,80"
        id="path2903" />
     <path
@@ -243,7 +243,7 @@
        d="m 380,532.36218 c 0,80 0,80 0,80"
        style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
     <path
-       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       style="fill:none;stroke:#000000;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:4,8;stroke-dashoffset:0"
        d="m 460,532.36218 c 0,80 0,80 0,80"
        id="path2907" />
     <path
@@ -251,7 +251,7 @@
        d="m 540,532.36218 c 0,80 0,80 0,80"
        style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
     <path
-       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       style="fill:none;stroke:#000000;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:4,8;stroke-dashoffset:0"
        d="m 860,532.36218 c 0,80 0,80 0,80"
        id="path2911" />
     <path
@@ -259,13 +259,13 @@
        d="m 780,532.36218 c 0,80 0,80 0,80"
        style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
     <path
-       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       style="fill:none;stroke:#000000;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:4,8;stroke-dashoffset:0"
        d="m 620,532.36218 c 0,80 0,80 0,80"
        id="path2915" />
     <path
        id="path2917"
        d="m 700,532.36218 c 0,80 0,80 0,80"
-       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+       style="fill:none;stroke:#000000;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:4,8;stroke-dashoffset:0" />
     <text
        sodipodi:linespacing="125%"
        id="text2919"
