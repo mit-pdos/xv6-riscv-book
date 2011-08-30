@@ -886,8 +886,7 @@ It begins by calling
 to wait for the disk to
 be able to accept commands.
 The disk hardware presents status bits on port
-.address 0x1f7 ,
-as we saw in chapter \*[CH:BOOT].
+.address 0x1f7 .
 .code Idewait
 .line ide.c:/^idewait/
 polls the status bits until the busy bit
@@ -933,7 +932,7 @@ reads the buffer from the disk.
 .PP
 Disk accesses typically take milliseconds,
 a long time for a processor.
-In Chapter \*[CH:BOOT], the boot loader
+The boot loader
 issues disk read commands and reads the status
 bits repeatedly until the data is ready.
 This 
