@@ -50,7 +50,9 @@ hardware devices.
 When xv6 is ready (in Chapter \*[CH:TRAP]), it will
 re-enable interrupts.
 .PP
-The processor is in "real mode," in which it simulates an Intel 8088.
+The processor is in 
+.italic-index "real mode" ,
+in which it simulates an Intel 8088.
 In real mode there are eight 16-bit general-purpose registers,
 but the processor sends 20 bits of address to memory.
 The segment registers
@@ -99,8 +101,9 @@ addresses by the segmentation harware, and then used directly
 as physical addresses.
 Xv6 configures the segmentation hardware to translate logical
 to linear addresses without change, so that they are always equal.
-For historical reasons we will use the term "virtual address" to
-refer to addresses manipulated by programs; an xv6 virtual address
+For historical reasons we will use the term 
+.italic-index "virtual address" 
+to refer to addresses manipulated by programs; an xv6 virtual address
 is the same as an x86 logical address, and is equal to the
 linear address to which the segmentation hardware maps it.
 Once paging is enabled, the only interesting address mapping
@@ -153,8 +156,9 @@ controller on ports 0x64 and 0x60
 Real mode's 16-bit general-purpose and segment registers
 make it awkward for a program to use more than 65,536 bytes
 of memory, and impossible to use more than a megabyte.
-x86 processors since the 80286 have a "protected mode" which allows
-physical addresses to have many more bits, and 
+x86 processors since the 80286 have a 
+.italic-index "protected mode" ,
+which allows physical addresses to have many more bits, and 
 (since the 80386)
 a "32-bit" mode that causes registers, virtual addresses,
 and most integer arithmetic to be carried out with 32 bits

@@ -1405,7 +1405,8 @@ for memory protection and mapping. Most operating systems make far more sophisti
 use of paging than xv6; for example, xv6 lacks demand
 paging from disk, copy-on-write fork, shared memory,
 and automatically extending stacks.
-xv6 does use segments for the common trick of
+The x86 also supports address translation using segmentation (see Appendix \*[APP:BOOT]),
+but xv6 uses them only for the common trick of
 implementing per-cpu variables such as
 .code proc
 that are at a fixed address but have different values
