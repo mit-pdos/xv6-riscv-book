@@ -152,6 +152,13 @@ The reason it doesn't load the kernel at
 where the kernel expects to find its instructions and data,
 is that there may not be any physical memory at such
 a high address on a small machine.
+The reason it places the kernel at
+.address 0x100000
+rather than
+.address 0x0
+is because the address range
+.address 0xa0000:0x100000
+contains older I/O devices.
 To allow the rest of the kernel to run,
 .code entry
 sets up a page table that maps virtual addresses starting at
@@ -306,66 +313,42 @@ Most processes do not use the entire user address space;
 xv6 leaves
 .code PTE_P
 clear in unused PTEs.
-.PP
 Different processes' page tables translate user addresses
 to different pages of physical memory, so that each process has
-private memory.
-However, xv6 sets up every process's page table to translate addresses
-above
-.address KERNBASE
-in the same way.
+private user memory.
+.PP
+Xv6 includes all mappings needed for the kernel to run in every
+process's page table; these mappings all appear above
+.address KERNBASE .
 It maps virtual addresses
 .address KERNBASE:KERNBASE+PHYSTOP
 to
 .address 0:PHYSTOP .
-The kernel needs this mapping because it relies on being able to
-read and write each page of physical memory, though this scheme
-does limit the amount of physical memory xv6 can use to
-.code min(-KERNBASE,PHYSTOP)
-bytes.
+One reason for this mapping is so that the kernel can use its
+own instructions and data.
+Another reason is that the kernel sometimes needs to be able
+to write a given page of physical memory, for example
+when creating page table pages; having every physical
+page appear at a predictable virtual address makes this convenient.
+A defect of this arrangement is that xv6 cannot make use of
+more than 2 GB of physical memory.
+Some devices that use memory-mapped I/O appear at physical
+addresses starting at
+.address 0xFE000000 ,
+so xv6 page tables including a direct mapping for them.
 Xv6 does not set the
 .code PTE_U
 flag in the PTEs above
 .address KERNBASE ,
 so only the kernel can use them.
-For example, the kernel can use its own instructions and data
-(at virtual addresses starting at 
-.address KERNBASE+ 0x100000),
-since the boot loader loaded the kernel at physical address 
-.address 0x100000 , 
-and the kernel maps
-.address KERNBASE+0x100000
-to 
-.address 0x100000 .
-The reason that the kernel is at 
-.address 0x100000
-in physical memory is because the address range from
-.address 0xa0000
-(640 Kbyte)
-till 
-.address 0x100000
-contains many older I/O devices.
-The newer devices live in the device memory
-at the top of the physical address space, starting
-at 
-.address 0xFE000000 .
-The kernel can also read and write the physical memory beyond the end of its
-data segment, where it allocates physical pages for user text, data, etc for a
-process.  As mentioned above, xv6 maps these physical pages into the lower part
-of the address space so that the user process can reference its own physical
-memory (but not the physical pages of other processes).
 .PP 
-Every process's page table simultaneously contains
-translations for both all of the process's memory and all
-of the kernel's memory.
-This setup allows system calls and interrupts to switch
-between a running process and the kernel without
-having to switch page tables.
+Having every process's page table contain mappings for
+both user memory and the entire kernel is convenient
+when switching from user code to kernel code during
+system calls and interrupts: such switches do not
+require page table switches.
 For the most part the kernel does not have its own page
 table; it is almost always borrowing some process's page table.
-The price paid for this convenience is that the sum of the size
-of the kernel and the largest process must be less than four
-gigabytes on a machine with 32-bit addresses.
 .PP
 To review, xv6 ensures that each process can only use its own memory,
 and that a process sees its memory as having contiguous virtual addresses.
@@ -373,7 +356,8 @@ xv6 implements the first by setting the
 .code PTE_U
 bit only on PTEs of virtual addresses that refer to the process's own memory.
 It implements the second using the ability of page tables to translate
-a virtual address to a different physical address.
+successive virtual addresses to whatever physical pages happen to
+be allocated to the process.
 .\"
 .section "Code: creating an address space"
 .\"
