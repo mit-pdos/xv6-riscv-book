@@ -33,11 +33,11 @@ the processes, providing each process with the illusion of private
 memory, and ensuring that a memory write by one
 process cannot modify a different process's memory.
 .PP
-This chapter examines how xv6 allocates
-memory to hold process code and data,
-how it creates a new process,
-and how it configures the processor's paging
-hardware to provide private memory address spaces.
+This chapter examines how xv6
+configures the processor's paging
+hardware to provide processes with private address spaces,
+how it allocates memory to hold process code and data,
+and how it creates new processes.
 .\"
 .section "Paging hardware"
 .\"
@@ -131,10 +131,10 @@ When a process invokes a system call, the system call
 executes in the kernel mappings of the process's address space.
 This arrangement exists so that the kernel's system call
 code can directly refer to user memory.
-In order to leave the most room for user memory to grow,
+In order to leave room for user memory to grow,
 xv6's address spaces map the kernel at high addresses,
 starting at
-.address 0xF0100000 .
+.address 0x80100000 .
 .\"
 .section "Code: entry page table"
 .\"
@@ -152,15 +152,15 @@ virtual addresses map directly to physical addresses.
 The boot loader loads the xv6 kernel into memory at physical address
 .address 0x100000 ,
 but the kernel expects to find its instructions and data starting at
-.address 0xF0100000 
+.address 0x80100000 
 (called
 .code KERNLINK 
 .line memlayout.h:/define.KERNLINK/ ).
 The kernel also expects the address range
-.address 0xF0000000
+.address 0x80000000
 .code KERNBASE ) (
 to
-.address 0xF00FFFFF
+.code KERNBASE+0xFFFFF
 to be mapped to physical addresses
 .address 0x0
 to
@@ -209,9 +209,9 @@ The flags and all other page hardware related structures are defined in
 .PP
 Entry 960
 maps virtual addresses
-.address 0xF0000000
+.code KERNBASE
 to 
-.address 0xF0400000
+.address KERNBASE+0x400000
 to physical addresses
 .address 0
 to 
@@ -280,8 +280,8 @@ Finally
 jumps to
 .code main,
 which is also a high address.
-The indirect call is needed because the assembler would
-generate a PC-relative direct call, which would execute
+The indirect jump is needed because the assembler would
+generate a PC-relative direct jump, which would execute
 the low-memory version of 
 .code main .
 Main cannot return, since the there's no return PC on the stack.
@@ -306,43 +306,41 @@ by loading the physical address of the new page table into
 .\"
 .section "Address space details"
 .\"
-The function
-.code setupkvm  
-is not only invoked by xv6 during initialization, but every time xv6 creates a
-new user process.   So, this is a good point to understand how xv6 uses the
-paging hardware for isolating user processes.
+The next few pages explain how xv6 creates per-process address
+spaces and how it allocates physical memory, in preparation
+for a description of how it creates processes.
 .figure xv6_layout
 .PP
 Each process has a separate page table, and xv6 tells
 the page table hardware to switch
 page tables when xv6 switches between processes.
 As shown in Figure \n[fig:xv6_layout],
-a process's memory starts at virtual address
+a process's user memory starts at virtual address
 zero and can grow to the address
 .address KERNBASE
 (see
 .file "memlayout.h"
 .sheet memlayout.h ),
-allowing for a 3,932,160 Kbyte user process.
-xv6 sets up the PTEs for the process's virtual addresses to point
-to whatever pages of physical memory xv6 has allocated for
-the process's memory, and sets the 
+allowing a process to use up to 3,932,160 Kbytes of memory.
+When a process asks xv6 for more memory,
+xv6 first finds free physical pages to provide the storage,
+and then adds PTEs to the process's page table that point
+to the new physical pages.
+xv6 sets the 
 .code PTE_U ,
 .code PTE_W ,
 and 
 .code PTE_P
 flags in these PTEs.
-If a process has asked xv6 for less memory than
-.address KERNBASE , 
-xv6 will leave 
+Most processes do not use the entire user address space;
+xv6 leaves
 .code PTE_P
-clear in the remainder of the PTEs.
+clear in unused PTEs.
 .PP
-Different processes' page tables translate the addresses till 
-.address KERNBASE
+Different processes' page tables translate user addresses
 to different pages of physical memory, so that each process has
 private memory.
-However, xv6 sets up every process's page table to translate virtual addresses
+However, xv6 sets up every process's page table to translate addresses
 above
 .address KERNBASE
 in the same way.
@@ -354,11 +352,15 @@ to
 .address 0
 to
 .address PHYSTOP.
-This allows the kernel to address all of physical memory.
-However, xv6 does not set the
+The kernel needs this mapping because it relies on being able to
+read and write each page of physical memory, though this scheme
+does limit the amount of physical memory xv6 can use to
+.code min(-KERNBASE,PHYSTOP)
+bytes.
+Xv6 does not set the
 .code PTE_U
 flag in the PTEs above
-.address KERNBASE.
+.address KERNBASE ,
 so only the kernel can use them.
 For example, the kernel can use its own instructions and data
 (at virtual addresses starting at 
@@ -505,7 +507,7 @@ Suppose that the current size of the process is 12 kilobytes,
 and that xv6 finds a free page of physical memory at physical address
 .address 0x601000,
 which the kernel references using virtual address
-.address 0xF0601000. 
+.code KERNBASE+0x601000 .
 In order to ensure that process memory remains contiguous,
 that physical page should appear at virtual address 0x3000 when
 the process is running.
@@ -523,7 +525,9 @@ in that PTE.
 Now the process will be able to use 16 kilobytes of contiguous
 memory starting at virtual address zero.
 Two different PTEs now refer to the physical memory at 0x601000:
-the PTE for virtual address 0xF0601000 and the PTE for virtual address
+the PTE for virtual address
+.code KERNBASE+0x601000
+and the PTE for virtual address
 0x3000. The kernel can use both
 addresses; the process can use only the second one.
 .PP
@@ -1515,3 +1519,11 @@ with command line
 .code myprog
 .code arg1 .
 Implement support for this convention in xv6.
+
+5.
+.code KERNBASE 
+limits the amount of memory a single process can use,
+which might be irritating on a machine with a full 4 GB of RAM.
+Would raising
+.code KERNBASE
+allow a process to use more memory?
