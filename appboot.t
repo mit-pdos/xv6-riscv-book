@@ -291,29 +291,15 @@ The C part of the boot loader,
 .line bootmain.c:1 ,
 expects to find a copy of the kernel executable on the
 disk starting at the second sector.
-The kernel is an ELF format binary, defined in
-.file elf.h .
-An ELF binary consists of an ELF header,
-.code struct
-.code elfhdr
-.line elf.h:/^struct.elfhdr/ ,
-followed by a sequence of program section headers,
-.code struct
-.code proghdr
-.line elf.h:/^struct.proghdr/ .
-Each
-.code proghdr
-describes a section of the kernel that must be loaded into memory;
-there is typically a section for instructions, and a few sections
-for different kinds of data.
-These headers typically take up the first hundred or so bytes
-of the binary.
-To get access to the headers,
+The kernel is an ELF format binary, 
+as we have seen in Chapter \*[CH:MEM].
+To get access to the ELF headers,
 .code bootmain
 loads the first 4096 bytes of the ELF binary
 .line bootmain.c:/readseg/ .
 It places the in-memory copy at address
 .address 0x10000 .
+.ig
 .PP
 .code bootmain
 casts between pointers and 
@@ -328,19 +314,10 @@ It is true for the x86 in 32-bit mode:
 .code int s
 are 32 bits wide, and all pointers are
 32-bit byte addresses.
+..
 .PP
 The next step is a quick check that this probably is an
 ELF binary, and not an uninitialized disk.
-The xv6 kernel has one loadable program section:
-.P1
-# objdump -p kernel
-kernel:     file format elf32-i386
-
-Program Header:
-    LOAD off    0x00001000 vaddr 0xf0100000 paddr 0x00100000 align 2**12
-         filesz 0x0000b57e memsz 0x000126d0 flags rwx
-.P2
-.PP
 .code Bootmain
 reads the section's content starting from the disk location
 .code off
@@ -362,6 +339,7 @@ uses the x86 instruction
 .opcode rep
 .opcode stosb
 to initialize every byte of a block of memory.
+.ig
 .PP
 .code Readseg
 .line bootmain.c:/^readseg/
@@ -571,6 +549,7 @@ which loops calling
 At the end of the loop,
 .code bootmain
 has loaded the kernel into memory.
+..
 .PP
 The kernel has been compiled and linked so that it expects to
 find itself at virtual addresses starting at
