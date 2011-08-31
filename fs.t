@@ -815,11 +815,12 @@ It does this by zeroing
 .\"
 .\"
 .section "Code: Inode contents"
+.figure inode
 .PP
 The on-disk inode structure,
 .code struct
 .code dinode ,
-contains a size and an array of block numbers.
+contains a size and an array of block numbers (see Figure \n[fig:inode]).
 The inode data is found in the blocks listed
 in the
 .code dinode 's
