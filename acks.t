@@ -14,5 +14,5 @@ resources for v6.
 
 We have used the text in 6.828, the operating system class at MIT.  We thank the
 faculty, TAs, and students of 6.828 who all directly or indirectly contributed
-to xv6.  In particular, we would like to thank Austin Clement and Nickolai
+to xv6.  In particular, we would like to thank Austin Clements and Nickolai
 Zeldovich.
