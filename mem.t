@@ -16,28 +16,23 @@
   show elf header for init
   introduce segmentation in real world
 ..
-.chapter CH:MEM "Processes"
+.chapter CH:MEM "The first process"
 .PP
-One of an operating system's central roles
-is to allow multiple programs to share the computer
-safely, isolating them so that
+This chapter explains what happens when xv6 first starts running,
+through the creation of the first process. One of the most interesting
+aspects of this is how the kernel manages memory for itself and for
+processes.
+.PP
+One purpose of processes is to isolate different programs that
+share the same computer, so that
 one buggy program cannot break others.
-To that end, xv6 provides processes,
-as introduced in Chapter \*[CH:UNIX].
-A process provides a program with what appear to be dedicated CPU and
-memory resources.
-Xv6 shares the hardware CPUs among runnable processes by periodically
-switching which processes are actively executing.
-Xv6 shares the computer's physical memory by partitioning it among
-the processes, providing each process with the illusion of private
-memory, and ensuring that a memory write by one
-process cannot modify a different process's memory.
-.PP
-This chapter examines how xv6
-configures the processor's paging
-hardware to provide processes with private address spaces,
-how it allocates memory to hold process code and data,
-and how it creates new processes.
+A process provides a program with what appears to be a private
+memory system, or
+address space,
+which other processes cannot read or write. This chapter examines how
+xv6 configures the processor's paging hardware to provide processes
+with private address spaces, how it allocates memory to hold process
+code and data, and how it creates new processes.
 .\"
 .section "Paging hardware"
 .\"
@@ -70,7 +65,7 @@ the operating system control over virtual-to-physical address translations
 at the granularity of aligned chunks of 4096 (2^12) bytes.
 .figure x86_pagetable
 .PP
-As shown in Figure \n[x86_pagetable], the actual translation happens in two steps.
+As shown in Figure \n[fig:x86_pagetable], the actual translation happens in two steps.
 A page table is stored in physical memory as a two-level tree.
 The root of the tree is a 4096-byte 
 .italic-index "page directory" 
@@ -120,8 +115,9 @@ of memory, called an
 .italic-index "address space" .
 Xv6 maintains a separate page table for each process that
 defines that process's address space.
-An address space includes the process's user memory starting
-at virtual address zero. Instructions usually come first,
+An address space includes the process's
+.italic-index "user memory"
+starting at virtual address zero. Instructions usually come first,
 followed by global variables and a "heap" area (for malloc)
 that the process can expand as needed.
 .PP
@@ -150,28 +146,20 @@ The x86 paging hardware is not enabled when the kernel starts;
 virtual addresses map directly to physical addresses.
 .PP
 The boot loader loads the xv6 kernel into memory at physical address
-.address 0x100000 ,
-but the kernel expects to find its instructions and data starting at
-.address 0x80100000 
-(called
-.code KERNLINK 
-.line memlayout.h:/define.KERNLINK/ ).
-The kernel also expects the address range
-.address 0x80000000
-.code KERNBASE ) (
-to
-.code KERNBASE+0xFFFFF
-to be mapped to physical addresses
-.address 0x0
-to
-.address 0xFFFFFF 
-in order to allow the kernel to use device hardware
-that responds to those physical addresses.
-Thus, 
-.code entry 
+.address 0x100000 .
+The reason it doesn't load the kernel at
+.address 0x80100000 ,
+where the kernel expects to find its instructions and data,
+is that there may not be any physical memory at such
+a high address on a small machine.
+To allow the rest of the kernel to run,
+.code entry
 sets up a page table that maps virtual addresses starting at
-.code KERNBASE
-to physical addresses at
+.address 0x80000000
+(called
+.code KERNBASE 
+.line memlayout.h:/define.KERNBASE/ )
+to physical address starting at
 .address 0x0 .
 .PP
 The entry page table is defined 
@@ -184,13 +172,9 @@ leaving the other PTEs zero.
 It causes both of these PTEs to use super-pages,
 each of which maps 4 megabytes of virtual address space.
 Entry 0 maps virtual addresses
-.address 0
-to
-.address 0x400000
+.code 0:0x400000
 to physical addresses
-.address 0
-to 
-.address 0x400000.
+.code 0:0x400000 .
 This mapping is required as long as
 .code entry
 is executing at low addresses, but
@@ -209,19 +193,15 @@ The flags and all other page hardware related structures are defined in
 .PP
 Entry 960
 maps virtual addresses
-.code KERNBASE
-to 
-.address KERNBASE+0x400000
+.code KERNBASE:KERNBASE+0x400000
 to physical addresses
-.address 0
-to 
-.address 0x400000.
+.address 0:0x400000 .
 This entry will be used by the kernel after
 .code entry
 has finished; it maps the high virtual addresses at which
 the kernel expects to find its instructions and data
 to the low physical addresses where the boot loader loaded them.
-This mapping restricts the kernel size to 4Mbytes.
+This mapping restricts the kernel instructions and data to 4 Mbytes.
 .PP
 Returning to
 .code entry,
@@ -269,7 +249,9 @@ Now
 .code entry
 needs to transfer to the kernel's C code, and run
 it in high memory.
-First it must set up a stack so that C code will work
+First it must make the stack pointer,
+.register esp ,
+point to a stack so that C code will work
 .line entry.S:/movl.*stack.*esp/ .
 All symbols have high addresses, including
 .code stack ,
@@ -285,43 +267,31 @@ generate a PC-relative direct jump, which would execute
 the low-memory version of 
 .code main .
 Main cannot return, since the there's no return PC on the stack.
-Now the kernel is running in high addresses.
-.PP
-The function
+Now the kernel is running in high addresses in the function
 .code main 
-.line main.c:/^main/
-initializes the kernel subsystems before it starts running user processes.  It
-starts out by removing the mapping for the lower kernel virtual addresses, so
-that it can use that part of the address space for user programs.  The function
-.code kvmalloc
-.line vm.c:/^kvmalloc/
-does this by setting up a new page table for the kernel (see
-.code setupkvm 
-.line vm.c:/^setupkvm/ )
-and then switching to it  (see
-.code switchkvm 
-.line vm.c:/^switchkvm/ )
-by loading the physical address of the new page table into
-.code %cr3 .
+.line main.c:/^main/ .
 .\"
+.figure xv6_layout
 .section "Address space details"
 .\"
-The next few pages explain how xv6 creates per-process address
-spaces and how it allocates physical memory, in preparation
-for a description of how it creates processes.
-.figure xv6_layout
+.PP
+The page table created by
+.code entry
+has enough mappings to allow the kernel's C code to start running.
+However, main immediately changes to a new page table by calling
+.code kvmalloc
+.line vm.c:/^kvmalloc/ ,
+because kernel has a more elaborate plan for page tables that describe
+process address spaces.
 .PP
 Each process has a separate page table, and xv6 tells
 the page table hardware to switch
 page tables when xv6 switches between processes.
 As shown in Figure \n[fig:xv6_layout],
 a process's user memory starts at virtual address
-zero and can grow to the address
-.address KERNBASE
-(see
-.file "memlayout.h"
-.sheet memlayout.h ),
-allowing a process to use up to 3,932,160 Kbytes of memory.
+zero and can grow up to
+.address KERNBASE ,
+allowing a process to address up to 2 GB of memory.
 When a process asks xv6 for more memory,
 xv6 first finds free physical pages to provide the storage,
 and then adds PTEs to the process's page table that point
@@ -344,14 +314,10 @@ However, xv6 sets up every process's page table to translate addresses
 above
 .address KERNBASE
 in the same way.
-It maps all the addresses from virtual address
-.address KERNBASE
-to 
-.address KERNBASE+PHYSTOP
+It maps virtual addresses
+.address KERNBASE:KERNBASE+PHYSTOP
 to
-.address 0
-to
-.address PHYSTOP.
+.address 0:PHYSTOP .
 The kernel needs this mapping because it relies on being able to
 read and write each page of physical memory, though this scheme
 does limit the amount of physical memory xv6 can use to
@@ -365,12 +331,12 @@ so only the kernel can use them.
 For example, the kernel can use its own instructions and data
 (at virtual addresses starting at 
 .address KERNBASE+ 0x100000),
-since the boot loader loaded the kernel al physical address 
+since the boot loader loaded the kernel at physical address 
 .address 0x100000 , 
 and the kernel maps
-.address KERNBASE+ 0x100000
+.address KERNBASE+0x100000
 to 
-.address 0x100000.
+.address 0x100000 .
 The reason that the kernel is at 
 .address 0x100000
 in physical memory is because the address range from
