@@ -191,11 +191,10 @@ to physical addresses
 .address 0
 to 
 .address 0x400000.
-This mapping is required so that
+This mapping is required as long as
 .code entry
-will continue to run after it enables paging,
-since it is executing instructions around
-.address 0x100000 .
+is executing at low addresses, but
+will eventually be removed.
 The pages are mapped as present
 .code PTE_P
 (present),
@@ -266,46 +265,44 @@ If xv6 had omitted entry 0 from
 the computer would have crashed when trying to execute
 the instruction after the one that enabled paging.
 .PP
+Now
 .code entry
-now loads
-.code $relocated 
-into
-.code %eax.
-The address
-.code $relocated
-is a high address, which the newly installed page table
-will translate
-to a low physical address, where the value for 
-.code $relocated
-is actually located.
-xv6 also loads a high address for the stack
-into 
-.code %esp;
-the stack is located in low memory, but the paging hardware is set up.
-Then, it calls
+needs to transfer to the kernel's C code, and run
+it in high memory.
+First it must set up a stack so that C code will work
+.line entry.S:/movl.*stack.*esp/ .
+All symbols have high addresses, including
+.code stack ,
+so the stack will still be valid even when the
+low mappings are removed.
+Finally 
+.code entry
+jumps to
 .code main,
-which is also a high address.  The call will pushes the return address (a low
-value!) on the stack.
-After the call both
-.code %eip
-and
-.code %esp
-contain high values and the kernel is running in the high part of the virtual
-address space.
+which is also a high address.
+The indirect call is needed because the assembler would
+generate a PC-relative direct call, which would execute
+the low-memory version of 
+.code main .
+Main cannot return, since the there's no return PC on the stack.
+Now the kernel is running in high addresses.
 .PP
 The function
 .code main 
+.line main.c:/^main/
 initializes the kernel subsystems before it starts running user processes.  It
 starts out by removing the mapping for the lower kernel virtual addresses, so
 that it can use that part of the address space for user programs.  The function
 .code kvmalloc
-does so by setting up a new page table for the kernel (see
-.code setupkvm )
+.line vm.c:/^kvmalloc/
+does this by setting up a new page table for the kernel (see
+.code setupkvm 
+.line vm.c:/^setupkvm/ )
 and then switching to it  (see
-.code switchkvm )
-by loading into
-.code %cr3 
-the physical address of the new page table.
+.code switchkvm 
+.line vm.c:/^switchkvm/ )
+by loading the physical address of the new page table into
+.code %cr3 .
 .\"
 .section "Address space details"
 .\"
