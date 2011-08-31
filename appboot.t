@@ -1,4 +1,4 @@
-.appendix APP:BOOT "boot loader"
+.appendix APP:BOOT "The boot loader"
 .ig
 	there isn't really anything called "32-bit mode".
 

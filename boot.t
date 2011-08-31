@@ -897,15 +897,15 @@ has loaded the kernel into memory.
 .PP
 The kernel has been compiled and linked so that it expects to
 find itself at virtual addresses starting at
-.code 0xf0100000 .
+.code 0xF0100000 .
 That is, function call instructions mention destination addresses
 that look like
-.address 0xf01xxxxx ;
+.address 0xF01xxxxx ;
 you can see examples in
 .file kernel.asm .
 This address is configured in
 .file kernel.ld .
-.address 0xf0100000
+.address 0xF0100000
 is a relatively high address, towards the end of the
 32-bit address space;
 Chapter \*[CH:MEM] explains the reasons for this choice.
@@ -914,7 +914,7 @@ high address.
 Once the kernel starts executing, 
 it will set up the paging hardware to map virtual
 addresses starting at 
-.address 0xf0100000
+.address 0xF0100000
 to physical addresses starting at
 .address 0x00100000 ;
 the kernel assumes that there is physical memory at
@@ -935,7 +935,7 @@ The boot loader's final step is to call the kernel's
 entry point, which is the instruction at which the
 kernel expects to start executing.
 For xv6 the entry address is
-.address 0xf0100020 : 
+.address 0xF0100020 : 
 .P1
 # objdump -f kernel
 
@@ -948,7 +948,7 @@ The loader must correct this address to reflect the fact
 that it loaded the kernel at
 .address 0x00100000
 rather than at
-.address 0xf0100000 ,
+.address 0xF0100000 ,
 so it zeroes the high eight bits before calling the
 entry address
 .lines 'bootmain.c:/entry.=/,/entry!(!)/' .
