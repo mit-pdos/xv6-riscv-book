@@ -77,7 +77,8 @@ and stack reads and writes use
 .figure x86_translation
 .PP
 .index "boot loader
-The addresses that an x86 program manipulates are called
+Xv6 pretends that an x86 program uses virtual address,
+but an x86 actually uses
 .italic-index "logical addresses" 
 (see Fig. \n[fig:x86_translation]).
 A logical address consists of a segment selector and
@@ -88,9 +89,6 @@ directly manipulates the offset.
 The segmentation hardware performs the translation
 described above to generate
 .italic-index "linear addresses" .
-The addresses that the processor chip sends to main memory
-are called
-.italic-index "physical addresses" .
 If the paging hardware is enabled (see Chapter \*[CH:MEM]), it
 translates linear addresses to physical addresses;
 otherwise the processor uses linear addresses as physical addresses.
@@ -101,7 +99,7 @@ addresses by the segmentation harware, and then used directly
 as physical addresses.
 Xv6 configures the segmentation hardware to translate logical
 to linear addresses without change, so that they are always equal.
-For historical reasons we will use the term 
+For historical reasons we have used the term 
 .italic-index "virtual address" 
 to refer to addresses manipulated by programs; an xv6 virtual address
 is the same as an x86 logical address, and is equal to the
