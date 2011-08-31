@@ -17,7 +17,7 @@ For users it is convenient to have a file system to store files and to share
 them with other users.  Unix supports files, directories, pathnames, etc. for
 this purpose (see Chapter \*[CH:UNIX]).  The files live typically on a device
 that provides
-.italic persistent 
+.italic-index persistent 
 storage so that after a shut down, and starting the system again, the file is
 still present.  An example device that provided persistent storage is the IDE
 disk, which can read and write blocks (see Chapter \*[CH:TRAP]).
@@ -53,7 +53,7 @@ to ensure that the blocks are updates atomically (i.e., all of them are updated
 or none).
 The third layer provides unnamed files, represented using
 an 
-.italic inode
+.italic-index inode
 and a sequence of blocks holding the file's data.  The fourth
 layer implements directories as a special kind of
 inode whose content is a sequence of directory entries, each of which contains a
@@ -491,8 +491,9 @@ The file layer represents unnamed files as an inode with several blocks.  This
 layer must be able to allocate inodes, file blocks, and decide which blocks have
 inodes and which have data blocks.  To do so, it divides the disk into several
 sections, as shown in Figure \n[fig:fslayout].  The file system does not use
-block 0 (it holds the boot sector).  Block 1 is called the superblock; it
-contains metadata about the file system (the file system size in blocks, the
+block 0 (it holds the boot sector).  Block 1 is called the 
+.italic-index "superblock" ; 
+it contains metadata about the file system (the file system size in blocks, the
 number of data blocks, the number of inodes, and the number of blocks in the
 log).  Blocks starting at 2 hold inodes, with multiple inodes per block.  After
 those come bitmap blocks tracking which data blocks are in use (i.e., it is part
@@ -560,7 +561,9 @@ avoids the need for explicit locking.
 .\"
 .section "Inodes"
 .PP
-The term ``inode'' can have one of two related meanings.
+The term 
+.italic-index inode 
+can have one of two related meanings.
 It might refer to the on-disk data structure containing
 a file's size and list of data block numbers.
 Or ``inode'' might refer to an in-memory inode, which contains
@@ -811,7 +814,7 @@ It does this by zeroing
 .\"
 .\"
 .\"
-.section "Code: Inode contents
+.section "Code: Inode contents"
 .PP
 The on-disk inode structure,
 .code struct
@@ -826,11 +829,13 @@ The first
 .code NDIRECT
 blocks of data are listed in the first
 .code NDIRECT
-entries in the array; these blocks are called ``direct blocks''.
+entries in the array; these blocks are called 
+.italic-index "direct blocks" .
 The next 
 .code NINDIRECT
 blocks of data are listed not in the inode
-but in a data block called the ``indirect block''.
+but in a data block called the
+.italic-index "indirect block" .
 The last entry in the
 .code addrs
 array gives the address of the indirect block.
