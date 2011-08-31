@@ -6,8 +6,7 @@
     so: swtch() switches to a given process's kernel thread
     trapret's iret switches to the process of the current
       kernel thread
-  delete coalescing from kfree(), and associated text?
-  talk a little about initial page table conditions:
+ talk a little about initial page table conditions:
     paging not on, but virtual mostly mapped direct to physical,
     which is what things look like when we turn paging on as well
     since paging is turned on after we create first process.
@@ -15,6 +14,7 @@
   do we ever really say what the low two bits of %cs do?
     in particular their interaction with PTE_U
   show elf header for init
+  introduce segmentation in real world
 ..
 .chapter CH:MEM "Processes"
 .PP
@@ -1245,6 +1245,18 @@ allocates memory for each ELF segment with
 and loads each segment into memory with
 .code loaduvm
 .line exec.c:/loaduvm/ .
+Xv6 binaries have only one program section header.  For "/init", the section
+header looks as follows:
+.P1
+# objdump -p _init 
+
+_init:     file format elf32-i386
+
+Program Header:
+    LOAD off    0x00000054 vaddr 0x00000000 paddr 0x00000000 align 2**2
+         filesz 0x000008c0 memsz 0x000008cc flags rwx
+.P2
+.PP
 .code allocuvm
 checks that the virtual addresses requested
 is below
@@ -1257,6 +1269,7 @@ to find the physical address of the allocated memory at which to write
 each page of the ELF segment, and
 .code readi
 to read from the file.
+.PP
 The ELF file may contain data segments that contain
 global variables that should start out zero, represented with a
 .code memsz
@@ -1267,6 +1280,15 @@ the result is that
 allocates zeroed physical memory, but
 .code loaduvm
 does not copy anything from the file.
+For "/init", 
+.code filesz 
+is 2240 bytes and
+.code memsz 
+is 2252 bytes,
+and thus 
+.code allocuvm
+allocates enough physical memory to hold 2252 bytes, but reads only 2240 bytes
+from the file "/init".
 .PP
 Now
 .code exec
