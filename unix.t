@@ -35,11 +35,11 @@ Understanding xv6 is a good start toward understanding any of these
 systems and many others.
 .PP
 As shown in Figure \n[fig:os], xv6 takes the traditional form of a
-.italic kernel ,
+.italic-index kernel ,
 a special program that provides
 services to running programs.
 Each running program, called a
-.italic process ,
+.italic-index process ,
 has memory containing instructions, data, and a stack. The
 instructions implement the
 program's computation.  The data are the variables on which
@@ -48,16 +48,13 @@ the computation acts. The stack organizes the program's procedure calls.
 When a
 process needs to invoke a kernel service, it invokes a procedure call
 in the operating system interface.  Such procedures are call
-.italic system
-.italic calls.
+.italic-index "system calls" .
 The system call enters the kernel;
 the kernel performs the service and returns.
 Thus a process alternates between executing in
-.italic user
-.italic space
+.italic-index "user space"
 and
-.italic kernel
-.italic space .
+.italic-index "kernel space" .
 .PP
 The kernel uses the CPU's hardware protection mechanisms to
 ensure that each process executing in user space can access only
@@ -134,15 +131,17 @@ When a process is not executing, xv6 saves its CPU registers,
 restoring them when it next runs the process.
 Each process can be uniquely identified by a
 positive integer called its process identifier, or
-.italic pid .
+.italic-index pid .
 .PP
 A process may create a new process using the
 .code fork
 system call.
 .code Fork
-creates a new process, called the child, with exactly the same memory contents
-as the calling process, called the parent.
-.index "child process
+creates a new process, called the 
+.italic-index "child process" , 
+with exactly the same memory contents
+as the calling process, called the 
+.italic-index "parent process" .
 .code Fork
 returns in both the parent and the child.
 In the parent,
@@ -303,7 +302,9 @@ run as root.
 .\"
 .section "Code: File descriptors"
 .PP
-A file descriptor is a small integer representing a kernel-managed object
+A 
+.italic-index "file descriptor" 
+is a small integer representing a kernel-managed object
 that a process may read from or write to.
 A process may obtain a file descriptor by opening a file, directory,
 or device, or by creating a pipe, or by duplicating an existing
@@ -561,7 +562,9 @@ file, to a device like the console, or to a pipe.
 .\"
 .section "Code: Pipes"
 .PP
-A pipe is a small kernel buffer exposed to processes as a pair of
+A 
+.italic-index pipe 
+is a small kernel buffer exposed to processes as a pair of
 file descriptors, one for reading and one for writing.
 Writing data to one end of the pipe
 makes that data available for reading from the other end of the pipe.
@@ -697,8 +700,11 @@ and directories, which
 contain named references to other data files and directories.
 Xv6 implements directories as a special kind of file.
 The directories are arranged into a tree, starting
-at a special directory called the root.
-A path like
+at a special directory called the 
+.italic-index root .
+A 
+.italic-index path 
+like
 .code /a/b/c
 refers to the file or directory named
 .code c
@@ -711,8 +717,7 @@ in the root directory
 Paths that don't begin with
 .code /
 are evaluated relative to the calling process's
-.italic current
-.italic directory ,
+.italic-index "current directory" ,
 which can be changed with the
 .code chdir
 system call.
@@ -776,8 +781,11 @@ as:
 .P2
 .PP
 A file's name is distinct from the file itself;
-the same underlying file, called an inode, can have multiple names,
-called links.
+the same underlying file, called an 
+.italic-index inode , 
+can have multiple names,
+called 
+.italic-index links .
 The
 .code link
 system call creates another file system name 
