@@ -1,3 +1,8 @@
+.ig
+   Sidebar about panic:
+	panic is the kernel's last resort: the impossible has happened and the
+	kernel does not know how to proceed.  In xv6, panic does ...
+..
 .chapter CH:TRAP "Traps, interrupts, and drivers"
 .PP
 When running a process, a processor executes the normal processor loop: read an
@@ -520,10 +525,6 @@ If it was the kernel running, there must be a kernel bug:
 .code trap
 prints details about the surprise and then calls
 .code panic .
-.PP
-[[ XXX Sidebar about panic:
-panic is the kernel's last resort: the impossible has happened and the
-kernel does not know how to proceed.  In xv6, panic does ...]]
 .PP
 .\"
 .section "Code: System calls"
