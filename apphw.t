@@ -3,11 +3,8 @@
 	there isn't really anything called "32-bit mode".
 ..
 .PP
-This appendix describes the hardware platform xv6 runs on.
-.\"
-.\" -------------------------------------------
-.\"
-.section "A personal computer"
+This appendix describes personal computer (PC) hardware,
+the platform on which xv6 runs.
 .PP
 A PC is a computer that adheres to several industry standards,
 with the goal that a given piece of software can run on PCs

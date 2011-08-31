@@ -42,17 +42,21 @@ hardware to provide private memory address spaces.
 .section "Paging hardware"
 .\"
 .PP
-Xv6 runs on PC hardware and use hardware page tables supported by the x86
-processor. Appendix \*[APP:HW] provides a brief overview of PC hardware, if you
-are unfamiliar with it, but the text will introduce the x86 features that xv6
-specifically relies on as they come up.  The x86 paging hardware uses a page
+Xv6 runs on Intel 80386 or later ("x86") processors on a PC platform,
+and much of its low-level functionality (for example, its virtual
+memory implementation) is x86-specific. This book assumes the reader
+has done a bit of machine-level programming on some architecture, and
+will introduce x86-specific ideas as they come up. Appendix \*[APP:HW]
+briefly outlines the PC platform.
+.PP
+The x86 paging hardware uses a page
 table to translate (or "map")
 .italic-index virtual 
 (the addresses that an x86 program manipulates) to
 .italic-index physical 
 addresses (the addresses that the processor chip sends to main memory).
 .PP
-A page table is logically an array of 2^20
+An x86 page table is logically an array of 2^20
 (1,048,576) 
 .italic-index "page table entries (PTEs)". 
 Each PTE contains a
@@ -124,7 +128,7 @@ that the process can expand as needed.
 Each process's address space maps the kernel's instructions
 and data as well as the user program's memory.
 When a process invokes a system call, the system call
-executes in the kernel mappings of its address space.
+executes in the kernel mappings of the process's address space.
 This arrangement exists so that the kernel's system call
 code can directly refer to user memory.
 In order to leave the most room for user memory to grow,
@@ -134,17 +138,16 @@ starting at
 .\"
 .section "Code: entry page table"
 .\"
-When a PC starts it runs with the paging hardware is disabled, and the
-kernel is not even in memory.   The PC hardware starts first executing a minimal
-operating systems, called the BIOS, which configures the hardware.  The BIOS
-loads a boot sector from disk, and the boot sector contains  a boot loader. The
-job of the
+When a PC powers on, it initializes itself and then loads a
 .italic-index "boot loader"
-is to load the kernel into memory and starts the xv6 kernel at
+from disk into memory and executes it.
+Appendix \*[APP:BOOT] explains the details.
+Xv6's boot loader loads the xv6 kernel from disk and executes it
+starting at 
 .code entry 
 .line entry.S:/^entry/ .
-Xv6 has a tiny boot loader (a full
-description can be found in Appendix \*[APP:BOOT]).
+The x86 paging hardware is not enabled when the kernel starts;
+virtual addresses map directly to physical addresses.
 .PP
 The boot loader loads the xv6 kernel into memory at physical address
 .address 0x100000 ,
@@ -158,38 +161,41 @@ The kernel also expects the address range
 .code KERNBASE ) (
 to
 .address 0xF00FFFFF
-to be mapped to some device hardware that appears
-at physical addresses
+to be mapped to physical addresses
 .address 0x0
 to
-.address 0xFFFFFF .
+.address 0xFFFFFF 
+in order to allow the kernel to use device hardware
+that responds to those physical addresses.
 Thus, 
-.code entry
-.line 'bootmain.c:/entry.=/'
+.code entry 
 sets up a page table that maps virtual addresses starting at
 .code KERNBASE
-to physical address
-.address 0x0
-and enables the paging hardware.
+to physical addresses at
+.address 0x0 .
+.PP
 The entry page table is defined 
 in main.c
-.line 'main.c:/enterpgdir/' .
-It is 2^10 (1024) entries, instead of 2^20, because it takes advantage of 
-.italic-index "super pages" , 
-which are pages that are 4 Mbyte (2^22) large.  Entry 0 maps virtual address
+.line 'main.c:/^pde_t.entrypgdir.*=/' .
+The array initialization sets two of the 1024 PTEs,
+at indices zero and 960
+.code KERNBASE>>PDXSHIFT ), (
+leaving the other PTEs zero.
+It causes both of these PTEs to use super-pages,
+each of which maps 4 megabytes of virtual address space.
+Entry 0 maps virtual addresses
 .address 0
 to
 .address 0x400000
-to physical address
+to physical addresses
 .address 0
 to 
 .address 0x400000.
-This part ensures that low addresses are mapped to low addresses; this is
-important to do because the boot loader started running the kernel at low
-addresses (e.g., the 
-.code %eip
-is set to 
-.address 0x100020 ).
+This mapping is required so that
+.code entry
+will continue to run after it enables paging,
+since it is executing instructions around
+.address 0x100000 .
 The pages are mapped as present
 .code PTE_P
 (present),
@@ -202,19 +208,21 @@ The flags and all other page hardware related structures are defined in
 .file "mmu.h"
 .sheet memlayout.h .
 .PP
-Entry 240
-maps virtual address
+Entry 960
+maps virtual addresses
 .address 0xF0000000
 to 
 .address 0xF0400000
-to physical address
+to physical addresses
 .address 0
 to 
 .address 0x400000.
-This entry ensures that the high are mapped to the physical addresses where the
-kernel is loaded.  Thus, when the kernel starts to using high addresses, they
-will map to the correct physical addresses.  Note that this mapping restricts
-the kernel to the size of 4Mbyte, but that is sufficient for xv6.
+This entry will be used by the kernel after
+.code entry
+has finished; it maps the high virtual addresses at which
+the kernel expects to find its instructions and data
+to the low physical addresses where the boot loader loaded them.
+This mapping restricts the kernel size to 4Mbytes.
 .PP
 Returning to
 .code entry,
@@ -223,42 +231,50 @@ the kernel first tells the paging hardware to allow super pages by setting the f
 (page size extension) in the control register
 .code %cr4.
 Next it loads the physical address of
-.code enterpgdir
+.code entrypgdir
 into control register
 .code %cr3.
 The paging hardware must know the physical address of
-.code pgdir, 
+.code entrypgdir, 
 because it doesn't know how to translate virtual addresses yet; it doesn't have
 a page table yet.
-The macro
+The symbol
+.code entrypgdir
+refers to an address in high memory,
+and the macro
 .code V2P_WO
 .line 'memlayout.h:/V2P_WO/' 
-computes the physical address.
-To enable the paging hardware, xv6 sets the flags
-.code CR0_PE|CR0_PG|CR0_WP
+subtracts
+.code KERNBASE
+in order to find the physical address.
+To enable the paging hardware, xv6 sets the flag
+.code CR0_PG
 in the control register
 .code %cr0.
+It also sets
+.code CR0_WP ,
+which ensures that the kernel honors
+write-protect flags in PTEs.
 .PP
-After executing this instruction the processor increases 
-.code %eip
-to compute the address of the next instruction
-and the paging hardware will translate that address.
-Since we set up
+The processor is still executing instructions at
+low addresses after paging is enabled, which works
+since
 .code entrypgdir
-to translate low address one to one, this instructions will execute correctly.
+maps low addresses.
 If xv6 had omitted entry 0 from
 .code entrypgdir,
-the hardware could not have translated the address in
-.code %eip
-and it would stop executing instructions (i.e., the computer would crash).
+the computer would have crashed when trying to execute
+the instruction after the one that enabled paging.
 .PP
-Fortunately xv6 has set up the paging hardware correctly, and it loads
+.code entry
+now loads
 .code $relocated 
 into
 .code %eax.
 The address
 .code $relocated
-is a high address. But, now xv6 has set up the paging hardware, it will translate
+is a high address, which the newly installed page table
+will translate
 to a low physical address, where the value for 
 .code $relocated
 is actually located.
@@ -536,7 +552,7 @@ physical memory to allocate a kernel page table.
 During entry, the xv6 kernel calls
 .code enter_alloc
 to allocate physical memory while running with 
-.code enterpgdir
+.code entrypgdir
 as the address space.
 This memory allocator moves the end of the kernel by 1 page.
 .code enter_alloc
