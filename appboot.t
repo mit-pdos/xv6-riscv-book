@@ -167,7 +167,9 @@ The xv6 boot sequence enables protected mode and 32-bit mode as follows.
 .figure x86_seg
 .PP
 In protected mode, a segment
-register is an index into a segment descriptor table (see Fig. \n[fig:x86_seg]).
+register is an index into a 
+.italic-index "segment descriptor table"
+(see Fig. \n[fig:x86_seg]).
 Each table entry specifies a base physical address,
 a maximum virtual address called the limit,
 and permission bits for the segment.

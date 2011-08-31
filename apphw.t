@@ -43,7 +43,8 @@ achieve high performance.
 .PP
 A computer's CPU (central processing unit, or processor)
 runs a conceptually simple loop:
-it consults an address in a register called the program counter,
+it consults an address in a register called the 
+.italic-index "program counter" ,
 reads a machine instruction from that address in memory,
 advances the program counter past the instruction,
 and executes the instruction.
@@ -86,7 +87,8 @@ and
 .register esp \c
 —and a program counter
 .register eip
-(the ``instruction pointer'').
+(the `
+.italic-index "instruction pointer" ).
 The common
 .register-font e
 prefix stands for extended, as these are 32-bit
@@ -129,7 +131,8 @@ continue the pattern.
 In addition to these registers,
 the x86 has eight 80-bit floating-point registers
 as well as a handful of special-purpose registers
-like the control registers
+like the 
+.italic-index "control registers"
 .register cr0 ,
 .register cr2 ,
 .register cr3 ,
@@ -141,7 +144,8 @@ the debug registers
 .register dr2 ,
 and
 .register dr3 ;
-the segment registers
+the 
+.italic-index "segment registers"
 .register cs ,
 .register ds ,
 .register es ,
@@ -215,7 +219,9 @@ The x86 processor provides special
 and
 .opcode out
 instructions that read and write values from device
-addresses called I/O ports.  The hardware implementation of
+addresses called 
+.italic-index "I/O ports" .  
+The hardware implementation of
 these instructions is essentially the same as reading and
 writing memory.  Early x86 processors had an extra
 address line: 0 meant read/write from an I/O port and 1
