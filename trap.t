@@ -832,7 +832,7 @@ particular piece of hardware.
 .PP
 The disk driver represent disk sectors
 with a data structure called a
-.index-italic buffer,
+.italic-index buffer,
 .code struct
 .code buf
 .line buf.h:/^struct.buf/ .
