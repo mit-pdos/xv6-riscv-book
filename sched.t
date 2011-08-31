@@ -13,7 +13,7 @@ processors between the processes. An ideal plan is transparent to user
 processes.  A common approach is to provide each process
 with the illusion that it has its own virtual processor, and have the
 operating system 
-.italic multiplex 
+.italic-index multiplex 
 multiple virtual processors on a single physical processor.
 This chapter how xv6 multiplexes a processor among several processes.
 .\"
@@ -87,7 +87,8 @@ switch what code it is executing.
 .PP
 .code swtch
 doesn't directly know about threads; it just saves and
-restores register sets, called contexts.
+restores register sets, called 
+.italic-index "contexts" .
 When it is time for the process to give up the CPU,
 the process's kernel thread will call
 .code swtch
@@ -331,7 +332,7 @@ threads, one would observe the following simple pattern:
 .line proc.c:/swtch..proc/ ,
 and so on.  The procedures in which this stylized switching between
 two threads happens are sometimes referred to as 
-.italic co-routines ; 
+.italic-index co-routines ; 
 in this example,
 .code sched
 and
@@ -488,9 +489,9 @@ Sleep and wakeup fill that void, allowing one process to
 sleep waiting for an event and another process to wake it up
 once the event has happened.
 Sleep and wakeup are often called 
-.italic "sequence coordination"
+.italic-index "sequence coordination"
 or 
-.italic "conditional synchronization"
+.italic-index "conditional synchronization"
 mechanisms, and there are many other such mechanisms
 in the operating systems literature.
 .PP
@@ -572,7 +573,8 @@ that work as follows.
 .code Sleep(chan)
 sleeps on the arbitrary value
 .code chan ,
-called the wait channel.
+called the 
+.italic-index "wait channel" .
 .code Sleep
 puts the calling process to sleep, releasing the CPU
 for other work.
@@ -657,7 +659,7 @@ will sleep waiting for
 .code recv
 to consume the pointer in the queue,
 at which point the system will be 
-.italic "deadlocked" .
+.italic-index "deadlocked" .
 .PP
 The root of this problem is that the
 invariant that
@@ -1240,7 +1242,7 @@ that called
 .PP
 The xv6 scheduler implements a simple scheduling policy, which runs each process
 in turn.  This policy is called
-.italic "round robin" .
+.italic-index "round robin" .
 Real operating systems implement more sophisticated policies that, for example,
 allow processes to have priorities.  The idea is that a runnable high-priority process
 will be preferred by the scheduler over a runnable low-priority thread.   These
@@ -1248,9 +1250,9 @@ policies can become complex quickly because there are often competing goals: for
 example, the operating might also want to guarantee fairness and
 high-throughput.  In addition, complex policies may lead to unintended
 interactions such as
-.italic "priority inversion"
+.italic-index "priority inversion"
 and 
-.italic "convoys" .
+.italic-index "convoys" .
 Priority inversion can happen when a low-priority and high-priority process
 share a lock, which when acquired by the low-priority process can cause the
 high-priority process to not run.  A long convoy can form when many
@@ -1327,7 +1329,7 @@ wakes up all processes that are waiting on a particular channel, and it might be
 the case that many processes are waiting for that particular channel.   The
 operating system will schedules all these processes and they will race to check
 the sleep condition.  Processes that behave in this way are sometimes called a
-.italic "thundering herd" ,
+.italic-index "thundering herd" ,
 and it is best avoided.
 Most condition variables have two primitives for
 .code wakeup :

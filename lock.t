@@ -1,5 +1,4 @@
 .ig
-figure for race example.
 ..
 .chapter CH:LOCK "Locking"
 .PP
@@ -13,7 +12,7 @@ Even on a uniprocessor, xv6 must use some mechanism
 to keep interrupt handlers from interfering with
 non-interrupt code.
 Xv6 uses the same low-level concept for both: 
-.italic locks.
+.italic-index locks .
 Locks provide mutual exclusion, ensuring that only one CPU at a time
 can hold a lock.
 If xv6 only accesses a data structure 
@@ -77,7 +76,7 @@ the second one will overwrite the first;
 the node involved in the first assignment
 will be lost.
 This kind of problem is called a 
-.italic "race condition".
+.italic-index "race condition" .
 The problem with races is that they depend on
 the exact timing of the two CPUs involved and
 how their memory operations are ordered by the memory system,
@@ -195,7 +194,8 @@ has its own race condition.
 The problem here is that lines 25 and 26 executed
 as separate actions.  In order for the routine above
 to be correct, lines 25 and 26 must execute in one
-atomic step.
+.italic-index "atomic"
+(i.e., indivisible) step.
 .PP
 To execute those two lines atomically, 
 xv6 relies on a special 386 hardware instruction,
@@ -266,7 +266,7 @@ There are no transparent solutions that allow the
 caller and callee to hide which locks they use.
 One common, transparent, but unsatisfactory solution
 is 
-.italic "recursive locks" ,
+.italic-index "recursive locks" ,
 which allow a callee to
 reacquire a lock already held by its caller.
 The problem with this solution is that recursive
