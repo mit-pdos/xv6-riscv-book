@@ -592,7 +592,7 @@ is never freed.
 .section "Code: Process creation"
 .\"
 .PP
-This section describes how xv6 creates the very first process.
+This section describes how xv6 creates the first process.
 The xv6 kernel maintains many pieces of state for each process,
 which it gathers into a
 .code struct
@@ -1103,19 +1103,17 @@ file descriptors, process id, and parent process the same.
 Figure \n[fig:processlayout] shows the user memory image of an executing process.
 The heap is above the stack so that it can expand (with
 .code sbrk ).
-The stack is a single page—4096 bytes—long.
+The stack is a single page, and is
+shown with the initial contents as created by exec.
 Strings containing the command-line arguments, as well as an
 array of pointers to them, are at the very top of the stack.
-Just under that the kernel places values that allow a program
+Just under that are values that allow a program
 to start at
 .code main
 as if the function call
 .code main(argc,
 .code argv)
 had just started.
-The figure als shows the values that
-.code exec
-places at the top of the stack.
 .\"
 .section "Code: exec"
 .\"
@@ -1158,14 +1156,13 @@ followed by a sequence of program section headers,
 Each
 .code proghdr
 describes a section of the application that must be loaded into memory;
-there is typically a section for instructions, and a few sections
-for different kinds of data.
-These headers typically take up the first hundred or so bytes
-of the binary.
+xv6 programs have only one program section header, but
+other systems might have separate sections
+for instructions and data.
 .PP
-The first step is a quick check that the binary  probably is an
-ELF binary, and not some other file.
-All correct ELF binaries start with the four-byte "magic number"
+The first step is a quick check that the file probably contains an
+ELF binary.
+An ELF binary starts with the four-byte "magic number"
 .code 0x7F ,
 .code 'E' ,
 .code 'L' ,
@@ -1173,10 +1170,13 @@ All correct ELF binaries start with the four-byte "magic number"
 or
 .code ELF_MAGIC
 .line elf.h:/ELF_MAGIC/ .
-If the ELF header has the right magic number, xv6
+If the ELF header has the right magic number,
+.code exec
 assumes that the binary is well-formed.
 .PP
-Then it allocates a new page table with no user mappings with
+Then 
+.code exec
+allocates a new page table with no user mappings with
 .code setupkvm
 .line exec.c:/setupkvm/ ,
 allocates memory for each ELF segment with
@@ -1185,8 +1185,9 @@ allocates memory for each ELF segment with
 and loads each segment into memory with
 .code loaduvm
 .line exec.c:/loaduvm/ .
-Xv6 binaries have only one program section header.  For "/init", the section
-header looks as follows:
+The program section header for
+.code /init
+looks like this:
 .P1
 # objdump -p _init 
 
@@ -1210,17 +1211,14 @@ each page of the ELF segment, and
 .code readi
 to read from the file.
 .PP
-The ELF file may contain data segments that contain
-global variables that should start out zero, represented with a
-.code memsz
-that is greater than the segment's
-.code filesz ;
-the result is that 
-.code allocuvm
-allocates zeroed physical memory, but
-.code loaduvm
-does not copy anything from the file.
-For "/init", 
+The program section header's
+.code filesz
+may be less than the
+.code memsz ,
+indicating that the gap between them should be filled
+with zeroes (for C global variables) rather than read from the file.
+For 
+.code /init ,
 .code filesz 
 is 2240 bytes and
 .code memsz 
@@ -1228,7 +1226,8 @@ is 2252 bytes,
 and thus 
 .code allocuvm
 allocates enough physical memory to hold 2252 bytes, but reads only 2240 bytes
-from the file "/init".
+from the file 
+.code /init .
 .PP
 Now
 .code exec
