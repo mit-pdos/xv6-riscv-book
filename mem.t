@@ -1232,13 +1232,23 @@ from the file
 Now
 .code exec
 allocates and initializes the user stack.
-It assumes that one page of stack is enough.
-If not,
+It allocates just one stack page.
+It also places an inaccessible page just below the stack page,
+so that programs that try to use more than one page will fault.
+This inaccessible page also allows
+.code exec
+to deal with arguments that are too large;
+in that situation, 
+the
 .code copyout
-will return \-1, as will 
-.code exec .
+function that
+.code exec
+uses to copy arguments to the stack will notice that
+the destination page in not accessible, and will
+return \-1.
+.PP
 .code Exec
-first copies the argument strings to the top of the stack
+copies the argument strings to the top of the stack
 one at a time, recording the pointers to them in 
 .code ustack .
 It places a null pointer at the end of what will be the
@@ -1285,7 +1295,7 @@ Now the
 .line initcode.S:1
 is done.
 .code Exec
-has replaced it with the real
+has replaced it with the 
 .code /init
 binary, loaded out of the file system.
 .code Init
@@ -1304,11 +1314,8 @@ The next chapter examines how xv6 configures the x86 hardware to handle the
 system call interrupt caused by
 .code int
 .code $T_SYSCALL .
-The rest of the book builds up enough of the process
-management and file system implementation,
-on which 
-.code exec
-relies.
+The rest of the book explains process
+management and the file system.
 .\"
 .section "Real world"
 .\"
@@ -1341,18 +1348,13 @@ to the per-CPU data area, but the x86 has so few general
 registers that the extra effort required to use segmentation
 is worthwhile.
 .PP
-xv6's address space layout has some downsides.  For example, it is potentially
-awkward for the kernel to map all of physical memory into the virtual address
-space. This leave zero virtual address space for user mappings on a 32-bit
-machine with 4 gigabytes of DRAM.
+xv6's address space layout has the defect that it cannot make use
+of more than 2 GB of physical RAM.  It's possible to fix this,
+though the best plan would be to switch to a machine with 64-bit
+addresses.
 .PP
-In the earliest days of operating systems,
-each operating system was tailored to a specific
-hardware configuration, so the amount of memory
-could be a hard-wired constant.
-As operating systems and machines became
-commonplace, most developed a way to determine
-the amount of memory in a system at boot time.
+Xv6 should determine the actual RAM configuration, instead
+of assuming 240 MB.
 On the x86, there are at least three common algorithms:
 the first is to probe the physical address space looking for
 regions that behave like memory, preserving the values
@@ -1364,10 +1366,6 @@ for a memory layout table left as
 part of the multiprocessor tables.
 Reading the memory layout table
 is complicated.
-In the interest of simplicity, xv6 assumes
-that the machine it runs on has at least 240 megabytes
-of memory, and that it is all contiguous.
-A real operating system would have to do a better job.
 .PP
 Memory allocation was a hot topic a long time ago, the basic problems being
 efficient use of very limited memory and
@@ -1381,7 +1379,7 @@ allocator would need to handle small allocations as well as large
 ones.
 .PP
 .code Exec
-is the most complicated code in xv6 in and in most operating systems.
+is the most complicated code in xv6.
 It involves pointer translation
 (in
 .code sys_exec
