@@ -362,21 +362,30 @@ be allocated to the process.
 .section "Code: creating an address space"
 .\"
 .PP
-The function
+.code main
+calls
+.code kvmalloc
+.line vm.c:/^kvmalloc/
+to create and switch to a page table with the mappings above
+.code KERNBASE 
+required for the kernel to run.
+Most of the work happens in
 .code setupkvm
-sets up the kernel-part of an address space (i.e., starting from
-.address KERNBASE )
-allocates a page of memory (which we will discuss in the next subsection) to hold the page directory.
-It then calls
+.line vm.c:/^setupkvm/ .
+It first allocates a page of memory to hold the page directory.
+Then it calls
 .code mappages
-to install translations for ranges of memory that the kernel
-will use; these translations all map each virtual address to the
-same physical address.  The translations include the kernel's
+to install the translations that the kernel needs,
+which are described in the 
+.code kmap
+.line vm.c:/^}.kmap/
+array.
+The translations include the kernel's
 instructions and data, physical memory up to
 .code PHYSTOP ,
 and memory ranges which are actually I/O devices.
 .code setupkvm
-does not install any mappings for the process's memory;
+does not install any mappings for the user memory;
 this will happen later.
 .PP
 .code mappages
@@ -390,7 +399,7 @@ For each virtual address to be mapped,
 .code mappages
 calls
 .code walkpgdir
-to find the address of the PTE that should the address's translation.
+to find the address of the PTE for that address.
 It then initializes the PTE to hold the relevant physical page
 number, the desired permissions (
 .code PTE_W
@@ -415,125 +424,44 @@ if the
 .code alloc
 argument is set,
 .code walkpgdir
-goes ahead, allocates it, and puts its physical address in the page directory.
+allocates it and puts its physical address in the page directory.
 Finally it uses the next 10 bits of the virtual address
 to find the address of the PTE in the page table page
 .line vm.c:/return..pgtab/ .
 .\"
-.section "Memory allocation"
+.section "Physical memory allocation"
 .\"
 .PP
-The functions
-.code setupkvm
-and
-.code walkpgdir
-allocate physical memory to hold the page directory and pages of the page table.
-The kernel also needs to allocate physical to store processes' memory, and for
-several kernel data structures.
-The functions
-.code setupkvm
-and
-.code walkpgdir
-call a function 
-.code alloc 
-to allocate physical memory, but how it work?
-There are three main questions to be answered when allocating
-memory. First, what physical memory (i.e. DRAM storage cells) are to be used?
-Second, at what virtual address or addresses is the newly allocated physical
-memory to be mapped? And third, how does xv6 know what physical memory is free
-and what memory is already in use?
+The kernel needs to allocate and free physical memory at run-time for
+page tables,
+process user memory,
+kernel stacks,
+and pipe buffers.
 .PP
-xv6 maintains a pool of physical memory available for run-time allocation.  It
-uses the physical memory beyond the end of the loaded kernel's data segment. xv6
-allocates (and frees) physical memory at page (4096-byte) granularity. It keeps
-a linked list of free physical pages; xv6 deletes newly allocated pages from the
-list, and adds freed pages back to the list.  Note  that although we refer to this
-memory pool as a pool of physical memory, the kernel addresses this memory using
-virtual addresses.
+xv6 uses the physical memory between the end of the kernel and
+.code PHYSTOP
+for run-time allocation. It allocates and frees whole 4096-byte pages
+at a time. It keeps track of which pages are free by threading a
+linked list through the pages themselves. Allocation consists of
+removing a page from the linked list; freeing consists of adding the
+freed page to the list.
 .PP
-What if a process allocates memory with
-.code sbrk ?
-Suppose that the current size of the process is 12 kilobytes,
-and that xv6 finds a free page of physical memory at physical address
-.address 0x601000,
-which the kernel references using virtual address
-.code KERNBASE+0x601000 .
-In order to ensure that process memory remains contiguous,
-that physical page should appear at virtual address 0x3000 when
-the process is running.
-This is the time (and the only time) when xv6 uses the paging hardware's
-ability to translate a virtual address to a different physical address.
-xv6 modifies the 3rd PTE (which covers virtual addresses 0x3000 through 0x3fff)
-in the process's page table
-to refer to physical page number 0x601 (the upper 20 bits of 0x601000),
-and sets
-.code PTE_U ,
-.code PTE_W ,
-and
-.code PTE_P
-in that PTE.
-Now the process will be able to use 16 kilobytes of contiguous
-memory starting at virtual address zero.
-Two different PTEs now refer to the physical memory at 0x601000:
-the PTE for virtual address
-.code KERNBASE+0x601000
-and the PTE for virtual address
-0x3000. The kernel can use both
-addresses; the process can use only the second one.
-.PP
-There is a small bootstrap problem left: how does xv6 allocate memory before the
-free list of physical memory is initialized?  One option is to initialize this
-list immediately after the kernel starts, but the problem is that xv6 runs with
-.code bootpgdir,
-which maps only 4Mbyte of physical memory; at entry, xv6 cannot address all the
-memory up to
-.address PHYSTOP .
-The other option is to set up the kernel address space to map all of physical
-memory, but setting up that address space requires physical memory to allocate a
-page for the page directory and to allocate pages for the page table pages.  xv6
-solves this bootstrap problem by using a separate page allocator during entry,
-which allocates memory right after the kernel's end of its data segment by just
-moving the end of the data segment every time it needs a page.  This allocator
-cannot allocate more than 4 Mbyte (including kernel image), but that is enough
-physical memory to allocate a kernel page table.
+There is a bootstrap problem: all of physical memory must be mapped in
+order for the allocator to initialize the free list, but creating a
+page table with those mappings involves allocating page-table pages.
+xv6 solves this problem by using a separate page allocator during
+entry, which allocates memory just after the end of the kernel's data
+segment. This allocator does not support freeing and is limited by the
+4 MB mapping in the
+.code entrypgdir ,
+but that is sufficient to allocate the first kernel page table.
 .\"
-.section "Code: Memory allocator"
+.section "Code: Physical memory allocator"
 .\"
 .PP
-During entry, the xv6 kernel calls
-.code enter_alloc
-to allocate physical memory while running with 
-.code entrypgdir
-as the address space.
-This memory allocator moves the end of the kernel by 1 page.
-.code enter_alloc
-uses the symbol
-.code end ,
-which the linker causes to have an address that is just beyond
-the end of the kernel's data segment.
-A PTE can only refer to a physical address that is aligned
-on a 4096-byte boundary (is a multiple of 4096), so
-.code enter_alloc
-uses
-.code PGROUNDUP
-to ensure that it allocates only aligned physical addresses.
-The returned memory is never freed and so there is no corresponding call to free memory
-allocated with 
-.code enter_alloc .
-.PP
-Once the address space is setup, the xv6 kernel calls
-.code kalloc
-and
-.code kfree
-to allocate and free physical memory at run-time.
-The kernel uses run-time allocation for process
-memory and for these kernel data strucures:
-kernel stacks, pipe buffers, and page tables.
-The allocator manages page-sized (4096-byte) blocks of memory.
-.PP
-The allocator maintains a
+The allocator's data structure is a
 .italic "free list" 
-of addresses of physical memory pages that are available
+of physical memory pages that are available
 for allocation.
 Each free page's list element is a
 .code struct
@@ -575,23 +503,43 @@ of physical memory, and uses all the memory between the end of the kernel
 and 
 .code PHYSTOP
 as the initial pool of free memory.
-.PP
-The function
 .code kinit
-.line kalloc.c:/^kinit/
 calls
 .code kfree
 with the address of each page of memory between
 .code end
 and
 .code PHYSTOP .
-This will cause
+This causes
 .code kfree
 to add those pages to the allocator's free list.
 The allocator starts with no memory;
-these initial calls to
+these calls to
 .code kfree
-gives it some to manage.
+give it some to manage.
+.PP
+The allocator refers to physical pages by their virtual
+addresses as mapped in high memory, not by their physical
+addresses, which is why
+.code kinit
+uses
+.code p2v(PHYSTOP) 
+to translate
+.code PHYSTOP
+(a physical address)
+to a virtual address.
+The allocator sometimes treats addresses as integers
+in order to perform arithmetic on them (e.g.,
+traversing all pages in
+.code kinit ),
+and sometimes uses addresses as pointers to read and
+write memory (e.g., manipulating the 
+.code run
+structure stored in each page);
+this dual use of addresses is the main reason that the
+allocator code is full of C type casts.
+The other reason is that freeing and allocation inherently
+change the type of the memory.
 .PP
 The function
 .code kfree
@@ -615,6 +563,31 @@ and sets the free list equal to
 .code r .
 .code kalloc
 removes and returns the first element in the free list.
+.PP
+When creating the first kernel page table, 
+.code setupkvm
+and 
+.code walkpgdir
+use
+.code enter_alloc
+.line kalloc.c:/^enter_alloc/
+instead of 
+.code kalloc .
+This memory allocator moves the end of the kernel by 1 page.
+.code enter_alloc
+uses the symbol
+.code end ,
+which the linker causes to have an address that is just beyond
+the end of the kernel's data segment.
+A PTE can only refer to a physical address that is aligned
+on a 4096-byte boundary (is a multiple of 4096), so
+.code enter_alloc
+uses
+.code PGROUNDUP
+to ensure that it allocates only aligned physical addresses.
+Memory allocated with
+.code enter_alloc
+is never freed.
 .\"
 .section "Code: Process creation"
 .\"
