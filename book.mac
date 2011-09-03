@@ -185,7 +185,7 @@
 .nr marginalia \\n[left-margin]u+\\n[line-length]u+0.2i
 .po \\n[marginalia]u
 .ll (8.4i-\\n[marginalia]u)
-.index-terms
+.if \\n[index-margins] .index-terms
 .br
 .ds index-terms "
 .po \\n[left-margin]u
@@ -517,6 +517,8 @@ DRAFT as of \*[date]: Copyright 2009 Cox, Kaashoek, Morris
 .\" Reset line height.
 .PS
 ..
+.nr index-margins 1  \" 1 = show index terms in margins, 0 = don't
+.\"
 .\"
 .\"	table of contents
 .\"
