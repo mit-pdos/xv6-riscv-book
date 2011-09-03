@@ -1,8 +1,9 @@
 .chapterlike "Index
-[Will make this multiple columns later.]
-.sp
+.mk top
+.nr point-size 11
+.PS
+.multi-column 2 0.25i
 .po +0.25i
-.ll 3i
 .de index-entry
 \h'-0.25i'\\$1\h'0.2i'\\$2
 .br

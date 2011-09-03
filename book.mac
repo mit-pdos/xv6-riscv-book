@@ -128,12 +128,33 @@
 .\"	page footer
 .\"
 .de page-footer
+.nr column +1
+.ie \\n[column]<\\n[columns] .next-column
+.el \{\
+.ll \\n[line-length]u
+.po \\n[left-margin]u
 .ch page-footer 20i
 .ev 1
 'sp |(\\n[page-length]u-\\n[footer-margin]u)
 .bp
 .ev
 .ch page-footer -\\n[footer-margin]u
+.nr column 0
+.\}
+..
+.\"
+.\"	.multi-column n margin
+.\"
+.de multi-column
+.nr columns \\$1
+.nr column-margin \\$2
+.nr line-length (\\n[line-length]u-((\\n[columns]-1)*\\n[column-margin]u))/\\n[columns]
+..
+.nr columns 1
+.de next-column
+'sp |\\n[top]u
+.po +\\n[line-length]u
+.po +\\n[column-margin]u
 ..
 .\"
 .\"	page bottom
