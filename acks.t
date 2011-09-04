@@ -6,7 +6,7 @@ system, named xv6.  xv6 is a re-implementation of Dennis Ritchie's and Ken
 Thompson's Unix Version 6 (v6).  xv6 loosely follows the structure and style of
 v6, but is implemented for a modern x86-based multiprocessor using ANSI C.
 
-The text is is supposed be read along with the source code for xv6. An approach
+The text is supposed to be read along with the source code for xv6. An approach
 inspired by John Lions's Commentary on UNIX 6th Edition (Peer to Peer
 Communications; ISBN: 1-57398-013-7; 1st edition (June 14, 2000)). See also
 http://pdos.csail.mit.edu/6.828/2007/v6.html, which provides pointers to on-line
