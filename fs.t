@@ -13,32 +13,34 @@
 	
 	Mount
 ..  
-For users it is convenient to have a file system to store files and to share
-them with other users.  Unix supports files, directories, pathnames, etc. for
-this purpose (see Chapter \*[CH:UNIX]).  The files live typically on a device
-that provides
-.italic-index persistent 
-storage so that after a shut down, and starting the system again, the file is
-still present.  An example device that provided persistent storage is the IDE
-disk, which can read and write blocks (see Chapter \*[CH:TRAP]).
-To support files, directories, and pathnames, the file system must address
+.PP
+The purpose of a file system is to organize and store data. File systems
+typically support sharing of data among users and applications, as well
+.italic-index persistence
+so that data is still available after a reboot.
+.PP
+The xv6 file system provides Unix-like files, directories, pathnames
+(see Chapter \*[CH:UNIX]), and stores its data on an IDE disk for
+persistence (see Chapter \*[CH:TRAP]). The file system addresses
 several challenges:
 .IP \[bu]  
-Files must be allowed to be larger than a single block.  The file system needs
-an on-disk data structure to keep track of all the blocks that belong to a
-single file.  Similarly, it needs a data structure to record which blocks are
-free.
+The file system needs on-disk data structures to represent the tree
+of named directories and files, to record the identities of the
+blocks that hold each file's content, and to record which areas
+of the disk are free.
 .IP \[bu] 
-Updating the on-disk data structures must be done in a way that if the file
-system crashes (e.g., due to a power failure) that the data structures aren't
-left in some incorrect intermediate state (e.g., blocks appear both on the free
-list and in a file, or in neither).
+The file system must support
+.italic-index "crash recovery" .
+That is, if a crash (e.g., power failure) occurs, the file system must
+still work correctly after a restart. The risk is that a crash might
+interrupt a sequence of updates and leave inconsistent on-disk data
+structures (e.g., a block is both used in a file and marked free).
 .IP \[bu]  
-Different processes may access the same file and there must be a way to ensure
-that only one process at the same time can edit the file system data.
+Different processes may operate on the file system at the same time,
+and must coordinate to maintain invariants.
 .IP \[bu]  
 Accessing a disk is orders of magnitude slower than accessing
-memory, and a file system must maintain an in-memory cache of
+memory, so the file system must maintain an in-memory cache of
 popular blocks.
 .PP
 Addressing all of these challenges well can result in a complex implementation,
