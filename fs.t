@@ -19,7 +19,7 @@ typically support sharing of data among users and applications, as well
 .italic-index persistence
 so that data is still available after a reboot.
 .PP
-The xv6 file system provides Unix-like files, directories, pathnames
+The xv6 file system provides Unix-like files, directories, and pathnames
 (see Chapter \*[CH:UNIX]), and stores its data on an IDE disk for
 persistence (see Chapter \*[CH:TRAP]). The file system addresses
 several challenges:
@@ -34,7 +34,7 @@ The file system must support
 That is, if a crash (e.g., power failure) occurs, the file system must
 still work correctly after a restart. The risk is that a crash might
 interrupt a sequence of updates and leave inconsistent on-disk data
-structures (e.g., a block is both used in a file and marked free).
+structures (e.g., a block that is both used in a file and marked free).
 .IP \[bu]  
 Different processes may operate on the file system at the same time,
 and must coordinate to maintain invariants.
@@ -43,15 +43,14 @@ Accessing a disk is orders of magnitude slower than accessing
 memory, so the file system must maintain an in-memory cache of
 popular blocks.
 .PP
-Addressing all of these challenges well can result in a complex implementation,
-but xv6 uses a simple approach: correct but slow.  The implementation is
+The xv6 file system implementation is
 organized in 6 layers, as shown in Figure \n[fslayer].  The lowest layer
 provides block access through the buffer cache, which synchronizes access to
 disk blocks, making sure that only one kernel process at a time can edit the
 file system data in any particular buffer.  The second layer allows higher
 layers to wrap updates to several blocks in a
 .italic-index transaction ,
-to ensure that the blocks are updates atomically (i.e., all of them are updated
+to ensure that the blocks are updated atomically (i.e., all of them are updated
 or none).
 The third layer provides unnamed files, represented using
 an 
@@ -64,45 +63,54 @@ hierarchical path names like
 .code /usr/rtm/xv6/fs.c ,
 using recursive lookup.
 The final layer abstracts many Unix resources (e.g., pipes, devices,
-files, etc.) using the file system interface, simplifying the live of
+files, etc.) using the file system interface, simplifying the lives of
 application programmers.
 .figure fslayer
 .PP
-The rest of this chapter discusses each layer, starting from the bottom. Several
-layers are trivial because lower layers provide carefully chosen abstractions.
-The file system is a good example of how well designed abstractions lead to
+The rest of this chapter discusses each layer, starting from the bottom.
+Look out for situations where well-chosen abstractions at lower layers
+ease the design of higher ones.
+The file system is a good example of how well-designed abstractions lead to
 surprising generality.
 .\"
 .\" -------------------------------------------
 .\"
 .section "Buffer cache Layer"
 .PP
-The buffer cache has two jobs: (1) synchronize access to disk blocks making sure
-that only one copy of a block is in memory and only one kernel process at a time
-can edit that copy; (2) cache popular blocks so that they don't to be read from
-the slow disk.
+The buffer cache has two jobs: (1) synchronize access to disk blocks to ensure
+that only one copy of a block is in memory and that only one kernel thread at a time
+uses that copy; (2) cache popular blocks so that they don't to be re-read from
+the slow disk. The code is in
+.code bio.c .
 .PP
-The buffer cache synchronizes block access by blocking processes in
+The main interface exported by the buffer cache consists of
 .code bread
-(pronounced b-read):
-if two processes call
-.code bread
-with the same device and sector number of an
-otherwise unused disk block, the call in one process will return
-a buffer immediately;
-the call in the other process will not return until
-the first process has signaled that it is done with the buffer
-by calling
+and
+.code bwrite ;
+the former obtains a
+.italic-index buffer
+containing a copy of a block which can be read or modified in memory, and the
+latter writes a modified buffer to the appropriate block on the disk.
+A kernel thread must release a buffer by calling
 .code brelse
-(b-release).  This ensures that only one copy of a block will be in memory
-and  that only one process can update it.
+when it is done with it.
 .PP
-The buffer cache has a fixed number of buffers to hold disk blocks and so when
-the file system asks for a new block, the buffer cache must re-use a buffer.
-The buffer cache implements the recently-used replacement strategy: it uses the
-least-recently used buffer and uses that for the new block.  The implicit
-assumption is that the least recently used buffer is the one least likely to be
-used again soon.
+The buffer cache synchronizes access to each block by allowing at most
+one kernel thread to have a reference to the block's buffer. If one
+kernel thread has obtained a reference to a buffer but hasn't yet
+released it, other threads' calls to
+.code bread
+for the same block will wait.
+Higher file system layers rely on the buffer cache's block
+sychronization to help them maintain invariants.
+.PP
+The buffer cache has a fixed number of buffers to hold disk blocks,
+which means that if the file system asks for a block that is not
+already in the cache, the buffer cache must recycle a buffer currently
+holding some other block. The buffer cache recycles the
+least recently used buffer for the new block. The assumption is that
+the least recently used buffer is the one least likely to be used
+again soon.
 .\"
 .\" -------------------------------------------
 .\"
@@ -118,17 +126,27 @@ initializes the list with the
 buffers in the static array
 .code buf
 .lines bio.c:/Create.linked.list/,/^..}/ .
-All other access to the buffer cache refer to the linked list via
+All other access to the buffer cache refers to the linked list via
 .code bcache.head ,
 not the
 .code buf
 array.
 .PP
+A buffer has three state bits associated with it.
+.code B_VALID
+indicates that the buffer contains a valid copy of the block.
+.code B_DIRTY
+indicates that the buffer content has been modified and needs
+to be written to the disk.
+.code B_BUSY
+indicates that some kernel thread has a reference to this
+buffer and has not yet released it.
+.PP
 .code Bread
 .line bio.c:/^bread/
 calls
 .code bget
-to get a locked buffer for the given sector
+to get a buffer for the given sector
 .line bio.c:/b.=.bget/ .
 If the buffer needs to be read from disk,
 .code bread
@@ -141,13 +159,11 @@ to do that before returning the buffer.
 scans the buffer list for a buffer with the given device and sector numbers
 .lines bio.c:/Try.for.cached/,/^..}/ .
 If there is such a buffer,
+and the buffer is not busy,
 .code bget
-needs to lock it before returning.
-If the buffer is not in use,
-.code bget
-can set the
+sets the
 .code B_BUSY
-flag and return
+flag and returns
 .lines 'bio.c:/if...b->flags.&.B_BUSY/,/^....}/' .
 If the buffer is already in use,
 .code bget
@@ -171,7 +187,9 @@ has no choice but to start over
 hoping that the outcome will be different this time.
 .figure bufrace
 .PP
-To make the risks concrete, suppose we didn't have the
+If
+.code bget
+didn't have the
 .code goto
 statement, then the race in Figure \n[bufrace] could occur.
 The first process has a buffer and has loaded sector 3 in it.
@@ -239,8 +257,8 @@ since then.
 If all the buffers are busy, something has gone wrong:
 .code bget
 panics.
-A more graceful response would be to sleep until a buffer became free,
-though there would be a possibility of deadlock.
+A more graceful response might be to sleep until a buffer became free,
+though there would then be a possibility of deadlock.
 .PP
 Once
 .code bread
@@ -248,7 +266,7 @@ has returned a buffer to its caller, the caller has
 exclusive use of the buffer and can read or write the data bytes.
 If the caller does write to the data, it must call
 .code bwrite
-to flush the changed data out to disk before releasing the buffer.
+to write the changed data to disk before releasing the buffer.
 .code Bwrite
 .line bio.c:/^bwrite/
 sets the 
@@ -489,9 +507,10 @@ before inode.
 .section "File layer"
 .figure fslayout
 .PP
-The file layer represents unnamed files as an inode with several blocks.  This
-layer must be able to allocate inodes, file blocks, and decide which blocks have
-inodes and which have data blocks.  To do so, it divides the disk into several
+The file layer implements unnamed files,
+representing each file as an inode along with blocks holding the file's content.  This
+layer must be able to allocate inodes and file blocks on the disk.
+To do so, it divides the disk into several
 sections, as shown in Figure \n[fig:fslayout].  The file system does not use
 block 0 (it holds the boot sector).  Block 1 is called the 
 .italic-index "superblock" ; 
