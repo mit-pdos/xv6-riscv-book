@@ -65,7 +65,6 @@ those privileges.
 When a user program invokes a system call, the hardware
 raises the privilege level and starts executing a pre-arranged
 function in the kernel.
-Chapter \*[CH:TRAP] examines this sequence in more detail.
 .figure os
 .PP
 The collection of system calls that a kernel provides
