@@ -13,8 +13,7 @@
   mention why still have SEG_UCODE/SEG_UDATA?
   do we ever really say what the low two bits of %cs do?
     in particular their interaction with PTE_U
-  show elf header for init
-  introduce segmentation in real world
+  sidebar about why it is extern char[]
 ..
 .chapter CH:MEM "The first process"
 .PP
@@ -22,6 +21,7 @@ This chapter explains what happens when xv6 first starts running,
 through the creation of the first process. One of the most interesting
 aspects of this is how the kernel manages memory for itself and for
 processes.
+.index process
 .PP
 One purpose of processes is to isolate different programs that
 share the same computer, so that
@@ -63,6 +63,8 @@ copies the low 12 bits unchanged from the virtual to the
 translated physical address.  Thus a page table gives
 the operating system control over virtual-to-physical address translations
 at the granularity of aligned chunks of 4096 (2^12) bytes.
+Such a chunk is called a
+.italic-index page .
 .figure x86_pagetable
 .PP
 As shown in Figure \n[fig:x86_pagetable], the actual translation happens in two steps.
@@ -176,7 +178,8 @@ The array initialization sets two of the 1024 PTEs,
 at indices zero and 960
 .code KERNBASE>>PDXSHIFT ), (
 leaving the other PTEs zero.
-It causes both of these PTEs to use super-pages,
+It causes both of these PTEs to use 
+.italic-index "super pages" ,
 each of which maps 4 megabytes of virtual address space.
 Entry 0 maps virtual addresses
 .code 0:0x400000
@@ -285,7 +288,9 @@ Now the kernel is running in high addresses in the function
 The page table created by
 .code entry
 has enough mappings to allow the kernel's C code to start running.
-However, main immediately changes to a new page table by calling
+However, 
+.code main 
+immediately changes to a new page table by calling
 .code kvmalloc
 .line vm.c:/^kvmalloc/ ,
 because kernel has a more elaborate plan for page tables that describe
@@ -608,13 +613,26 @@ to refer to elements of the
 structure.
 .PP
 You should view the kernel state of a process as a thread
-that executes in the kernel on behalf of a process.
-For example, when a process makes a system call, the CPU
-switches from executing the process to executing the
-process's kernel thread.
-The process's kernel thread executes the implementation
-of the system call (e.g., reads a file), and then
-returns back to the process.
+of execution (or 
+.italic-index thread
+for short) that executes in the kernel on behalf of a process.  A thread
+executes a computation but can be stopped and then resumed.  For example, when a
+process makes a system call, the CPU switches from executing the process to
+executing the process's kernel thread.  The process's kernel thread executes the
+implementation of the system call (e.g., reads a file), and then returns back to
+the process.  xv6 executes a system call as a thread so that a system can wait (or
+"block") in the kernel to wait for I/O, and resume where it left off when the
+I/O has finished.  Much of the state of a kernel thread (local variables,
+functional call return addresses) is stored on the kernel
+thread's stack, 
+.code p->kstack  .
+Each process's kernel stack is separate from its user stack, since the
+user stack may not be valid.   So, you can view a process has having two threads
+of execution: one user thread and one kernel thread.
+.PP
+.code p->state 
+indicates whether the process is allocated, ready
+to run, running, waiting for I/O, or exiting.
 .PP
 .code p->pgdir
 holds the process's page table, an array of PTEs.
@@ -623,22 +641,6 @@ xv6 causes the paging hardware to use a process's
 when executing that process.
 A process's page table also serves as the record of the
 addresses of the physical pages allocated to store the process's memory.
-.PP
-.code p->kstack
-points to the process's kernel stack.
-When a process's kernel thread is executing, for example in a system
-call, it must have a stack on which to save variables and function
-call return addresses.  xv6 allocates one kernel stack for each process.
-The kernel stack is separate from the user stack, since the
-user stack may not be valid.  Each process has its own kernel stack
-(rather than all sharing a single stack) so that a system call may
-wait (or "block") in the kernel to wait for I/O, and resume where it
-left off when the I/O has finished; the process's kernel stack saves
-much of the state required for such a resumption.
-.PP
-.code p->state 
-indicates whether the process is allocated, ready
-to run, running, waiting for I/O, or exiting.
 .PP
 The story of the creation of the first process starts when
 .code main
@@ -661,7 +663,7 @@ required for its kernel thread to execute.
 .code Allocproc 
 is called for all new processes, while
 .code userinit
-is only called for the very first process.
+is called only for the very first process.
 .code Allocproc
 scans the table for a process with state
 .code UNUSED
@@ -680,11 +682,12 @@ process's kernel thread.  If the memory allocation fails,
 changes the state back to
 .code UNUSED
 and returns zero to signal failure.
+.figure newkernelstack
 .PP
 Now
 .code allocproc
 must set up the new process's kernel stack.
-Ordinarily processes are only created by
+Ordinarily processes are created only by
 .code fork ,
 so a new process
 starts life copied from its parent.  The result of 
@@ -698,6 +701,7 @@ stack and set of kernel registers that cause it to "return" to user
 space at the same place (the return from the
 .code fork
 system call) as the parent.
+The layout of the prepared kernel stack will be as shown in Figure \n[fig:newkernelstack].
 .code allocproc
 does part of this work by setting up return program counter
 values that will cause the new process's kernel thread to first execute in
@@ -741,7 +745,6 @@ and for creating the first process, though in
 the latter case the process will start executing at
 location zero rather than at a return from
 .code fork .
-.figure newkernelstack
 .PP
 As we will see in Chapter \*[CH:TRAP],
 the way that control transfers from user software to the kernel
@@ -760,8 +763,8 @@ the kernel back to the process's user code will work.
 These values are a
 .code struct
 .code trapframe
-which stores the user registers.
-Figure \n[fig:newkernelstack] shows the state of the new process's kernel stack.
+which stores the user registers.  Now the new process's kernel stack is
+completely prepared as shown in Figure \n[fig:newkernelstack].
 .PP
 The first process is going to execute a small program
 .code initcode.S ; (
@@ -788,8 +791,7 @@ defines two special symbols
 .code _binary_initcode_start
 and
 .code _binary_initcode_size
-telling the location and size of the binary
-(XXX sidebar about why it is extern char[]).
+telling the location and size of the binary.
 .code Userinit
 copies that binary into the new process's memory
 by calling
@@ -946,6 +948,10 @@ so the
 .code ret
 starts executing
 .code forkret .
+.code Forkret
+releases the 
+.code ptable.lock
+(see Chapter \*[CH:LOCK]).
 On the first invocation (that is this one),
 .code forkret
 .line proc.c:/^forkret/
@@ -953,12 +959,9 @@ runs initialization functions that cannot be run from
 .code main 
 because they must be run in the context of a regular process with its own
 kernel stack. 
-Then,
-.code forkret
-releases the 
-.code ptable.lock
-(see Chapter \*[CH:LOCK])
-and then returns.
+Then, 
+.code forkret 
+returns.
 .code Allocproc
 arranged that the top word on the stack after
 .code p->context
