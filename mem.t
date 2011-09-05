@@ -45,11 +45,11 @@ will introduce x86-specific ideas as they come up. Appendix \*[APP:HW]
 briefly outlines the PC platform.
 .PP
 The x86 paging hardware uses a page
-table to translate (or "map")
-.italic-index virtual 
-(the addresses that an x86 program manipulates) to
-.italic-index physical 
-addresses (the addresses that the processor chip sends to main memory).
+table to translate (or "map") a
+.italic-index "virtual address"
+(the address that an x86 instruction manipulates) to a
+.italic-index "physical address"
+(an address that the processor chip sends to main memory).
 .PP
 An x86 page table is logically an array of 2^20
 (1,048,576) 
@@ -88,14 +88,14 @@ virtual addresses have no mappings.
 .PP
 Each PTE contains flag bits that tell the paging hardware
 how the associated virtual address is allowed to be used.
-.code PTE_P
+.code-index PTE_P
 indicates whether the PTE is present: if it is
 not set, a reference to the page causes a fault (i.e. is not allowed).
-.code PTE_W
+.code-index PTE_W
 controls whether instructions are allowed to issue
 writes to the page; if not set, only reads and
 instruction fetches are allowed.
-.code PTE_U
+.code-index PTE_U
 controls whether user programs are allowed to use the
 page; if clear, only the kernel is allowed to use the page.
 Figure \n[fig:x86_pagetable] shows how it all works.
@@ -142,7 +142,7 @@ from disk into memory and executes it.
 Appendix \*[APP:BOOT] explains the details.
 Xv6's boot loader loads the xv6 kernel from disk and executes it
 starting at 
-.code entry 
+.code-index entry 
 .line entry.S:/^entry/ .
 The x86 paging hardware is not enabled when the kernel starts;
 virtual addresses map directly to physical addresses.
@@ -166,7 +166,7 @@ To allow the rest of the kernel to run,
 sets up a page table that maps virtual addresses starting at
 .address 0x80000000
 (called
-.code KERNBASE 
+.code-index KERNBASE 
 .line memlayout.h:/define.KERNBASE/ )
 to physical address starting at
 .address 0x0 .
@@ -178,15 +178,15 @@ The array initialization sets two of the 1024 PTEs,
 at indices zero and 960
 .code KERNBASE>>PDXSHIFT ), (
 leaving the other PTEs zero.
-It causes both of these PTEs to use 
-.italic-index "super pages" ,
-each of which maps 4 megabytes of virtual address space.
+It causes both of these PTEs to use a
+.italic-index "superpage" ,
+which maps 4 megabytes of virtual address space.
 Entry 0 maps virtual addresses
 .code 0:0x400000
 to physical addresses
 .code 0:0x400000 .
 This mapping is required as long as
-.code entry
+.code-index entry
 is executing at low addresses, but
 will eventually be removed.
 The pages are mapped as present
@@ -216,13 +216,13 @@ This mapping restricts the kernel instructions and data to 4 Mbytes.
 Returning to
 .code entry,
 the kernel first tells the paging hardware to allow super pages by setting the flag
-.code CR_PSE 
+.code-index CR_PSE 
 (page size extension) in the control register
-.code %cr4.
+.register %cr4.
 Next it loads the physical address of
-.code entrypgdir
+.code-index entrypgdir
 into control register
-.code %cr3.
+.register %cr3.
 The paging hardware must know the physical address of
 .code entrypgdir, 
 because it doesn't know how to translate virtual addresses yet; it doesn't have
@@ -231,17 +231,17 @@ The symbol
 .code entrypgdir
 refers to an address in high memory,
 and the macro
-.code V2P_WO
+.code-index V2P_WO
 .line 'memlayout.h:/V2P_WO/' 
 subtracts
 .code KERNBASE
 in order to find the physical address.
 To enable the paging hardware, xv6 sets the flag
-.code CR0_PG
+.code-index CR0_PG
 in the control register
 .code %cr0.
 It also sets
-.code CR0_WP ,
+.code-index CR0_WP ,
 which ensures that the kernel honors
 write-protect flags in PTEs.
 .PP
@@ -270,15 +270,15 @@ low mappings are removed.
 Finally 
 .code entry
 jumps to
-.code main,
+.code-index main ,
 which is also a high address.
 The indirect jump is needed because the assembler would
 generate a PC-relative direct jump, which would execute
 the low-memory version of 
-.code main .
+.code-index main .
 Main cannot return, since the there's no return PC on the stack.
 Now the kernel is running in high addresses in the function
-.code main 
+.code-index main 
 .line main.c:/^main/ .
 .\"
 .figure xv6_layout
@@ -291,7 +291,7 @@ has enough mappings to allow the kernel's C code to start running.
 However, 
 .code main 
 immediately changes to a new page table by calling
-.code kvmalloc
+.code-index kvmalloc
 .line vm.c:/^kvmalloc/ ,
 because kernel has a more elaborate plan for page tables that describe
 process address spaces.
@@ -342,7 +342,7 @@ addresses starting at
 .address 0xFE000000 ,
 so xv6 page tables including a direct mapping for them.
 Xv6 does not set the
-.code PTE_U
+.code-index PTE_U
 flag in the PTEs above
 .address KERNBASE ,
 so only the kernel can use them.
@@ -358,7 +358,7 @@ table; it is almost always borrowing some process's page table.
 To review, xv6 ensures that each process can only use its own memory,
 and that a process sees its memory as having contiguous virtual addresses.
 xv6 implements the first by setting the
-.code PTE_U
+.code-index PTE_U
 bit only on PTEs of virtual addresses that refer to the process's own memory.
 It implements the second using the ability of page tables to translate
 successive virtual addresses to whatever physical pages happen to
@@ -367,33 +367,33 @@ be allocated to the process.
 .section "Code: creating an address space"
 .\"
 .PP
-.code main
+.code-index main
 calls
-.code kvmalloc
+.code-index kvmalloc
 .line vm.c:/^kvmalloc/
 to create and switch to a page table with the mappings above
 .code KERNBASE 
 required for the kernel to run.
 Most of the work happens in
-.code setupkvm
+.code-index setupkvm
 .line vm.c:/^setupkvm/ .
 It first allocates a page of memory to hold the page directory.
 Then it calls
-.code mappages
+.code-index mappages
 to install the translations that the kernel needs,
 which are described in the 
-.code kmap
+.code-index kmap
 .line vm.c:/^}.kmap/
 array.
 The translations include the kernel's
 instructions and data, physical memory up to
-.code PHYSTOP ,
+.code-index PHYSTOP ,
 and memory ranges which are actually I/O devices.
 .code setupkvm
 does not install any mappings for the user memory;
 this will happen later.
 .PP
-.code mappages
+.code-index mappages
 .line vm.c:/^mappages/
 installs mappings into a page table
 for a range of virtual addresses to
@@ -403,7 +403,7 @@ at page intervals.
 For each virtual address to be mapped,
 .code mappages
 calls
-.code walkpgdir
+.code-index walkpgdir
 to find the address of the PTE for that address.
 It then initializes the PTE to hold the relevant physical page
 number, the desired permissions (
@@ -415,7 +415,7 @@ and
 to mark the PTE as valid
 .line vm.c:/perm...PTE_P/ .
 .PP
-.code walkpgdir
+.code-index walkpgdir
 .line vm.c:/^walkpgdir/
 mimics the actions of the x86 paging hardware as it
 looks up the PTE for a virtual address (see Fig. \n[fig:x86_pagetable]).
@@ -444,7 +444,7 @@ kernel stacks,
 and pipe buffers.
 .PP
 xv6 uses the physical memory between the end of the kernel and
-.code PHYSTOP
+.code-index PHYSTOP
 for run-time allocation. It allocates and frees whole 4096-byte pages
 at a time. It keeps track of which pages are free by threading a
 linked list through the pages themselves. Allocation consists of
@@ -469,8 +469,7 @@ The allocator's data structure is a
 of physical memory pages that are available
 for allocation.
 Each free page's list element is a
-.code struct
-.code run 
+.code-index "struct run"
 .line kalloc.c:/^struct.run/ .
 Where does the allocator get the memory
 to hold that data structure?
@@ -492,9 +491,9 @@ Chapter \*[CH:LOCK] will examine
 locking in detail.
 .PP
 The function
-.code main
+.code-index main
 calls 
-.code kinit
+.code-index kinit
 to initialize the allocator
 .line kalloc.c:/^kinit/ .
 .code kinit
@@ -506,13 +505,13 @@ Instead it assumes that the machine has
 .code PHYSTOP ) (
 of physical memory, and uses all the memory between the end of the kernel
 and 
-.code PHYSTOP
+.code-index PHYSTOP
 as the initial pool of free memory.
 .code kinit
 calls
-.code kfree
+.code-index kfree
 with the address of each page of memory between
-.code end
+.code-index end
 and
 .code PHYSTOP .
 This causes
@@ -566,29 +565,29 @@ records the old start of the free list in
 .code r->next ,
 and sets the free list equal to
 .code r .
-.code kalloc
+.code-index kalloc
 removes and returns the first element in the free list.
 .PP
 When creating the first kernel page table, 
-.code setupkvm
+.code-index setupkvm
 and 
-.code walkpgdir
+.code-index walkpgdir
 use
-.code enter_alloc
+.code-index enter_alloc
 .line kalloc.c:/^enter_alloc/
 instead of 
-.code kalloc .
+.code-index kalloc .
 This memory allocator moves the end of the kernel by 1 page.
 .code enter_alloc
 uses the symbol
-.code end ,
+.code-index end ,
 which the linker causes to have an address that is just beyond
 the end of the kernel's data segment.
 A PTE can only refer to a physical address that is aligned
 on a 4096-byte boundary (is a multiple of 4096), so
 .code enter_alloc
 uses
-.code PGROUNDUP
+.code-index PGROUNDUP
 to ensure that it allocates only aligned physical addresses.
 Memory allocated with
 .code enter_alloc
@@ -600,14 +599,13 @@ is never freed.
 This section describes how xv6 creates the first process.
 The xv6 kernel maintains many pieces of state for each process,
 which it gathers into a
-.code struct
-.code proc
+.code-index "struct proc"
 .line proc.h:/^struct.proc/ .
 A process's most important pieces of kernel state are its 
 page table and the physical memory it refers to,
 its kernel stack, and its run state.
 We'll use the notation
-.code p->xxx
+.code-index p->xxx
 to refer to elements of the
 .code proc
 structure.
@@ -625,16 +623,16 @@ the process.  xv6 executes a system call as a thread so that a system can wait (
 I/O has finished.  Much of the state of a kernel thread (local variables,
 functional call return addresses) is stored on the kernel
 thread's stack, 
-.code p->kstack  .
+.code-index p->kstack  .
 Each process's kernel stack is separate from its user stack, since the
 user stack may not be valid.   So, you can view a process has having two threads
 of execution: one user thread and one kernel thread.
 .PP
-.code p->state 
+.code-index p->state 
 indicates whether the process is allocated, ready
 to run, running, waiting for I/O, or exiting.
 .PP
-.code p->pgdir
+.code-index p->pgdir
 holds the process's page table, an array of PTEs.
 xv6 causes the paging hardware to use a process's
 .code p->pgdir
@@ -643,13 +641,13 @@ A process's page table also serves as the record of the
 addresses of the physical pages allocated to store the process's memory.
 .PP
 The story of the creation of the first process starts when
-.code main
+.code-index main
 .line main.c:/userinit/ 
 calls
-.code userinit
+.code-index userinit
 .line proc.c:/^userinit/ ,
 whose first action is to call
-.code allocproc .
+.code-index allocproc .
 The job of
 .code allocproc
 .line proc.c:/^allocproc/
@@ -671,10 +669,10 @@ scans the table for a process with state
 When it finds an unused process, 
 .code allocproc
 sets the state to
-.code EMBRYO
+.code-index EMBRYO
 to mark it as used and
 gives the process a unique
-.code pid
+.code-index pid
 .lines proc.c:/EMBRYO/,/nextpid/ .
 Next, it tries to allocate a kernel stack for the
 process's kernel thread.  If the memory allocation fails, 
@@ -705,20 +703,20 @@ The layout of the prepared kernel stack will be as shown in Figure \n[fig:newker
 .code allocproc
 does part of this work by setting up return program counter
 values that will cause the new process's kernel thread to first execute in
-.code forkret
+.code-index forkret
 and then in
-.code trapret
+.code-index trapret
 .lines proc.c:/uint.trapret/,/uint.forkret/ .
 The kernel thread will start executing
 with register contents copied from
-.code p->context .
+.code-index p->context .
 Thus setting
 .code p->context->eip
 to
 .code forkret
 will cause the kernel thread to execute at
 the start of 
-.code forkret 
+.code-index forkret 
 .line proc.c:/^forkret/ .
 This function 
 will return to whatever address is at the bottom of the stack.
@@ -730,11 +728,11 @@ sets the stack pointer to point just beyond the end of
 places
 .code p->context
 on the stack, and puts a pointer to
-.code trapret
+.code-index trapret
 just above it; that is where
-.code forkret
+.code-index forkret
 will return.
-.code trapret
+.code-index trapret
 restores user registers
 from values stored at the top of the kernel stack and jumps
 into the process
@@ -753,7 +751,7 @@ interrupts, and exceptions.
 Whenever control transfers into the kernel while a process is running,
 the hardware and xv6 trap entry code save user registers on the
 top of the process's kernel stack.
-.code userinit
+.code-index userinit
 writes values at the top of the new stack that
 look just like those that would be there if the
 process had entered the kernel via an interrupt
@@ -761,22 +759,21 @@ process had entered the kernel via an interrupt
 so that the ordinary code for returning from
 the kernel back to the process's user code will work.
 These values are a
-.code struct
-.code trapframe
+.code-index "struct trapframe"
 which stores the user registers.  Now the new process's kernel stack is
 completely prepared as shown in Figure \n[fig:newkernelstack].
 .PP
 The first process is going to execute a small program
-.code initcode.S ; (
+.code-index initcode.S ; (
 .line initcode.S:1 ).
 The process needs physical memory in which to store this
 program, the program needs to be copied to that memory,
 and the process needs a page table that refers to
 that memory.
 .PP
-.code userinit
+.code-index userinit
 calls 
-.code setupkvm
+.code-index setupkvm
 .line vm.c:/^setupkvm/
 to create a page table for the process with (at first) mappings
 only for memory that the kernel uses.  This function is the same one that the
@@ -784,18 +781,18 @@ kernel used to setup its page table.
 .PP
 The initial contents of the first process's memory are
 the compiled form of
-.code initcode.S ;
+.code-index initcode.S ;
 as part of the kernel build process, the linker
 embeds that binary in the kernel and
 defines two special symbols
-.code _binary_initcode_start
+.code-index _binary_initcode_start
 and
-.code _binary_initcode_size
+.code-index _binary_initcode_size
 telling the location and size of the binary.
 .code Userinit
 copies that binary into the new process's memory
 by calling
-.code inituvm ,
+.code-index inituvm ,
 which allocates one page of physical memory,
 maps virtual address zero to that memory,
 and copies the binary to that page
@@ -805,11 +802,11 @@ Then
 .code userinit
 sets up the trap frame with the initial user mode state:
 the
-.code cs
+.register cs
 register contains a segment selector for the
-.code SEG_UCODE
+.code-index SEG_UCODE
 segment running at privilege level
-.code DPL_USER
+.code-index DPL_USER
 (i.e., user mode not kernel mode),
 and similarly
 .code ds ,
@@ -817,12 +814,12 @@ and similarly
 and
 .code ss
 use
-.code SEG_UDATA
+.code-index SEG_UDATA
 with privilege
-.code DPL_USER .
+.code-index DPL_USER .
 The
 .code eflags
-.code FL_IF
+.code-index FL_IF
 is set to allow hardware interrupts;
 we will reexamine this in Chapter \*[CH:TRAP].
 .PP
@@ -833,25 +830,26 @@ is the process's largest valid virtual address,
 The instruction pointer is the entry point
 for the initcode, address 0.
 .PP
-.code Userinit
+The function
+.code-index userinit
 sets
-.code p->name
+.code-index p->name
 to
 .code "initcode"
 mainly for debugging.
 Setting
-.code p->cwd
+.code-index p->cwd
 sets the process's current working directory;
 we will examine
-.code namei
+.code-index namei
 in detail in Chapter \*[CH:FS].
 .PP
 Once the process is initialized,
-.code userinit
+.code-index userinit
 marks it available for scheduling by setting 
 .code p->state
 to
-.code RUNNABLE .
+.code-index RUNNABLE .
 .\"
 .section "Code: Running a process"
 .\"
@@ -861,9 +859,9 @@ After
 .code main
 calls
 .code userinit ,
-.code mpmain
+.code-index mpmain
 calls
-.code scheduler
+.code-index scheduler
 to start running processes
 .line main.c:/scheduler/ .
 .code Scheduler
@@ -877,18 +875,18 @@ and there's only one it can find:
 It sets the per-cpu variable
 .code proc
 to the process it found and calls
-.code switchuvm
+.code-index switchuvm
 to tell the hardware to start using the target
 process's page table
 .line vm.c:/lcr3.*p..pgdir/ .
 Changing page tables while executing in the kernel
 works because 
-.code setupkvm
+.code-index setupkvm
 causes all processes' page tables to have identical
 mappings for kernel code and data.
 .code switchuvm
 also creates a new task state segment
-.code SEG_TSS
+.code-index SEG_TSS
 that instructs the hardware to handle
 an interrupt by returning to kernel mode
 with
@@ -896,19 +894,20 @@ with
 and
 .code esp
 set to
-.code SEG_KDATA<<3
+.code-index SEG_KDATA 
+.code <<3
 and
 .code (uint)proc->kstack+KSTACKSIZE ,
 the top of this process's kernel stack.
 We will reexamine the task state segment in Chapter \*[CH:TRAP].
 .PP
-.code scheduler
+.code-index scheduler
 now sets
 .code p->state
 to
 .code RUNNING
 and calls
-.code swtch
+.code-index swtch
 .line swtch.S:/^swtch/ 
 to perform a context switch to the target process's kernel thread.
 .code swtch 
@@ -923,13 +922,13 @@ per-cpu scheduler context, so
 tells
 .code swtch
 to save the current hardware registers in per-cpu storage
-.code cpu->scheduler ) (
+.code-index cpu->scheduler ) (
 rather than in any process's kernel thread context.
 We'll examine
-.code switch
+.code-index switch
 in more detail in Chapter \*[CH:SCHED].
 The final
-.code ret
+.code-index ret
 instruction 
 .line swtch.S:/ret$/
 pops a new
@@ -943,20 +942,20 @@ set
 .code initproc 's
 .code p->context->eip
 to
-.code forkret ,
+.code-index forkret ,
 so the 
-.code ret
+.code-index ret
 starts executing
-.code forkret .
+.code-index forkret .
 .code Forkret
 releases the 
 .code ptable.lock
 (see Chapter \*[CH:LOCK]).
 On the first invocation (that is this one),
-.code forkret
+.code-index forkret
 .line proc.c:/^forkret/
 runs initialization functions that cannot be run from 
-.code main 
+.code-index main 
 because they must be run in the context of a regular process with its own
 kernel stack. 
 Then, 
@@ -964,10 +963,10 @@ Then,
 returns.
 .code Allocproc
 arranged that the top word on the stack after
-.code p->context
+.code-index p->context
 is popped off
 would be 
-.code trapret ,
+.code-index trapret ,
 so now 
 .code trapret
 begins executing,
@@ -979,12 +978,12 @@ set to
 .line trapasm.S:/^trapret/ 
 uses pop instructions to walk
 up the trap frame just as 
-.code swtch
+.code-index swtch
 did with the kernel context:
-.code popal
+.code-index popal
 restores the general registers,
 then the
-.code popl 
+.code-index popl 
 instructions restore
 .code %gs ,
 .code %fs ,
@@ -992,13 +991,13 @@ instructions restore
 and
 .code %ds .
 The 
-.code addl
+.code-index addl
 skips over the two fields
 .code trapno
 and
 .code errcode .
 Finally, the
-.code iret
+.code-index iret
 instructions pops 
 .code %cs ,
 .code %eip ,
@@ -1011,10 +1010,10 @@ so the processor continues at the
 .code %eip
 specified in the trap frame.
 For
-.code initproc ,
+.code-index initproc ,
 that means virtual address zero,
 the first instruction of
-.code initcode.S .
+.code-index initcode.S .
 .PP
 At this point,
 .code %eip
@@ -1023,17 +1022,17 @@ holds zero and
 holds 4096.
 These are virtual addresses in the process's address space.
 The processor's paging hardware translates them into physical addresses.
-.code allocuvm
+.code-index allocuvm
 set up the PTE for the page at virtual address zero to
 point to the physical memory allocated for this process,
 and marked that PTE with
-.code PTE_U
+.code-index PTE_U
 so that the process can use it.
 No other PTEs in the process's page table have the
 .code PTE_U
 bit set.
 The fact that
-.code userinit
+.code-index userinit
 .line proc.c:/UCODE/
 set up the low bits of
 .register cs
@@ -1055,12 +1054,12 @@ and
 and then sets
 .code %eax
 to
-.code $SYS_exec
+.code-index SYS_exec
 and executes
 .code int
-.code $T_SYSCALL :
+.code-index T_SYSCALL :
 it is asking the kernel to run the
-.code exec
+.code-index exec
 system call.
 If all goes well,
 .code exec
@@ -1076,7 +1075,7 @@ If the
 fails and does return,
 initcode
 loops calling the
-.code exit
+.code-index exit
 system call, which definitely
 should not return
 .line initcode.S:/for.*exit/,/jmp.exit/ .
@@ -1097,7 +1096,7 @@ provide for standard operation.
 .section "Exec"
 .\"
 As we saw in Chapter \*[CH:UNIX], 
-.code exec
+.code-index exec
 replaces the memory and registers of the
 current process with a new program, but it leaves the
 file descriptors, process id, and parent process the same.
@@ -1105,7 +1104,7 @@ file descriptors, process id, and parent process the same.
 .PP
 Figure \n[fig:processlayout] shows the user memory image of an executing process.
 The heap is above the stack so that it can expand (with
-.code sbrk ).
+.code-index sbrk ).
 The stack is a single page, and is
 shown with the initial contents as created by exec.
 Strings containing the command-line arguments, as well as an
@@ -1122,9 +1121,9 @@ had just started.
 .\"
 When the system call arrives (Chapter \*[CH:TRAP]
 will explain how that happens),
-.code syscall
+.code-index syscall
 invokes
-.code sys_exec
+.code-index sys_exec
 via the 
 .code syscalls
 table
@@ -1141,7 +1140,7 @@ and invokes
 opens the named binary 
 .code path
 using
-.code namei
+.code-index namei
 .line exec.c:/namei/ ,
 which is explained in Chapter \*[CH:FS],
 and then reads the ELF header. Xv6 applications are described in the widely-used 
@@ -1149,12 +1148,10 @@ and then reads the ELF header. Xv6 applications are described in the widely-used
 defined in
 .file elf.h .
 An ELF binary consists of an ELF header,
-.code struct
-.code elfhdr
+.code-index "struct elfhdr"
 .line elf.h:/^struct.elfhdr/ ,
 followed by a sequence of program section headers,
-.code struct
-.code proghdr
+.code "struct proghdr"
 .line elf.h:/^struct.proghdr/ .
 Each
 .code proghdr
@@ -1171,7 +1168,7 @@ An ELF binary starts with the four-byte "magic number"
 .code 'L' ,
 .code 'F' ,
 or
-.code ELF_MAGIC
+.code-index ELF_MAGIC
 .line elf.h:/ELF_MAGIC/ .
 If the ELF header has the right magic number,
 .code exec
@@ -1180,16 +1177,16 @@ assumes that the binary is well-formed.
 Then 
 .code exec
 allocates a new page table with no user mappings with
-.code setupkvm
+.code-index setupkvm
 .line exec.c:/setupkvm/ ,
 allocates memory for each ELF segment with
-.code allocuvm
+.code-index allocuvm
 .line exec.c:/allocuvm/ ,
 and loads each segment into memory with
-.code loaduvm
+.code-index loaduvm
 .line exec.c:/loaduvm/ .
 The program section header for
-.code /init
+.code-index /init
 looks like this:
 .P1
 # objdump -p _init 
@@ -1205,13 +1202,13 @@ Program Header:
 checks that the virtual addresses requested
 is below
 .address KERNBASE .
-.code loaduvm
+.code-index loaduvm
 .line vm.c:/^loaduvm/
 uses
-.code walkpgdir
+.code-index walkpgdir
 to find the physical address of the allocated memory at which to write
 each page of the ELF segment, and
-.code readi
+.code-index readi
 to read from the file.
 .PP
 The program section header's
@@ -1227,13 +1224,13 @@ is 2240 bytes and
 .code memsz 
 is 2252 bytes,
 and thus 
-.code allocuvm
+.code-index allocuvm
 allocates enough physical memory to hold 2252 bytes, but reads only 2240 bytes
 from the file 
 .code /init .
 .PP
 Now
-.code exec
+.code-index exec
 allocates and initializes the user stack.
 It allocates just one stack page.
 It also places an inaccessible page just below the stack page,
@@ -1243,7 +1240,7 @@ This inaccessible page also allows
 to deal with arguments that are too large;
 in that situation, 
 the
-.code copyout
+.code-index copyout
 function that
 .code exec
 uses to copy arguments to the stack will notice that
@@ -1253,15 +1250,15 @@ return \-1.
 .code Exec
 copies the argument strings to the top of the stack
 one at a time, recording the pointers to them in 
-.code ustack .
+.code-index ustack .
 It places a null pointer at the end of what will be the
-.code argv
+.code-index argv
 list passed to
 .code main .
 The first three entries in 
 .code ustack
 are the fake return PC,
-.code argc ,
+.code-index argc ,
 and
 .code argv
 pointer.
@@ -1294,12 +1291,12 @@ returns 0.
 Success!
 .PP
 Now the
-.code initcode
+.code-index initcode
 .line initcode.S:1
 is done.
 .code Exec
 has replaced it with the 
-.code /init
+.code-index /init
 binary, loaded out of the file system.
 .code Init
 .line init.c:/^main/
@@ -1344,7 +1341,7 @@ implementing per-cpu variables such as
 .code proc
 that are at a fixed address but have different values
 on different CPUs (see
-.code seginit ).
+.code-index seginit ).
 Implementations of per-CPU (or per-thread) storage on non-segment
 architectures would dedicate a register to holding a pointer
 to the per-CPU data area, but the x86 has so few general

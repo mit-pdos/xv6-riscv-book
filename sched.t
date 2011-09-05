@@ -85,7 +85,7 @@ and
 are saved and restored means that the CPU will switch stacks and
 switch what code it is executing.
 .PP
-.code swtch
+.code-index swtch
 doesn't directly know about threads; it just saves and
 restores register sets, called 
 .italic-index "contexts" .
@@ -99,8 +99,7 @@ Each context is represented by a
 a pointer to a structure stored on the kernel stack involved.
 .code Swtch
 takes two arguments:
-.code struct
-.code context
+.code-index "struct context"
 .code **old
 and
 .code struct
@@ -123,18 +122,18 @@ let's instead follow our user process back in.
 We saw in Chapter \*[CH:TRAP]
 that one possibility at the end of each interrupt
 is that 
-.code trap
+.code-index trap
 calls 
-.code yield .
+.code-index yield .
 .code Yield
 in turn calls
-.code sched ,
+.code-index sched ,
 which calls
-.code swtch
+.code-index swtch
 to save the current context in
 .code proc->context
 and switch to the scheduler context previously saved in 
-.code cpu->scheduler
+.code-index cpu->scheduler
 .line proc.c:/swtch..proc/ .
 .PP
 .code Swtch
@@ -145,7 +144,7 @@ into the registers
 and
 .code %edx
 .lines swtch.S:/movl/,/movl/ ;
-.code swtch
+.code-index swtch
 must do this before it
 changes the stack pointer
 and can no longer access the arguments
@@ -188,7 +187,7 @@ It moves the pointer to the new context
 into the stack pointer
 .line swtch.S:/movl..edx/ .
 The new stack has the same form as the old one that
-.code swtch
+.code-index swtch
 just left—the new stack
 .italic was
 the old one in a previous call to
@@ -211,11 +210,11 @@ and the instruction address returned to
 are the ones from the new context.
 .PP
 In our example, 
-.code sched
+.code-index sched
 called
-.code swtch
+.code-index swtch
 to switch to
-.code cpu->scheduler ,
+.code-index cpu->scheduler ,
 the per-CPU scheduler context.
 That context had been saved by 
 .code scheduler 's
@@ -223,12 +222,12 @@ call to
 .code swtch
 .line proc.c:/swtch..cpu/ .
 When the
-.code swtch
+.code-index swtch
 we have been tracing returns,
 it returns not to
 .code sched
 but to 
-.code scheduler ,
+.code-index scheduler ,
 and its stack pointer points at the current CPU's
 scheduler stack, not
 .code initproc 's
@@ -238,7 +237,7 @@ kernel stack.
 .\"
 .PP
 The last section looked at the low-level details of
-.code swtch ;
+.code-index swtch ;
 now let's take 
 .code swtch
 as a given and examine the conventions involved
@@ -246,18 +245,18 @@ in switching from process to scheduler and back to process.
 A process
 that wants to give up the CPU must
 acquire the process table lock
-.code ptable.lock ,
+.code-index ptable.lock ,
 release any other locks it is holding,
 update its own state
 .code proc->state ), (
 and then call
-.code sched .
+.code-index sched .
 .code Yield
 .line proc.c:/^yield/
 follows this convention, as do
-.code sleep
+.code-index sleep
 and
-.code exit ,
+.code-index exit ,
 which we will examine later.
 .code Sched
 double-checks those conditions
@@ -266,17 +265,17 @@ and then an implication of those conditions:
 since a lock is held, the CPU should be
 running with interrupts disabled.
 Finally,
-.code sched
+.code-index sched
 calls
-.code swtch
+.code-index swtch
 to save the current context in 
 .code proc->context
 and switch to the scheduler context in
-.code cpu->scheduler .
+.code-index cpu->scheduler .
 .code Swtch
 returns on the scheduler's stack
 as though
-.code scheduler 's
+.code-index scheduler 's
 .code swtch
 had returned
 .line proc.c:/swtch..cpu/ .
@@ -286,17 +285,17 @@ loop, finds a process to run,
 switches to it, and the cycle repeats.
 .PP
 We just saw that xv6 holds
-.code ptable.lock
+.code-index ptable.lock
 across calls to
 .code swtch :
 the caller of
-.code swtch
+.code-index swtch
 must already hold the lock, and control of the lock passes to the
 switched-to code.  This convention is unusual with locks; the typical
 convention is the thread that acquires a lock is also responsible of
 releasing the lock, which makes it easier to reason about correctness.
 For context switching is necessary to break the typical convention because
-.code ptable.lock
+.code-index ptable.lock
 protects invariants on the process's
 .code state
 and
@@ -306,10 +305,10 @@ fields that are not true while executing in
 One example of a problem that could arise if
 .code ptable.lock
 were not held during
-.code swtch :
+.code-index swtch :
 a different CPU might decide
 to run the process after 
-.code yield
+.code-index yield
 had set its state to
 .code RUNNABLE ,
 but before 
@@ -332,24 +331,24 @@ threads, one would observe the following simple pattern:
 .line proc.c:/swtch..proc/ ,
 and so on.  The procedures in which this stylized switching between
 two threads happens are sometimes referred to as 
-.italic-index co-routines ; 
+.italic-index coroutines ; 
 in this example,
-.code sched
+.code-index sched
 and
-.code scheduler
+.code-index scheduler
 are co-routines of each other.
 .PP
 There is one case when the scheduler's 
-.code swtch
+.code-index swtch
 to a new process does not end up in
-.code sched .
+.code-index sched .
 We saw this case in Chapter \*[CH:MEM]: when a
 new process is first scheduled, it begins at
-.code forkret
+.code-index forkret
 .line proc.c:/^forkret/ .
 .code Forkret
 exists only to honor this convention by releasing the 
-.code ptable.lock ;
+.code-index ptable.lock ;
 otherwise, the new process could start at
 .code trapret .
 .PP
@@ -357,9 +356,9 @@ otherwise, the new process could start at
 .line proc.c:/^scheduler/ 
 runs a simple loop:
 find a process to run, run it until it stops, repeat.
-.code scheduler
+.code-index scheduler
 holds
-.code ptable.lock
+.code-index ptable.lock
 for most of its actions,
 but releases the lock (and explicitly enables interrupts)
 once in each iteration of its outer loop.
@@ -372,7 +371,7 @@ the lock continuously held, no other CPU that
 was running a process could ever perform a context
 switch or any process-related system call,
 and in particular could never mark a process as
-.code RUNNABLE
+.code-index RUNNABLE
 so as to break the idling CPU out of its scheduling loop.
 The reason to enable interrupts periodically on an idling
 CPU is that there might be no
@@ -392,23 +391,23 @@ Once it finds a process, it sets the per-CPU current process
 variable
 .code proc ,
 switches to the process's page table with
-.code switchuvm ,
+.code-index switchuvm ,
 marks the process as
 .code RUNNING ,
 and then calls
-.code swtch
+.code-index swtch
 to start running it
 .lines proc.c:/Switch.to/,/swtch/ .
 .PP
 One way to think about the structure of the scheduling code is
 that it arranges to enforce a set of invariants about each process,
 and holds
-.code ptable.lock
+.code-index ptable.lock
 whenever those invariants are not true.
 One invariant is that if a process is
 .code RUNNING ,
 things must be set up so that a timer interrupt's
-.code yield
+.code-index yield
 can correctly switch away from the process;
 this means that the CPU registers must hold the process's register values
 (i.e. they aren't actually in a
@@ -424,12 +423,12 @@ must refer to the process's
 .code proc[]
 slot.
 Another invariant is that if a process is
-.code RUNNABLE ,
+.code-index RUNNABLE ,
 things must be set up so that an idle CPU's
-.code scheduler
+.code-index scheduler
 can run it;
 this means that 
-.code p->context
+.code-index p->context
 must hold the process's kernel thread variables,
 that no CPU is executing on the process's kernel stack,
 that no CPU's
@@ -440,7 +439,7 @@ and that no CPU's
 refers to the process.
 .PP
 Maintaining the above invariants is the reason why xv6 acquires 
-.code ptable.lock
+.code-index ptable.lock
 in one thread (often in
 .code yield)
 and releases the lock in a different thread
@@ -463,13 +462,13 @@ is completely running (after the
 e.g. in
 .code yield ).
 .PP
-.code ptable.lock
+.code-index ptable.lock
 protects other things as well:
 allocation of process IDs and free process table slots,
 the interplay between
-.code exit
+.code-index exit
 and
-.code wait ,
+.code-index wait ,
 the machinery to avoid lost wakeups (see next section),
 and probably other things too.
 It might be worth thinking about whether the 
@@ -566,13 +565,13 @@ if there were a way for the receiver to be notified when the
 had delivered a pointer.
 .PP
 Let's imagine a pair of calls, 
-.code sleep
+.code-index sleep
 and
-.code wakeup ,
+.code-index wakeup ,
 that work as follows.
 .code Sleep(chan)
 sleeps on the arbitrary value
-.code chan ,
+.code-index chan ,
 called the 
 .italic-index "wait channel" .
 .code Sleep
@@ -673,12 +672,12 @@ is violated by
 running at just the wrong moment.
 To protect this invariant, we introduce a lock,
 which 
-.code sleep
+.code-index sleep
 releases only after the calling process
 is asleep; this avoids the missed wakeup in
 the example above.
 Once the calling process is awake again
-.code sleep
+.code-index sleep
 reacquires the lock before returning.
 We would like to be able to have the following code:
 \X'P1 coming up'
@@ -744,21 +743,21 @@ the value from a previous
 .\"
 .PP
 Let's look at the implementation of
-.code sleep
+.code-index sleep
 and
-.code wakeup
+.code-index wakeup
 in xv6.
 The basic idea is to have
 .code sleep
 mark the current process as
-.code SLEEPING
+.code-index SLEEPING
 and then call
-.code sched
+.code-index sched
 to release the processor;
 .code wakeup
 looks for a process sleeping on the given pointer
 and marks it as 
-.code RUNNABLE .
+.code-index RUNNABLE .
 .PP
 .code Sleep
 .line proc.c:/^sleep/
@@ -772,7 +771,7 @@ must have been passed a lock
 Then 
 .code sleep
 acquires 
-.code ptable.lock
+.code-index ptable.lock
 .line proc.c:/sleeplock1/ .
 Now the process going to sleep holds both
 .code ptable.lock
@@ -797,9 +796,9 @@ it is safe to release
 some other process may start a call to
 .code wakeup(chan) ,
 but
-.code wakeup
+.code-index wakeup
 will not run until it can acquire
-.code ptable.lock ,
+.code-index ptable.lock ,
 so it must wait until
 .code sleep
 has finished putting the process to sleep,
@@ -842,12 +841,12 @@ At some point later, a process will call
 .code Wakeup
 .line proc.c:/^wakeup/
 acquires
-.code ptable.lock
+.code-index ptable.lock
 and calls
-.code wakeup1 ,
+.code-index wakeup1 ,
 which does the real work.
 It is important that
-.code wakeup
+.code-index wakeup
 hold the
 .code ptable.lock
 both because it is manipulating process states
@@ -869,11 +868,11 @@ we will see an example of this later.
 .line proc.c:/^wakeup1/
 loops over the process table.
 When it finds a process in state
-.code SLEEPING
+.code-index SLEEPING
 with a matching
-.code chan ,
+.code-index chan ,
 it changes that process's state to
-.code RUNNABLE .
+.code-index RUNNABLE .
 The next time the scheduler runs, it will
 see that the process is ready to be run.
 .PP
@@ -948,14 +947,13 @@ of the other end of the pipe.
 Future chapters will examine the file system support
 surrounding pipes, but let's look now at the
 implementations of 
-.code pipewrite
+.code-index pipewrite
 and
-.code piperead .
+.code-index piperead .
 .PP
 Each pipe
 is represented by a 
-.code struct
-.code pipe ,
+.code-index "struct pipe" ,
 which contains
 a 
 .code lock
@@ -1078,7 +1076,7 @@ the process that was running
 .code pipewrite
 but stopped when the buffer filled.
 It marks that process as
-.code RUNNABLE .
+.code-index RUNNABLE .
 .PP
 The pipe code uses separate sleep channels for reader and writer
 (
@@ -1102,23 +1100,22 @@ can be used in many kinds of situations involving a condition
 that can be checked needs to be waited for.
 As we saw in Chapter \*[CH:UNIX],
 a parent process can call
-.code wait
+.code-index wait
 to wait for a child to exit.
 In xv6, when a child exits, it does not die immediately.
 Instead, it switches to the
-.code ZOMBIE
+.code-index ZOMBIE
 process state until the parent calls
 .code wait
 to learn of the exit.
 The parent is then responsible for freeing the
 memory associated with the process 
 and preparing the
-.code struct
-.code proc
+.code-index "struct proc"
 for reuse.
 Each process structure
 keeps a pointer to its parent in
-.code p->parent .
+.code-index p->parent .
 If the parent exits before the child, the initial process
 .code init
 adopts the child
@@ -1126,7 +1123,7 @@ and waits for it.
 This step is necessary to make sure that some
 process cleans up after the child when it exits.
 All the process structures are protected by
-.code ptable.lock .
+.code-index ptable.lock .
 .PP
 .code Wait
 begins by
@@ -1156,7 +1153,7 @@ acquires
 and then wakes the current process's parent
 .line "'proc.c:/wakeup1!(proc->parent!)/'" .
 This may look premature, since 
-.code exit
+.code-index exit
 has not marked the current process as a
 .code ZOMBIE
 yet, but it is safe:
@@ -1187,7 +1184,7 @@ passing them to the
 Finally,
 .code exit
 calls
-.code sched
+.code-index sched
 to relinquish the CPU.
 .PP
 Now the scheduler can choose to run the
@@ -1219,9 +1216,9 @@ of the cleanup during
 .code exit ,
 but it is important that the parent 
 process be the one to free
-.code p->kstack 
+.code-index p->kstack 
 and 
-.code p->pgdir :
+.code-index p->pgdir :
 when the child runs
 .code exit ,
 its stack sits in the memory allocated as
@@ -1229,7 +1226,7 @@ its stack sits in the memory allocated as
 and it uses its own pagetable.
 They can only be freed after the child process has
 finished running for the last time by calling
-.code swtch
+.code-index swtch
 (via
 .code sched ).
 This is one reason that the scheduler procedure runs on its

@@ -84,15 +84,15 @@ the slow disk. The code is in
 .code bio.c .
 .PP
 The main interface exported by the buffer cache consists of
-.code bread
+.code-index bread
 and
-.code bwrite ;
+.code-index bwrite ;
 the former obtains a
 .italic-index buffer
 containing a copy of a block which can be read or modified in memory, and the
 latter writes a modified buffer to the appropriate block on the disk.
 A kernel thread must release a buffer by calling
-.code brelse
+.code-index brelse
 when it is done with it.
 .PP
 The buffer cache synchronizes access to each block by allowing at most
@@ -117,41 +117,42 @@ again soon.
 .section "Code: Buffer cache"
 .PP
 The buffer cache is a doubly-linked list of buffers.
-.code Binit ,
+The function
+.code-index binit ,
 called by
-.code main
+.code-index main
 .line main.c:/binit/ ,
 initializes the list with the
-.code NBUF
+.code-index NBUF
 buffers in the static array
 .code buf
 .lines bio.c:/Create.linked.list/,/^..}/ .
 All other access to the buffer cache refers to the linked list via
-.code bcache.head ,
+.code-index bcache.head ,
 not the
 .code buf
 array.
 .PP
 A buffer has three state bits associated with it.
-.code B_VALID
+.code-index B_VALID
 indicates that the buffer contains a valid copy of the block.
-.code B_DIRTY
+.code-index B_DIRTY
 indicates that the buffer content has been modified and needs
 to be written to the disk.
-.code B_BUSY
+.code-index B_BUSY
 indicates that some kernel thread has a reference to this
 buffer and has not yet released it.
 .PP
 .code Bread
 .line bio.c:/^bread/
 calls
-.code bget
+.code-index bget
 to get a buffer for the given sector
 .line bio.c:/b.=.bget/ .
 If the buffer needs to be read from disk,
 .code bread
 calls
-.code iderw
+.code-index iderw
 to do that before returning the buffer.
 .PP
 .code Bget
@@ -160,23 +161,23 @@ scans the buffer list for a buffer with the given device and sector numbers
 .lines bio.c:/Try.for.cached/,/^..}/ .
 If there is such a buffer,
 and the buffer is not busy,
-.code bget
+.code-index bget
 sets the
-.code B_BUSY
+.code-index B_BUSY
 flag and returns
 .lines 'bio.c:/if...b->flags.&.B_BUSY/,/^....}/' .
 If the buffer is already in use,
 .code bget
 sleeps on the buffer to wait for its release.
 When
-.code sleep
+.code-index sleep
 returns,
 .code bget
 cannot assume that the buffer is now available.
 In fact, since 
 .code sleep
 released and reacquired
-.code buf_table_lock ,
+.code-index buf_table_lock ,
 there is no guarantee that 
 .code b 
 is still the right buffer: maybe it has been reused for
@@ -188,7 +189,7 @@ hoping that the outcome will be different this time.
 .figure bufrace
 .PP
 If
-.code bget
+.code-index bget
 didn't have the
 .code goto
 statement, then the race in Figure \n[bufrace] could occur.
@@ -215,7 +216,7 @@ kinds of havoc, because sectors 3 and 4 have different content; xv6 uses them
 for storing inodes.
 .PP
 If there is no buffer for the given sector,
-.code bget
+.code-index bget
 must make one, possibly reusing a buffer that held
 a different sector.
 It scans the buffer list a second time, looking for a block
@@ -230,11 +231,11 @@ returning the block
 Note that the assignment to
 .code flags
 not only sets the
-.code B_BUSY
+.code-index B_BUSY
 bit but also clears the
-.code B_VALID
+.code-index B_VALID
 and
-.code B_DIRTY
+.code-index B_DIRTY
 bits, making sure that
 .code bread
 will refresh the buffer data from disk
@@ -261,24 +262,24 @@ A more graceful response might be to sleep until a buffer became free,
 though there would then be a possibility of deadlock.
 .PP
 Once
-.code bread
+.code-index bread
 has returned a buffer to its caller, the caller has
 exclusive use of the buffer and can read or write the data bytes.
 If the caller does write to the data, it must call
-.code bwrite
+.code-index bwrite
 to write the changed data to disk before releasing the buffer.
 .code Bwrite
 .line bio.c:/^bwrite/
 sets the 
-.code B_DIRTY
+.code-index B_DIRTY
 flag and calls
-.code iderw
+.code-index iderw
 to write
 the buffer to disk.
 .PP
 When the caller is done with a buffer,
 it must call
-.code brelse
+.code-index brelse
 to release it. 
 (The name
 .code brelse ,
@@ -292,7 +293,7 @@ moves the buffer from its position in the linked list
 to the front of the list
 .lines 'bio.c:/b->next->prev.=.b->prev/,/bcache.head.next.=.b/' ,
 clears the
-.code B_BUSY
+.code-index B_BUSY
 bit, and wakes any processes sleeping on the buffer.
 Moving the buffer has the effect that the
 buffers are ordered by how recently they were used (meaning released):
@@ -401,9 +402,9 @@ No system call
 can be allowed to write more distinct blocks than there is space
 in the log. This is not a problem for most system calls, but two
 of them can potentially write many blocks: 
-.code write
+.code-index write
 and
-.code unlink .
+.code-index unlink .
 A large file write may write many data blocks and many bitmap blocks
 as well as an inode block; unlinking a large file might write many
 bitmap blocks and an inode.
@@ -429,14 +430,14 @@ A typical use of the log in a system call looks like this:
   commit_trans();
 .P2
 .PP
-.code begin_trans
+.code-index begin_trans
 .line log.c:/^begin.trans/
 waits until it obtains exclusive use of the log and then returns.
 .PP
-.code log_write
+.code-index log_write
 .line log.c:/^log.write/
 acts as a proxy for 
-.code bwrite ;
+.code-index bwrite ;
 it appends the block's new content to the log and
 records the block's sector number.
 .code log_write
@@ -447,14 +448,14 @@ will yield the modified block.
 notices when a block is written multiple times during a single
 transaction, and overwrites the block's previous copy in the log.
 .PP
-.code commit_trans
+.code-index commit_trans
 .line log.c:/^commit.trans/
 first write's the log's header block to disk, so that a crash
 after this point will cause recovery to re-write the blocks
 in the log. 
 .code commit_trans
 then calls
-.code install_trans
+.code-index install_trans
 .line log.c:/^install_trans/
 to read each block from the log and write it to the proper
 place in the file system.
@@ -464,10 +465,10 @@ writes the log header with a count of zero,
 so that a crash after the next transaction starts
 will result in the recovery code ignoring the log.
 .PP
-.code recover_from_log
+.code-index recover_from_log
 .line log.c:/^recover_from_log/
 is called from 
-.code initlog
+.code-index initlog
 .line log.c:/^initlog/ ,
 which is called during boot before the first user process runs.
 .line proc.c:/initlog/
@@ -476,7 +477,7 @@ It reads the log header, and mimics the actions of
 if the header indicates that the log contains a committed transaction.
 .PP
 An example use of the log occurs in 
-.code filewrite
+.code-index filewrite
 .line file.c:/^filewrite/ .
 The transaction looks like this:
 .P1
@@ -489,14 +490,14 @@ The transaction looks like this:
 This code is wrapped in a loop that breaks up large writes into individual
 transactions of just a few sectors at a time, to avoid overflowing
 the log.  The call to
-.code writei
+.code-index writei
 writes many blocks as part of this
 transaction: the file's inode, one or more bitmap blocks, and some data
 blocks.
 The call to
-.code ilock
+.code-index ilock
 occurs after the
-.code begin_trans
+.code-index begin_trans
 as part of an overall strategy to avoid deadlock:
 since there is effectively a lock around each transaction,
 the deadlock-avoiding lock ordering rule is transaction
@@ -533,14 +534,14 @@ The bits corresponding to the boot sector, superblock, inode
 blocks, and bitmap blocks are always set.
 .PP
 The block allocator provides two functions:
-.code balloc
+.code-index balloc
 allocates a new disk block, and
-.code bfree
+.code-index bfree
 frees a block.
 .code Balloc
 .line fs.c:/^balloc/
 starts by calling
-.code readsb
+.code-index readsb
 to read the superblock from the disk (or buffer cache) into
 .code sb .
 .code balloc
@@ -600,8 +601,7 @@ In fact, this number n, called the inode number or i-number,
 is how inodes are identified in the implementation.
 .PP
 The on-disk inode is defined by a
-.code struct
-.code dinode
+.code-index "struct dinode"
 .line fs.h:/^struct.dinode/ .
 The 
 .code type
@@ -611,8 +611,7 @@ A type of zero indicates that an on-disk inode is free.
 .PP
 The kernel keeps the set of active inodes in memory;
 its
-.code struct
-.code inode
+.code-index "struct inode"
 .line file.h:/^struct.inode/
 is the in-memory copy of a 
 .code struct
@@ -625,9 +624,9 @@ field counts the number of C pointers referring to the
 in-memory inode, and the kernel discards the inode from
 memory if the reference count drops to zero.
 The
-.code iget
+.code-index iget
 and
-.code iput
+.code-index iput
 functions acquire and release pointers to an inode,
 modifying the reference count.
 Pointers to an inode can come from file descriptors,
@@ -643,7 +642,7 @@ that
 returns may not have any useful content.
 In order to ensure it holds a copy of the on-disk
 inode, code must call
-.code ilock .
+.code-index ilock .
 This locks the inode (so that no other process can
 .code ilock
 it) and reads the inode from the disk,
@@ -671,18 +670,18 @@ keep it in memory if it isn't kept by the inode cache.
 .PP
 To allocate a new inode (for example, when creating a file),
 xv6 calls
-.code ialloc
+.code-index ialloc
 .line fs.c:/^ialloc/ .
 .code Ialloc
 is similar to
-.code balloc :
+.code-index balloc :
 it loops over the inode structures on the disk, one block at a time,
 looking for one that is marked free.
 When it finds one, it claims it by writing the new 
 .code type
 to the disk and then returns an entry from the inode cache
 with the tail call to 
-.code iget
+.code-index iget
 .line "'fs.c:/return.iget!(dev..inum!)/'" .
 Like in
 .code balloc ,
@@ -706,7 +705,7 @@ with the desired device and inode number.
 If it finds one, it returns a new reference to that inode.
 .lines 'fs.c:/^....if.ip->ref.>.0/,/^....}/' .
 As
-.code iget
+.code-index iget
 scans, it records the position of the first empty slot
 .lines fs.c:/^....if.empty.==.0/,/empty.=.ip/ ,
 which it uses if it needs to allocate a new cache entry.
@@ -714,36 +713,38 @@ In both cases,
 .code iget
 returns one reference to the caller: it is the caller's 
 responsibility to call 
-.code iput
+.code-index iput
 to release the inode.
 It can be convenient for some callers to arrange to call
 .code iput
 multiple times.
-.code Idup
+The function
+.code-index idup
 .line fs.c:/^idup/
 increments the reference count so that an additional
 .code iput
 call is required before the inode can be dropped from the cache.
 .PP
 Callers must lock the inode using
-.code ilock
+.code-index ilock
 before reading or writing its metadata or content.
 .code Ilock
 .line fs.c:/^ilock/
 uses a now-familiar sleep loop to wait for
 .code ip->flag 's
-.code I_BUSY
+.code-index I_BUSY
 bit to be clear and then sets it
 .lines 'fs.c:/^..while.ip->flags.&.I_BUSY/,/I_BUSY/' .
 Once
-.code ilock
+.code-index ilock
 has exclusive access to the inode, it can load the inode metadata
 from the disk (more likely, the buffer cache)
 if needed.
-.code Iunlock
+The function
+.code-index iunlock
 .line fs.c:/^iunlock/
 clears the
-.code I_BUSY
+.code-index I_BUSY
 bit and wakes any processes sleeping in
 .code ilock .
 .PP
@@ -757,7 +758,7 @@ slot in the inode cache is now free and can be re-used
 for a different inode.
 .PP
 If 
-.code iput
+.code-index iput
 sees that there are no C pointer references to an inode
 and that the inode has no links to it (occurs in no
 directory), then the inode and its data blocks must
@@ -765,7 +766,7 @@ be freed.
 .code Iput
 relocks the inode;
 calls
-.code itrunc
+.code-index itrunc
 to truncate the file to zero bytes, freeing the data blocks;
 sets the inode type to 0 (unallocated);
 writes the change to disk;
@@ -773,11 +774,11 @@ and finally unlocks the inode
 .lines 'fs.c:/ip..ref.==.1/,/^..}/' .
 .PP
 The locking protocol in 
-.code iput
+.code-index iput
 deserves a closer look.
 The first part worth examining is that when locking
 .code ip ,
-.code iput
+.code-index iput
 simply assumed that it would be unlocked, instead of using a sleep loop.
 This must be the case, because the caller is required to unlock
 .code ip
@@ -796,26 +797,26 @@ and reacquires
 .line fs.c:/^....acquire/
 the cache lock.
 This is necessary because
-.code itrunc
+.code-index itrunc
 and
-.code iupdate
+.code-index iupdate
 will sleep during disk i/o,
 but we must consider what might happen while the lock is not held.
 Specifically, once 
 .code iupdate
 finishes, the on-disk structure is marked as available
 for use, and a concurrent call to
-.code ialloc
+.code-index ialloc
 might find it and reallocate it before 
 .code iput
 can finish.
 .code Ialloc
 will return a reference to the block by calling
-.code iget ,
+.code-index iget ,
 which will find 
 .code ip
 in the cache, see that its 
-.code I_BUSY
+.code-index I_BUSY
 flag is set, and sleep.
 Now the in-core inode is out of sync compared to the disk:
 .code ialloc
@@ -827,7 +828,7 @@ In order to make sure that this happens,
 must clear not only
 .code I_BUSY
 but also
-.code I_VALID
+.code-index I_VALID
 before releasing the inode lock.
 It does this by zeroing
 .code flags
@@ -839,8 +840,7 @@ It does this by zeroing
 .figure inode
 .PP
 The on-disk inode structure,
-.code struct
-.code dinode ,
+.code-index "struct dinode" ,
 contains a size and an array of block numbers (see Figure \n[fig:inode]).
 The inode data is found in the blocks listed
 in the
@@ -848,13 +848,13 @@ in the
 .code addrs
 array.
 The first
-.code NDIRECT
+.code-index NDIRECT
 blocks of data are listed in the first
 .code NDIRECT
 entries in the array; these blocks are called 
 .italic-index "direct blocks" .
 The next 
-.code NINDIRECT
+.code-index NINDIRECT
 blocks of data are listed not in the inode
 but in a data block called the
 .italic-index "indirect block" .
@@ -864,7 +864,7 @@ array gives the address of the indirect block.
 Thus the first 6 kB 
 .code NDIRECT \c (
 ×\c
-.code BSIZE )
+.code-index BSIZE )
 bytes of a file can be loaded from blocks listed in the inode,
 while the next
 .code 64 kB
@@ -874,11 +874,12 @@ while the next
 bytes can only be loaded after consulting the indirect block.
 This is a good on-disk representation but a 
 complex one for clients.
-.code Bmap
+The function
+.code-index bmap
 manages the representation so that higher-level routines such as
-.code readi
+.code-index readi
 and
-.code writei ,
+.code-index writei ,
 which we will see shortly.
 .code Bmap
 returns the disk block number of the
@@ -891,14 +892,15 @@ does not have such a block yet,
 .code bmap
 allocates one.
 .PP
-.code Bmap
+The function
+.code-index bmap
 .line fs.c:/^bmap/
 begins by picking off the easy case: the first 
-.code NDIRECT
+.code-index NDIRECT
 blocks are listed in the inode itself
 .lines 'fs.c:/^..if.bn.<.NDIRECT/,/^..}/' .
 The next 
-.code NINDIRECT
+.code-index NINDIRECT
 blocks are listed in the indirect block at
 .code ip->addrs[NDIRECT] .
 .code Bmap
@@ -923,7 +925,7 @@ allocated on demand.
 .PP
 .code Bmap
 allocates blocks on demand as the inode grows;
-.code itrunc
+.code-index itrunc
 frees them, resetting the inode's size to zero.
 .code Itrunc
 .line fs.c:/^itrunc/
@@ -937,9 +939,9 @@ and finally the indirect block itself
 .code Bmap
 makes it easy to write functions to access the inode's data stream,
 like 
-.code readi
+.code-index readi
 and
-.code writei .
+.code-index writei .
 .code Readi
 .line fs.c:/^readi/
 reads data from the inode.
@@ -959,10 +961,11 @@ copying data from the buffer into
 .\" for writei because so many of the lines are identical
 .\" to those in readi.  Luckily, identical lines probably
 .\" don't need to be commented upon.
-.code Writei
+The function
+.code-index writei
 .line fs.c:/^writei/
 is identical to
-.code readi ,
+.code-index readi ,
 with three exceptions:
 writes that start at or cross the end of the file
 grow the file, up to the maximum file size
@@ -970,28 +973,29 @@ grow the file, up to the maximum file size
 the loop copies data into the buffers instead of out
 .line 'fs.c:/memmove.bp->data/' ;
 and if the write has extended the file,
-.code writei
+.code-index writei
 must update its size
 .line "'fs.c:/^..if.n.>.0.*off.>.ip->size/,/^..}/'" .
 .PP
 Both
-.code readi
+.code-index readi
 and
-.code writei
+.code-index writei
 begin by checking for
 .code ip->type
 .code ==
-.code T_DEV .
+.code-index T_DEV .
 This case handles special devices whose data does not
 live in the file system; we will return to this case in the file descriptor layer.
 .PP
-.code Stati
+The function
+.code-index stati
 .line fs.c:/^stati/
 copies inode metadata into the 
 .code stat
 structure, which is exposed to user programs
 via the
-.code stat
+.code-index stat
 system call.
 .\"
 .\"
@@ -1001,20 +1005,20 @@ system call.
 The directory layer is simple, because a directory is nothing more
 that a special kind of file. 
 Its inode has type
-.code T_DIR
+.code-index T_DIR
 and its data is a sequence of directory entries.
 Each entry is a
-.code struct
-.code dirent
+.code-index "struct dirent"
 .line fs.h:/^struct.dirent/ ,
 which contains a name and an inode number.
 The name is at most
-.code DIRSIZ
+.code-index DIRSIZ
 (14) characters;
 if shorter, it is terminated by a NUL (0) byte.
 Directory entries with inode number zero are free.
 .PP
-.code Dirlookup
+The function
+.code-index dirlookup
 .line fs.c:/^dirlookup/
 searches a directory for an entry with the given name.
 If it finds one, it returns a pointer to the corresponding inode, unlocked,
@@ -1029,7 +1033,7 @@ it updates
 .code *poff ,
 releases the block, and returns an unlocked inode
 obtained via
-.code iget .
+.code-index iget .
 .code Dirlookup
 is the reason that 
 .code iget
@@ -1037,7 +1041,7 @@ returns unlocked inodes.
 The caller has locked
 .code dp ,
 so if the lookup was for
-.code "." ,
+.code-index "." ,
 an alias for the current directory,
 attempting to lock the inode before
 returning would try to re-lock
@@ -1045,7 +1049,7 @@ returning would try to re-lock
 and deadlock.
 (There are more complicated deadlock scenarios involving
 multiple processes and
-.code ".." ,
+.code-index ".." ,
 an alias for the parent directory;
 .code "."
 is not the only problem.)
@@ -1055,7 +1059,8 @@ and then lock
 .code ip ,
 ensuring that it only holds one lock at a time.
 .PP
-.code Dirlink
+The function
+.code-index dirlink
 .line fs.c:/^dirlink/
 writes a new directory entry with the given name and inode number into the
 directory
@@ -1086,9 +1091,9 @@ by writing at offset
 .section "Code: Path names"
 .PP
 Like directories, path names require little extra code, because they just call
-.code dirlookup
+.code-index dirlookup
 recursively, using
-.code namei
+.code-index namei
 and related functions.
 .code Namei
 .line fs.c:/^namei/
@@ -1096,12 +1101,13 @@ evaluates
 .code path
 as a hierarchical path name and returns the corresponding 
 .code inode .
-.code Nameiparent
+The function
+.code-index nameiparent
 is a variant: it stops before the last element, returning the 
 inode of the parent directory and copying the final element into
 .code name .
 Both call the generalized function
-.code namex
+.code-index namex
 to do the real work.
 .PP
 .code Namex
@@ -1111,7 +1117,7 @@ If the path begins with a slash, evaluation begins at the root;
 otherwise, the current directory
 .line "'fs.c:/..if.!*path.==....!)/,/idup/'" .
 Then it uses
-.code skipelem
+.code-index skipelem
 to consider each element of the path in turn
 .line fs.c:/while.*skipelem/ .
 Each iteration of the loop must look up 
@@ -1129,12 +1135,12 @@ is necessary not because
 .code ip->type
 can change underfoot—it can't—but because
 until 
-.code ilock
+.code-index ilock
 runs,
 .code ip->type
 is not guaranteed to have been loaded from disk.)
 If the call is 
-.code nameiparent
+.code-index nameiparent
 and this is the last path element, the loop stops early,
 as per the definition of
 .code nameiparent ;
@@ -1142,13 +1148,13 @@ the final path element has already been copied
 into
 .code name ,
 so
-.code namex
+.code-index namex
 need only
 return the unlocked
 .code ip
 .lines fs.c:/^....if.nameiparent/,/^....}/ .
 Finally, the loop looks for the path element using
-.code dirlookup
+.code-index dirlookup
 and prepares for the next iteration by setting
 .code ip.=.next
 .lines 'fs.c:/^....if..next.*dirlookup/,/^....ip.=.next/' .
@@ -1168,13 +1174,12 @@ Xv6 gives each process its own table of open files, or
 file descriptors, as we saw in
 Chapter \*[CH:UNIX].
 Each open file is represented by a
-.code struct
-.code file
+.code-index "struct file"
 .line file.h:/^struct.file/ ,
 which is a wrapper around either an inode or a pipe,
 plus an i/o offset.
 Each call to 
-.code open
+.code-index open
 creates a new open file (a new
 .code struct
 .code file ):
@@ -1190,9 +1195,9 @@ and also in the file tables of multiple processes.
 This would happen if one process used
 .code open
 to open the file and then created aliases using
-.code dup
+.code-index dup
 or shared it with a child using
-.code fork .
+.code-index fork .
 A reference count tracks the number of references to
 a particular open file.
 A file can be open for reading or writing or both.
@@ -1204,18 +1209,18 @@ fields track this.
 .PP
 All the open files in the system are kept in a global file table,
 the 
-.code ftable .
+.code-index ftable .
 The file table
 has a function to allocate a file
-.code filealloc ), (
+.code-index filealloc ), (
 create a duplicate reference
-.code filedup ), (
+.code-index filedup ), (
 release a reference
-.code fileclose ), (
+.code-index fileclose ), (
 and read and write data
-.code fileread "" (
+.code-index fileread "" (
 and 
-.code filewrite ).
+.code-index filewrite ).
 .PP
 The first three follow the now-familiar form.
 .code Filealloc
@@ -1225,11 +1230,11 @@ scans the file table for an unreferenced file
 .code ==
 .code 0 )
 and returns a new reference;
-.code filedup
+.code-index filedup
 .line file.c:/^filedup/
 increments the reference count;
 and
-.code fileclose
+.code-index fileclose
 .line file.c:/^fileclose/
 decrements it.
 When a file's reference count reaches zero,
@@ -1237,20 +1242,21 @@ When a file's reference count reaches zero,
 releases the underlying pipe or inode,
 according to the type.
 .PP
-.code Filestat ,
-.code fileread ,
+The functions
+.code-index filestat ,
+.code-index fileread ,
 and
-.code filewrite
+.code-index filewrite
 implement the 
-.code stat ,
-.code read ,
+.code-index stat ,
+.code-index read ,
 and
-.code write
+.code-index write
 operations on files.
 .code Filestat
 .line file.c:/^filestat/
 is only allowed on inodes and calls
-.code stati .
+.code-index stati .
 .code Fileread
 and
 .code filewrite
@@ -1284,9 +1290,10 @@ system calls is trivial (see
 There are a few calls that
 deserve a closer look.
 .PP
-.code Sys_link
+The functions
+.code-index sys_link
 and
-.code sys_unlink
+.code-index sys_unlink
 edit directories, creating or removing references to inodes.
 They are another good example of the power of using 
 transactions. 
@@ -1308,7 +1315,7 @@ count.
 Then
 .code sys_link
 calls
-.code nameiparent
+.code-index nameiparent
 to find the parent directory and final path element of
 .code new 
 .line sysfile.c:/nameiparent.new/
@@ -1320,7 +1327,7 @@ The new parent directory must exist and
 be on the same device as the existing inode:
 inode numbers only have a unique meaning on a single disk.
 If an error like this occurs, 
-.code sys_link
+.code-index sys_link
 must go back and decrement
 .code ip->nlink .
 .PP
@@ -1335,28 +1342,29 @@ With transactions we don't have to worry about this.
 .PP
 .code Sys_link
 creates a new name for an existing inode.
-.code Create
+The function
+.code-index create
 .line sysfile.c:/^create/
 creates a new name for a new inode.
 It is a generalization of the three file creation
 system calls:
-.code open
+.code-index open
 with the
-.code O_CREATE
+.code-index O_CREATE
 flag makes a new ordinary file,
-.code mkdir
+.code-index mkdir
 makes a new directoryy,
 and
-.code mkdev
+.code-index mkdev
 makes a new device file.
 Like
-.code sys_link ,
-.code create
+.code-index sys_link ,
+.code-index create
 starts by caling
-.code nameiparent
+.code-index nameiparent
 to get the inode of the parent directory.
 It then calls
-.code dirlookup
+.code-index dirlookup
 to check whether the name already exists
 .line 'sysfile.c:/dirlookup.*[^=]=.0/' .
 If the name does exist, 
@@ -1364,16 +1372,16 @@ If the name does exist,
 behavior depends on which system call it is being used for:
 .code open
 has different semantics from 
-.code mkdir
+.code-index mkdir
 and
-.code mkdev .
+.code-index mkdev .
 If
 .code create
 is being used on behalf of
 .code open
 .code type "" (
 .code ==
-.code T_FILE )
+.code-index T_FILE )
 and the name that exists is itself
 a regular file,
 then 
@@ -1388,22 +1396,22 @@ Otherwise, it is an error
 If the name does not already exist,
 .code create
 now allocates a new inode with
-.code ialloc
+.code-index ialloc
 .line sysfile.c:/ialloc/ .
 If the new inode is a directory, 
 .code create
 initializes it with
-.code .
+.code-index .
 and
-.code ..
+.code-index ..
 entries.
 Finally, now that the data is initialized properly,
-.code create
+.code-index create
 can link it into the parent directory
 .line sysfile.c:/if.dirlink/ .
 .code Create ,
 like
-.code sys_link ,
+.code-index sys_link ,
 holds two inode locks simultaneously:
 .code ip
 and
@@ -1420,29 +1428,29 @@ lock and then try to lock
 Using
 .code create ,
 it is easy to implement
-.code sys_open ,
-.code sys_mkdir ,
+.code-index sys_open ,
+.code-index sys_mkdir ,
 and
-.code sys_mknod .
+.code-index sys_mknod .
 .code Sys_open
 .line sysfile.c:/^sys_open/
 is the most complex, because creating a new file is only
 a small part of what it can do.
 If
-.code open
+.code-index open
 is passed the
-.code O_CREATE
+.code-index O_CREATE
 flag, it calls
 .code create
 .line sysfile.c:/create.*T_FILE/ .
 Otherwise, it calls
-.code namei
+.code-index namei
 .line sysfile.c:/if..ip.=.namei.path/ .
 .code Create
 returns a locked inode, but 
 .code namei
 does not, so
-.code sys_open
+.code-index sys_open
 must lock the inode itself.
 This provides a convenient place to check that directories
 are only opened for reading, not writing.
@@ -1457,7 +1465,8 @@ in the current process's table.
 .PP
 Chapter \*[CH:SCHED] examined the implementation of pipes
 before we even had a file system.
-.code Sys_pipe
+The function
+.code-index sys_pipe
 connects that implementation to the file system
 by providing a way to create a pipe pair.
 Its argument is a pointer to space for two integers,
@@ -1489,7 +1498,7 @@ problems.
 .PP
 Logging is not the only way to provide crash recovery. Early file systems
 used a scavenger during reboot (for example, the UNIX
-.code fsck
+.code-index fsck
 program) to examine every file and directory and the block and inode
 free lists, looking for and resolving inconsistencies. Scavenging can take
 hours for large file systems, and there are situations where it is not
@@ -1558,9 +1567,9 @@ network file systems.
 Instead of the
 .code if
 statements in
-.code fileread
+.code-index fileread
 and
-.code filewrite ,
+.code-index filewrite ,
 these systems typically give each open file a table of function pointers,
 one per operation,
 and call the function pointer to invoke that inode's
@@ -1619,7 +1628,7 @@ which might try to lock
 yet postponing
 .code iunlock(ip)
 until after the
-.code iput
+.cod iput
 would not cause deadlocks.
 Why not?
 

@@ -77,9 +77,9 @@ and stack reads and writes use
 .figure x86_translation
 .PP
 .index "boot loader
-Xv6 pretends that an x86 program uses virtual address,
-but an x86 actually uses
-.italic-index "logical addresses" 
+Xv6 pretends that an x86 instruction uses a virtual address for its memory operands,
+but an x86 instruction actually uses a
+.italic-index "logical address" 
 (see Fig. \n[fig:x86_translation]).
 A logical address consists of a segment selector and
 an offset, and is sometimes written as
@@ -87,8 +87,8 @@ an offset, and is sometimes written as
 More often, the segment is implicit and the program only
 directly manipulates the offset.
 The segmentation hardware performs the translation
-described above to generate
-.italic-index "linear addresses" .
+described above to generate a
+.italic-index "linear address" .
 If the paging hardware is enabled (see Chapter \*[CH:MEM]), it
 translates linear addresses to physical addresses;
 otherwise the processor uses linear addresses as physical addresses.
@@ -238,7 +238,7 @@ to 80386.
 .PP
 The boot loader's first action in 32-bit mode is to
 initialize the data segment registers with
-.code SEG_KDATA
+.code-index SEG_KDATA
 .lines bootasm.S:/movw.*SEG_KDATA/,/Stack.Segment/ .
 Logical address now map directly to physical addresses.
 The only step left before
@@ -330,11 +330,11 @@ and writes to memory starting at address
 .code paddr .
 .code Bootmain
 calls
-.code readseg
+.code-index readseg
 to load data from disk
 .line bootmain.c:/readseg.*filesz/
 and calls
-.code stosb
+.code-index stosb
 to zero the remainder of the segment
 .line bootmain.c:/stosb/ .
 .code Stosb
@@ -605,14 +605,14 @@ EXEC_P, HAS_SYMS, D_PAGED
 start address 0x0010000c
 .P2
 By convention, the 
-.code _start 
+.code-index _start 
 symbol specifies the ELF entry point,
 which is defined in the file
 .file entry.S 
 .line entry.S:/^_start/ .
 Since xv6 hasn't set up virtual memory yet, xv6's entry point is
 the physical address of 
-.code entry
+.code-index entry
 .line entry.S:/^entry/ .
 .\" -------------------------------------------
 .\"

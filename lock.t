@@ -11,10 +11,10 @@ from interfering with each other.
 Even on a uniprocessor, xv6 must use some mechanism
 to keep interrupt handlers from interfering with
 non-interrupt code.
-Xv6 uses the same low-level concept for both: 
-.italic-index locks .
-Locks provide mutual exclusion, ensuring that only one CPU at a time
-can hold a lock.
+Xv6 uses the same low-level concept for both: a
+.italic-index lock .
+A lock provides mutual exclusion, ensuring that only one CPU at a time
+can hold the lock.
 If xv6 only accesses a data structure 
 while holding a particular lock,
 then xv6 can be sure that only one CPU
@@ -157,8 +157,7 @@ data structure's invariants do not hold.
 .section "Code: Locks"
 .\"
 Xv6's represents a lock as a
-.code struct
-.code spinlock
+.code-index "struct spinlock"
 .line spinlock.h:/struct.spinlock/ .
 The critical field in the structure is
 .code locked ,
@@ -189,7 +188,7 @@ At this point, two different CPUs hold the lock,
 which violates the mutual exclusion property.
 Rather than helping us avoid race conditions,
 this implementation of
-.code acquire 
+.code-index acquire 
 has its own race condition.
 The problem here is that lines 25 and 26 executed
 as separate actions.  In order for the routine above
@@ -199,12 +198,13 @@ to be correct, lines 25 and 26 must execute in one
 .PP
 To execute those two lines atomically, 
 xv6 relies on a special 386 hardware instruction,
-.code xchg
+.code-index xchg
 .line x86.h:/^xchg/ .
 In one atomic operation,
 .code xchg
 swaps a word in memory with the contents of a register.
-.code Acquire
+The function
+.code-index acquire
 .line spinlock.c:/^acquire/
 repeats this
 .code xchg
@@ -236,7 +236,8 @@ can help to identify the culprit.
 These debugging fields are protected by the lock
 and must only be edited while holding the lock.
 .PP
-.code Release
+The function
+.code-index release
 .line spinlock.c:/^release/
 is the opposite of 
 .code acquire :
@@ -317,7 +318,7 @@ Xv6 is carefully programmed with locks to avoid race conditions.  A simple
 example is in the IDE driver
 .sheet ide.c .
 As mentioned in the beginning of the chapter,
-.code iderw 
+.code-index iderw 
 .line ide.c:/^iderw/ 
 has a queue of disk requests
 and processors may add new
@@ -326,7 +327,7 @@ requests to the list concurrently
 To protect this list and other invariants in the driver,
 .code iderw
 acquires the
-.code idelock 
+.code-index idelock 
 .line ide.c:/DOC:acquire-lock/
 and 
 releases at the end of the function.
@@ -395,16 +396,16 @@ functions acquire locks in the same order.
 Because xv6 uses coarse-grained locks and xv6 is simple, xv6 has
 few lock-order chains.  The longest chain is only two deep. For
 example,
-.code ideintr
+.code-index ideintr
 holds the ide lock while calling 
-.code wakeup ,
+.code-index wakeup ,
 which acquires the 
-.code ptable 
+.code-index ptable 
 lock.
 There are a number of other examples involving 
-.code sleep
+.code-index sleep
 and
-.code wakeup .
+.code-index wakeup .
 These orderings come about because
 .code sleep
 and 
@@ -424,13 +425,13 @@ For example,
 the timer interrupt handler 
 .line trap.c:/T_IRQ0...IRQ_TIMER/
 increments
-.code ticks
+.code-index ticks
 but another CPU might be in
-.code sys_sleep
+.code-index sys_sleep
 at the same time, using the variable
 .line sysproc.c:/ticks0.=.ticks/ .
 The lock
-.code tickslock
+.code-index tickslock
 synchronizes access by the two CPUs to the
 single variable.
 .PP
@@ -438,11 +439,11 @@ Interrupts can cause concurrency even on a single processor:
 if interrupts are enabled, kernel code can be stopped
 at any moment to run an interrupt handler instead.
 Suppose
-.code iderw
+.code-index iderw
 held the
-.code idelock
+.code-index idelock
 and then got interrupted to run
-.code ideintr.
+.code-index ideintr .
 .code Ideintr
 would try to lock
 .code idelock ,
@@ -461,35 +462,35 @@ To avoid this situation, if a lock is used by an interrupt handler,
 a processor must never hold that lock with interrupts enabled.
 Xv6 is more conservative: it never holds any lock with interrupts enabled.
 It uses
-.code pushcli
+.code-index pushcli
 .line spinlock.c:/^pushcli/
 and
-.code popcli
+.code-index popcli
 .line spinlock.c:/^popcli/
 to manage a stack of ``disable interrupts'' operations
-.code cli "" (
+.code-index cli "" (
 is the x86 instruction that disables interrupts.
 .code Acquire
 calls
-.code pushcli
+.code-index pushcli
 before trying to acquire a lock
 .line spinlock.c:/pushcli/ ,
 and 
 .code release
 calls
-.code popcli
+.code-index popcli
 after releasing the lock
 .line spinlock.c:/popcli/ .
 .code Pushcli
 .line spinlock.c:/^pushcli/
 and
-.code popcli
+.code-index popcli
 .line spinlock.c:/^popcli/
 are more than just wrappers
 around 
-.code cli
+.code-index cli
 and
-.code sti :
+.code-index sti :
 they are counted, so that it takes two calls
 to
 .code popcli
@@ -500,11 +501,11 @@ interrupts will not be reenabled until both
 locks have been released.
 .PP
 It is important that
-.code acquire
+.code-index acquire
 call
 .code pushcli
 before the 
-.code xchg
+.code-index xchg
 that might acquire the lock
 .line spinlock.c:/while.xchg/ .
 If the two were reversed, there would be
@@ -512,11 +513,11 @@ a few instruction cycles when the lock
 was held with interrupts enabled, and
 an unfortunately timed interrupt would deadlock the system.
 Similarly, it is important that
-.code release
+.code-index release
 call
-.code popcli
+.code-index popcli
 only after the
-.code xchg
+.code-index xchg
 that releases the lock
 .line spinlock.c:/xchg.*0/ .
 .PP
@@ -527,13 +528,13 @@ first acquire happened on that CPU too), then interrupt handlers could
 run while non-interrupt code is in a critical section.  This could
 create havoc, since when the interrupt handler runs, invariants that
 the handler relies on might be temporarily violated.  For example,
-.code ideintr
+.code-index ideintr
 .line ide.c:/^ideintr/
 assumes that the linked list with outstanding requests is well-formed.
 If xv6 would have used recursive locks, then 
 .code ideintr
 might run while 
-.code iderw
+.code-index iderw
 is in the middle of manipulating the linked list, and the linked list
 will end up in an incorrect state.
 .\"
@@ -553,7 +554,7 @@ completes A.  Concurrency, however, may expose this reordering to
 software, which lead to incorrect behavior.
 .PP
 For example, one might wonder what happens if
-.code release
+.code-index release
 just assigned 0 to
 .code lk->locked ,
 instead of using

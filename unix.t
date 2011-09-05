@@ -130,10 +130,10 @@ When a process is not executing, xv6 saves its CPU registers,
 restoring them when it next runs the process.
 Each process can be uniquely identified by a
 positive integer called its process identifier, or
-.italic-index pid .
+.code-index pid .
 .PP
 A process may create a new process using the
-.code fork
+.code-index fork
 system call.
 .code Fork
 creates a new process, called the 
@@ -144,7 +144,7 @@ as the calling process, called the
 .code Fork
 returns in both the parent and the child.
 In the parent,
-.code fork
+.code-index fork
 returns the child's pid;
 in the child, it returns zero.
 For example, consider the following program fragment:
@@ -164,15 +164,15 @@ if(pid > 0){
 }
 .P2
 The
-.code exit
+.code-index exit
 system call causes the calling process to stop executing and
 to release resources such as memory and open files.
 The
-.code wait
+.code-index wait
 system call returns the pid of an exited child of the
 current process; if none of the caller's children
 has exited,
-.code wait
+.code-index wait
 waits for one to do so.
 In the example, the output lines
 .P1
@@ -181,10 +181,10 @@ child: exiting
 .P2
 might come out in either order, depending on whether the
 parent or child gets to its
-.code printf
+.code-index printf
 call first.
 After those two, the child exits, and then the parent's
-.code wait
+.code-index wait
 returns, causing the parent to print
 .P1
 parent: child 1234 is done
@@ -194,7 +194,7 @@ different memory and different registers:
 changing a variable in one does not affect the other.
 .PP
 The
-.code exec
+.code-index exec
 system call
 replaces the calling process's memory with a new memory
 image loaded from a file stored in the file system.
@@ -204,7 +204,7 @@ to start, etc.. The format xv6
 uses is called the ELF format, which Chapter \*[CH:MEM] discusses in
 more detail.
 When
-.code exec
+.code-index exec
 succeeds, it does not return to the calling program;
 instead, the instructions loaded from the file start
 executing at the entry point declared in the ELF header.
@@ -236,7 +236,7 @@ users. The main structure of the shell is simple; see
 on line
 .line sh.c:/main/ .
 The main loop reads the input on the command line using
-.code getcmd .
+.code-index getcmd .
 Then it calls 
 .code fork , 
 which creates another running shell program. The
@@ -268,9 +268,9 @@ in
 .code main
 .line sh.c:/main/ .
 You might wonder why
-.code fork
+.code-index fork
 and
-.code exec
+.code-index exec
 are not combined in a single call; we
 will
 see later that separate calls for creating a process
@@ -278,19 +278,19 @@ and loading a program is a clever design.
 .PP
 Xv6 allocates most user-space memory
 implicitly:
-.code fork
+.code-index fork
 allocates the memory required for the child's copy of the
 parent's memory, and 
-.code exec
+.code-index exec
 allocates enough memory to hold the executable file.
 A process that needs more memory at run-time (perhaps for
-.code malloc )
+.code-index malloc )
 can call
 .code sbrk(n)
 to grow its data memory by
 .code n
 bytes;
-.code sbrk
+.code-index sbrk
 returns the location of the new memory.
 .PP
 Xv6 does not provide a notion of users or of protecting
@@ -422,12 +422,13 @@ is always the lowest-numbered unused
 descriptor of the current process.
 .PP
 File descriptors and
-.code fork
+.code-index fork
 interact to make I/O redirection easy to implement.
 .code Fork
-copies the parent's file descriptor table along with its memory,
+copies then parent's file descriptor table along with its memory,
 so that the child starts with exactly the same open files as the parent.
-.code Exec
+The system call
+.code-index exec
 replaces the calling process's memory but preserves its file table.
 This behavior allows the shell to
 implement I/O redirection by forking, reopening chosen file descriptors,
