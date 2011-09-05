@@ -17,4 +17,4 @@ faculty, TAs, and students of 6.828 who all directly or indirectly contributed
 to xv6.  In particular, we would like to thank Austin Clements and Nickolai
 Zeldovich.
 
-If you have comments, please send email to 6.828-staff@amsterdam.csail.mit.edu.
+If you have comments, please send email to 6.828-staff@pdos.csail.mit.edu.
