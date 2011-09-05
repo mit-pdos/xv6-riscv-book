@@ -595,32 +595,25 @@ The boot loader's final step is to call the kernel's
 entry point, which is the instruction at which the
 kernel expects to start executing.
 For xv6 the entry address is
-.address 0x80100020 : 
+.address 0x10000c: 
 .P1
 # objdump -f kernel
 
 kernel:     file format elf32-i386
 architecture: i386, flags 0x00000112:
 EXEC_P, HAS_SYMS, D_PAGED
-start address 0x80100020
+start address 0x0010000c
 .P2
-The loader must correct this address to reflect the fact
-that it loaded the kernel at
-.address 0x00100000
-rather than at
-.address 0x80100000 ,
-so it zeroes the high eight bits before calling the
-entry address
-.lines 'bootmain.c:/entry.=/,/entry!(!)/' .
-.PP
-The xv6 Makefile specifies the entry point to the linker using 
-.code "-e entry" ,
-indicating that the entry point should be the function named
-.code entry .
-This function is defined in the file
+By convention, the 
+.code _start 
+symbol specifies the ELF entry point,
+which is defined in the file
 .file entry.S 
+.line entry.S:/^_start/ .
+Since xv6 hasn't set up virtual memory yet, xv6's entry point is
+the physical address of 
+.code entry
 .line entry.S:/^entry/ .
-.\"
 .\" -------------------------------------------
 .\"
 .section "Real world"
