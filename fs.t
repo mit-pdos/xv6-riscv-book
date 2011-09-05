@@ -1,5 +1,11 @@
 .chapter CH:FS "File system"
 .ig
+        is it process or kernel thread?
+
+        the logging text (and some of the buffer text) assumes the reader
+        knows a fair amount about how inodes and directories work,
+        but they are introduced later.
+
 	have to decide on processor vs CPU, i/o vs I/O.
 	
 	be sure to say buffer, not block 
@@ -52,7 +58,7 @@ layers to wrap updates to several blocks in a
 .italic-index transaction ,
 to ensure that the blocks are updated atomically (i.e., all of them are updated
 or none).
-The third layer provides unnamed files, represented using
+The third layer provides unnamed files, each represented using
 an 
 .italic-index inode
 and a sequence of blocks holding the file's data.  The fourth
@@ -325,7 +331,7 @@ involve multiple writes to the disk, and a crash after a subset of the
 writes may leave the on-disk file system in an inconsistent state. For
 example, depending on the order of the disk writes, a crash during
 file deletion may either leave a directory entry pointing to a free
-inode, or an allocated but unreferenced inode. The latter is relatively
+inode, or it may leave an allocated but unreferenced inode. The latter is relatively
 benign, but a directory entry that refers to a freed inode is
 likely to cause serious problems after a reboot.
 .PP
@@ -505,12 +511,11 @@ before inode.
 .\"
 .\"
 .\"
-.section "File layer"
+.section "Block allocator"
 .figure fslayout
 .PP
-The file layer implements unnamed files,
-representing each file as an inode along with blocks holding the file's content.  This
-layer must be able to allocate inodes and file blocks on the disk.
+The file system must have a plan for where it stores inodes and
+content blocks on the disk.
 To do so, it divides the disk into several
 sections, as shown in Figure \n[fig:fslayout].  The file system does not use
 block 0 (it holds the boot sector).  Block 1 is called the 
@@ -518,7 +523,8 @@ block 0 (it holds the boot sector).  Block 1 is called the
 it contains metadata about the file system (the file system size in blocks, the
 number of data blocks, the number of inodes, and the number of blocks in the
 log).  Blocks starting at 2 hold inodes, with multiple inodes per block.  After
-those come bitmap blocks tracking which data blocks are in use (i.e., it is part
+those come bitmap blocks tracking which data blocks are in use (i.e., which
+are used in
 of some file). Most of the remaining blocks are data blocks, which hold file and
 directory contents.  The blocks at the very end of the disk hold the log.
 .\"
@@ -1486,7 +1492,8 @@ policies that can be implemented, each good for some
 workloads and not as good for others.
 A more efficient LRU cache would eliminate the linked list,
 instead using a hash table for lookups and a heap for LRU evictions.
-.PP
+Modern buffer caches are typically integrated with the
+virtual memory system to support memory-mapped files.
 .PP
 Xv6's logging system is woefully inefficient. It does not allow concurrent
 updating system calls, even when the system calls operate on entirely
@@ -1505,29 +1512,19 @@ hours for large file systems, and there are situations where it is not
 possible to guess the correct resolution of an inconsistency. Recovery
 from a log is much faster and is correct.
 .PP
-Xv6's file system implementation assumes that disk operations are
-far more expensive than computation.
-It uses an efficient tree structure on disk but comparatively
-inefficient linear scans in the inode
-and buffer cache.
-The caches are small enough and disk accesses expensive enough
-to justify this tradeoff.  Modern operating systems with
-larger caches and faster disks use more efficient in-memory
-data structures.
-The disk structure, however, with its inodes and direct blocks and indirect blocks,
-has been remarkably persistent.
+Xv6 uses the same basic on-disk layout of inodes and directories
+as early UNIX;
+this scheme has been remarkably persistent over the years.
 BSD's UFS/FFS and Linux's ext2/ext3 use essentially the same data structures.
 The most inefficient part of the file system layout is the directory,
 which requires a linear scan over all the disk blocks during each lookup.
 This is reasonable when directories are only a few disk blocks,
-especially if the entries in each disk block can be kept sorted,
-but when directories span many disk blocks.
+but is expensive for directories holding many files.
 Microsoft Windows's NTFS, Mac OS X's HFS, and Solaris's ZFS, just to name a few, implement
 a directory as an on-disk balanced tree of blocks.
-This is more complicated than reusing the file implementation
-but guarantees logarithmic-time directory lookups.
+This complicated but guarantees logarithmic-time directory lookups.
 .PP
-Xv6 is intentionally naive about disk failures: if a disk
+Xv6 is naive about disk failures: if a disk
 operation fails, xv6 panics.
 Whether this is reasonable depends on the hardware:
 if an operating systems sits atop special hardware that uses
