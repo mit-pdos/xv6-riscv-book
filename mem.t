@@ -542,6 +542,7 @@ write memory (e.g., manipulating the
 structure stored in each page);
 this dual use of addresses is the main reason that the
 allocator code is full of C type casts.
+.index "type cast"
 The other reason is that freeing and allocation inherently
 change the type of the memory.
 .PP

@@ -1625,7 +1625,7 @@ which might try to lock
 yet postponing
 .code iunlock(ip)
 until after the
-.cod iput
+.code iput
 would not cause deadlocks.
 Why not?
 
