@@ -16,3 +16,5 @@ We have used this text in 6.828, the operating system class at MIT.  We thank th
 faculty, TAs, and students of 6.828 who all directly or indirectly contributed
 to xv6.  In particular, we would like to thank Austin Clements and Nickolai
 Zeldovich.
+
+If you have comments, please send email to 6.828-staff@amsterdam.csail.mit.edu.
