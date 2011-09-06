@@ -218,11 +218,11 @@ Returning to
 the kernel first tells the paging hardware to allow super pages by setting the flag
 .code-index CR_PSE 
 (page size extension) in the control register
-.register %cr4.
+.register cr4.
 Next it loads the physical address of
 .code-index entrypgdir
 into control register
-.register %cr3.
+.register cr3.
 The paging hardware must know the physical address of
 .code entrypgdir, 
 because it doesn't know how to translate virtual addresses yet; it doesn't have
@@ -239,7 +239,7 @@ in order to find the physical address.
 To enable the paging hardware, xv6 sets the flag
 .code-index CR0_PG
 in the control register
-.code %cr0.
+.register cr0.
 It also sets
 .code-index CR0_WP ,
 which ensures that the kernel honors
@@ -810,22 +810,22 @@ segment running at privilege level
 .code-index DPL_USER
 (i.e., user mode not kernel mode),
 and similarly
-.code ds ,
-.code es ,
+.register ds ,
+.register es ,
 and
-.code ss
+.register ss
 use
 .code-index SEG_UDATA
 with privilege
 .code-index DPL_USER .
 The
-.code eflags
+.register eflags
 .code-index FL_IF
 is set to allow hardware interrupts;
 we will reexamine this in Chapter \*[CH:TRAP].
 .PP
 The stack pointer 
-.code esp
+.register esp
 is the process's largest valid virtual address,
 .code p->sz .
 The instruction pointer is the entry point
@@ -891,9 +891,9 @@ also creates a new task state segment
 that instructs the hardware to handle
 an interrupt by returning to kernel mode
 with
-.code ss
+.register ss
 and
-.code esp
+.register esp
 set to
 .code-index SEG_KDATA 
 .code <<3
@@ -933,7 +933,7 @@ The final
 instruction 
 .line swtch.S:/ret$/
 pops a new
-.code eip
+.register eip
 from the stack, finishing the context switch.
 Now the processor is running the kernel thread of process
 .code p .
@@ -972,7 +972,7 @@ so now
 .code trapret
 begins executing,
 with 
-.code %esp
+.register esp
 set to
 .code p->tf .
 .code Trapret
@@ -986,11 +986,11 @@ restores the general registers,
 then the
 .code-index popl 
 instructions restore
-.code %gs ,
-.code %fs ,
-.code %es ,
+.register gs ,
+.register fs ,
+.register es ,
 and
-.code %ds .
+.register ds .
 The 
 .code-index addl
 skips over the two fields
@@ -1000,15 +1000,15 @@ and
 Finally, the
 .code-index iret
 instructions pops 
-.code %cs ,
-.code %eip ,
+.register cs ,
+.register eip ,
 and
-.code %eflags
+.register flags
 off the stack.
 The contents of the trap frame
 have been transferred to the CPU state,
 so the processor continues at the
-.code %eip
+.register eip
 specified in the trap frame.
 For
 .code-index initproc ,
@@ -1017,9 +1017,9 @@ the first instruction of
 .code-index initcode.S .
 .PP
 At this point,
-.code %eip
+.register eip
 holds zero and
-.code %esp
+.register esp
 holds 4096.
 These are virtual addresses in the process's address space.
 The processor's paging hardware translates them into physical addresses.
@@ -1053,7 +1053,7 @@ on the stack—\c
 and
 .code $0 —\c
 and then sets
-.code %eax
+.register eax
 to
 .code-index SYS_exec
 and executes
