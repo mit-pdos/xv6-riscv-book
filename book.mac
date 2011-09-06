@@ -339,7 +339,7 @@
 .vs 18
 .sp 1.5
 \\$1\v'-1v'\\X'PDFMark: Bookmark 1 \\$1'
-.sp
+.PS
 .sp 0.5
 .ft R
 .LP
