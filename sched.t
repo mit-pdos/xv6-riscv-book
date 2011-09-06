@@ -79,9 +79,9 @@ the scheduler rather than any process's kernel thread.
 Switching from one thread to another involves saving the old thread's
 CPU registers, and restoring previously-saved registers of the
 new thread; the fact that
-.code esp
+.register esp
 and
-.code eip
+.register eip
 are saved and restored means that the CPU will switch stacks and
 switch what code it is executing.
 .PP
@@ -113,7 +113,7 @@ Then
 copies
 .code new
 to 
-.code esp ,
+.register esp,
 pops previously saved registers, and returns.
 .PP
 Instead of following the scheduler into
@@ -140,28 +140,28 @@ and switch to the scheduler context previously saved in
 .line swtch.S:/swtch/
 starts by loading its arguments off the stack
 into the registers
-.code %eax
+.register eax
 and
-.code %edx
+.register edx
 .lines swtch.S:/movl/,/movl/ ;
 .code-index swtch
 must do this before it
 changes the stack pointer
 and can no longer access the arguments
 via
-.code %esp .
+.register esp.
 Then 
 .code swtch
 pushes the register state, creating a context structure
 on the current stack.
 Only the callee-save registers need to be saved;
 the convention on the x86 is that these are
-.code %ebp ,
-.code %ebx ,
-.code %esi ,
-.code %ebp ,
+.register ebp,
+.register ebx,
+.register esi,
+.register ebp,
 and
-.code %esp .
+.register esp.
 .code Swtch
 pushes the first four explicitly
 .lines swtch.S:/pushl..ebp/,/pushl..edi/ ;
@@ -173,13 +173,13 @@ written to
 .line swtch.S:/movl..esp/ .
 There is one more important register:
 the program counter 
-.code %eip
+.register eip
 was saved by the
 .code call
 instruction that invoked
 .code swtch
 and is on the stack just above
-.code %ebp .
+.register ebp.
 Having saved the old context,
 .code swtch
 is ready to restore the new one.
@@ -196,11 +196,11 @@ so
 .code swtch
 can invert the sequence to restore the new context.
 It pops the values for
-.code %edi ,
-.code %esi ,
-.code %ebx ,
+.register edi,
+.register esi,
+.register ebx,
 and
-.code %ebp
+.register ebp
 and then returns
 .lines swtch.S:/popl/,/ret/ .
 Because 
@@ -412,9 +412,9 @@ can correctly switch away from the process;
 this means that the CPU registers must hold the process's register values
 (i.e. they aren't actually in a
 .code context ),
-.code %cr3
+.register cr3
 must refer to the process's pagetable,
-.code %esp
+.register esp
 must refer to the process's kernel stack so that
 .code swtch
 can push registers correctly, and
@@ -432,7 +432,7 @@ this means that
 must hold the process's kernel thread variables,
 that no CPU is executing on the process's kernel stack,
 that no CPU's
-.code %cr3
+.register cr3
 refers to the process's page table,
 and that no CPU's
 .code proc
