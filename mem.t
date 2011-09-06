@@ -37,7 +37,7 @@ code and data, and how it creates new processes.
 .section "Paging hardware"
 .\"
 .PP
-Xv6 runs on Intel 80386 or later ("x86") processors on a PC platform,
+Xv6 runs on Intel 80386 or later (``x86'') processors on a PC platform,
 and much of its low-level functionality (for example, its virtual
 memory implementation) is x86-specific. This book assumes the reader
 has done a bit of machine-level programming on some architecture, and
@@ -45,7 +45,7 @@ will introduce x86-specific ideas as they come up. Appendix \*[APP:HW]
 briefly outlines the PC platform.
 .PP
 The x86 paging hardware uses a page
-table to translate (or "map") a
+table to translate (or ``map'') a
 .italic-index "virtual address"
 (the address that an x86 instruction manipulates) to a
 .italic-index "physical address"
@@ -123,7 +123,7 @@ defines that process's address space.
 An address space includes the process's
 .italic-index "user memory"
 starting at virtual address zero. Instructions usually come first,
-followed by global variables and a "heap" area (for malloc)
+followed by global variables and a ``heap'' area (for malloc)
 that the process can expand as needed.
 .PP
 Each process's address space maps the kernel's instructions
@@ -557,7 +557,7 @@ The function
 begins by setting every byte in the 
 memory being freed to the value 1.
 This will cause code that uses memory after freeing it
-(uses "dangling references")
+(uses ``dangling references'')
 to read garbage instead of the old valid contents;
 hopefully that will cause such code to break faster.
 Then
@@ -625,7 +625,7 @@ process makes a system call, the CPU switches from executing the process to
 executing the process's kernel thread.  The process's kernel thread executes the
 implementation of the system call (e.g., reads a file), and then returns back to
 the process.  xv6 executes a system call as a thread so that a system can wait (or
-"block") in the kernel to wait for I/O, and resume where it left off when the
+``block'') in the kernel to wait for I/O, and resume where it left off when the
 I/O has finished.  Much of the state of a kernel thread (local variables,
 functional call return addresses) is stored on the kernel
 thread's stack, 
@@ -701,7 +701,7 @@ that has identical memory contents to its parent.
 .code allocproc
 sets up the child to 
 start life running its kernel thread, with a specially prepared kernel
-stack and set of kernel registers that cause it to "return" to user
+stack and set of kernel registers that cause it to ``return'' to user
 space at the same place (the return from the
 .code fork
 system call) as the parent.
@@ -1171,7 +1171,7 @@ for instructions and data.
 .PP
 The first step is a quick check that the file probably contains an
 ELF binary.
-An ELF binary starts with the four-byte "magic number"
+An ELF binary starts with the four-byte ``magic number''
 .code 0x7F ,
 .code 'E' ,
 .code 'L' ,

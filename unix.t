@@ -245,12 +245,18 @@ which creates another running shell program. The
 parent shell calls
 .code wait ,
 while the child process runs the command.  For example, if the user
-had typed "echo hello" at the prompt, 
+had typed
+.code "echo hello" '' ``
+at the prompt, 
 .code runcmd
-would have been called with "echo hello" as the argument.
+would have been called with
+.code "echo hello" '' ``
+as the argument.
 .code runcmd 
 .line sh.c:/runcmd/
-runs the actual command. For "echo hello", it would call
+runs the actual command. For
+.code "echo hello" '', ``
+it would call
 .code exec 
 on line 
 .line sh.c:/exec.ecmd/ .

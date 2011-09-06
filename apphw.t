@@ -13,7 +13,7 @@ These standards
 evolve over time and a PC from 1990s doesn't look like a PC now. 
 .PP
 From the outside a PC is a box with a keyboard, a screen, and various devices
-(e.g., CD-rom, etc.).  Inside the box is a circuit board (the "motherboard")
+(e.g., CD-rom, etc.).  Inside the box is a circuit board (the ``motherboard'')
 with CPU chips, memory chips, graphic chips, I/O controller chips,
 and busses through which the chips communicate.
 The busses adhere to standard protocols (e.g., PCI and USB)

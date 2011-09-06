@@ -624,7 +624,7 @@ However, it turns out not to be straightforward to design
 and 
 .code wakeup
 with this interface without suffering
-from what is known as the "lost wake up" problem (see 
+from what is known as the ``lost wake up'' problem (see 
 .figref deadlock ).
 Suppose that
 .code recv
@@ -909,7 +909,7 @@ was called with, and (in the case of pipes) read whatever
 data is waiting in the pipe.
 The other processes will find that, despite being woken up,
 there is no data to be read.
-From their point of view the wakeup was "spurious," and
+From their point of view the wakeup was ``spurious,'' and
 they must sleep again.
 For this reason sleep is always called inside a loop that
 checks the condition.

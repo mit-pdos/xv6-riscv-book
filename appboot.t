@@ -159,7 +159,7 @@ x86 processors since the 80286 have a
 .italic-index "protected mode" ,
 which allows physical addresses to have many more bits, and 
 (since the 80386)
-a "32-bit" mode that causes registers, virtual addresses,
+a ``32-bit'' mode that causes registers, virtual addresses,
 and most integer arithmetic to be carried out with 32 bits
 rather than 16.
 The xv6 boot sequence enables protected mode and 32-bit mode as follows.

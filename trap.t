@@ -297,7 +297,7 @@ the 256 cases.
 handles
 .code-index T_SYSCALL ,
 the user system call trap,
-specially: it specifies that the gate is of type "trap" by passing a value of
+specially: it specifies that the gate is of type ``trap'' by passing a value of
 .code 1
 as second argument.
 Trap gates don't clear the 
