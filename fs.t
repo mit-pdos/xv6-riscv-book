@@ -48,6 +48,12 @@ and must coordinate to maintain invariants.
 Accessing a disk is orders of magnitude slower than accessing
 memory, so the file system must maintain an in-memory cache of
 popular blocks.
+.LP
+The rest of this chapter explains how xv6 addresses these challenges.
+.\"
+.\" -------------------------------------------
+.\"
+.section "Overview"
 .PP
 The xv6 file system implementation is
 organized in 6 layers, as shown in 
@@ -74,6 +80,22 @@ The final layer abstracts many Unix resources (e.g., pipes, devices,
 files, etc.) using the file system interface, simplifying the lives of
 application programmers.
 .figure fslayer
+.PP
+The file system must have a plan for where it stores inodes and
+content blocks on the disk.
+To do so, xv6 divides the disk into several
+sections, as shown in 
+.figref fslayout .
+The file system does not use
+block 0 (it holds the boot sector).  Block 1 is called the 
+.italic-index "superblock" ; 
+it contains metadata about the file system (the file system size in blocks, the
+number of data blocks, the number of inodes, and the number of blocks in the
+log).  Blocks starting at 2 hold inodes, with multiple inodes per block.  After
+those come bitmap blocks tracking which data blocks are in use (i.e., which
+are used in
+of some file). Most of the remaining blocks are data blocks, which hold file and
+directory contents.  The blocks at the very end of the disk hold the log for transactions.
 .PP
 The rest of this chapter discusses each layer, starting from the bottom.
 Look out for situations where well-chosen abstractions at lower layers
@@ -119,6 +141,7 @@ holding some other block. The buffer cache recycles the
 least recently used buffer for the new block. The assumption is that
 the least recently used buffer is the one least likely to be used
 again soon.
+.figure fslayout
 .\"
 .\" -------------------------------------------
 .\"
@@ -513,84 +536,6 @@ since there is effectively a lock around each transaction,
 the deadlock-avoiding lock ordering rule is transaction
 before inode.
 .\"
-.\"
-.\"
-.section "Block allocator"
-.figure fslayout
-.PP
-The file system must have a plan for where it stores inodes and
-content blocks on the disk.
-To do so, it divides the disk into several
-sections, as shown in 
-.figref fslayout .
-The file system does not use
-block 0 (it holds the boot sector).  Block 1 is called the 
-.italic-index "superblock" ; 
-it contains metadata about the file system (the file system size in blocks, the
-number of data blocks, the number of inodes, and the number of blocks in the
-log).  Blocks starting at 2 hold inodes, with multiple inodes per block.  After
-those come bitmap blocks tracking which data blocks are in use (i.e., which
-are used in
-of some file). Most of the remaining blocks are data blocks, which hold file and
-directory contents.  The blocks at the very end of the disk hold the log.
-.\"
-.\" -------------------------------------------
-.\"
-.section "Code: Block allocator"
-.PP
-xv6's block allocator
-maintains a free bitmap on disk, with one bit per block. 
-A zero bit indicates that the corresponding block is free;
-a one bit indicates that it is in use.
-The bits corresponding to the boot sector, superblock, inode
-blocks, and bitmap blocks are always set.
-.PP
-The block allocator provides two functions:
-.code-index balloc
-allocates a new disk block, and
-.code-index bfree
-frees a block.
-.code Balloc
-.line fs.c:/^balloc/
-starts by calling
-.code-index readsb
-to read the superblock from the disk (or buffer cache) into
-.code sb .
-.code balloc
-decides which blocks hold the data block free bitmap
-by calculating how many blocks are consumed by the
-boot sector, the superblock, and the inodes (using 
-.code BBLOCK ).
-The loop
-.line fs.c:/^..for.b.=.0/
-considers every block, starting at block 0 up to 
-.code sb.size ,
-the number of blocks in the file system.
-It looks for a block whose bitmap bit is zero,
-indicating that it is free.
-If
-.code balloc
-finds such a block, it updates the bitmap 
-and returns the block.
-For efficiency, the loop is split into two 
-pieces.
-The outer loop reads each block of bitmap bits.
-The inner loop checks all 
-.code BPB
-bits in a single bitmap block.
-The race that might occur if two processes try to allocate
-a block at the same time is prevented by the fact that
-the buffer cache only lets one process use a block at a time.
-.PP
-.code Bfree
-.line fs.c:/^bfree/
-finds the right bitmap block and clears the right bit.
-Again the exclusive use implied by
-.code bread
-and
-.code brelse
-avoids the need for explicit locking.
-.\"
 .\" -------------------------------------------
 .\"
 .section "Inodes"
@@ -675,6 +620,64 @@ Its main job is really synchronizing access by multiple processes,
 not caching.
 If an inode is used frequently, the buffer cache will probably
 keep it in memory if it isn't kept by the inode cache.
+.\"
+.\"
+.\"
+.section "Code: Block allocator"
+.PP
+Inodes points to blocks that must be allocated.
+xv6's block allocator
+maintains a free bitmap on disk, with one bit per block. 
+A zero bit indicates that the corresponding block is free;
+a one bit indicates that it is in use.
+The bits corresponding to the boot sector, superblock, inode
+blocks, and bitmap blocks are always set.
+.PP
+The block allocator provides two functions:
+.code-index balloc
+allocates a new disk block, and
+.code-index bfree
+frees a block.
+.code Balloc
+.line fs.c:/^balloc/
+starts by calling
+.code-index readsb
+to read the superblock from the disk (or buffer cache) into
+.code sb .
+.code balloc
+decides which blocks hold the data block free bitmap
+by calculating how many blocks are consumed by the
+boot sector, the superblock, and the inodes (using 
+.code BBLOCK ).
+The loop
+.line fs.c:/^..for.b.=.0/
+considers every block, starting at block 0 up to 
+.code sb.size ,
+the number of blocks in the file system.
+It looks for a block whose bitmap bit is zero,
+indicating that it is free.
+If
+.code balloc
+finds such a block, it updates the bitmap 
+and returns the block.
+For efficiency, the loop is split into two 
+pieces.
+The outer loop reads each block of bitmap bits.
+The inner loop checks all 
+.code BPB
+bits in a single bitmap block.
+The race that might occur if two processes try to allocate
+a block at the same time is prevented by the fact that
+the buffer cache only lets one process use a block at a time.
+.PP
+.code Bfree
+.line fs.c:/^bfree/
+finds the right bitmap block and clears the right bit.
+Again the exclusive use implied by
+.code bread
+and
+.code brelse
+avoids the need for explicit locking.
 .\"
 .\" -------------------------------------------
 .\"
