@@ -112,7 +112,7 @@
 'tl '\\*[left-header]'\\*[center-header]'\\*[right-header]'
 .nr top \\n[header-margin]
 \\X'top \\n[top]'
-.if \\n[have-postponed-figs] \{
+.if \\n[have-postponed-figs] \{ .\"
 .br
 .ad l
 .sp |\\n[top]u
@@ -441,8 +441,8 @@
 .pl \\n[page-length]u
 .sp |0i
 .mk x
-\\X'start \\nx'
 .ds Fignum \\*[fig:\\*[the-figure]]
+\\X'start \\nx'\A'fig-\\*[Fignum]'
 ..
 .de F2
 .LP
@@ -470,6 +470,7 @@
 .de postponed-figs
 ..
 .de figure
+.br
 .if '\\$1'' .wa .figure needs name argument
 .if !'\\$2'' .wa .figure file is implied by name
 .\"	flush postponed figures
@@ -478,7 +479,7 @@
 .ds Fignum \\*[fig:\\$1]
 .nr Fight \\n[fig-\\$1-height]
 .ds Figfile \\*[fig-\\$1-file]
-.ie \\n[Fight]-\\n(.t \{
+.ie \\n[Fight]-\\n(.t \{ .\"
 .\"	postpone figure to next page.
 .\".wa "Figure \\*[Fignum] postponed \\n[Fight] from \\*[Figfile]
 .nr have-postponed-figs 1
@@ -487,7 +488,7 @@
 .sp \\n[Fight]u
 \\..
 .\}
-.el \{
+.el \{ .\"
 .\"	put figure at top of this page.
 .\".wa "Figure \\*[Fignum] at top of this page from \\*[Figfile]
 \\X'top \\n[top]'
@@ -495,6 +496,12 @@
 .nr top +\\n[Fight]
 .sp \\n[Fight]u
 .\}
+..
+.\"
+.\"	figref - hyperlinked figure reference
+.\"
+.de figref
+\\$3\T'fig-\\*[fig:\\$1]'Figure \\*[fig:\\$1]\T\\$2
 ..
 .\"
 .\"	EPS - Encapsulated PostScript

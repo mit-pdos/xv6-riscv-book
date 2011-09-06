@@ -61,7 +61,9 @@ chapter examines the implementation of pipes.
 .\"
 .figure switch
 .PP
-As shown in Figure \*[fig:switch], to switch between processes, xv6 performs two
+As shown in 
+.figref switch ,
+to switch between processes, xv6 performs two
 kinds of context switches at a low level:
 from a process's kernel thread to the current CPU's scheduler
 thread, and from the scheduler thread to a process's kernel thread.
@@ -622,7 +624,8 @@ However, it turns out not to be straightforward to design
 and 
 .code wakeup
 with this interface without suffering
-from what is known as the "lost wake up" problem (see Figure \*[fig:deadlock]).
+from what is known as the "lost wake up" problem (see 
+.figref deadlock ).
 Suppose that
 .code recv
 finds that

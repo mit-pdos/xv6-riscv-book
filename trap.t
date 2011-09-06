@@ -200,7 +200,8 @@ might not have set up an appropriate stack so that hardware uses the
 stack specified in the task segments, which is setup in kernel mode.
 .figure intkstack
 .PP
-Figure \*[fig:intkstack] shows the stack after
+.figref intkstack 
+shows the stack after
 an 
 .code int
 instruction completes and there was a privilege-level change (the privilege
@@ -383,7 +384,8 @@ and the general-purpose registers
 The result of this effort is that the kernel stack now contains a
 .code "struct trapframe"
 .line x86.h:/trapframe/
-containing the processor registers at the time of the trap (see Figure \*[fig:trapframe]).
+containing the processor registers at the time of the trap (see 
+.figref trapframe ).
 The processor pushes
 .register ss,
 .register esp,
@@ -401,7 +403,8 @@ when the kernel returns to the current process,
 so that the processor can continue exactly as it was when
 the trap started.  Recall from Chapter \*[CH:MEM], that 
 .code userinit
-build a trapframe by hand to achieve this goal (see Figure \*[fig:mem:newkernelstack]).
+build a trapframe by hand to achieve this goal (see 
+.figref mem:newkernelstack ).
 .PP
 In the case of the first system call, the saved 
 .register eip

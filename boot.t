@@ -363,7 +363,8 @@ and stack reads and writes use
 .index "boot loader
 The addresses that an x86 program manipulates are called
 .italic-index "logical addresses" 
-(see Fig. \*[fig:x86_translation]).
+(see 
+.figref x86_translation ).
 A logical address consists of a segment selector and
 an offset, and is sometimes written as
 \fIsegment\fP:\fIoffset\fP.
@@ -449,7 +450,8 @@ The xv6 boot sequence enables protected mode and 32-bit mode as follows.
 .figure x86_seg
 .PP
 In protected mode, a segment
-register is an index into a segment descriptor table (see Fig. \*[fig:x86_seg]).
+register is an index into a segment descriptor table (see 
+.figref x86_seg ).
 Each table entry specifies a base physical address,
 a maximum virtual address called the limit,
 and permission bits for the segment.

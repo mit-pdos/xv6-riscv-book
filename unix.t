@@ -34,7 +34,9 @@ lesser extent, Microsoft Windows—have Unix-like interfaces.
 Understanding xv6 is a good start toward understanding any of these
 systems and many others.
 .PP
-As shown in Figure \*[fig:os], xv6 takes the traditional form of a
+As shown in 
+.figref os ,
+xv6 takes the traditional form of a
 .italic-index kernel ,
 a special program that provides
 services to running programs.

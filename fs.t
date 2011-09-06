@@ -50,7 +50,9 @@ memory, so the file system must maintain an in-memory cache of
 popular blocks.
 .PP
 The xv6 file system implementation is
-organized in 6 layers, as shown in Figure \*[fig:fslayer].  The lowest layer
+organized in 6 layers, as shown in 
+.figref fslayer .
+The lowest layer
 provides block access through the buffer cache, which synchronizes access to
 disk blocks, making sure that only one kernel process at a time can edit the
 file system data in any particular buffer.  The second layer allows higher
@@ -198,7 +200,9 @@ If
 .code-index bget
 didn't have the
 .code goto
-statement, then the race in Figure \*[fig:bufrace] could occur.
+statement, then the race in 
+.figref bufrace 
+could occur.
 The first process has a buffer and has loaded sector 3 in it.
 Now two other processes come along. The first one does a 
 .code get
@@ -517,7 +521,9 @@ before inode.
 The file system must have a plan for where it stores inodes and
 content blocks on the disk.
 To do so, it divides the disk into several
-sections, as shown in Figure \*[fig:fslayout].  The file system does not use
+sections, as shown in 
+.figref fslayout .
+The file system does not use
 block 0 (it holds the boot sector).  Block 1 is called the 
 .italic-index "superblock" ; 
 it contains metadata about the file system (the file system size in blocks, the
@@ -847,7 +853,8 @@ It does this by zeroing
 .PP
 The on-disk inode structure,
 .code-index "struct dinode" ,
-contains a size and an array of block numbers (see Figure \*[fig:inode]).
+contains a size and an array of block numbers (see 
+.figref inode ).
 The inode data is found in the blocks listed
 in the
 .code dinode 's
