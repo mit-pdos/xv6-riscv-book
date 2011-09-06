@@ -440,14 +440,14 @@ DRAFT as of \*[date]: Copyright 2009 Cox, Kaashoek, Morris
 .sp |0i
 .mk x
 \\X'start \\nx'
-.nr Fignum \\np
+.ds Fignum \\*[fig:\\*[the-figure]]
 ..
 .de F2
 .LP
 .ps -2
 .vs -2
 .br
-\fBFigure \\n[Fignum]\fP.
+\fBFigure \\*[Fignum]\fP.
 ..
 .de F3
 .br
@@ -473,12 +473,12 @@ DRAFT as of \*[date]: Copyright 2009 Cox, Kaashoek, Morris
 .\"	flush postponed figures
 .\"	to avoid reordering: want Figure 2 after Figure 1.
 .if \\n[have-postponed-figs] .bp
-.nr Fignum \\n[fig:\\$1]
-.nr Fight \\n[fig-\\n[Fignum]-height]
-.ds Figfile \\*[fig-\\n[Fignum]-file]
+.ds Fignum \\*[fig:\\$1]
+.nr Fight \\n[fig-\\$1-height]
+.ds Figfile \\*[fig-\\$1-file]
 .ie \\n[Fight]-\\n(.t \{
 .\"	postpone figure to next page.
-.\".wa "Figure \\n[Fignum] postponed \\n[Fight] from \\*[Figfile]
+.\".wa "Figure \\*[Fignum] postponed \\n[Fight] from \\*[Figfile]
 .nr have-postponed-figs 1
 .am postponed-figs
 \\X'figure \\*[Figfile] \\n[Fight]'
@@ -487,7 +487,7 @@ DRAFT as of \*[date]: Copyright 2009 Cox, Kaashoek, Morris
 .\}
 .el \{
 .\"	put figure at top of this page.
-.\".wa "Figure \\n[Fignum] at top of this page from \\*[Figfile]
+.\".wa "Figure \\*[Fignum] at top of this page from \\*[Figfile]
 \\X'top \\n[top]'
 \\X'figure \\*[Figfile] \\n[Fight]'
 .nr top +\\n[Fight]

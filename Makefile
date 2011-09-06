@@ -46,7 +46,7 @@ dit: $(DIT)
 book.ps: $(DIT)
 	/usr/ucb/dpost $(DIT) >book.ps || rm -f book.ps
 
-%.dit: book.mac %.t z.%.first $(SCRIPTS)
+%.dit: book.mac %.t z.%.first $(SCRIPTS) z.fignums
 	./run1 $*
 
 %.ps: %.dit
@@ -75,3 +75,7 @@ index1.t: mkindex $(INDEXED_DIT)
 	./mkindex $(INDEXED_DIT) >$@ || rm -f $@
 
 bootstrap: $(patsubst %,z.%.first,$(ORDER))
+
+INDEXED_T=$(patsubst %,%.t,$(INDEXED))
+z.fignums: mkfignums book.mac $(INDEXED_T)
+	./mkfignums $(INDEXED_T) >$@ || rm -f $@

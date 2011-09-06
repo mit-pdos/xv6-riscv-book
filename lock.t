@@ -63,7 +63,7 @@ If two different CPUs execute
 .code insert
 at the same time,
 it could happen that both execute line 15
-before either executes 16 (see Figure \n[fig:race]).
+before either executes 16 (see Figure \*[fig:race]).
 If this happens, there will now be two
 list nodes with
 .code next

@@ -80,7 +80,7 @@ and stack reads and writes use
 Xv6 pretends that an x86 instruction uses a virtual address for its memory operands,
 but an x86 instruction actually uses a
 .italic-index "logical address" 
-(see Fig. \n[fig:x86_translation]).
+(see Fig. \*[fig:x86_translation]).
 A logical address consists of a segment selector and
 an offset, and is sometimes written as
 \fIsegment\fP:\fIoffset\fP.
@@ -167,7 +167,7 @@ The xv6 boot sequence enables protected mode and 32-bit mode as follows.
 In protected mode, a segment
 register is an index into a 
 .italic-index "segment descriptor table"
-(see Fig. \n[fig:x86_seg]).
+(see Fig. \*[fig:x86_seg]).
 Each table entry specifies a base physical address,
 a maximum virtual address called the limit,
 and permission bits for the segment.

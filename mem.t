@@ -67,7 +67,7 @@ Such a chunk is called a
 .italic-index page .
 .figure x86_pagetable
 .PP
-As shown in Figure \n[fig:x86_pagetable], the actual translation happens in two steps.
+As shown in Figure \*[fig:x86_pagetable], the actual translation happens in two steps.
 A page table is stored in physical memory as a two-level tree.
 The root of the tree is a 4096-byte 
 .italic-index "page directory" 
@@ -98,7 +98,7 @@ instruction fetches are allowed.
 .code-index PTE_U
 controls whether user programs are allowed to use the
 page; if clear, only the kernel is allowed to use the page.
-Figure \n[fig:x86_pagetable] shows how it all works.
+Figure \*[fig:x86_pagetable] shows how it all works.
 .PP
 A few notes about terms.
 Physical memory refers to storage cells in DRAM.
@@ -299,7 +299,7 @@ process address spaces.
 Each process has a separate page table, and xv6 tells
 the page table hardware to switch
 page tables when xv6 switches between processes.
-As shown in Figure \n[fig:xv6_layout],
+As shown in Figure \*[fig:xv6_layout],
 a process's user memory starts at virtual address
 zero and can grow up to
 .address KERNBASE ,
@@ -418,7 +418,7 @@ to mark the PTE as valid
 .code-index walkpgdir
 .line vm.c:/^walkpgdir/
 mimics the actions of the x86 paging hardware as it
-looks up the PTE for a virtual address (see Fig. \n[fig:x86_pagetable]).
+looks up the PTE for a virtual address (see Fig. \*[fig:x86_pagetable]).
 .code walkpgdir
 uses the upper 10 bits of the virtual address to find
 the page directory entry
@@ -700,7 +700,7 @@ stack and set of kernel registers that cause it to "return" to user
 space at the same place (the return from the
 .code fork
 system call) as the parent.
-The layout of the prepared kernel stack will be as shown in Figure \n[fig:newkernelstack].
+The layout of the prepared kernel stack will be as shown in Figure \*[fig:newkernelstack].
 .code allocproc
 does part of this work by setting up return program counter
 values that will cause the new process's kernel thread to first execute in
@@ -762,7 +762,7 @@ the kernel back to the process's user code will work.
 These values are a
 .code-index "struct trapframe"
 which stores the user registers.  Now the new process's kernel stack is
-completely prepared as shown in Figure \n[fig:newkernelstack].
+completely prepared as shown in Figure \*[fig:newkernelstack].
 .PP
 The first process is going to execute a small program
 .code-index initcode.S ; (
@@ -1103,7 +1103,7 @@ current process with a new program, but it leaves the
 file descriptors, process id, and parent process the same.
 .figure processlayout
 .PP
-Figure \n[fig:processlayout] shows the user memory image of an executing process.
+Figure \*[fig:processlayout] shows the user memory image of an executing process.
 The heap is above the stack so that it can expand (with
 .code-index sbrk ).
 The stack is a single page, and is
