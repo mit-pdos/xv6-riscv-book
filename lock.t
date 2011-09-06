@@ -575,7 +575,7 @@ which processors must guarantee not to reorder.
 .section "Real world"
 .\"
 Concurrency primitives and parallel programming are active areas of of research,
-because programming with locks is challenging.  It is best to use locks as the
+because programming with locks is still challenging.  It is best to use locks as the
 base for higher-level constructs like synchronized queues, although xv6 does not
 do this.  If you program with locks, it is wise to use a tool that attempts to
 identify race conditions, because it is easy to miss an invariant that requires
@@ -600,7 +600,7 @@ To avoid the expenses associated with locks, many operating systems use
 lock-free data structures and algorithms, and try to avoid atomic operations in
 those algorithms.  For example, it is possible to implemented a link list like
 the one in the beginning of the chapter that requires no locks during list
-searches, and one atomic instruction to insert an item in the list.
+searches, and one atomic instruction to insert an item in a list.
 .\"
 .section "Exercises"
 .\"
