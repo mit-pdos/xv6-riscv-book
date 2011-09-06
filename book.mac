@@ -54,9 +54,9 @@
 .\"
 .ds center-footer "\\n%
 .ds center-header "
-.ds left-footer "DRAFT as of \\*[date] 
+.ds left-footer "\s-2DRAFT as of \\*[date]\s+2
 .ds left-header "
-.ds right-footer "http://pdos.csail.mit.edu/6.828/xv6/
+.ds right-footer "\s-2http://pdos.csail.mit.edu/6.828/xv6/\s+2
 .ds right-header "
 .nr IL 0
 .nr ID 4n
