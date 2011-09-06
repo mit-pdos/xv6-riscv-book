@@ -1555,7 +1555,8 @@ Separating disk management from the file system may be
 the cleanest design, but the complex interface between the two
 has led some systems, like Sun's ZFS, to combine them.
 .PP
-Other features: snapshotting and backup.
+Xv6's file system lacks many other features in today file systems; for example,
+it lacks support for snapshots and incremental backup.
 .PP
 Xv6 has two different file implementations: pipes and inodes.
 Modern Unix systems have many: pipes, network connections, and

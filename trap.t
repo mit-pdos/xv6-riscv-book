@@ -1066,6 +1066,12 @@ accept multiple outstanding disk requests at a time and even reorder
 them to make most efficient use of the disk arm.
 When disks were simpler, operating system often reordered the
 request queue themselves.
+.PP 
+Many operating systems have drivers for solid-state disks because they provide
+much faster access to data.  But, although a solid-state works very differently
+from a traditional mechanical disk, both devices provide block-based interfaces
+and reading/writing blocks on a solid-state disk is still more expensive than
+reading/writing RAM.
 .PP
 Other hardware is surprisingly similar to disks: network device buffers
 hold packets, audio device buffers hold sound samples, graphics card
