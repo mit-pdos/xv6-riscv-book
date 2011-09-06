@@ -54,9 +54,9 @@
 .\"
 .ds center-footer "\\n%
 .ds center-header "
-.ds left-footer "
+.ds left-footer "DRAFT as of \\*[date] 
 .ds left-header "
-.ds right-footer "
+.ds right-footer "http://pdos.csail.mit.edu/6.828/xv6/
 .ds right-header "
 .nr IL 0
 .nr ID 4n
@@ -295,9 +295,6 @@
 .if !'\\$2'' \v'-1v-4p'\\X'PDFMark: Bookmark 0 \\$2'
 .if !'\\$3'' \A'toc-\\$3'
 .sp |\\nxu
-.ft BI
-DRAFT as of \*[date]: Copyright 2011 Cox, Kaashoek, Morris
-.sp
 .ft B
 .ps 20
 .vs 24
