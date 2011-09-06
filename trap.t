@@ -107,15 +107,15 @@ and
 .italic-index "user mode" ,
 respectively.  The current privilege level with which the x86 executes
 instructions is stored in
-.code %cs
+.register cs
 register,
 in the field CPL.
 .PP
 On the x86, interrupt handlers are defined in the interrupt descriptor
 table (IDT). The IDT has 256 entries, each giving the
-.code %cs
+.register cs
 and
-.code %eip
+.register eip
 to be used when handling the corresponding interrupt.
 .ig
 pointer to the IDT table.
@@ -139,45 +139,45 @@ is the argument of
 .code int .
 .IP \[bu] 
 Check that CPL in 
-.code %cs
+.register cs
 is <= DPL,
 where DPL is the privilege level in the descriptor.
 .IP \[bu] 
 Save
-.code %esp
+.register esp
 and
-.code %ss
+.register ss
 in a CPU-internal registers, but only if the target segment
 selector's PL < CPL.
 .IP \[bu] 
 Load
-.code %ss
+.register ss
 and
-.code %esp
+.register esp
 from a task segment descriptor.
 .IP \[bu] 
 Push
-.code %ss .
+.register ss.
 .IP \[bu] 
 Push
-.code %esp .
+.register esp.
 .IP \[bu] 
 Push
-.code %eflags .
+.register eflags.
 .IP \[bu] 
 Push
-.code %cs .
+.register cs.
 .IP \[bu] 
 Push
-.code %eip .
+.register eip.
 .IP \[bu] 
 Clear some bits of
-.code %eflags .
+.register eflags.
 .IP \[bu] 
 Set 
-.code %cs
+.register cs
 and
-.code %eip
+.register eip
 to the values in the descriptor.
 .PP
 The
@@ -209,11 +209,11 @@ If the
 .code int
 instruction didn't require a privilege-level change, the x86
 won't save
-.code ss
+.register ss
 and
-.code esp .
+.register esp.
 After both cases, 
-.code %eip
+.register eip
 is pointing to the address specified in the descriptor table, and the
 instruction at that address is the next instruction to be executed and
 the first instruction of the handler for
@@ -229,7 +229,7 @@ instruction to return from an
 instruction. It pops the saved values during the 
 .code int
 instruction from the stack, and resumes execution at the saved 
-.code %eip .
+.register eip.
 .\"
 .section "Code: The first system call"
 .\"
@@ -244,7 +244,7 @@ for an
 .code-index exec
 call on the process's stack, and put the
 system call number in
-.code %eax .
+.register eax.
 The system call numbers match the entries in the syscalls array,
 a table of function pointers
 .line syscall.c:/'syscalls'/ .
@@ -320,12 +320,12 @@ When changing protection levels from user to kernel mode, the kernel
 shouldn't use the stack of the user process, because it may not be valid.
 The user process may be malicious or
 contain an error that causes the user
-.code esp 
+.register esp 
 to contain an address that is not part of the process's user memory.
 Xv6 programs the x86 hardware to perform a stack switch on a trap by
 setting up a task segment descriptor through which the hardware loads a stack
 segment selector and a new value for
-.code %esp .
+.register esp.
 The function
 .code-index switchuvm
 .line vm.c:/^switchuvm/ 
@@ -338,28 +338,28 @@ TODO: Replace SETGATE with real code.
 When a trap occurs, the processor hardware does the following.
 If the processor was executing in user mode,
 it loads
-.code %esp
+.register esp
 and
-.code %ss
+.register ss
 from the task segment descriptor,
 pushes the old user
-.code %ss
+.register ss
 and
-.code %esp
+.register esp
 onto the new stack.
 If the processor was executing in kernel mode,
 none of the above happens.
 The processor then pushes the
-.code eflags ,
-.code %cs ,
+.register eflags,
+.register cs,
 and
-.code %eip
+.register eip
 registers.
 For some traps, the processor also pushes an error word.
 The processor then loads
-.code %eip
+.register eip
 and
-.code %cs
+.register cs
 from the relevant IDT entry.
 .PP
 xv6 uses a Perl script
@@ -374,10 +374,10 @@ jumps to
 .code Alltraps
 .line trapasm.S:/^alltraps/
 continues to save processor registers: it pushes
-.code %ds ,
-.code %es ,
-.code %fs ,
-.code %gs ,
+.register ds,
+.register es,
+.register fs,
+.register gs,
 and the general-purpose registers
 .lines trapasm.S:/Build.trap.frame/,/pushal/ .
 The result of this effort is that the kernel stack now contains a
@@ -385,12 +385,12 @@ The result of this effort is that the kernel stack now contains a
 .line x86.h:/trapframe/
 containing the processor registers at the time of the trap (see Figure \*[fig:trapframe]).
 The processor pushes
-.code ss ,
-.code esp ,
-.code eflags ,
-.code cs , 
+.register ss,
+.register esp,
+.register eflags,
+.register cs, 
 and
-.code eip .
+.register eip.
 The processor or the trap vector pushes an error number,
 and 
 .code-index alltraps 
@@ -404,20 +404,20 @@ the trap started.  Recall from Chapter \*[CH:MEM], that
 build a trapframe by hand to achieve this goal (see Figure \*[fig:mem:newkernelstack]).
 .PP
 In the case of the first system call, the saved 
-.code eip
+.register eip
 is the address of the instruction right after the 
 .code int
 instruction.
-.code cs 
+.register cs 
 is the user code segment selector.
-.code eflags
+.register eflags
 is the content of the eflags register at the point of executing the 
 .code int
 instruction.
 As part of saving the general-purpose registers,
 .code alltraps
 also saves 
-.code %eax ,
+.register eax,
 which contains the system call number for the kernel
 to inspect later.
 .PP
@@ -425,20 +425,20 @@ Now that the user mode processor registers are saved,
 .code-index alltraps
 can finishing setting up the processor to run kernel C code.
 The processor set the selectors
-.code %cs
+.register cs
 and
-.code %ss
+.register ss
 before entering the handler;
 .code alltraps
 sets
-.code %ds
+.register ds
 and
-.code %es
+.register es
 .lines "'trapasm.S:/movw.*SEG_KDATA/,/%es/'" .
 It sets 
-.code %fs
+.register fs
 and
-.code %gs
+.register gs
 to point at the 
 .code-index SEG_KCPU
 per-CPU data segment
@@ -449,7 +449,7 @@ Once the segments are set properly,
 can call the C trap handler
 .code-index trap .
 It pushes
-.code %esp,
+.register esp,
 which points at the trap frame it just constructed,
 onto the stack as an argument to
 .code trap
@@ -483,7 +483,7 @@ and the same xv6 trap handling code executes.
 When 
 .code iret
 later restores a kernel mode 
-.code %cs ,
+.register cs,
 the processor continues executing in kernel mode.
 .\"
 .section "Code: C trap handler"
@@ -543,10 +543,10 @@ invokes
 .code Syscall 
 loads the system call number from the trap frame, which
 contains the saved
-.code %eax ,
+.register eax,
 and indexes into the system call tables.
 For the first system call, 
-.code %eax
+.register eax
 contains the value 
 .code-index SYS_exec
 .line syscall.h:/'SYS_exec'/ ,
@@ -559,7 +559,7 @@ entry of the system call table, which corresponds to invoking
 .PP
 .code Syscall
 records the return value of the system call function in
-.code %eax .
+.register eax.
 When the trap returns to user space, it will load the values
 from
 .code-index cp->tf
@@ -585,16 +585,16 @@ system call
 argument, as either an integer, pointer, or a string.
 .code-index argint 
 uses the user-space 
-.code esp 
+.register esp 
 register to locate the 
 .italic n'th 
 argument:
-.code esp 
+.register esp 
 points at the return address for the system call stub.
 The arguments are right above it, at 
-.code esp+4.
+.register esp+4.
 Then the nth argument is at 
-.code esp+4+4*n .  
+.register esp+4+4*n.  
 .PP
 .code argint 
 calls 
