@@ -291,8 +291,12 @@
 .\"
 .de big-heading
 .init
+.mk x
+.if !'\\$2'' \v'-1v-4p'\\X'PDFMark: Bookmark 0 \\$2'
+.if !'\\$3'' \A'toc-\\$3'
+.sp |\\nxu
 .ft BI
-DRAFT as of \*[date]: Copyright 2009 Cox, Kaashoek, Morris
+DRAFT as of \*[date]: Copyright 2011 Cox, Kaashoek, Morris
 .sp
 .ft B
 .ps 20
@@ -303,7 +307,7 @@ DRAFT as of \*[date]: Copyright 2009 Cox, Kaashoek, Morris
 .\"	chapter-like heading
 .\"
 .de chapterlike
-.big-heading
+.big-heading "" "\\$1" "\\$1
 \\$1
 .sp
 .LP
@@ -312,7 +316,7 @@ DRAFT as of \*[date]: Copyright 2009 Cox, Kaashoek, Morris
 .\"	chapter heading
 .\"
 .de chapter
-.big-heading "Chapter \\*[\\$1]
+.big-heading "Chapter \\*[\\$1]" "\\*[\\$1]: \\$2" "\\*[\\$1]
 .sp
 \\$2
 .sp
@@ -322,7 +326,7 @@ DRAFT as of \*[date]: Copyright 2009 Cox, Kaashoek, Morris
 .\"	Appendix heading
 .\"
 .de appendix
-.big-heading "Appendix \\*[\\$1]
+.big-heading "Appendix \\*[\\$1]" "\\*[\\$1]: \\$2" "\\*[\\$1]
 .sp
 \\$2
 .sp
@@ -337,7 +341,8 @@ DRAFT as of \*[date]: Copyright 2009 Cox, Kaashoek, Morris
 .ps 16
 .vs 18
 .sp 1.5
-\\$1
+\\$1\v'-1v'\\X'PDFMark: Bookmark 1 \\$1'
+.sp
 .sp 0.5
 .ft R
 .LP
