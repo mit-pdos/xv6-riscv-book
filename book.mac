@@ -63,6 +63,7 @@
 .nr IN 0
 .nr h1 0 1
 .nr line-length 6i
+.nr page-line-length 0
 .nr left-margin 1.25i
 .nr P0 0.4v
 .nr page-length 11i
@@ -132,12 +133,14 @@
 .ie \\n[column]<\\n[columns] .next-column
 .el \{\
 .ll \\n[line-length]u
-.po \\n[left-margin]u
+.po -((\\n[columns]u-1u)*(\\n[line-length]u+\\n[column-margin]u))
+.nr saved-po \\n(.o
 .ch page-footer 20i
 .ev 1
 'sp |(\\n[page-length]u-\\n[footer-margin]u)
 .bp
 .ev
+.po \\n[saved-po]u
 .ch page-footer -\\n[footer-margin]u
 .nr column 0
 .\}
@@ -148,9 +151,11 @@
 .de multi-column
 .nr columns \\$1
 .nr column-margin \\$2
+.nr page-line-length \\n[line-length]u
 .nr line-length (\\n[line-length]u-((\\n[columns]-1)*\\n[column-margin]u))/\\n[columns]
 ..
 .nr columns 1
+.nr column-margin 0
 .de next-column
 'sp |\\n[top]u
 .po +\\n[line-length]u
@@ -164,7 +169,8 @@
 .nr save-ft \\n(.f
 .ft 1
 .ps \\n[point-size]
-'lt \\n[line-length]u
+.ie \\n[page-line-length]>0 'lt \\n[page-line-length]u
+.el 'lt \\n[line-length]u
 .po \\n[left-margin]u
 .if \\n%>0 .tl \(ts\\*[left-footer]\(ts\\*[center-footer]\(ts\\*[right-footer]\(ts
 .\" show index terms in upper right margin
@@ -185,7 +191,7 @@
 .nr marginalia \\n[left-margin]u+\\n[line-length]u+0.2i
 .po \\n[marginalia]u
 .ll (8.4i-\\n[marginalia]u)
-.if \\n[index-margins] .index-terms
+.index-terms
 .br
 .ds index-terms "
 .po \\n[left-margin]u
@@ -200,7 +206,8 @@
 .de index
 .if !'\\$2'' .wa "likely missing quote in .index argument: \\$1 \\$2 \\$3 \\$4 \\$5
 .am index-terms xx
-\\h'-0.1i'\\$1\\X'index \\$1'
+.if \\n[index-margins] \\h'-0.1i'\\$1\c
+\\X'index \\$1'
 .br
 .xx
 ..
