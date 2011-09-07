@@ -58,10 +58,10 @@ The rest of this chapter explains how xv6 addresses these challenges.
 The xv6 file system implementation is
 organized in 6 layers, as shown in 
 .figref fslayer .
-The lowest layer
-provides block access through the buffer cache, which synchronizes access to
+The lowest layer reads and writes blocks on
+the IDE disk through the buffer cache, which synchronizes access to
 disk blocks, making sure that only one kernel process at a time can edit the
-file system data in any particular buffer.  The second layer allows higher
+file system data stored in any particular block.  The second layer allows higher
 layers to wrap updates to several blocks in a
 .italic-index transaction ,
 to ensure that the blocks are updated atomically (i.e., all of them are updated
