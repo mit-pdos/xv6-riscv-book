@@ -18,8 +18,95 @@
 .chapter CH:MEM "Memory management"
 .PP
 Goals of memory management are:
+And the interesting problem is:
+And xv6 has a cool solution to it.
+.PP
 .figure xv6_layout
-.section "Address space details"
+.\"
+..section "Process address space"
+.\"
+.PP
+The page table created by
+.code entry
+has enough mappings to allow the kernel's C code to start running.
+However, 
+.code main 
+immediately changes to a new page table by calling
+.code-index kvmalloc
+.line vm.c:/^kvmalloc/ ,
+because kernel has a more elaborate plan for page tables that describe
+process address spaces.
+.PP
+Each process has a separate page table, and xv6 tells
+the page table hardware to switch
+page tables when xv6 switches between processes.
+As shown in 
+.figref xv6_layout ,
+a process's user memory starts at virtual address
+zero and can grow up to
+.address KERNBASE ,
+allowing a process to address up to 2 GB of memory.
+When a process asks xv6 for more memory,
+xv6 first finds free physical pages to provide the storage,
+and then adds PTEs to the process's page table that point
+to the new physical pages.
+xv6 sets the 
+.code PTE_U ,
+.code PTE_W ,
+and 
+.code PTE_P
+flags in these PTEs.
+Most processes do not use the entire user address space;
+xv6 leaves
+.code PTE_P
+clear in unused PTEs.
+Different processes' page tables translate user addresses
+to different pages of physical memory, so that each process has
+private user memory.
+.PP
+Xv6 includes all mappings needed for the kernel to run in every
+process's page table; these mappings all appear above
+.address KERNBASE .
+It maps virtual addresses
+.address KERNBASE:KERNBASE+PHYSTOP
+to
+.address 0:PHYSTOP .
+One reason for this mapping is so that the kernel can use its
+own instructions and data.
+Another reason is that the kernel sometimes needs to be able
+to write a given page of physical memory, for example
+when creating page table pages; having every physical
+page appear at a predictable virtual address makes this convenient.
+A defect of this arrangement is that xv6 cannot make use of
+more than 2 GB of physical memory.
+Some devices that use memory-mapped I/O appear at physical
+addresses starting at
+.address 0xFE000000 ,
+so xv6 page tables including a direct mapping for them.
+Xv6 does not set the
+.code-index PTE_U
+flag in the PTEs above
+.address KERNBASE ,
+so only the kernel can use them.
+.PP 
+Having every process's page table contain mappings for
+both user memory and the entire kernel is convenient
+when switching from user code to kernel code during
+system calls and interrupts: such switches do not
+require page table switches.
+For the most part the kernel does not have its own page
+table; it is almost always borrowing some process's page table.
+.PP
+To review, xv6 ensures that each process can only use its own memory,
+and that a process sees its memory as having contiguous virtual addresses.
+xv6 implements the first by setting the
+.code-index PTE_U
+bit only on PTEs of virtual addresses that refer to the process's own memory.
+It implements the second using the ability of page tables to translate
+successive virtual addresses to whatever physical pages happen to
+be allocated to the process.
+\"
+.section "Code: address space"
 .\"
 .PP
 The page table created by
@@ -363,6 +450,199 @@ function that
 uses to copy arguments to the stack will notice that
 the destination page in not accessible, and will
 return \-1.
+
+
+.figure processlayout
+.PP
+.figref processlayout 
+shows the user memory image of an executing process.
+The heap is above the stack so that it can expand (with
+.code-index sbrk ).
+The stack is a single page, and is
+shown with the initial contents as created by exec.
+Strings containing the command-line arguments, as well as an
+array of pointers to them, are at the very top of the stack.
+Just under that are values that allow a program
+to start at
+.code main
+as if the function call
+.code main(argc,
+.code argv)
+had just started.
+.\"
+.section "Code: exec"
+.\"
+When the system call arrives (Chapter \*[CH:TRAP]
+will explain how that happens),
+.code-index syscall
+invokes
+.code-index sys_exec
+via the 
+.code syscalls
+table
+.line syscall.c:/static.int...syscalls/ .
+.code Sys_exec
+.line sysfile.c:/^sys_exec/
+parses the system call arguments (also explained in Chapter \*[CH:TRAP]),
+and invokes
+.code exec
+.line sysfile.c:/exec.path/ .
+.PP
+.code Exec
+.line exec.c:/^exec/
+opens the named binary 
+.code path
+using
+.code-index namei
+.line exec.c:/namei/ ,
+which is explained in Chapter \*[CH:FS],
+and then reads the ELF header. Xv6 applications are described in the widely-used 
+.italic-index "ELF format" , 
+defined in
+.file elf.h .
+An ELF binary consists of an ELF header,
+.code-index "struct elfhdr"
+.line elf.h:/^struct.elfhdr/ ,
+followed by a sequence of program section headers,
+.code "struct proghdr"
+.line elf.h:/^struct.proghdr/ .
+Each
+.code proghdr
+describes a section of the application that must be loaded into memory;
+xv6 programs have only one program section header, but
+other systems might have separate sections
+for instructions and data.
+.PP
+The first step is a quick check that the file probably contains an
+ELF binary.
+An ELF binary starts with the four-byte ``magic number''
+.code 0x7F ,
+.code 'E' ,
+.code 'L' ,
+.code 'F' ,
+or
+.code-index ELF_MAGIC
+.line elf.h:/ELF_MAGIC/ .
+If the ELF header has the right magic number,
+.code exec
+assumes that the binary is well-formed.
+.PP
+Then 
+.code exec
+allocates a new page table with no user mappings with
+.code-index setupkvm
+.line exec.c:/setupkvm/ ,
+allocates memory for each ELF segment with
+.code-index allocuvm
+.line exec.c:/allocuvm/ ,
+and loads each segment into memory with
+.code-index loaduvm
+.line exec.c:/loaduvm/ .
+The program section header for
+.code-index /init
+looks like this:
+.P1
+# objdump -p _init 
+
+_init:     file format elf32-i386
+
+Program Header:
+    LOAD off    0x00000054 vaddr 0x00000000 paddr 0x00000000 align 2**2
+         filesz 0x000008c0 memsz 0x000008cc flags rwx
+.P2
+.PP
+.code allocuvm
+checks that the virtual addresses requested
+is below
+.address KERNBASE .
+.code-index loaduvm
+.line vm.c:/^loaduvm/
+uses
+.code-index walkpgdir
+to find the physical address of the allocated memory at which to write
+each page of the ELF segment, and
+.code-index readi
+to read from the file.
+.PP
+The program section header's
+.code filesz
+may be less than the
+.code memsz ,
+indicating that the gap between them should be filled
+with zeroes (for C global variables) rather than read from the file.
+For 
+.code /init ,
+.code filesz 
+is 2240 bytes and
+.code memsz 
+is 2252 bytes,
+and thus 
+.code-index allocuvm
+allocates enough physical memory to hold 2252 bytes, but reads only 2240 bytes
+from the file 
+.code /init .
+.PP
+Now
+.code-index exec
+allocates and initializes the user stack.
+It allocates just one stack page.
+It also places an inaccessible page just below the stack page,
+so that programs that try to use more than one page will fault.
+This inaccessible page also allows
+.code exec
+to deal with arguments that are too large;
+in that situation, 
+the
+.code-index copyout
+function that
+.code exec
+uses to copy arguments to the stack will notice that
+the destination page in not accessible, and will
+return \-1.
+.PP
+.code Exec
+copies the argument strings to the top of the stack
+one at a time, recording the pointers to them in 
+.code-index ustack .
+It places a null pointer at the end of what will be the
+.code-index argv
+list passed to
+.code main .
+The first three entries in 
+.code ustack
+are the fake return PC,
+.code-index argc ,
+and
+.code argv
+pointer.
+.PP
+During the preparation of the new memory image,
+if 
+.code exec
+detects an error like an invalid program segment,
+it jumps to the label
+.code bad ,
+frees the new image,
+and returns \-1.
+.code Exec
+must wait to free the old image until it 
+is sure that the system call will succeed:
+if the old image is gone,
+the system call cannot return \-1 to it.
+The only error cases in
+.code exec
+happen during the creation of the image.
+Once the image is complete, 
+.code exec
+can install the new image
+.line exec.c:/switchuvm/
+and free the old one
+.line exec.c:/freevm/ .
+Finally,
+.code exec
+returns 0.
+Success!
+
 .\"
 .section "Real world"
 .\"

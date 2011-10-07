@@ -18,18 +18,93 @@
 .chapter CH:FIRST "The first process"
 .PP
 This chapter explains what happens when xv6 first starts running, through the
-creation of the first process.  A process is an abstraction that provides the
-illusion to the program that it has its own abstract machine.  Every process has
-its own address space starting at 0. The operating system multiplexes processes
-on the available processors transparently, ensuring that each process receives
-some CPU cycles to run.  A process provides a program with what appears to be a
-private memory system, or address space, which other processes cannot read or
-write.  
+creation of the first process.  In doing so, the text provides a glimpse of the
+implementation of all major abstractions that xv6 provides, and how they
+interact.  Most of xv6 avoids special-casing the first process, and instead
+reuses code that xv6 must provide for standard operation.  Subsequent chapters
+will explore each abstraction in more detail.
 .\"
-.section "Virtual memory"
+.section "Process overview"
 .\"
-To give each process its own address space, xv6 uses an idea that is called
-virtual memory, which is implemented using paging hardware.
+.PP
+A process is an abstraction that provides the
+illusion to a program that it has its own abstract machine.  A process
+provides a program with what appears to be a private memory system, or 
+.italic-index "address space" , 
+which other processes cannot read or write.  The xv6 kernel
+multiplexes processes on the available processors transparently, ensuring that
+each process receives some CPU cycles to run. 
+.PP
+Xv6 uses page tables (which are implemented to by hardware) to give each process
+its own view of memory.  A 
+.italic-index "page table"
+maps a process's address to an address
+that can be used to read physical memory. Xv6
+maintains a separate page table for each process that defines that process's
+address space.  An address space includes the process's
+.italic-index "user memory"
+starting at virtual address zero. Instructions usually come first,
+followed by global variables and a ``heap'' area (for malloc)
+that the process can expand as needed.
+.PP
+Each process's address space maps the kernel's instructions
+and data as well as the user program's memory.
+When a process invokes a system call, the system call
+executes in the kernel mappings of the process's address space.
+This arrangement exists so that the kernel's system call
+code can directly refer to user memory.
+In order to leave room for user memory to grow,
+xv6's address spaces map the kernel at high addresses,
+starting at
+.address 0x80100000 .
+.PP
+The xv6 kernel maintains many pieces of state for each process,
+which it gathers into a
+.code-index "struct proc"
+.line proc.h:/^struct.proc/ .
+A process's most important pieces of kernel state are its 
+page table and the physical memory it refers to,
+its kernel stack, and its run state.
+We'll use the notation
+.code-index p->xxx
+to refer to elements of the
+.code proc
+structure.
+.PP
+Each process has a thread of execution (or 
+.italic-index thread
+for short) that executes the process's program.  A thread executes a computation
+but can be stopped and then resumed.  To switch transparently between process,
+the kernel can stop the current running thread and resume another process's
+thread.  Much of the state of a thread (local variables, functional call return
+addresses) is stored on the thread's kernel stack,
+.code-index p->kstack  .
+Each process's kernel stack is separate from its user stack, since the
+user stack may not be valid.   So, you can view a process has having
+a thread with two stacks:  one for executing in user mode and one for executing
+in kernel mode.
+.PP
+When a process makes a system call, the CPU switches from executing on the user
+stack to the kernel stack. executing the process's kernel thread.  The process's
+thread executes the implementation of the system call (e.g., reads a file) on
+the kernel stack, and then returns back to the process.  A process's thread can
+wait (or ``block'') in the kernel to wait for I/O, and resume where it left off
+when the I/O has finished.
+.PP
+.code-index p->state 
+indicates whether the process is allocated, ready
+to run, running, waiting for I/O, or exiting.
+.PP
+.code-index p->pgdir
+holds the process's page table, an array of PTEs.
+xv6 causes the paging hardware to use a process's
+.code p->pgdir
+when executing that process.
+A process's page table also serves as the record of the
+addresses of the physical pages allocated to store the process's memory.
+.\"
+.section "Paging hardware"
+.\"
 .PP
 Xv6 runs on Intel 80386 or later (``x86'') processors on a PC platform,
 and much of its low-level functionality (for example, its virtual
@@ -106,32 +181,7 @@ send to the DRAM hardware to read or write storage.
 At this level of discussion there is no such thing as virtual memory,
 only virtual addresses.
 .\"
-.section "Address space overview"
-.\"
-.PP
-Xv6 uses the paging hardware to give each process its own view
-of memory, called an
-.italic-index "address space" .
-Xv6 maintains a separate page table for each process that
-defines that process's address space.
-An address space includes the process's
-.italic-index "user memory"
-starting at virtual address zero. Instructions usually come first,
-followed by global variables and a ``heap'' area (for malloc)
-that the process can expand as needed.
-.PP
-Each process's address space maps the kernel's instructions
-and data as well as the user program's memory.
-When a process invokes a system call, the system call
-executes in the kernel mappings of the process's address space.
-This arrangement exists so that the kernel's system call
-code can directly refer to user memory.
-In order to leave room for user memory to grow,
-xv6's address spaces map the kernel at high addresses,
-starting at
-.address 0x80100000 .
-.\"
-.section "Code: entry page table"
+.section "Code: the first address space"
 .\"
 When a PC powers on, it initializes itself and then loads a
 .italic-index "boot loader"
@@ -278,143 +328,17 @@ Now the kernel is running in high addresses in the function
 .code-index main 
 .line main.c:/^main/ .
 .\"
-.figure xv6_layout
-.section "Address space details"
+.section "Code: creating the first process"
 .\"
 .PP
-The page table created by
-.code entry
-has enough mappings to allow the kernel's C code to start running.
-However, 
-.code main 
-immediately changes to a new page table by calling
-.code-index kvmalloc
-.line vm.c:/^kvmalloc/ ,
-because kernel has a more elaborate plan for page tables that describe
-process address spaces.
-.PP
-Each process has a separate page table, and xv6 tells
-the page table hardware to switch
-page tables when xv6 switches between processes.
-As shown in 
-.figref xv6_layout ,
-a process's user memory starts at virtual address
-zero and can grow up to
-.address KERNBASE ,
-allowing a process to address up to 2 GB of memory.
-When a process asks xv6 for more memory,
-xv6 first finds free physical pages to provide the storage,
-and then adds PTEs to the process's page table that point
-to the new physical pages.
-xv6 sets the 
-.code PTE_U ,
-.code PTE_W ,
-and 
-.code PTE_P
-flags in these PTEs.
-Most processes do not use the entire user address space;
-xv6 leaves
-.code PTE_P
-clear in unused PTEs.
-Different processes' page tables translate user addresses
-to different pages of physical memory, so that each process has
-private user memory.
-.PP
-Xv6 includes all mappings needed for the kernel to run in every
-process's page table; these mappings all appear above
-.address KERNBASE .
-It maps virtual addresses
-.address KERNBASE:KERNBASE+PHYSTOP
-to
-.address 0:PHYSTOP .
-One reason for this mapping is so that the kernel can use its
-own instructions and data.
-Another reason is that the kernel sometimes needs to be able
-to write a given page of physical memory, for example
-when creating page table pages; having every physical
-page appear at a predictable virtual address makes this convenient.
-A defect of this arrangement is that xv6 cannot make use of
-more than 2 GB of physical memory.
-Some devices that use memory-mapped I/O appear at physical
-addresses starting at
-.address 0xFE000000 ,
-so xv6 page tables including a direct mapping for them.
-Xv6 does not set the
-.code-index PTE_U
-flag in the PTEs above
-.address KERNBASE ,
-so only the kernel can use them.
-.PP 
-Having every process's page table contain mappings for
-both user memory and the entire kernel is convenient
-when switching from user code to kernel code during
-system calls and interrupts: such switches do not
-require page table switches.
-For the most part the kernel does not have its own page
-table; it is almost always borrowing some process's page table.
-.PP
-To review, xv6 ensures that each process can only use its own memory,
-and that a process sees its memory as having contiguous virtual addresses.
-xv6 implements the first by setting the
-.code-index PTE_U
-bit only on PTEs of virtual addresses that refer to the process's own memory.
-It implements the second using the ability of page tables to translate
-successive virtual addresses to whatever physical pages happen to
-be allocated to the process.
-.\"
-.section "Code: the first process"
-.\"
-.PP
-The xv6 kernel maintains many pieces of state for each process,
-which it gathers into a
-.code-index "struct proc"
-.line proc.h:/^struct.proc/ .
-A process's most important pieces of kernel state are its 
-page table and the physical memory it refers to,
-its kernel stack, and its run state.
-We'll use the notation
-.code-index p->xxx
-to refer to elements of the
-.code proc
-structure.
-.PP
-You should view the kernel state of a process as a thread
-of execution (or 
-.italic-index thread
-for short) that executes in the kernel on behalf of a process.  A thread
-executes a computation but can be stopped and then resumed.  For example, when a
-process makes a system call, the CPU switches from executing the process to
-executing the process's kernel thread.  The process's kernel thread executes the
-implementation of the system call (e.g., reads a file), and then returns back to
-the process.  xv6 executes a system call as a thread so that a system can wait (or
-``block'') in the kernel to wait for I/O, and resume where it left off when the
-I/O has finished.  Much of the state of a kernel thread (local variables,
-functional call return addresses) is stored on the kernel
-thread's stack, 
-.code-index p->kstack  .
-Each process's kernel stack is separate from its user stack, since the
-user stack may not be valid.   So, you can view a process has having two threads
-of execution: one user thread and one kernel thread.
-.PP
-.code-index p->state 
-indicates whether the process is allocated, ready
-to run, running, waiting for I/O, or exiting.
-.PP
-.code-index p->pgdir
-holds the process's page table, an array of PTEs.
-xv6 causes the paging hardware to use a process's
-.code p->pgdir
-when executing that process.
-A process's page table also serves as the record of the
-addresses of the physical pages allocated to store the process's memory.
-.PP
-The story of the creation of the first process starts when
-.code-index main
-.line main.c:/userinit/ 
-calls
-.code-index userinit
-.line proc.c:/^userinit/ ,
-whose first action is to call
+After
+.code main
+initializes several devices and several subsystems of xv6, 
+it creates the first process starts by calling 
+.code userinit
+.line main.c:/userinit/  .
+.code Userinit 's
+first action is to call
 .code-index allocproc .
 The job of
 .code allocproc
@@ -546,8 +470,8 @@ calls
 .code-index setupkvm
 .line vm.c:/^setupkvm/
 to create a page table for the process with (at first) mappings
-only for memory that the kernel uses.  This function is the same one that the
-kernel used to setup its page table.
+only for memory that the kernel uses.
+We will study  this function in detail in Chapter \*[CH:MEM].
 .PP
 The initial contents of the first process's memory are
 the compiled form of
@@ -621,7 +545,7 @@ marks it available for scheduling by setting
 to
 .code-index RUNNABLE .
 .\"
-.section "Code: Running a process"
+.section "Code: Running the first process"
 .\"
 Now that the first process's state is prepared,
 it is time to run it.
@@ -704,7 +628,7 @@ instruction
 pops a new
 .register eip
 from the stack, finishing the context switch.
-Now the processor is running the kernel thread of process
+Now the processor is running on the kernel stack of process
 .code p .
 .PP
 .code Allocproc
@@ -875,6 +799,9 @@ ordinary system calls, as we will see in Chapter \*[CH:TRAP].  As
 before, this setup avoids special-casing the first process (in this
 case, its first system call), and instead reuses code that xv6 must
 provide for standard operation.
+
+
+.figure processlayout
 .PP
 .figref processlayout 
 shows the user memory image of an executing process.
@@ -917,8 +844,9 @@ opens the named binary
 using
 .code-index namei
 .line exec.c:/namei/ ,
-which is explained in Chapter \*[CH:FS],
-and then reads the ELF header. Xv6 applications are described in the widely-used 
+which is explained in Chapter \*[CH:FS].
+.PP
+Then, it reads the ELF header. Xv6 applications are described in the widely-used 
 .italic-index "ELF format" , 
 defined in
 .file elf.h .
@@ -935,20 +863,6 @@ xv6 programs have only one program section header, but
 other systems might have separate sections
 for instructions and data.
 .PP
-The first step is a quick check that the file probably contains an
-ELF binary.
-An ELF binary starts with the four-byte ``magic number''
-.code 0x7F ,
-.code 'E' ,
-.code 'L' ,
-.code 'F' ,
-or
-.code-index ELF_MAGIC
-.line elf.h:/ELF_MAGIC/ .
-If the ELF header has the right magic number,
-.code exec
-assumes that the binary is well-formed.
-.PP
 Then 
 .code exec
 allocates a new page table with no user mappings with
@@ -960,31 +874,6 @@ allocates memory for each ELF segment with
 and loads each segment into memory with
 .code-index loaduvm
 .line exec.c:/loaduvm/ .
-The program section header for
-.code-index /init
-looks like this:
-.P1
-# objdump -p _init 
-
-_init:     file format elf32-i386
-
-Program Header:
-    LOAD off    0x00000054 vaddr 0x00000000 paddr 0x00000000 align 2**2
-         filesz 0x000008c0 memsz 0x000008cc flags rwx
-.P2
-.PP
-.code allocuvm
-checks that the virtual addresses requested
-is below
-.address KERNBASE .
-.code-index loaduvm
-.line vm.c:/^loaduvm/
-uses
-.code-index walkpgdir
-to find the physical address of the allocated memory at which to write
-each page of the ELF segment, and
-.code-index readi
-to read from the file.
 .PP
 The program section header's
 .code filesz
