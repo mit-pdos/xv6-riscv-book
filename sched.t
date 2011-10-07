@@ -635,7 +635,9 @@ and decides to call
 .code sleep .
 Before
 .code recv
-can sleep,
+can sleep (e.g., its processor received an interrupt and the processor is
+running the interrupt handler, temporarily delaying the call to
+.code sleep),
 .code send
 runs on another CPU:
 it changes
