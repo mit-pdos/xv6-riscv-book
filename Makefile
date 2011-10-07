@@ -1,5 +1,6 @@
 CONTENTS_INDEXED=\
 	unix\
+	first\
 	mem\
 	trap\
 	lock\

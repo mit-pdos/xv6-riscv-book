@@ -539,10 +539,11 @@
 .\"	table of contents
 .\"
 .ds CH:UNIX 0
-.ds CH:MEM 1
-.ds CH:TRAP 2
-.ds CH:LOCK 3
-.ds CH:SCHED 4
-.ds CH:FS 5
+.ds CH:FIRST 1
+.ds CH:MEM 2
+.ds CH:TRAP 3
+.ds CH:LOCK 4
+.ds CH:SCHED 5
+.ds CH:FS 6
 .ds APP:HW A
 .ds APP:BOOT B
