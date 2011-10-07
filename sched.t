@@ -1,6 +1,4 @@
 .ig
-XXX checking p->killed
-
 cox and mullender, semaphores.
 
 pike et al, sleep and wakeup
@@ -673,17 +671,9 @@ only sleeps when
 is violated by 
 .code send
 running at just the wrong moment.
-To protect this invariant, we introduce a lock,
-which 
-.code-index sleep
-releases only after the calling process
-is asleep; this avoids the missed wakeup in
-the example above.
-Once the calling process is awake again
-.code-index sleep
-reacquires the lock before returning.
-We would like to be able to have the following code:
-\X'P1 coming up'
+One incorrect way of protecting the invariant would be to modify the code for
+.code recv
+as follows:
 .P1
   300	struct q {
   301	  struct spinlock lock;
@@ -708,11 +698,71 @@ We would like to be able to have the following code:
   320	
   321	  acquire(&q->lock);
   322	  while((p = q->ptr) == 0)
-  323	    sleep(q, &q->lock);
+  323	    sleep(q);
   324	  q->ptr = 0;
   325	  release(&q->lock);
   326	  return p;
   327	}
+.P2
+This solution protects the invariant because when going calling
+.code sleep
+the process still holds the 
+.code q->lock ,
+and
+.code send
+acquires that lock before calling
+.code wakeup.
+.code sleep 
+will not miss the wakeup.
+However, this solution has a deadlock: when 
+.code recv
+goes to sleep it holds on to the lock 
+.code q->lock ,
+and the sender will block when trying to acquire that lock.
+.PP
+This incorrect implementation makes clear that to protect the invariant, 
+we must change the interface of 
+.code-index sleep.
+Sleep must take as argument the lock
+that
+.code-index sleep
+can release only after the calling process
+is asleep; this avoids the missed wakeup in
+the example above.
+Once the calling process is awake again
+.code-index sleep
+reacquires the lock before returning.
+We would like to be able to have the following code:
+\X'P1 coming up'
+.P1
+  400	struct q {
+  401	  struct spinlock lock;
+  402	  void *ptr;
+  403	};
+  404	
+  405	void*
+  406	send(struct q *q, void *p)
+  407	{
+  408	  acquire(&q->lock);
+  409	  while(q->ptr != 0)
+  410	    ;
+  411	  q->ptr = p;
+  412	  wakeup(q);
+  413	  release(&q->lock);
+  414	}
+  415	
+  416	void*
+  417	recv(struct q *q)
+  418	{
+  419	  void *p;
+  420	
+  421	  acquire(&q->lock);
+  422	  while((p = q->ptr) == 0)
+  423	    sleep(q, &q->lock);
+  424	  q->ptr = 0;
+  425	  release(&q->lock);
+  426	  return p;
+  427	}
 .P2
 .PP
 The fact that
@@ -826,6 +876,13 @@ considers the acquire and release
 to cancel each other out
 and skips them entirely
 .line proc.c:/sleeplock0/ .
+For example,
+.code wait
+.line proc.c:/^wait/
+calls
+.code sleep
+with 
+.code &ptable.lock .
 .PP
 Now that
 .code sleep
@@ -1094,7 +1151,7 @@ sleep condition; if there are multiple readers
 or writers, all but the first process to wake up
 will see the condition is still false and sleep again.
 .\"
-.section "Code: Wait and exit"
+.section "Code: Wait, exit, and kill"
 .\"
 .code Sleep
 and
@@ -1236,6 +1293,91 @@ This is one reason that the scheduler procedure runs on its
 own stack rather than on the stack of the thread
 that called
 .code sched .
+.PP
+.code Exit 
+allows an application to terminate itself;
+.code kill
+.line proc.c:/^kill/ 
+allows an application to terminate another process.
+Implementing kill has two challenges: 1) the to-be-killed process may be
+running on another processor and it must switch off its stack to its processor's
+scheduler before xv6 can terminate it; 2) the to-be-killed may be in 
+.code sleep ,
+holding kernel resources.
+To address these challenges, 
+.code kill
+does very little: it runs through the process table and sets
+.code p->killed
+for the process to be killed and, if it is sleeping, it wakes it up.
+If the to-be-killed process is running another processor, it will enter the
+kernel at some point soon: either because it calls a system call or an interrupt
+occurs (e.g., the timer interrupt).   When the to-be-killed
+process leaves the kernel again,
+.code trap 
+checks if 
+.code p->killed
+is set, and then the process calls
+.code exit ,
+terminating itself.
+.PP
+If the to-be-killed process is in
+.code sleep ,
+the call to
+.code wakeup
+will cause the to-be-killed process to run and return from
+.code sleep .
+This is potentially dangerous because the process returns from
+.code sleep ,
+even though the condition is waiting for may not be true.
+Xv6 is carefully programmed to use a
+.code while
+loop around each call to
+.code sleep ,
+and tests in that 
+.code while 
+loop if 
+.code p->killed 
+is set,  and, if so, returns to its caller.  The caller must also check if
+.code p->killed 
+is set, and must return to its caller if set, and so on.
+Eventually the process unwinds its stack to
+.code trap ,
+and 
+.code trap
+will check 
+.code p->killed .
+If it is set, 
+the process calls
+.code exit , 
+terminating itself.
+We see an example of the checking of
+.code p->killed
+in a
+.code while
+loop around
+.code sleep
+in the implementation of pipes
+.line pipe.c:/proc-\>killed/ .
+.PP
+There is a
+.code while
+loop that doesn't check for
+.code p->killed .
+The ide driver
+.line ide.c:/sleep/ 
+immediately invokes 
+.code sleep
+again.
+The reason is that it is guaranteed to be woken up because it is waiting for a
+disk interrupt.  And, if it doesn't wait for the disk interrupt, xv6 may get
+confused.  If a second process calls
+.code iderw
+before the outstanding interrupt happens, then
+.code ideintr
+will wake up that second process, instead of the process that was originally waiting
+for the interrupt.   That second process will believe it has received the data
+it was waiting on, but it has received the data that the first process was
+reading!
 .\"
 .section "Real world"
 .\"
@@ -1356,6 +1498,20 @@ there is an explicit count of the number
 of wakeups that have occurred.
 The count also avoids the spurious wakeup
 and thundering herd problems.
+.PP
+Terminating processes and cleaning them up introduces much complexity in xv6.
+In most operating systems it is even more complex, because, for example, the
+to-be-killed process may be deep inside the kernel sleeping, and unwinding its
+stack requires much careful programming.  Many operating system unwind the stack
+using explicit mechanisms for exception handling, such as
+.code longjmp .
+Furthermore, there are other events that can cause a sleeping process to be
+woken up, even though the events it is waiting for has not happened yet.  For
+example, when a process is sleeping, another process may send a 
+.code-index signal to it.  In this case, the
+process will return from the interrupted system call with the value -1 and with
+the error code set to EINTR. The application can check for these values and
+decide what to do.  Xv6 doesn't support signals and this complexity doesn't arise.
 .\"
 .section "Exercises"
 .\"
