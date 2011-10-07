@@ -1,6 +1,8 @@
 .ig
 cox and mullender, semaphores.
 
+process has one thread with two stacks
+ 
 pike et al, sleep and wakeup
 ..
 .chapter CH:SCHED "Scheduling"

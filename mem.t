@@ -16,14 +16,107 @@
   sidebar about why it is extern char[]
 ..
 .chapter CH:MEM "Memory management"
+.\"
+.section "Paging hardware"
+.\"
+.PP
 .PP
 Goals of memory management are:
 And the interesting problem is:
 And xv6 has a cool solution to it.
 .PP
+The pages are mapped as present
+.code PTE_P
+(present),
+.code PTE_W
+(writeable),
+and
+.code PTE_PS
+(super page).
+The flags and all other page hardware related structures are defined in
+.file "mmu.h"
+.sheet memlayout.h .
+the kernel first tells the paging hardware to allow super pages by setting the flag
+.code-index CR_PSE 
+(page size extension) in the control register
+.register cr4.
+It also sets
+.code-index CR0_WP ,
+which ensures that the kernel honors
+write-protect flags in PTEs.
+
+.PP
+The x86 paging hardware uses a page
+table to translate (or ``map'') a
+.italic-index "virtual address"
+(the address that an x86 instruction manipulates) to a
+.italic-index "physical address"
+(an address that the processor chip sends to main memory).
+.PP
+An x86 page table is logically an array of 2^20
+(1,048,576) 
+.italic-index "page table entries (PTEs)". 
+Each PTE contains a
+20-bit physical page number (PPN) and some flags. The paging
+hardware translates a virtual address by using its top 20 bits
+to index into the page table to find a PTE, and replacing
+those bits with the PPN in the PTE.  The paging hardware
+copies the low 12 bits unchanged from the virtual to the
+translated physical address.  Thus a page table gives
+the operating system control over virtual-to-physical address translations
+at the granularity of aligned chunks of 4096 (2^12) bytes.
+Such a chunk is called a
+.italic-index page .
+.figure x86_pagetable
+.PP
+As shown in 
+.figref x86_pagetable ,
+the actual translation happens in two steps.
+A page table is stored in physical memory as a two-level tree.
+The root of the tree is a 4096-byte 
+.italic-index "page directory" 
+that contains 1024 PTE-like references to 
+.italic-index "page table pages".
+Each page table page is an array of 1024 32-bit PTEs.
+The paging hardware uses the top 10 bits of a virtual address to
+select a page directory entry.
+If the page directory entry is present,
+the paging hardware uses the next 10 bits of the virtual
+address to select a PTE from the page table page that the
+page directory entry refers to.
+If either the page directory entry or the PTE is not present,
+the paging hardware raises a fault.
+This two-level structure allows a page table to omit entire
+page table pages in the common case in which large ranges of
+virtual addresses have no mappings.
+.PP
+Each PTE contains flag bits that tell the paging hardware
+how the associated virtual address is allowed to be used.
+.code-index PTE_P
+indicates whether the PTE is present: if it is
+not set, a reference to the page causes a fault (i.e. is not allowed).
+.code-index PTE_W
+controls whether instructions are allowed to issue
+writes to the page; if not set, only reads and
+instruction fetches are allowed.
+.code-index PTE_U
+controls whether user programs are allowed to use the
+page; if clear, only the kernel is allowed to use the page.
+.figref x86_pagetable 
+shows how it all works.
+.PP
+A few notes about terms.
+Physical memory refers to storage cells in DRAM.
+A byte of physical memory has an address, called a physical address.
+A program uses virtual addresses, which the 
+paging hardware translate to physical addresses, and then
+send to the DRAM hardware to read or write storage.
+At this level of discussion there is no such thing as virtual memory,
+only virtual addresses.
+.PP
 .figure xv6_layout
 .\"
-..section "Process address space"
+.section "Process address space"
 .\"
 .PP
 The page table created by

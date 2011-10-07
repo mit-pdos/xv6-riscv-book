@@ -2,11 +2,9 @@
   terminology:
     process: refers to execution in user space, or maybe struct proc &c
     process memory: the lower part of the address space
-    process's kernel thread
-    so: swtch() switches to a given process's kernel thread
-    trapret's iret switches to the process of the current
-      kernel thread
- talk a little about initial page table conditions:
+    process has one thread with two stacks (one for in kernel mode and one for
+    in user mode)
+talk a little about initial page table conditions:
     paging not on, but virtual mostly mapped direct to physical,
     which is what things look like when we turn paging on as well
     since paging is turned on after we create first process.
@@ -23,6 +21,12 @@ implementation of all major abstractions that xv6 provides, and how they
 interact.  Most of xv6 avoids special-casing the first process, and instead
 reuses code that xv6 must provide for standard operation.  Subsequent chapters
 will explore each abstraction in more detail.
+.PP
+Xv6 runs on Intel 80386 or later (``x86'') processors on a PC platform, and much
+of its low-level functionality (for example, its process implementation) is
+x86-specific. This book assumes the reader has done a bit of machine-level
+programming on some architecture, and will introduce x86-specific ideas as they
+come up. Appendix \*[APP:HW] briefly outlines the PC platform.
 .\"
 .section "Process overview"
 .\"
@@ -34,6 +38,12 @@ provides a program with what appears to be a private memory system, or
 which other processes cannot read or write.  The xv6 kernel
 multiplexes processes on the available processors transparently, ensuring that
 each process receives some CPU cycles to run. 
+.P1
+address space of a process
+user 
+kernel
+.address 0x80100000 .
+.P2
 .PP
 Xv6 uses page tables (which are implemented to by hardware) to give each process
 its own view of memory.  A 
@@ -41,7 +51,7 @@ its own view of memory.  A
 maps a process's address to an address
 that can be used to read physical memory. Xv6
 maintains a separate page table for each process that defines that process's
-address space.  An address space includes the process's
+address space.  As illustrated in Figure XXX, an address space includes the process's
 .italic-index "user memory"
 starting at virtual address zero. Instructions usually come first,
 followed by global variables and a ``heap'' area (for malloc)
@@ -74,7 +84,7 @@ structure.
 Each process has a thread of execution (or 
 .italic-index thread
 for short) that executes the process's program.  A thread executes a computation
-but can be stopped and then resumed.  To switch transparently between process,
+but can be stopped and then resumed later.  To switch transparently between process,
 the kernel can stop the current running thread and resume another process's
 thread.  Much of the state of a thread (local variables, functional call return
 addresses) is stored on the thread's kernel stack,
@@ -84,12 +94,12 @@ user stack may not be valid.   So, you can view a process has having
 a thread with two stacks:  one for executing in user mode and one for executing
 in kernel mode.
 .PP
-When a process makes a system call, the CPU switches from executing on the user
-stack to the kernel stack. executing the process's kernel thread.  The process's
-thread executes the implementation of the system call (e.g., reads a file) on
-the kernel stack, and then returns back to the process.  A process's thread can
-wait (or ``block'') in the kernel to wait for I/O, and resume where it left off
-when the I/O has finished.
+When a process makes a system call, the processors switches from user mode to
+kernel and switches from executing on the user stack to the kernel stack.  The
+process executes the implementation of the system call (e.g., reads a file) on
+the kernel stack, and then returns back to the user space.  A process's thread
+can wait (or ``block'') in the kernel to wait for I/O, and resume where it left
+off when the I/O has finished.
 .PP
 .code-index p->state 
 indicates whether the process is allocated, ready
@@ -102,84 +112,6 @@ xv6 causes the paging hardware to use a process's
 when executing that process.
 A process's page table also serves as the record of the
 addresses of the physical pages allocated to store the process's memory.
-.\"
-.section "Paging hardware"
-.\"
-.PP
-Xv6 runs on Intel 80386 or later (``x86'') processors on a PC platform,
-and much of its low-level functionality (for example, its virtual
-memory implementation) is x86-specific. This book assumes the reader
-has done a bit of machine-level programming on some architecture, and
-will introduce x86-specific ideas as they come up. Appendix \*[APP:HW]
-briefly outlines the PC platform.
-.PP
-The x86 paging hardware uses a page
-table to translate (or ``map'') a
-.italic-index "virtual address"
-(the address that an x86 instruction manipulates) to a
-.italic-index "physical address"
-(an address that the processor chip sends to main memory).
-.PP
-An x86 page table is logically an array of 2^20
-(1,048,576) 
-.italic-index "page table entries (PTEs)". 
-Each PTE contains a
-20-bit physical page number (PPN) and some flags. The paging
-hardware translates a virtual address by using its top 20 bits
-to index into the page table to find a PTE, and replacing
-those bits with the PPN in the PTE.  The paging hardware
-copies the low 12 bits unchanged from the virtual to the
-translated physical address.  Thus a page table gives
-the operating system control over virtual-to-physical address translations
-at the granularity of aligned chunks of 4096 (2^12) bytes.
-Such a chunk is called a
-.italic-index page .
-.figure x86_pagetable
-.PP
-As shown in 
-.figref x86_pagetable ,
-the actual translation happens in two steps.
-A page table is stored in physical memory as a two-level tree.
-The root of the tree is a 4096-byte 
-.italic-index "page directory" 
-that contains 1024 PTE-like references to 
-.italic-index "page table pages".
-Each page table page is an array of 1024 32-bit PTEs.
-The paging hardware uses the top 10 bits of a virtual address to
-select a page directory entry.
-If the page directory entry is present,
-the paging hardware uses the next 10 bits of the virtual
-address to select a PTE from the page table page that the
-page directory entry refers to.
-If either the page directory entry or the PTE is not present,
-the paging hardware raises a fault.
-This two-level structure allows a page table to omit entire
-page table pages in the common case in which large ranges of
-virtual addresses have no mappings.
-.PP
-Each PTE contains flag bits that tell the paging hardware
-how the associated virtual address is allowed to be used.
-.code-index PTE_P
-indicates whether the PTE is present: if it is
-not set, a reference to the page causes a fault (i.e. is not allowed).
-.code-index PTE_W
-controls whether instructions are allowed to issue
-writes to the page; if not set, only reads and
-instruction fetches are allowed.
-.code-index PTE_U
-controls whether user programs are allowed to use the
-page; if clear, only the kernel is allowed to use the page.
-.figref x86_pagetable 
-shows how it all works.
-.PP
-A few notes about terms.
-Physical memory refers to storage cells in DRAM.
-A byte of physical memory has an address, called a physical address.
-A program uses virtual addresses, which the 
-paging hardware translate to physical addresses, and then
-send to the DRAM hardware to read or write storage.
-At this level of discussion there is no such thing as virtual memory,
-only virtual addresses.
 .\"
 .section "Code: the first address space"
 .\"
@@ -208,7 +140,11 @@ rather than
 is because the address range
 .address 0xa0000:0x100000
 contains older I/O devices.
-To allow the rest of the kernel to run,
+.P1
+figure with temporary mapping
+.P2
+.PP
+ To allow the rest of the kernel to run,
 .code entry
 sets up a page table that maps virtual addresses starting at
 .address 0x80000000
@@ -221,14 +157,8 @@ to physical address starting at
 The entry page table is defined 
 in main.c
 .line 'main.c:/^pde_t.entrypgdir.*=/' .
-The array initialization sets two of the 1024 PTEs,
-at indices zero and 960
-.code KERNBASE>>PDXSHIFT ), (
-leaving the other PTEs zero.
-It causes both of these PTEs to use a
-.italic-index "superpage" ,
-which maps 4 megabytes of virtual address space.
-Entry 0 maps virtual addresses
+We look at the details of page tables in Chapter  \*[CH:MEM],
+but the short story is that entry 0 maps virtual addresses
 .code 0:0x400000
 to physical addresses
 .code 0:0x400000 .
@@ -236,17 +166,6 @@ This mapping is required as long as
 .code-index entry
 is executing at low addresses, but
 will eventually be removed.
-The pages are mapped as present
-.code PTE_P
-(present),
-.code PTE_W
-(writeable),
-and
-.code PTE_PS
-(super page).
-The flags and all other page hardware related structures are defined in
-.file "mmu.h"
-.sheet memlayout.h .
 .PP
 Entry 960
 maps virtual addresses
@@ -262,11 +181,7 @@ This mapping restricts the kernel instructions and data to 4 Mbytes.
 .PP
 Returning to
 .code entry,
-the kernel first tells the paging hardware to allow super pages by setting the flag
-.code-index CR_PSE 
-(page size extension) in the control register
-.register cr4.
-Next it loads the physical address of
+it loads the physical address of
 .code-index entrypgdir
 into control register
 .register cr3.
@@ -287,10 +202,6 @@ To enable the paging hardware, xv6 sets the flag
 .code-index CR0_PG
 in the control register
 .register cr0.
-It also sets
-.code-index CR0_WP ,
-which ensures that the kernel honors
-write-protect flags in PTEs.
 .PP
 The processor is still executing instructions at
 low addresses after paging is enabled, which works
@@ -333,7 +244,7 @@ Now the kernel is running in high addresses in the function
 .PP
 After
 .code main
-initializes several devices and several subsystems of xv6, 
+initializes several devices and subsystems of xv6, 
 it creates the first process starts by calling 
 .code userinit
 .line main.c:/userinit/  .
@@ -471,7 +382,8 @@ calls
 .line vm.c:/^setupkvm/
 to create a page table for the process with (at first) mappings
 only for memory that the kernel uses.
-We will study  this function in detail in Chapter \*[CH:MEM].
+We will study  this function in detail in Chapter \*[CH:MEM], but
+the layout of the address space is as in Figure XXX.
 .PP
 The initial contents of the first process's memory are
 the compiled form of
@@ -799,8 +711,6 @@ ordinary system calls, as we will see in Chapter \*[CH:TRAP].  As
 before, this setup avoids special-casing the first process (in this
 case, its first system call), and instead reuses code that xv6 must
 provide for standard operation.
-
-
 .figure processlayout
 .PP
 .figref processlayout 
@@ -845,7 +755,6 @@ using
 .code-index namei
 .line exec.c:/namei/ ,
 which is explained in Chapter \*[CH:FS].
-.PP
 Then, it reads the ELF header. Xv6 applications are described in the widely-used 
 .italic-index "ELF format" , 
 defined in
@@ -863,8 +772,7 @@ xv6 programs have only one program section header, but
 other systems might have separate sections
 for instructions and data.
 .PP
-Then 
-.code exec
+.code Exec
 allocates a new page table with no user mappings with
 .code-index setupkvm
 .line exec.c:/setupkvm/ ,
@@ -897,20 +805,6 @@ Now
 .code-index exec
 allocates and initializes the user stack.
 It allocates just one stack page.
-It also places an inaccessible page just below the stack page,
-so that programs that try to use more than one page will fault.
-This inaccessible page also allows
-.code exec
-to deal with arguments that are too large;
-in that situation, 
-the
-.code-index copyout
-function that
-.code exec
-uses to copy arguments to the stack will notice that
-the destination page in not accessible, and will
-return \-1.
-.PP
 .code Exec
 copies the argument strings to the top of the stack
 one at a time, recording the pointers to them in 
@@ -986,68 +880,10 @@ in constant time instead of the linear-time search in
 xv6 uses the linear scan
 (the first of many) for simplicity.
 .PP
-Like most operating systems, xv6 uses the paging hardware
-for memory protection and mapping. Most operating systems make far more sophisticated
-use of paging than xv6; for example, xv6 lacks demand
-paging from disk, copy-on-write fork, shared memory,
-and automatically extending stacks.
-The x86 also supports address translation using segmentation (see Appendix \*[APP:BOOT]),
-but xv6 uses them only for the common trick of
-implementing per-cpu variables such as
-.code proc
-that are at a fixed address but have different values
-on different CPUs (see
-.code-index seginit ).
-Implementations of per-CPU (or per-thread) storage on non-segment
-architectures would dedicate a register to holding a pointer
-to the per-CPU data area, but the x86 has so few general
-registers that the extra effort required to use segmentation
-is worthwhile.
-.PP
 xv6's address space layout has the defect that it cannot make use
 of more than 2 GB of physical RAM.  It's possible to fix this,
 though the best plan would be to switch to a machine with 64-bit
 addresses.
-.PP
-Xv6 should determine the actual RAM configuration, instead
-of assuming 240 MB.
-On the x86, there are at least three common algorithms:
-the first is to probe the physical address space looking for
-regions that behave like memory, preserving the values
-written to them;
-the second is to read the number of kilobytes of 
-memory out of a known 16-bit location in the PC's non-volatile RAM;
-and the third is to look in BIOS memory
-for a memory layout table left as
-part of the multiprocessor tables.
-Reading the memory layout table
-is complicated.
-.PP
-Memory allocation was a hot topic a long time ago, the basic problems being
-efficient use of very limited memory and
-preparing for unknown future requests.
-See Knuth.  Today people care more about speed than
-space-efficiency.  In addition, a more elaborate kernel
-would likely allocate many different sizes of small blocks,
-rather than (as in xv6) just 4096-byte blocks;
-a real kernel
-allocator would need to handle small allocations as well as large
-ones.
-.PP
-.code Exec
-is the most complicated code in xv6.
-It involves pointer translation
-(in
-.code sys_exec
-too),
-many error cases, and must replace one running process
-with another.
-Real world operationg systems have even more complicated
-.code exec 
-implementations.
-They handle shell scripts (see exercise below),
-more complicated ELF binaries, and even multiple
-binary formats.
 .\"
 .section "Exercises"
 .\"
@@ -1065,38 +901,7 @@ until you get to
 .code initcode 
 at virtual address zero.
 
-2. Look at real operating systems to see how they size memory.
-
-3. If xv6 had not used super pages, what would be the right declaration for
-.code entrypgdir?
-
-4. Unix implementations of 
-.code exec
-traditionally include special handling for shell scripts.
-If the file to execute begins with the text
-.code #! ,
-then the first line is taken to be a program
-to run to interpret the file.
-For example, if
-.code exec
-is called to run
-.code myprog
-.code arg1
-and
-.code myprog 's
-first line is
-.code #!/interp ,
-then 
-.code exec
-runs
-.code /interp
-with command line
-.code /interp
-.code myprog
-.code arg1 .
-Implement support for this convention in xv6.
-
-5.
+2.
 .code KERNBASE 
 limits the amount of memory a single process can use,
 which might be irritating on a machine with a full 4 GB of RAM.
