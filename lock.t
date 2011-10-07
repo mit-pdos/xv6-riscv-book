@@ -13,15 +13,22 @@ to keep interrupt handlers from interfering with
 non-interrupt code.
 Xv6 uses the same low-level concept for both: a
 .italic-index lock .
-A lock provides mutual exclusion, ensuring that only one CPU at a time
-can hold the lock.
-If xv6 only accesses a data structure 
-while holding a particular lock,
-then xv6 can be sure that only one CPU
-at a time is accessing the data structure.
-In this situation, we say that the lock protects
-the data structure.  The rest of this chapters why xv6 needs locks, how xv6
-implements them, and how it uses them.
+A lock provides mutual exclusion, ensuring that only one CPU at a time can hold
+the lock.  If xv6 only accesses a data structure while holding a particular
+lock, then xv6 can be sure that only one CPU at a time is accessing the data
+structure.  In this situation, we say that the lock protects the data structure.
+.PP
+The rest of this chapters why xv6 needs locks, how xv6 implements them, and how
+it uses them.  A key observation will be that if you look at a line of code in
+xv6, you must be asking yourself is there another processor that could change
+the intended behavior of the line (e.g., because another processor is also
+executing that line or another line of code that modifies a shared variable) and what
+would happen if an interrupt handler ran. In both case you have to keep in mind that each line
+of C can be several machine instructions and thus another processor or an interrupt may
+mock around in the middle of a C instruction.  You cannot assume that lines of code
+on the page are executed sequentially, nor can you assume that a single C
+instruction will execute atomically.   Concurrency makes reasoning about the
+correctness much more difficult.
 .\"
 .section "Race conditions"
 .\"
