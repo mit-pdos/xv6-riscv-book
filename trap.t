@@ -404,7 +404,7 @@ so that the processor can continue exactly as it was when
 the trap started.  Recall from Chapter \*[CH:MEM], that 
 .code userinit
 build a trapframe by hand to achieve this goal (see 
-.figref mem:newkernelstack ).
+.figref first:newkernelstack ).
 .PP
 In the case of the first system call, the saved 
 .register eip

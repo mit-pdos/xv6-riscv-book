@@ -46,11 +46,15 @@ kernel
 .P2
 .PP
 Xv6 uses page tables (which are implemented to by hardware) to give each process
-its own view of memory.  A 
-.italic-index "page table"
-maps a process's address to an address
-that can be used to read physical memory. Xv6
-maintains a separate page table for each process that defines that process's
+its own view of memory. The x86 paging hardware uses  a
+.italic-index "page table" 
+to translate (or ``map'') a
+.italic-index "virtual address"
+(the address that an x86 instruction manipulates) to a
+.italic-index "physical address"
+(an address that the processor chip sends to main memory).
+.PP
+Xv6 maintains a separate page table for each process that defines that process's
 address space.  As illustrated in Figure XXX, an address space includes the process's
 .italic-index "user memory"
 starting at virtual address zero. Instructions usually come first,
@@ -772,6 +776,20 @@ xv6 programs have only one program section header, but
 other systems might have separate sections
 for instructions and data.
 .PP
+The first step is a quick check that the file probably contains an
+ELF binary.
+An ELF binary starts with the four-byte ``magic number''
+.code 0x7F ,
+.code 'E' ,
+.code 'L' ,
+.code 'F' ,
+or
+.code-index ELF_MAGIC
+.line elf.h:/ELF_MAGIC/ .
+If the ELF header has the right magic number,
+.code exec
+assumes that the binary is well-formed.
+.PP
 .code Exec
 allocates a new page table with no user mappings with
 .code-index setupkvm
@@ -782,6 +800,19 @@ allocates memory for each ELF segment with
 and loads each segment into memory with
 .code-index loaduvm
 .line exec.c:/loaduvm/ .
+PP
+The program section header for
+.code-index /init
+looks like this:
+.P1
+# objdump -p _init 
+
+_init:     file format elf32-i386
+
+Program Header:
+    LOAD off    0x00000054 vaddr 0x00000000 paddr 0x00000000 align 2**2
+         filesz 0x000008c0 memsz 0x000008cc flags rwx
+.P2
 .PP
 The program section header's
 .code filesz
@@ -820,33 +851,6 @@ are the fake return PC,
 and
 .code argv
 pointer.
-.PP
-During the preparation of the new memory image,
-if 
-.code exec
-detects an error like an invalid program segment,
-it jumps to the label
-.code bad ,
-frees the new image,
-and returns \-1.
-.code Exec
-must wait to free the old image until it 
-is sure that the system call will succeed:
-if the old image is gone,
-the system call cannot return \-1 to it.
-The only error cases in
-.code exec
-happen during the creation of the image.
-Once the image is complete, 
-.code exec
-can install the new image
-.line exec.c:/switchuvm/
-and free the old one
-.line exec.c:/freevm/ .
-Finally,
-.code exec
-returns 0.
-Success!
 .PP
 Now the
 .code-index initcode
