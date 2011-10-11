@@ -140,11 +140,9 @@ rather than
 is because the address range
 .address 0xa0000:0x100000
 contains older I/O devices.
-.P1
-figure with temporary mapping
-.P2
+.figure astmp
 .PP
- To allow the rest of the kernel to run,
+To allow the rest of the kernel to run,
 .code entry
 sets up a page table that maps virtual addresses starting at
 .address 0x80000000
@@ -152,7 +150,11 @@ sets up a page table that maps virtual addresses starting at
 .code-index KERNBASE 
 .line memlayout.h:/define.KERNBASE/ )
 to physical address starting at
-.address 0x0 .
+.address 0x0 (see
+.figref as ).
+Setting up two ranges of virtual addresses that map to the same physical memory
+range is a common use of page tables, and we will see more examples like this
+one.
 .PP
 The entry page table is defined 
 in main.c
@@ -383,7 +385,13 @@ calls
 to create a page table for the process with (at first) mappings
 only for memory that the kernel uses.
 We will study  this function in detail in Chapter \*[CH:MEM], but
-the layout of the address space is as in Figure XXX.
+as a high level
+.code setupkvm
+and 
+.code userinit 
+will create an address space
+as shown 
+.figref as .
 .PP
 The initial contents of the first process's memory are
 the compiled form of
