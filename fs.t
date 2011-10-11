@@ -21,7 +21,7 @@
 ..  
 .PP
 The purpose of a file system is to organize and store data. File systems
-typically support sharing of data among users and applications, as well
+typically support sharing of data among users and applications, as well as
 .italic-index persistence
 so that data is still available after a reboot.
 .PP
@@ -92,16 +92,14 @@ block 0 (it holds the boot sector).  Block 1 is called the
 it contains metadata about the file system (the file system size in blocks, the
 number of data blocks, the number of inodes, and the number of blocks in the
 log).  Blocks starting at 2 hold inodes, with multiple inodes per block.  After
-those come bitmap blocks tracking which data blocks are in use (i.e., which
-are used in
-of some file). Most of the remaining blocks are data blocks, which hold file and
-directory contents.  The blocks at the very end of the disk hold the log for transactions.
+those come bitmap blocks tracking which data blocks in use.
+Most of the remaining blocks are data blocks, which hold file and
+directory contents.  The blocks at the end of the disk hold a log 
+that is part of the transaction layer.
 .PP
 The rest of this chapter discusses each layer, starting from the bottom.
 Look out for situations where well-chosen abstractions at lower layers
 ease the design of higher ones.
-The file system is a good example of how well-designed abstractions lead to
-surprising generality.
 .\"
 .\" -------------------------------------------
 .\"
@@ -352,7 +350,7 @@ pointers).
 .\"
 .section "Logging layer"
 .PP
-One of the most interesting aspects of file system design is crash
+One of the most interesting problems in file system design is crash
 recovery. The problem arises because many file system operations
 involve multiple writes to the disk, and a crash after a subset of the
 writes may leave the on-disk file system in an inconsistent state. For
@@ -367,10 +365,10 @@ simple version of logging. An xv6 system call does not directly write
 the on-disk file system data structures. Instead, it places a
 description of all the disk writes it wishes to make in a 
 .italic-index log 
-on the disk. Once the system call has logged its writes, it writes a
+on the disk. Once the system call has logged all of its writes, it writes a
 special 
 .italic-index commit
-record to the disk indicating the the log contains
+record to the disk indicating that the log contains
 a complete operation. At that point the system call copies the writes
 to the on-disk file system data structures. After those writes have
 completed, the system call erases the log on disk.
@@ -380,7 +378,7 @@ from the crash as follows, before running any processes. If the log is
 marked as containing a complete operation, then the recovery code
 copies the writes to where they belong in the on-disk file system. If
 the log is not marked as containing a complete operation, the recovery
-code ignores it. In either case, the recovery code finishes by erasing
+code ignores the log.  The recovery code finishes by erasing
 the log.
 .PP
 Why does xv6's log solve the problem of crashes during file system
@@ -398,10 +396,10 @@ operation's writes appear on the disk, or none of them appear.
 .\"
 .section "Log design"
 .PP
-The log resides at a known fixed location at the very end of the disk.
+The log resides at a known fixed location at the end of the disk.
 It consists of a header block followed by a sequence
 of data blocks. The header block contains an array of sector
-number, one for each of the logged data blocks. The header block
+numbers, one for each of the logged data blocks. The header block
 also contains the count of logged blocks. Xv6 writes the header
 block when a transaction commits, but not before, and sets the
 count to zero after copying the logged blocks to the file system.
@@ -416,9 +414,9 @@ call can be in a transaction at any one time: other processes must
 wait until any ongoing transaction has finished. Thus the log holds at
 most one transaction at a time.
 .PP
-Xv6 only allows a single transaction at a time in order to avoid the
-following kind of race that could occur if concurrent transactions
-were allowed. Suppose transaction X has written a modification to an
+Xv6 does not allow concurrent transactions, in order to avoid the
+following kind of problem.
+Suppose transaction X has written a modification to an
 inode into the log. Concurrent transaction Y then reads a different
 inode in the same block, updates that inode, writes the inode block to
 the log, and commits. It would be a disaster if the commit of Y write
@@ -471,8 +469,8 @@ waits until it obtains exclusive use of the log and then returns.
 .line log.c:/^log.write/
 acts as a proxy for 
 .code-index bwrite ;
-it appends the block's new content to the log and
-records the block's sector number.
+it appends the block's new content to the log on disk and
+records the block's sector number in memory.
 .code log_write
 leaves the modified block in the in-memory buffer cache,
 so that subsequent reads of the block during the transaction
@@ -565,9 +563,20 @@ The
 field distinguishes between files, directories, and special
 files (devices).
 A type of zero indicates that an on-disk inode is free.
+The
+.code nlink
+field counts the number of directory entries that
+refer to this inode, in order to recognize when the
+inode should be freed.
+The
+.code size
+field records the number of bytes of content in the file.
+The
+.code addrs
+array records the block numbers of the disk blocks holding
+the file's content.
 .PP
 The kernel keeps the set of active inodes in memory;
-its
 .code-index "struct inode"
 .line file.h:/^struct.inode/
 is the in-memory copy of a 
@@ -590,6 +599,22 @@ Pointers to an inode can come from file descriptors,
 current working directories, and transient kernel code
 such as
 .code exec .
+.PP
+Holding a pointer to an inode returned by
+.code iget()
+guarantees that the inode
+will stay in the cache and will not be deleted (and in particular
+will not be re-used for a different file). Thus a pointer
+returned by
+.code iget()
+is a weak form of lock, though it does not entitle the holder
+to actually look at the inode.
+Many parts of the file system code depend on this behavior of
+.code iget() ,
+both to hold long-term references to inodes (as open files
+and current directories) and to prevent races while avoiding
+deadlock in code that manipulates multiple inodes (such as
+pathname lookup).
 .PP
 The
 .code struct
