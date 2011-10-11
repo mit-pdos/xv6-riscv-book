@@ -12,15 +12,15 @@ talk a little about initial page table conditions:
 .PP
 Page tables are the mechanism through which the operating system controls what
 memory addresses mean.  It is the basis for multiplexing the address spaces of
-different processes using a single physical memory, and protecting the memories
+different processes onto a single physical memory, and protecting the memories
 of different processes.  The level of indirection provided by page tables is
 also a source for many neat tricks.  The primary goal for xv6's use of pages
 tables is multiplexing address spaces and memory protection.  It exhibits a few
 simple page-table tricks: mapping the same memory in several address spaces
 (e.g., the kernel), using different virtual addresses in the same address space
-for the same physical memory (e.g., the kernel and the part of an address space
-may use different addresses for a physical page) , and guarding user stacks with
-unmapped page.  The rest of this chapter explains the page tables that the x86
+for the same physical memory (e.g., the kernel and user part of an address space
+may use different addresses for a physical page) , and guarding a user stack with
+an unmapped page.  The rest of this chapter explains the page tables that the x86
 hardware provides and how xv6 uses them to achieve its goals.
 .\"
 .section "Paging hardware"
@@ -409,11 +409,73 @@ Memory allocated with
 .code enter_alloc
 is never freed.
 .\"
-.section "Code: exec (revisited)"
+.section "User part of an address space"
 .\"
+.figure processlayout
 .PP
-XXX rewrite: revisit exec from the perspective of page tables and interesting usages of
-page tables.
+.figref processlayout 
+shows the layout of the user memory of an executing process in xv6.
+The heap is above the stack so that it can expand (with
+.code-index sbrk ).
+The stack is a single page, and is
+shown with the initial contents as created by exec.
+Strings containing the command-line arguments, as well as an
+array of pointers to them, are at the very top of the stack.
+Just under that are values that allow a program
+to start at
+.code main
+as if the function call
+.code main(argc,
+.code argv)
+had just started.
+To guard a stack growing off the stack page, xv6 places a guard page right below
+the stack.  The guard page is not mapped and so if the stack runs off the stack
+page, the hardware will generate an exception because it cannot translate the
+faulting address.
+.\"
+.section "Code: exec"
+.\"
+Exec is the system call that creates the user part of an address space.  It
+initializes the user part of an address space from a file stored in the file
+system.
+.code Exec
+.line exec.c:/^exec/
+opens the named binary 
+.code path
+using
+.code-index namei
+.line exec.c:/namei/ ,
+which is explained in Chapter \*[CH:FS].
+Then, it reads the ELF header. Xv6 applications are described in the widely-used 
+.italic-index "ELF format" , 
+defined in
+.file elf.h .
+An ELF binary consists of an ELF header,
+.code-index "struct elfhdr"
+.line elf.h:/^struct.elfhdr/ ,
+followed by a sequence of program section headers,
+.code "struct proghdr"
+.line elf.h:/^struct.proghdr/ .
+Each
+.code proghdr
+describes a section of the application that must be loaded into memory;
+xv6 programs have only one program section header, but
+other systems might have separate sections
+for instructions and data.
+.PP
+The first step is a quick check that the file probably contains an
+ELF binary.
+An ELF binary starts with the four-byte ``magic number''
+.code 0x7F ,
+.code 'E' ,
+.code 'L' ,
+.code 'F' ,
+or
+.code-index ELF_MAGIC
+.line elf.h:/ELF_MAGIC/ .
+If the ELF header has the right magic number,
+.code exec
+assumes that the binary is well-formed.
 .PP
 .code Exec
 allocates a new page table with no user mappings with
@@ -425,7 +487,6 @@ allocates memory for each ELF segment with
 and loads each segment into memory with
 .code-index loaduvm
 .line exec.c:/loaduvm/ .
-.PP
 .code allocuvm
 checks that the virtual addresses requested
 is below
@@ -439,9 +500,62 @@ each page of the ELF segment, and
 .code-index readi
 to read from the file.
 .PP
+The program section header for
+.code-index /init ,
+the first user program created with
+.code exec ,
+looks like this:
+.P1
+# objdump -p _init 
+
+_init:     file format elf32-i386
+
+Program Header:
+    LOAD off    0x00000054 vaddr 0x00000000 paddr 0x00000000 align 2**2
+         filesz 0x000008c0 memsz 0x000008cc flags rwx
+.P2
+.PP
+The program section header's
+.code filesz
+may be less than the
+.code memsz ,
+indicating that the gap between them should be filled
+with zeroes (for C global variables) rather than read from the file.
+For 
+.code /init ,
+.code filesz 
+is 2240 bytes and
+.code memsz 
+is 2252 bytes,
+and thus 
+.code-index allocuvm
+allocates enough physical memory to hold 2252 bytes, but reads only 2240 bytes
+from the file 
+.code /init .
+.PP
+.PP
+Now
+.code-index exec
+allocates and initializes the user stack.
+It allocates just one stack page.
+.code Exec
+copies the argument strings to the top of the stack
+one at a time, recording the pointers to them in 
+.code-index ustack .
+It places a null pointer at the end of what will be the
+.code-index argv
+list passed to
+.code main .
+The first three entries in 
+.code ustack
+are the fake return PC,
+.code-index argc ,
+and
+.code argv
+pointer.
+.PP
 .code Exec 
-allocates just one stack page.
-It also places an inaccessible page just below the stack page,
+also places an inaccessible page just below the stack page,
 so that programs that try to use more than one page will fault.
 This inaccessible page also allows
 .code exec
@@ -480,13 +594,6 @@ and free the old one
 Finally,
 .code exec
 returns 0.
-.PP
-Once the image is complete, 
-.code exec
-can install the new image
-.line exec.c:/switchuvm/
-and free the old one
-.line exec.c:/freevm/ .
 .\"
 .section "Real world"
 .\"

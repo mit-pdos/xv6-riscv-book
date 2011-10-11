@@ -46,9 +46,8 @@ kernel
 .P2
 .PP
 Xv6 uses page tables (which are implemented to by hardware) to give each process
-its own view of memory. The x86 paging hardware uses  a
-.italic-index "page table" 
-to translate (or ``map'') a
+its own view of memory. The x86 page table
+translates (or ``maps'') a
 .italic-index "virtual address"
 (the address that an x86 instruction manipulates) to a
 .italic-index "physical address"
@@ -715,151 +714,21 @@ ordinary system calls, as we will see in Chapter \*[CH:TRAP].  As
 before, this setup avoids special-casing the first process (in this
 case, its first system call), and instead reuses code that xv6 must
 provide for standard operation.
-.figure processlayout
-.PP
-.figref processlayout 
-shows the user memory image of an executing process.
-The heap is above the stack so that it can expand (with
-.code-index sbrk ).
-The stack is a single page, and is
-shown with the initial contents as created by exec.
-Strings containing the command-line arguments, as well as an
-array of pointers to them, are at the very top of the stack.
-Just under that are values that allow a program
-to start at
-.code main
-as if the function call
-.code main(argc,
-.code argv)
-had just started.
-.\"
-.section "Code: exec"
-.\"
-When the system call arrives (Chapter \*[CH:TRAP]
-will explain how that happens),
-.code-index syscall
-invokes
-.code-index sys_exec
-via the 
-.code syscalls
-table
-.line syscall.c:/static.int...syscalls/ .
-.code Sys_exec
-.line sysfile.c:/^sys_exec/
-parses the system call arguments (also explained in Chapter \*[CH:TRAP]),
-and invokes
-.code exec
-.line sysfile.c:/exec.path/ .
-.PP
-.code Exec
-.line exec.c:/^exec/
-opens the named binary 
-.code path
-using
-.code-index namei
-.line exec.c:/namei/ ,
-which is explained in Chapter \*[CH:FS].
-Then, it reads the ELF header. Xv6 applications are described in the widely-used 
-.italic-index "ELF format" , 
-defined in
-.file elf.h .
-An ELF binary consists of an ELF header,
-.code-index "struct elfhdr"
-.line elf.h:/^struct.elfhdr/ ,
-followed by a sequence of program section headers,
-.code "struct proghdr"
-.line elf.h:/^struct.proghdr/ .
-Each
-.code proghdr
-describes a section of the application that must be loaded into memory;
-xv6 programs have only one program section header, but
-other systems might have separate sections
-for instructions and data.
-.PP
-The first step is a quick check that the file probably contains an
-ELF binary.
-An ELF binary starts with the four-byte ``magic number''
-.code 0x7F ,
-.code 'E' ,
-.code 'L' ,
-.code 'F' ,
-or
-.code-index ELF_MAGIC
-.line elf.h:/ELF_MAGIC/ .
-If the ELF header has the right magic number,
-.code exec
-assumes that the binary is well-formed.
-.PP
-.code Exec
-allocates a new page table with no user mappings with
-.code-index setupkvm
-.line exec.c:/setupkvm/ ,
-allocates memory for each ELF segment with
-.code-index allocuvm
-.line exec.c:/allocuvm/ ,
-and loads each segment into memory with
-.code-index loaduvm
-.line exec.c:/loaduvm/ .
-PP
-The program section header for
-.code-index /init
-looks like this:
-.P1
-# objdump -p _init 
-
-_init:     file format elf32-i386
-
-Program Header:
-    LOAD off    0x00000054 vaddr 0x00000000 paddr 0x00000000 align 2**2
-         filesz 0x000008c0 memsz 0x000008cc flags rwx
-.P2
-.PP
-The program section header's
-.code filesz
-may be less than the
-.code memsz ,
-indicating that the gap between them should be filled
-with zeroes (for C global variables) rather than read from the file.
-For 
-.code /init ,
-.code filesz 
-is 2240 bytes and
-.code memsz 
-is 2252 bytes,
-and thus 
-.code-index allocuvm
-allocates enough physical memory to hold 2252 bytes, but reads only 2240 bytes
-from the file 
-.code /init .
-.PP
-Now
-.code-index exec
-allocates and initializes the user stack.
-It allocates just one stack page.
-.code Exec
-copies the argument strings to the top of the stack
-one at a time, recording the pointers to them in 
-.code-index ustack .
-It places a null pointer at the end of what will be the
-.code-index argv
-list passed to
-.code main .
-The first three entries in 
-.code ustack
-are the fake return PC,
-.code-index argc ,
-and
-.code argv
-pointer.
-.PP
-Now the
-.code-index initcode
-.line initcode.S:1
-is done.
-.code Exec
-has replaced it with the 
+.PP 
+Chapter \*[CH:MEM] will cover the implementation of
+.code exec 
+in detail, but at a high level it
+will replace 
+.code initcode 
+with the 
 .code-index /init
 binary, loaded out of the file system.
+Now 
+.code-index initcode
+.line initcode.S:1
+is done, and the processor will be running 
+.code-index /init
+instead.
 .code Init
 .line init.c:/^main/
 creates a new console device file
