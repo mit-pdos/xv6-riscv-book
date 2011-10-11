@@ -38,12 +38,6 @@ provides a program with what appears to be a private memory system, or
 which other processes cannot read or write.  The xv6 kernel
 multiplexes processes on the available processors transparently, ensuring that
 each process receives some CPU cycles to run. 
-.P1
-address space of a process
-user 
-kernel
-.address 0x80100000 .
-.P2
 .PP
 Xv6 uses page tables (which are implemented to by hardware) to give each process
 its own view of memory. The x86 page table
@@ -52,9 +46,12 @@ translates (or ``maps'') a
 (the address that an x86 instruction manipulates) to a
 .italic-index "physical address"
 (an address that the processor chip sends to main memory).
+.figure as
 .PP
 Xv6 maintains a separate page table for each process that defines that process's
-address space.  As illustrated in Figure XXX, an address space includes the process's
+address space.  As illustrated in 
+.figref as ,
+an address space includes the process's
 .italic-index "user memory"
 starting at virtual address zero. Instructions usually come first,
 followed by global variables and a ``heap'' area (for malloc)
