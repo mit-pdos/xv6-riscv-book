@@ -534,6 +534,65 @@ since there is effectively a lock around each transaction,
 the deadlock-avoiding lock ordering rule is transaction
 before inode.
 .\"
+.\"
+.\"
+.section "Code: Block allocator"
+.PP
+File and directory content is stored in disk blocks,
+which must be allocated from a free pool.
+xv6's block allocator
+maintains a free bitmap on disk, with one bit per block. 
+A zero bit indicates that the corresponding block is free;
+a one bit indicates that it is in use.
+The bits corresponding to the boot sector, superblock, inode
+blocks, and bitmap blocks are always set.
+.PP
+The block allocator provides two functions:
+.code-index balloc
+allocates a new disk block, and
+.code-index bfree
+frees a block.
+.code Balloc
+.line fs.c:/^balloc/
+starts by calling
+.code-index readsb
+to read the superblock from the disk (or buffer cache) into
+.code sb .
+.code balloc
+decides which blocks hold the data block free bitmap
+by calculating how many blocks are consumed by the
+boot sector, the superblock, and the inodes (using 
+.code BBLOCK ).
+The loop
+.line fs.c:/^..for.b.=.0/
+considers every block, starting at block 0 up to 
+.code sb.size ,
+the number of blocks in the file system.
+It looks for a block whose bitmap bit is zero,
+indicating that it is free.
+If
+.code balloc
+finds such a block, it updates the bitmap 
+and returns the block.
+For efficiency, the loop is split into two 
+pieces.
+The outer loop reads each block of bitmap bits.
+The inner loop checks all 
+.code BPB
+bits in a single bitmap block.
+The race that might occur if two processes try to allocate
+a block at the same time is prevented by the fact that
+the buffer cache only lets one process use a block at a time.
+.PP
+.code Bfree
+.line fs.c:/^bfree/
+finds the right bitmap block and clears the right bit.
+Again the exclusive use implied by
+.code bread
+and
+.code brelse
+avoids the need for explicit locking.
+.\"
 .\" -------------------------------------------
 .\"
 .section "Inodes"
@@ -646,64 +705,6 @@ not caching.
 If an inode is used frequently, the buffer cache will probably
 keep it in memory if it isn't kept by the inode cache.
 .\"
-.\"
-.\"
-.section "Code: Block allocator"
-.PP
-Inodes points to blocks that must be allocated.
-xv6's block allocator
-maintains a free bitmap on disk, with one bit per block. 
-A zero bit indicates that the corresponding block is free;
-a one bit indicates that it is in use.
-The bits corresponding to the boot sector, superblock, inode
-blocks, and bitmap blocks are always set.
-.PP
-The block allocator provides two functions:
-.code-index balloc
-allocates a new disk block, and
-.code-index bfree
-frees a block.
-.code Balloc
-.line fs.c:/^balloc/
-starts by calling
-.code-index readsb
-to read the superblock from the disk (or buffer cache) into
-.code sb .
-.code balloc
-decides which blocks hold the data block free bitmap
-by calculating how many blocks are consumed by the
-boot sector, the superblock, and the inodes (using 
-.code BBLOCK ).
-The loop
-.line fs.c:/^..for.b.=.0/
-considers every block, starting at block 0 up to 
-.code sb.size ,
-the number of blocks in the file system.
-It looks for a block whose bitmap bit is zero,
-indicating that it is free.
-If
-.code balloc
-finds such a block, it updates the bitmap 
-and returns the block.
-For efficiency, the loop is split into two 
-pieces.
-The outer loop reads each block of bitmap bits.
-The inner loop checks all 
-.code BPB
-bits in a single bitmap block.
-The race that might occur if two processes try to allocate
-a block at the same time is prevented by the fact that
-the buffer cache only lets one process use a block at a time.
-.PP
-.code Bfree
-.line fs.c:/^bfree/
-finds the right bitmap block and clears the right bit.
-Again the exclusive use implied by
-.code bread
-and
-.code brelse
-avoids the need for explicit locking.
-.\"
 .\" -------------------------------------------
 .\"
 .section "Code: Inodes"
@@ -723,9 +724,7 @@ to the disk and then returns an entry from the inode cache
 with the tail call to 
 .code-index iget
 .line "'fs.c:/return.iget!(dev..inum!)/'" .
-Like in
-.code balloc ,
-the correct operation of
+The correct operation of
 .code ialloc
 depends on the fact that only one process at a time
 can be holding a reference to 
@@ -748,22 +747,7 @@ As
 .code-index iget
 scans, it records the position of the first empty slot
 .lines fs.c:/^....if.empty.==.0/,/empty.=.ip/ ,
-which it uses if it needs to allocate a new cache entry.
-In both cases,
-.code iget
-returns one reference to the caller: it is the caller's 
-responsibility to call 
-.code-index iput
-to release the inode.
-It can be convenient for some callers to arrange to call
-.code iput
-multiple times.
-The function
-.code-index idup
-.line fs.c:/^idup/
-increments the reference count so that an additional
-.code iput
-call is required before the inode can be dropped from the cache.
+which it uses if it needs to allocate a cache entry.
 .PP
 Callers must lock the inode using
 .code-index ilock
@@ -876,7 +860,7 @@ It does this by zeroing
 .\"
 .\"
 .\"
-.section "Code: Inode contents"
+.section "Code: Inode content"
 .figure inode
 .PP
 The on-disk inode structure,
@@ -1043,8 +1027,7 @@ system call.
 .\"
 .section "Code: directory layer"
 .PP
-The directory layer is simple, because a directory is nothing more
-that a special kind of file. 
+A directory is implemented internally much like a file.
 Its inode has type
 .code-index T_DIR
 and its data is a sequence of directory entries.
@@ -1131,16 +1114,14 @@ by writing at offset
 .\"
 .section "Code: Path names"
 .PP
-Like directories, path names require little extra code, because they just call
-.code-index dirlookup
-recursively, using
-.code-index namei
-and related functions.
+Path name lookup involves a succession of calls to
+.code-index dirlookup ,
+one for each path component.
 .code Namei
 .line fs.c:/^namei/
 evaluates 
 .code path
-as a hierarchical path name and returns the corresponding 
+and returns the corresponding 
 .code inode .
 The function
 .code-index nameiparent
@@ -1197,7 +1178,7 @@ return the unlocked
 Finally, the loop looks for the path element using
 .code-index dirlookup
 and prepares for the next iteration by setting
-.code ip.=.next
+.code "ip = next"
 .lines 'fs.c:/^....if..next.*dirlookup/,/^....ip.=.next/' .
 When the loop runs out of path elements, it returns
 .code ip .
