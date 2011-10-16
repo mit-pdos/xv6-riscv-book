@@ -419,8 +419,11 @@ following kind of problem.
 Suppose transaction X has written a modification to an
 inode into the log. Concurrent transaction Y then reads a different
 inode in the same block, updates that inode, writes the inode block to
-the log, and commits. It would be a disaster if the commit of Y write
-X's modified inode to the file system, since X has not yet committed.
+the log, and commits. This is a disaster: the inode block that Y's
+commit writes to the disk contains modifications by X, which has
+not committed. A crash and recovery at this point would expose one
+of X's modifications but not all, thus breaking the promise that
+transactions are atomic.
 There are sophisticated ways to solve this problem; xv6 solves it by
 outlawing concurrent transactions.
 .PP
@@ -481,7 +484,7 @@ transaction, and overwrites the block's previous copy in the log.
 .PP
 .code-index commit_trans
 .line log.c:/^commit.trans/
-first write's the log's header block to disk, so that a crash
+first writes the log's header block to disk, so that a crash
 after this point will cause recovery to re-write the blocks
 in the log. 
 .code commit_trans
