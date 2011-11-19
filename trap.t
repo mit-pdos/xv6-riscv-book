@@ -77,7 +77,7 @@ that the processor should switch from user mode to kernel mode, and
 back.
 .PP
 A word on terminology: Although the official x86 term is interrupt,
-x86 refers to all of these as 
+xv6 refers to all of these as 
 .italic-index traps , 
 largely because it was the term
 used by the PDP11/40 and therefore is the conventional Unix term.
