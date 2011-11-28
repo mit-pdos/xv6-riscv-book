@@ -18,7 +18,7 @@ the lock.  If xv6 only accesses a data structure while holding a particular
 lock, then xv6 can be sure that only one CPU at a time is accessing the data
 structure.  In this situation, we say that the lock protects the data structure.
 .PP
-The rest of this chapters why xv6 needs locks, how xv6 implements them, and how
+The rest of this chapter explains why xv6 needs locks, how xv6 implements them, and how
 it uses them.  A key observation will be that if you look at a line of code in
 xv6, you must be asking yourself is there another processor that could change
 the intended behavior of the line (e.g., because another processor is also
@@ -138,7 +138,7 @@ and that each node's
 field points at the next node.
 The implementation of
 .code insert
-vioilates this invariant temporarily: line 13 creates a new
+violates this invariant temporarily: line 13 creates a new
 list element
 .code l
 with the intent that
