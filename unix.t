@@ -3,15 +3,16 @@
 The job of an operating system is to share a computer among
 multiple programs and to provide a more useful set of services
 than the hardware alone supports.
-The operating system manages the low-level hardware, so that, for example,
-a word processor need not concern itself with which video card
-is being used.
+The operating system manages and abstracts
+the low-level hardware, so that, for example,
+a word processor need not concern itself with which type
+of disk hardware is being used.
 It also multiplexes the hardware, allowing many programs
 to share the computer and run (or appear to run) at the same time.
 Finally, operating systems provide controlled ways for programs
 to interact, so that they can share data or work together.
 .PP
-An operating system provides services to user programs through some interface.
+An operating system provides services to user programs through an interface.
 .index "interface design
 Designing a good interface turns out to be
 difficult.  On the one hand, we would like the interface to be
@@ -80,10 +81,10 @@ l l .
 System call	Description
 fork()	Create process
 exit()	Terminate current process
-wait()	Wait for a child process
+wait()	Wait for a child process to exit
 kill(pid)	Terminate process pid
 getpid()	Return current process's id
-sleep(n)	Sleep for n time units
+sleep(n)	Sleep for n seconds
 exec(filename, *argv)	Load a file and execute it
 sbrk(n)	Grow process's memory by n bytes
 open(filename, flags)	Open a file; flags indicate read/write
@@ -113,9 +114,10 @@ traditional Unix-like systems.
 The fact that the shell is a user program, not part of the kernel, 
 illustrates the power of the system call interface: there is nothing
 special about the shell.
-It also means that the shell is easy to replace, and
+It also means that the shell is easy to replace; as a result,
 modern Unix systems have a variety of
-shells to choose from, each with its own syntax and semantics.
+shells to choose from, each with its own user interface
+and scripting features.
 The xv6 shell is a simple implementation of the essence of
 the Unix Bourne shell.  Its implementation can be found at line
 .line sh.c:1 .
@@ -130,9 +132,9 @@ Xv6 provides time-sharing: it transparently switches the available CPUs
 among the set of processes waiting to execute.
 When a process is not executing, xv6 saves its CPU registers,
 restoring them when it next runs the process.
-Each process can be uniquely identified by a
-positive integer called its process identifier, or
-.code-index pid .
+The kernel associates a process identifier, or
+.code-index pid ,
+with each process.
 .PP
 A process may create a new process using the
 .code-index fork
@@ -185,7 +187,7 @@ might come out in either order, depending on whether the
 parent or child gets to its
 .code-index printf
 call first.
-After those two, the child exits, and then the parent's
+After the child exits the parent's
 .code-index wait
 returns, causing the parent to print
 .P1
@@ -202,8 +204,8 @@ replaces the calling process's memory with a new memory
 image loaded from a file stored in the file system.
 The file must have a particular format, which specifies which part of
 the file holds instructions, which part is data, at which instruction
-to start, etc.. The format xv6
-uses is called the ELF format, which Chapter \*[CH:MEM] discusses in
+to start, etc. xv6
+uses the ELF format, which Chapter \*[CH:MEM] discusses in
 more detail.
 When
 .code-index exec
@@ -235,13 +237,12 @@ conventionally the name of the program.
 The xv6 shell uses the above calls to run programs on behalf of
 users. The main structure of the shell is simple; see
 .code main 
-on line
 .line sh.c:/main/ .
 The main loop reads the input on the command line using
 .code-index getcmd .
 Then it calls 
 .code fork , 
-which creates another running shell program. The
+which creates a copy of the shell process. The
 parent shell calls
 .code wait ,
 while the child process runs the command.  For example, if the user
@@ -258,7 +259,6 @@ runs the actual command. For
 .code "echo hello" '', ``
 it would call
 .code exec 
-on line 
 .line sh.c:/exec.ecmd/ .
 If
 .code exec
@@ -305,9 +305,9 @@ Xv6 does not provide a notion of users or of protecting
 one user from another; in Unix terms, all xv6 processes
 run as root.
 .\"
-.\"	File descriptors
+.\"	I/O and File descriptors
 .\"
-.section "Code: File descriptors"
+.section "Code: I/O and File descriptors"
 .PP
 A 
 .italic-index "file descriptor" 
@@ -316,6 +316,11 @@ that a process may read from or write to.
 A process may obtain a file descriptor by opening a file, directory,
 or device, or by creating a pipe, or by duplicating an existing
 descriptor.
+For simplicity we'll often refer to the object a file descriptor
+refers to as a ``file'';
+the file descriptor interface abstracts away the differences between
+files, pipes, and devices, making them all look like streams of bytes.
+.PP
 Internally, the xv6 kernel uses the file descriptor
 as an index into a per-process table,
 so that every process has a private space of file descriptors
@@ -346,7 +351,8 @@ bytes from the file descriptor
 copies them into
 .code buf ,
 and returns the number of bytes read.
-Every file descriptor has an offset associated with it.
+Each file descriptor that refers to a file
+has an offset associated with it.
 .code Read
 reads data from the current file offset and then advances
 that offset by the number of bytes read:
@@ -433,7 +439,7 @@ File descriptors and
 .code-index fork
 interact to make I/O redirection easy to implement.
 .code Fork
-copies then parent's file descriptor table along with its memory,
+copies the parent's file descriptor table along with its memory,
 so that the child starts with exactly the same open files as the parent.
 The system call
 .code-index exec
@@ -457,7 +463,8 @@ if(fork() == 0) {
 }
 .P2
 After the child closes file descriptor 0,
-open is guaranteed to use that file descriptor
+.code open
+is guaranteed to use that file descriptor
 for the newly opened
 .code input.txt :
 0 will be the smallest available file descriptor.
@@ -465,7 +472,7 @@ for the newly opened
 then executes with file descriptor 0 (standard input) referring to
 .code input.txt .
 .PP
-The code for I/O redirection in the xv6 shell works exactly in this way
+The code for I/O redirection in the xv6 shell works in exactly this way
 .line sh.c:/case.REDIR/ .
 Recall that at this point in the code the shell has already forked the
 child shell and that 
@@ -507,7 +514,7 @@ runs only after the child is done)
 picks up where the child's
 .code write
 left off.
-This behavior helps produce useful results from sequences
+This behavior helps produce sequential output from sequences
 of shell commands, like
 .code (echo
 .code hello;
@@ -559,7 +566,7 @@ Both the name of the existing file and the error message for the
 non-existing file will show up in the file
 .code tmp1.
 The xv6 shell doesn't support I/O redirection for the error file
-descriptor, but now you can implement it.
+descriptor, but now you know how to implement it.
 .PP
 File descriptors are a powerful abstraction,
 because they hide the details of what they are connected to:
@@ -641,18 +648,20 @@ file descriptors referred to the write end of the pipe,
 .code wc
 would never see end-of-file.
 .PP
-The xv6 shell implements pipes in a manner similar to the above code
+The xv6 shell implements pipelines such as
+.code "grep fork sh.c | wc -l"
+in a manner similar to the above code
 .line sh.c:/case.PIPE/ .
-The child process creates a pipe to connect the left end of the pipe
-with the right end of the pipe. Then it calls
+The child process creates a pipe to connect the left end of the pipeline
+with the right end. Then it calls
 .code runcmd
-for the left part of the pipe
+for the left end of the pipeline
 and 
 .code runcmd
-for the right end of the pipe, and waits for the left and the right
-end to finish, by calling
+for the right end, and waits for the left and the right
+ends to finish, by calling
 .code wait
-twice.  The right end of the pipe may be a command that itself includes a
+twice.  The right end of the pipeline may be a command that itself includes a
 pipe (e.g.,
 .code a
 .code |
@@ -667,7 +676,7 @@ Thus, the shell may
 create a tree of processes.  The leaves of this tree are commands and
 the interior nodes are processes that wait until the left and right
 children complete.  In principle, you could have the interior nodes
-run the left end of a pipe, but doing so correctly will complicate the
+run the left end of a pipeline, but doing so correctly would complicate the
 implementation.
 .PP
 Pipes may seem no more powerful than temporary files:
@@ -675,7 +684,7 @@ the pipeline
 .P1
 echo hello world | wc
 .P2
-could also be implemented without pipes as
+could be implemented without pipes as
 .P1
 echo hello world >/tmp/xyz; wc </tmp/xyz
 .P2
@@ -702,12 +711,12 @@ sent data with
 .\"
 .section "Code: File system"
 .PP
-Xv6 provides data files,
+The xv6 file system provides data files,
 which are uninterpreted byte arrays,
 and directories, which
-contain named references to other data files and directories.
+contain named references to data files and other directories.
 Xv6 implements directories as a special kind of file.
-The directories are arranged into a tree, starting
+The directories form a tree, starting
 at a special directory called the 
 .italic-index root .
 A 
@@ -729,7 +738,8 @@ are evaluated relative to the calling process's
 which can be changed with the
 .code chdir
 system call.
-Both these code fragments open the same file:
+Both these code fragments open the same file
+(assuming all the directories involved exist):
 .P1
 chdir("/a");
 chdir("b");
@@ -737,7 +747,7 @@ open("c", O_RDONLY);
 
 open("/a/b/c", O_RDONLY);
 .P2
-The first changes the process's current directory to
+The first fragment changes the process's current directory to
 .code /a/b ;
 the second neither refers to nor modifies the process's current directory.
 .PP
@@ -862,17 +872,20 @@ such commands into the shell (and built the shell into the kernel).
 .PP
 One exception is
 .code cd ,
-which built into the shell
+which is built into the shell
 .line sh.c:/if.buf.0..==..c./ .
-The reason is that cd must change the current working directory of the
+.code cd
+must change the current working directory of the
 shell itself.  If
 .code cd
 were run as a regular command, then the shell would fork a child
 process, the child process would run
 .code cd ,
-change the 
+and
+.code cd
+would change the 
 .italic child 's 
-working directory, and then return to the parent.  The parent's (i.e.,
+working directory.  The parent's (i.e.,
 the shell's) working directory would not change.
 .\"
 .\"	Real world
@@ -902,13 +915,13 @@ concept to modern facilities,
 representing networks, graphics, and other resources
 as files or file trees.
 .PP
-The file system as an interface has been a very powerful
+The file system abstraction has been a powerful
 idea, most recently applied to network resources in the form of the
 World Wide Web.
 Even so, there are other models for operating system interfaces.
-Multics, a predecessor of Unix, blurred the distinction
-between data in memory and data on disk, producing
-a very different flavor of interface.
+Multics, a predecessor of Unix,
+abstracted file storage in a way that made it look like memory,
+producing a very different flavor of interface.
 The complexity of the Multics design had a direct influence
 on the designers of Unix, who tried to build something simpler.
 .ig
