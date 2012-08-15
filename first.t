@@ -35,12 +35,12 @@ A process is an abstraction that provides the
 illusion to a program that it has its own abstract machine.  A process
 provides a program with what appears to be a private memory system, or 
 .italic-index "address space" , 
-which other processes cannot read or write.  The xv6 kernel
-multiplexes processes on the available processors transparently, ensuring that
-each process receives some CPU cycles to run. 
+which other processes cannot read or write.
+A process also provides the program with what appears to be its own
+CPU to execute the program's instructions.
 .PP
-Xv6 uses page tables (which are implemented to by hardware) to give each process
-its own view of memory. The x86 page table
+Xv6 uses page tables (which are implemented by hardware) to give each process
+its own address space. The x86 page table
 translates (or ``maps'') a
 .italic-index "virtual address"
 (the address that an x86 instruction manipulates) to a
@@ -53,8 +53,9 @@ address space.  As illustrated in
 .figref as ,
 an address space includes the process's
 .italic-index "user memory"
-starting at virtual address zero. Instructions usually come first,
-followed by global variables and a ``heap'' area (for malloc)
+starting at virtual address zero. Instructions come first,
+followed by global variables, then the stack,
+and finally a ``heap'' area (for malloc)
 that the process can expand as needed.
 .PP
 Each process's address space maps the kernel's instructions
@@ -73,8 +74,7 @@ which it gathers into a
 .code-index "struct proc"
 .line proc.h:/^struct.proc/ .
 A process's most important pieces of kernel state are its 
-page table and the physical memory it refers to,
-its kernel stack, and its run state.
+page table, its kernel stack, and its run state.
 We'll use the notation
 .code-index p->xxx
 to refer to elements of the
@@ -83,22 +83,34 @@ structure.
 .PP
 Each process has a thread of execution (or 
 .italic-index thread
-for short) that executes the process's program.  A thread executes a computation
-but can be stopped and then resumed later.  To switch transparently between process,
-the kernel can stop the current running thread and resume another process's
-thread.  Much of the state of a thread (local variables, functional call return
-addresses) is stored on the thread's kernel stack,
-.code-index p->kstack  .
-Each process's kernel stack is separate from its user stack, since the
-user stack may not be valid.   So, you can view a process has having
-a thread with two stacks:  one for executing in user mode and one for executing
-in kernel mode.
+for short) that executes the process's instructions.
+A thread can be suspended and later resumed.
+To switch transparently between processes,
+the kernel suspends the currently running thread and resumes another process's
+thread.  Much of the state of a thread (local variables, function call return
+addresses) is stored on the thread's stacks.
+Each process has two stacks: a user stack and a kernel stack
+.code-index p->kstack  ). (
+When the process is executing user instructions, only its user stack
+is in use, and its kernel stack is empty.
+When the process enters the kernel (via a system call or interrupt),
+the kernel code executes on the process's kernel stack; while
+a process is in the kernel, its user stack still contains saved
+data, but isn't actively used.
+A process's thread alternates between actively using the user stack
+and the kernel stack. The kernel stack is separate (and protected from
+user code) so that the kernel
+can execute even if a process has wrecked its user stack.
 .PP
-When a process makes a system call, the processors switches from user mode to
-kernel and switches from executing on the user stack to the kernel stack.  The
-process executes the implementation of the system call (e.g., reads a file) on
-the kernel stack, and then returns back to the user space.  A process's thread
-can wait (or ``block'') in the kernel to wait for I/O, and resume where it left
+When a process makes a system call, the processor switches to the 
+kernel stack, raises the hardware privilege level, and starts
+executing the kernel instructions that implement the system call.
+When the system call completes, the kernel returns to user space:
+the hardware lowers its privilege level, switches back to the
+user stack, and resumes executing user instructions just after
+the system call instruction.
+A process's thread
+can ``block'' in the kernel to wait for I/O, and resume where it left
 off when the I/O has finished.
 .PP
 .code-index p->state 
@@ -106,7 +118,8 @@ indicates whether the process is allocated, ready
 to run, running, waiting for I/O, or exiting.
 .PP
 .code-index p->pgdir
-holds the process's page table, an array of PTEs.
+holds the process's page table, in the format
+that the x86 hardware expects.
 xv6 causes the paging hardware to use a process's
 .code p->pgdir
 when executing that process.
@@ -139,7 +152,7 @@ rather than
 .address 0x0
 is because the address range
 .address 0xa0000:0x100000
-contains older I/O devices.
+contains I/O devices.
 .figure astmp
 .PP
 To allow the rest of the kernel to run,
@@ -149,8 +162,9 @@ sets up a page table that maps virtual addresses starting at
 (called
 .code-index KERNBASE 
 .line memlayout.h:/define.KERNBASE/ )
-to physical address starting at
-.address 0x0 (see
+to physical addresses starting at
+.address 0x0
+(see
 .figref as ).
 Setting up two ranges of virtual addresses that map to the same physical memory
 range is a common use of page tables, and we will see more examples like this
@@ -219,9 +233,9 @@ Now
 .code entry
 needs to transfer to the kernel's C code, and run
 it in high memory.
-First it must make the stack pointer,
+First it makes the stack pointer,
 .register esp ,
-point to a stack so that C code will work
+point to memory to be used as a stack
 .line entry.S:/movl.*stack.*esp/ .
 All symbols have high addresses, including
 .code stack ,
@@ -233,7 +247,7 @@ jumps to
 .code-index main ,
 which is also a high address.
 The indirect jump is needed because the assembler would
-generate a PC-relative direct jump, which would execute
+otherwise generate a PC-relative direct jump, which would execute
 the low-memory version of 
 .code-index main .
 Main cannot return, since the there's no return PC on the stack.
@@ -246,8 +260,8 @@ Now the kernel is running in high addresses in the function
 .PP
 After
 .code main
-initializes several devices and subsystems of xv6, 
-it creates the first process starts by calling 
+initializes several devices and subsystems, 
+it creates the first process by calling 
 .code userinit
 .line main.c:/userinit/  .
 .code Userinit 's
@@ -264,14 +278,16 @@ in the process table and
 to initialize the parts of the process's state
 required for its kernel thread to execute.
 .code Allocproc 
-is called for all new processes, while
+is called for each new process, while
 .code userinit
 is called only for the very first process.
 .code Allocproc
-scans the table for a process with state
+scans the 
+.code proc
+table for a slot with state
 .code UNUSED
 .lines proc.c:/for.p.=.ptable.proc/,/goto.found/ .
-When it finds an unused process, 
+When it finds an unused slot, 
 .code allocproc
 sets the state to
 .code-index EMBRYO
@@ -290,20 +306,15 @@ and returns zero to signal failure.
 Now
 .code allocproc
 must set up the new process's kernel stack.
-Ordinarily processes are created only by
-.code fork ,
-so a new process
-starts life copied from its parent.  The result of 
-.code fork
-is a child process
-that has identical memory contents to its parent.
 .code allocproc
-sets up the child to 
-start life running its kernel thread, with a specially prepared kernel
-stack and set of kernel registers that cause it to ``return'' to user
-space at the same place (the return from the
+is written so that it can be used by 
 .code fork
-system call) as the parent.
+as well
+as when creating the first process.
+.code allocproc
+sets up the new process with a specially prepared kernel
+stack and set of kernel registers that cause it to ``return'' to user
+space when it first runs.
 The layout of the prepared kernel stack will be as shown in 
 .figref newkernelstack .
 .code allocproc
@@ -347,7 +358,7 @@ This setup is the same for ordinary
 .code fork
 and for creating the first process, though in
 the latter case the process will start executing at
-location zero rather than at a return from
+user-space location zero rather than at a return from
 .code fork .
 .PP
 As we will see in Chapter \*[CH:TRAP],
@@ -356,7 +367,7 @@ is via an interrupt mechanism, which is used by system calls,
 interrupts, and exceptions.
 Whenever control transfers into the kernel while a process is running,
 the hardware and xv6 trap entry code save user registers on the
-top of the process's kernel stack.
+process's kernel stack.
 .code-index userinit
 writes values at the top of the new stack that
 look just like those that would be there if the
@@ -385,11 +396,11 @@ calls
 to create a page table for the process with (at first) mappings
 only for memory that the kernel uses.
 We will study  this function in detail in Chapter \*[CH:MEM], but
-as a high level
+at a high level
 .code setupkvm
 and 
 .code userinit 
-will create an address space
+create an address space
 as shown 
 .figref as .
 .PP
@@ -398,11 +409,11 @@ the compiled form of
 .code-index initcode.S ;
 as part of the kernel build process, the linker
 embeds that binary in the kernel and
-defines two special symbols
+defines two special symbols,
 .code-index _binary_initcode_start
 and
-.code-index _binary_initcode_size
-telling the location and size of the binary.
+.code-index _binary_initcode_size ,
+indicating the location and size of the binary.
 .code Userinit
 copies that binary into the new process's memory
 by calling
@@ -414,7 +425,9 @@ and copies the binary to that page
 .PP
 Then 
 .code userinit
-sets up the trap frame with the initial user mode state:
+sets up the trap frame
+.line x86.h:/^struct.trapframe/
+with the initial user mode state:
 the
 .register cs
 register contains a segment selector for the
@@ -434,14 +447,14 @@ with privilege
 The
 .register eflags
 .code-index FL_IF
-is set to allow hardware interrupts;
+bit is set to allow hardware interrupts;
 we will reexamine this in Chapter \*[CH:TRAP].
 .PP
 The stack pointer 
 .register esp
-is the process's largest valid virtual address,
+is set to the process's largest valid virtual address,
 .code p->sz .
-The instruction pointer is the entry point
+The instruction pointer is set to the entry point
 for the initcode, address 0.
 .PP
 The function
@@ -484,7 +497,7 @@ looks for a process with
 .code p->state
 set to
 .code RUNNABLE ,
-and there's only one it can find:
+and there's only one:
 .code initproc .
 It sets the per-cpu variable
 .code proc
@@ -499,21 +512,12 @@ works because
 causes all processes' page tables to have identical
 mappings for kernel code and data.
 .code switchuvm
-also creates a new task state segment
+also sets up a task state segment
 .code-index SEG_TSS
-that instructs the hardware to handle
-an interrupt by returning to kernel mode
-with
-.register ss
-and
-.register esp
-set to
-.code-index SEG_KDATA 
-.code <<3
-and
-.code (uint)proc->kstack+KSTACKSIZE ,
-the top of this process's kernel stack.
-We will reexamine the task state segment in Chapter \*[CH:TRAP].
+that instructs the hardware
+execute system calls and interrupts
+on the process's kernel stack.
+We will re-examine the task state segment in Chapter \*[CH:TRAP].
 .PP
 .code-index scheduler
 now sets
@@ -539,13 +543,13 @@ to save the current hardware registers in per-cpu storage
 .code-index cpu->scheduler ) (
 rather than in any process's kernel thread context.
 We'll examine
-.code-index switch
+.code-index swtch
 in more detail in Chapter \*[CH:SCHED].
 The final
 .code-index ret
 instruction 
 .line swtch.S:/ret$/
-pops a new
+pops the target process's
 .register eip
 from the stack, finishing the context switch.
 Now the processor is running on the kernel stack of process
@@ -561,10 +565,6 @@ so the
 .code-index ret
 starts executing
 .code-index forkret .
-.code Forkret
-releases the 
-.code ptable.lock
-(see Chapter \*[CH:LOCK]).
 On the first invocation (that is this one),
 .code-index forkret
 .line proc.c:/^forkret/
@@ -590,8 +590,10 @@ set to
 .code p->tf .
 .code Trapret
 .line trapasm.S:/^trapret/ 
-uses pop instructions to walk
-up the trap frame just as 
+uses pop instructions to restore registers from
+the trap frame
+.line x86.h:/^struct.trapframe/
+just as 
 .code-index swtch
 did with the kernel context:
 .code-index popal
@@ -612,12 +614,14 @@ and
 .code errcode .
 Finally, the
 .code-index iret
-instructions pops 
+instruction pops 
 .register cs ,
 .register eip ,
+.register flags ,
+.register esp ,
 and
-.register flags
-off the stack.
+.register ss
+from the stack.
 The contents of the trap frame
 have been transferred to the CPU state,
 so the processor continues at the
@@ -637,21 +641,19 @@ holds 4096.
 These are virtual addresses in the process's address space.
 The processor's paging hardware translates them into physical addresses.
 .code-index allocuvm
-set up the PTE for the page at virtual address zero to
-point to the physical memory allocated for this process,
-and marked that PTE with
-.code-index PTE_U
-so that the process can use it.
-No other PTEs in the process's page table have the
-.code PTE_U
-bit set.
+set up the process's page table so that virtual address
+zero refers
+to the physical memory allocated for this process,
+and set a flag
+.code-index PTE_U ) (
+that tells the paging hardware to allow user code to access that memory.
 The fact that
 .code-index userinit
 .line proc.c:/UCODE/
 set up the low bits of
 .register cs
 to run the process's user code at CPL=3 means that the user code
-can only use PTE entries with
+can only use pages with
 .code PTE_U
 set, and cannot modify sensitive hardware registers such as
 .register cr3 .
@@ -662,14 +664,14 @@ So the process is constrained to using only its own memory.
 .PP
 The first action of 
 .code initcode.S
-is to call invoke  the
+is to invoke  the
 .code exec
 system call.
 As we saw in Chapter \*[CH:UNIX], 
 .code-index exec
 replaces the memory and registers of the
 current process with a new program, but it leaves the
-file descriptors, process id, and parent process the same.
+file descriptors, process id, and parent process unchanged.
 .PP
 .code Initcode.S
 .line initcode.S:/^start/
@@ -731,7 +733,7 @@ binary, loaded out of the file system.
 Now 
 .code-index initcode
 .line initcode.S:1
-is done, and the processor will be running 
+is done, and the process will run
 .code-index /init
 instead.
 .code Init
