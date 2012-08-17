@@ -235,7 +235,7 @@ instruction from the stack, and resumes execution at the saved
 .section "Code: The first system call"
 .\"
 .PP
-The last chapter ended with 
+Chapter \*[CH:FIRST] ended with 
 .code-index initcode.S
 invoking a system call.
 Let's look at that again
