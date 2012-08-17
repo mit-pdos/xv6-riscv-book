@@ -621,11 +621,6 @@ to the per-CPU data area, but the x86 has so few general
 registers that the extra effort required to use segmentation
 is worthwhile.
 .PP
-xv6's address space layout has the defect that it cannot make use
-of more than 2 GB of physical RAM.  It's possible to fix this,
-though the best plan would be to switch to a machine with 64-bit
-addresses.
-.PP
 On machines with lots of memory 
 it might make sense to use
 the x86's 4 Mbyte ``super pages.''
