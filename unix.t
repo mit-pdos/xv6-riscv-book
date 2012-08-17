@@ -124,7 +124,7 @@ the Unix Bourne shell.  Its implementation can be found at line
 .\"
 .\"	Processes and memory
 .\"
-.section "Code: Processes and memory"
+.section "Processes and memory"
 .PP
 An xv6 process consists of user-space memory (instructions, data, and stack)
 and per-process state private to the kernel.
@@ -307,7 +307,7 @@ run as root.
 .\"
 .\"	I/O and File descriptors
 .\"
-.section "Code: I/O and File descriptors"
+.section "I/O and File descriptors"
 .PP
 A 
 .italic-index "file descriptor" 
@@ -575,7 +575,7 @@ file, to a device like the console, or to a pipe.
 .\"
 .\"	Pipes
 .\"
-.section "Code: Pipes"
+.section "Pipes"
 .PP
 A 
 .italic-index pipe 
@@ -709,7 +709,7 @@ sent data with
 .\"
 .\"	File system
 .\"
-.section "Code: File system"
+.section "File system"
 .PP
 The xv6 file system provides data files,
 which are uninterpreted byte arrays,
