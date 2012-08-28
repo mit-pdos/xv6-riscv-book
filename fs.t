@@ -187,7 +187,7 @@ to do that before returning the buffer.
 .code Bget
 .line bio.c:/^bget/
 scans the buffer list for a buffer with the given device and sector numbers
-.lines bio.c:/Try.for.cached/,/^..}/ .
+.lines bio.c:/Is.the.sector.already/,/^..}/ .
 If there is such a buffer,
 and the buffer is not busy,
 .code-index bget
@@ -252,8 +252,7 @@ must make one, possibly reusing a buffer that held
 a different sector.
 It scans the buffer list a second time, looking for a block
 that is not busy:
-any such block can be used
-.lines bio.c:/Allocate.fresh/,/B_BUSY/ .
+any such block can be used.
 .code Bget
 edits the block metadata to record the new device and sector number
 and mark the block busy before

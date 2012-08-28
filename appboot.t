@@ -121,7 +121,7 @@ to zero and then copy that zero into
 .register es ,
 and
 .register ss
-.lines bootasm.S:/Segment.number.zero/,/Stack.Segment/ .
+.lines bootasm.S:/Set..ax.to.zero/,/Stack.Segment/ .
 .PP
 A virtual
 \fIsegment\fP:\fIoffset\fP
