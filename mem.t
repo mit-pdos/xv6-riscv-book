@@ -312,10 +312,21 @@ locking in detail.
 The function
 .code-index main
 calls 
-.code-index kinit
+.code-index kinit1
+and
+.code-index kinit2
 to initialize the allocator
-.line kalloc.c:/^kinit/ .
-.code kinit
+.line kalloc.c:/^kinit1/ .
+The reason for having two calls is that for much of
+.code main
+one cannot use locks or
+memory above 4 megabytes. The call to
+.code kinit1
+sets up for lock-less allocation in the first 4 megabytes,
+and the call to
+.code kinit2
+enables locking and arranges for more memory to be allocatable.
+.code main
 ought to determine how much physical
 memory is available, but this
 turns out to be difficult on the x86.
@@ -326,16 +337,19 @@ of physical memory, and uses all the memory between the end of the kernel
 and 
 .code-index PHYSTOP
 as the initial pool of free memory.
-.code kinit
-calls
-.code-index kfree
-with the address of each page of memory between
-.code-index end
+.code kinit1
 and
-.code PHYSTOP .
-This causes
-.code kfree
-to add those pages to the allocator's free list.
+.code kinit2
+call
+.code-index freerange
+to add memory to the free list via per-page calls to
+.code-index kfree .
+A PTE can only refer to a physical address that is aligned
+on a 4096-byte boundary (is a multiple of 4096), so
+.code freerange
+uses
+.code-index PGROUNDUP
+to ensure that it frees only aligned physical addresses.
 The allocator starts with no memory;
 these calls to
 .code kfree
@@ -387,31 +401,6 @@ and sets the free list equal to
 .code r .
 .code-index kalloc
 removes and returns the first element in the free list.
-.PP
-When creating the first kernel page table, 
-.code-index setupkvm
-and 
-.code-index walkpgdir
-use
-.code-index enter_alloc
-.line kalloc.c:/^enter_alloc/
-instead of 
-.code-index kalloc .
-This memory allocator moves the end of the kernel by 1 page.
-.code enter_alloc
-uses the symbol
-.code-index end ,
-which the linker causes to have an address that is just beyond
-the end of the kernel's data segment.
-A PTE can only refer to a physical address that is aligned
-on a 4096-byte boundary (is a multiple of 4096), so
-.code enter_alloc
-uses
-.code-index PGROUNDUP
-to ensure that it allocates only aligned physical addresses.
-Memory allocated with
-.code enter_alloc
-is never freed.
 .\"
 .section "User part of an address space"
 .\"
