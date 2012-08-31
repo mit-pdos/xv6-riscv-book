@@ -6,7 +6,8 @@ main ideas (e.g., context switching, user/kernel boundary, locks, etc.) and each
 line is important; other code lines provide an illustration of how to implement
 a particular operating system idea and could easily be done in different ways
 (e.g., a better algorithm for scheduling, better on-disk data structures to
-represent files, etc.).  All the ideas were illustrated in the context of one
-particular, very successful system call interface, the Unix interface, but
-those ideas carry over to the design of other operating systems.
+represent files, better logging to allow for concurrent transactions, etc.).
+All the ideas were illustrated in the context of one particular, very successful
+system call interface, the Unix interface, but those ideas carry over to the
+design of other operating systems.
 
