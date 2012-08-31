@@ -6,6 +6,7 @@ CONTENTS_INDEXED=\
 	lock\
 	sched\
 	fs\
+	sum\
 	apphw\
 	appboot\
 

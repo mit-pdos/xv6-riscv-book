@@ -545,5 +545,6 @@
 .ds CH:LOCK 4
 .ds CH:SCHED 5
 .ds CH:FS 6
+.ds CH:SUM 7
 .ds APP:HW A
 .ds APP:BOOT B
