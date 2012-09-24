@@ -23,11 +23,11 @@ it uses them.  A key observation will be that if you look at a line of code in
 xv6, you must be asking yourself is there another processor that could change
 the intended behavior of the line (e.g., because another processor is also
 executing that line or another line of code that modifies a shared variable) and what
-would happen if an interrupt handler ran. In both case you have to keep in mind that each line
-of C can be several machine instructions and thus another processor or an interrupt may
-mock around in the middle of a C instruction.  You cannot assume that lines of code
+would happen if an interrupt handler ran. In both cases, you must keep in mind that a
+single C statement can be several machine instructions and thus another processor or an interrupt may
+muck around in the middle of the C statement.  You cannot assume that lines of code
 on the page are executed sequentially, nor can you assume that a single C
-instruction will execute atomically.   Concurrency makes reasoning about the
+statement will execute atomically.   Concurrency makes reasoning about the
 correctness much more difficult.
 .\"
 .section "Race conditions"
