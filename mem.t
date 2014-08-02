@@ -86,7 +86,7 @@ page; if clear, only the kernel is allowed to use the page.
 shows how it all works.
 The flags and all other page hardware related structures are defined in
 .file "mmu.h"
-.sheet memlayout.h .
+.sheet mmu.h .
 .PP
 A few notes about terms.
 Physical memory refers to storage cells in DRAM.
