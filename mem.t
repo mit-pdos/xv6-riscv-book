@@ -121,6 +121,12 @@ a process's user memory starts at virtual address
 zero and can grow up to
 .address KERNBASE ,
 allowing a process to address up to 2 GB of memory.
+The file
+.file "memlayout.h"
+.sheet memlayout.h 
+declares the constants for xv6's memory layout,
+and macros to convert virtual to physical addresses.
+.PP
 When a process asks xv6 for more memory,
 xv6 first finds free physical pages to provide the storage,
 and then adds PTEs to the process's page table that point
