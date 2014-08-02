@@ -624,7 +624,7 @@ Xv6 uses super pages in one place:
 the initial page table
 .line 'main.c:/^pde_t.entrypgdir.*=/' .
 The array initialization sets two of the 1024 PDEs,
-at indices zero and 960
+at indices zero and 512
 .code KERNBASE>>PDXSHIFT ), (
 leaving the other PDEs zero.
 Xv6 sets the
