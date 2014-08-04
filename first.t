@@ -183,7 +183,7 @@ This mapping is required as long as
 is executing at low addresses, but
 will eventually be removed.
 .PP
-Entry 960
+Entry 512
 maps virtual addresses
 .code KERNBASE:KERNBASE+0x400000
 to physical addresses

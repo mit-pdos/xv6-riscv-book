@@ -86,7 +86,7 @@ page; if clear, only the kernel is allowed to use the page.
 shows how it all works.
 The flags and all other page hardware related structures are defined in
 .file "mmu.h"
-.sheet memlayout.h .
+.sheet mmu.h .
 .PP
 A few notes about terms.
 Physical memory refers to storage cells in DRAM.
@@ -121,6 +121,12 @@ a process's user memory starts at virtual address
 zero and can grow up to
 .address KERNBASE ,
 allowing a process to address up to 2 GB of memory.
+The file
+.file "memlayout.h"
+.sheet memlayout.h 
+declares the constants for xv6's memory layout,
+and macros to convert virtual to physical addresses.
+.PP
 When a process asks xv6 for more memory,
 xv6 first finds free physical pages to provide the storage,
 and then adds PTEs to the process's page table that point
@@ -624,7 +630,7 @@ Xv6 uses super pages in one place:
 the initial page table
 .line 'main.c:/^pde_t.entrypgdir.*=/' .
 The array initialization sets two of the 1024 PDEs,
-at indices zero and 960
+at indices zero and 512
 .code KERNBASE>>PDXSHIFT ), (
 leaving the other PDEs zero.
 Xv6 sets the

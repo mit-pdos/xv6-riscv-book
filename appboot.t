@@ -560,9 +560,9 @@ has loaded the kernel into memory.
 The kernel has been compiled and linked so that it expects to
 find itself at virtual addresses starting at
 .code 0x80100000 .
-That is, function call instructions mention destination addresses
+Thus, function call instructions must mention destination addresses
 that look like
-.address 0xf01xxxxx ;
+.address 0x801xxxxx ;
 you can see examples in
 .file kernel.asm .
 This address is configured in
