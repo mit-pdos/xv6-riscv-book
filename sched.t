@@ -1162,12 +1162,11 @@ will see the condition is still false and sleep again.
 .code Sleep
 and
 .code wakeup
-can be used in many kinds of situations involving a condition
-that can be checked needs to be waited for.
-As we saw in Chapter \*[CH:UNIX],
-a parent process can call
+can be used for many kinds of waiting.
+An interesting example, seen Chapter \*[CH:UNIX],
+is the
 .code-index wait
-to wait for a child to exit.
+system call that a parent process uses to wait for a child to exit.
 In xv6, when a child exits, it does not die immediately.
 Instead, it switches to the
 .code-index ZOMBIE
@@ -1179,17 +1178,20 @@ memory associated with the process
 and preparing the
 .code-index "struct proc"
 for reuse.
-Each process structure
-keeps a pointer to its parent in
-.code-index p->parent .
-If the parent exits before the child, the initial process
+If the parent exits before the child, the 
 .code init
-adopts the child
-and waits for it.
-This step is necessary to make sure that some
-process cleans up after the child when it exits.
-All the process structures are protected by
-.code-index ptable.lock .
+process
+adopts the child and waits for it, so that
+every child has a parent to clean up after it.
+Keep in mind the possibility of races between
+parent and child
+.code wait
+and
+.code exit ,
+as well as
+.code exit
+and
+.code exit .
 .PP
 .code Wait
 begins by
@@ -1200,12 +1202,12 @@ looking for children.
 If 
 .code wait
 finds that the current process has children
-but that none of them have exited,
+but that none have exited,
 it calls
 .code sleep
-to wait for one of the children to exit
+to wait for one of them to exit
 .line proc.c:/wait-sleep/
-and loops.
+and scans again.
 Here,
 the lock being released in 
 .code sleep
@@ -1216,14 +1218,20 @@ the special case we saw above.
 .code Exit
 acquires
 .code ptable.lock
-and then wakes the current process's parent
-.line "'proc.c:/wakeup1!(proc->parent!)/'" .
+and then wakes up any process sleeping on a wait
+channel equal to the current process's parent
+.code proc
+.line "'proc.c:/wakeup1!(proc->parent!)/'" ;
+if there is such a process, it will be the parent in
+.code wait .
 This may look premature, since 
 .code-index exit
 has not marked the current process as a
 .code ZOMBIE
 yet, but it is safe:
-although the parent is now marked as
+although
+.code wakeup
+may mark the parent as
 .code RUNNABLE ,
 the loop in
 .code wait
@@ -1238,7 +1246,8 @@ so
 .code wait
 can't look at
 the exiting process until after
-the state has been set to
+.code exit
+has set its state to
 .code ZOMBIE
 .line proc.c:/state.=.ZOMBIE/ .
 Before exit reschedules,
@@ -1253,10 +1262,9 @@ calls
 .code-index sched
 to relinquish the CPU.
 .PP
-Now the scheduler can choose to run the
-exiting process's parent, which is asleep in
-.code wait
-.line proc.c:/wait-sleep/ .
+If the parent process was sleeping in
+.code wait ,
+the scheduler will eventually run it.
 The call to
 .code sleep
 returns holding
@@ -1300,37 +1308,39 @@ own stack rather than on the stack of the thread
 that called
 .code sched .
 .PP
-.code Exit 
-allows an application to terminate itself;
+While
+.code exit 
+allows a process to terminate itself,
 .code kill
 .line proc.c:/^kill/ 
-allows an application to terminate another process.
-Implementing kill has two challenges: 1) the to-be-killed process may be
-running on another processor and it must switch off its stack to its processor's
-scheduler before xv6 can terminate it; 2) the to-be-killed may be in 
-.code sleep ,
-holding kernel resources.
+lets one process request that another be terminated.
+It would be too complex for
+.code kill
+to directly destroy the victim process, since the victim
+might be executing on another CPU or sleeping
+while midway through updating kernel data structures.
 To address these challenges, 
 .code kill
-does very little: it runs through the process table and sets
+does very little: it just sets the victim's
 .code p->killed
-for the process to be killed and, if it is sleeping, it wakes it up.
-If the to-be-killed process is running another processor, it will enter the
-kernel at some point soon: either because it calls a system call or an interrupt
-occurs (e.g., the timer interrupt).   When the to-be-killed
-process leaves the kernel again,
-.code trap 
-checks if 
+and, if it is sleeping, wakes it up.
+Eventually the victim will enter or leave the kernel,
+at which point code in
+.code trap
+will call
+.code exit
+if
 .code p->killed
-is set, and then the process calls
-.code exit ,
-terminating itself.
+is set.
+If the victim is running in user space, it will soon enter
+the kernel by making a system call or because the timer (or
+some other device) interrupts.
 .PP
-If the to-be-killed process is in
+If the victim process is in
 .code sleep ,
 the call to
 .code wakeup
-will cause the to-be-killed process to run and return from
+will cause the victim process to run and return from
 .code sleep .
 This is potentially dangerous because the process returns from
 .code sleep ,
@@ -1507,7 +1517,7 @@ and thundering herd problems.
 .PP
 Terminating processes and cleaning them up introduces much complexity in xv6.
 In most operating systems it is even more complex, because, for example, the
-to-be-killed process may be deep inside the kernel sleeping, and unwinding its
+victim process may be deep inside the kernel sleeping, and unwinding its
 stack requires much careful programming.  Many operating system unwind the stack
 using explicit mechanisms for exception handling, such as
 .code longjmp .
