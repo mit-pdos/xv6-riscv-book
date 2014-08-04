@@ -8,30 +8,38 @@ pike et al, sleep and wakeup
 .chapter CH:SCHED "Scheduling"
 .PP
 Any operating system is likely to run with more processes than the
-computer has processors, and so some plan is needed to time share the
-processors between the processes. An ideal plan is transparent to user
+computer has processors, and so a plan is needed to time-share the
+processors among the processes. Ideally the sharing would be transparent to user
 processes.  A common approach is to provide each process
 with the illusion that it has its own virtual processor, and have the
 operating system 
 .italic-index multiplex 
 multiple virtual processors on a single physical processor.
-This chapter how xv6 multiplexes a processor among several processes.
+This chapter explains how xv6 multiplexes a processor among several processes.
 .\"
 .section "Multiplexing"
 .\"
 .PP
-Xv6 adopts this multiplexing approach.  When a process is waiting for disk
-request, xv6 puts it to sleep, and schedules another process to run.
-Furthermore, xv6 using timer interrupts to force a process to stop running on a
-processor after a fixed-amount of time (100 msec), so that it can schedule
-another process on the processor.  This multiplexing creates the illusion that
-each process has its own CPU, just as xv6 used the memory allocator and hardware
+Xv6 multiplexes by switching each processor from one process to
+another in two situations. First, xv6's
+.code sleep
+and
+.code wakeup
+mechanism switches when a process waits
+for device or pipe I/O to complete, or waits for a child
+to exit, or waits in the
+.code sleep
+system call.
+Second, xv6 periodically forces a switch when a process
+is executing user instructions.
+This multiplexing creates the illusion that
+each process has its own CPU, just as xv6 uses the memory allocator and hardware
 page tables to create the illusion that each process has its own memory.
 .PP
-Implementing multiplexing has a few challenges. First, how to switch
+Implementing multiplexing poses a few challenges. First, how to switch
 from one process to another? Xv6 uses the standard mechanism of context
-switching; although the idea is simple, the code to implement is
-typically among the most opaque code in an operating system. Second,
+switching; although the idea is simple, the implementation is
+some of the most opaque code in the system. Second,
 how to do context switching transparently?  Xv6 uses the standard
 technique of using the timer interrupt handler to drive context switches.
 Third, many CPUs may be switching among processes concurrently, and a locking plan
@@ -46,7 +54,7 @@ tricky.
 xv6 must provide
 ways for processes to coordinate among themselves. For example,
 a parent process may need to wait for one of its children to
-exit, or a process reading on a pipe may need to wait for
+exit, or a process reading a pipe may need to wait for
 some other process to write the pipe.
 Rather than make the waiting process waste CPU by repeatedly checking
 whether the desired event has happened, xv6 allows a process to give
@@ -482,10 +490,10 @@ for performance.
 .section "Sleep and wakeup"
 .\"
 .PP
-Locks help CPUs and processes avoid interfering with each other,
-and scheduling helps processes share a CPU,
-but so far we have no abstractions that make it easy
-for processes to communicate.
+Scheduling and locks help conceal the existence of one process
+from another,
+but so far we have no abstractions that help
+processes intentionally interact.
 Sleep and wakeup fill that void, allowing one process to 
 sleep waiting for an event and another process to wake it up
 once the event has happened.
@@ -493,19 +501,21 @@ Sleep and wakeup are often called
 .italic-index "sequence coordination"
 or 
 .italic-index "conditional synchronization"
-mechanisms, and there are many other such mechanisms
+mechanisms, and there are many other similar mechanisms
 in the operating systems literature.
 .PP
 To illustrate what we mean, let's consider a
 simple producer/consumer queue.
-This queue is similar to the one used by the IDE driver to synchronize a
-processor and device driver (see Chapter \*[CH:TRAP]), but abstracts all
-IDE-specific code away.
+This queue is similar to the one that feeds commands from processes
+to the IDE driver
+(see Chapter \*[CH:TRAP]), but abstracts away all
+IDE-specific code.
 The queue allows one process to send a nonzero pointer
 to another process.
-Assuming there is only one sender and one receiver
-and they execute on different CPUs,
-this implementation is correct:
+If there were only one sender and one receiver,
+and they executed on different CPUs,
+and the compiler didn't optimize too agressively,
+this implementation would be correct:
 .P1
   100	struct q {
   101	  void *ptr;
@@ -545,26 +555,27 @@ When run in different processes,
 .code send
 and
 .code recv
-both edit
+both modify
 .code q->ptr ,
 but
 .code send
-only writes to the pointer when it is zero
+only writes the pointer when it is zero
 and
 .code recv
-only writes to the pointer when it is nonzero,
-so they do not step on each other.
+only writes the pointer when it is nonzero,
+so no updates are lost.
 .PP
-The implementation above may be correct,
-but it is expensive.  If the sender sends
+The implementation above 
+is expensive.  If the sender sends
 rarely, the receiver will spend most
 of its time spinning in the 
 .code while
 loop hoping for a pointer.
 The receiver's CPU could find more productive work
-if there were a way for the receiver to be notified when the
+if there were a way for the receiver to yield the CPU
+and resume only when 
 .code send
-had delivered a pointer.
+delivered a pointer.
 .PP
 Let's imagine a pair of calls, 
 .code-index sleep
@@ -624,7 +635,7 @@ However, it turns out not to be straightforward to design
 and 
 .code wakeup
 with this interface without suffering
-from what is known as the ``lost wake up'' problem (see 
+from what is known as the ``lost wake-up'' problem (see 
 .figref deadlock ).
 Suppose that
 .code recv
@@ -632,14 +643,10 @@ finds that
 .code q->ptr
 .code ==
 .code 0 
-on line 215
-and decides to call 
-.code sleep .
-Before
+on line 215.
+While
 .code recv
-can sleep (e.g., its processor received an interrupt and the processor is
-running the interrupt handler, temporarily delaying the call to
-.code sleep),
+is between lines 215 and 216,
 .code send
 runs on another CPU:
 it changes
@@ -708,35 +715,31 @@ as follows:
   326	  return p;
   327	}
 .P2
-This solution protects the invariant because when going calling
-.code sleep
-the process still holds the 
-.code q->lock ,
-and
-.code send
-acquires that lock before calling
-.code wakeup.
-.code sleep 
-will not miss the wakeup.
-However, this solution has a deadlock: when 
+One might hope that this version of
 .code recv
-goes to sleep it holds on to the lock 
-.code q->lock ,
-and the sender will block when trying to acquire that lock.
+would avoid the lost wakeup because the lock prevents
+.code send
+from executing between lines 322 and 323.
+It does that, but it also deadlocks:
+.code recv
+holds the lock while it sleeps,
+so the sender will block forever waiting for the lock.
 .PP
-This incorrect implementation makes clear that to protect the invariant, 
-we must change the interface of 
-.code-index sleep.
-Sleep must take as argument the lock
-that
-.code-index sleep
-can release only after the calling process
-is asleep; this avoids the missed wakeup in
-the example above.
-Once the calling process is awake again
+We'll fix the preceding scheme by passing the lock to
+.code sleep
+so it can release the lock after
+the calling process is marked as asleep and waiting on the
+sleep channel.
+The lock will force a concurrent
+.code send
+to wait until the receiver has finished putting itself to sleep,
+so that the
+.code wakeup
+will find the sleeping receiver and wake it up.
+Once the receiver is awake again
 .code-index sleep
 reacquires the lock before returning.
-We would like to be able to have the following code:
+Our new correct scheme is useable as follows:
 \X'P1 coming up'
 .P1
   400	struct q {
@@ -781,11 +784,10 @@ check of
 .code q->ptr
 and its call to
 .code sleep .
-Of course, the receiving process had better not hold
+Of course, the receiving process must release
 .code q->lock
-while it is sleeping, since that would prevent the sender
-from waking it up, and lead to deadlock.
-So what we want is for sleep to atomically release
+while it is sleeping so the sender can wake it up.
+So we want sleep to atomically release
 .code q->lock
 and put the receiving process to sleep.
 .PP
@@ -812,7 +814,7 @@ and then call
 .code-index sched
 to release the processor;
 .code wakeup
-looks for a process sleeping on the given pointer
+looks for a process sleeping on the given wait channel
 and marks it as 
 .code-index RUNNABLE .
 .PP
@@ -942,7 +944,7 @@ see that the process is ready to be run.
 .PP
 .code Wakeup
 must always be called while holding a lock that
-prevents observation of whatever the wakeup
+guards whatever the wakeup
 condition is; in the example above that lock is
 .code q->lock .
 The complete argument for why the sleeping process won't
