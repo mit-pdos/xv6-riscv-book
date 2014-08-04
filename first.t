@@ -97,8 +97,8 @@ When the process enters the kernel (via a system call or interrupt),
 the kernel code executes on the process's kernel stack; while
 a process is in the kernel, its user stack still contains saved
 data, but isn't actively used.
-A process's thread alternates between actively using the user stack
-and the kernel stack. The kernel stack is separate (and protected from
+A process's thread alternates between actively using its user stack
+and its kernel stack. The kernel stack is separate (and protected from
 user code) so that the kernel
 can execute even if a process has wrecked its user stack.
 .PP
