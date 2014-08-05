@@ -1340,60 +1340,42 @@ If the victim process is in
 .code sleep ,
 the call to
 .code wakeup
-will cause the victim process to run and return from
+will cause the victim process to return from
 .code sleep .
-This is potentially dangerous because the process returns from
-.code sleep ,
-even though the condition is waiting for may not be true.
-Xv6 is carefully programmed to use a
-.code while
-loop around each call to
-.code sleep ,
-and tests in that 
-.code while 
-loop if 
-.code p->killed 
-is set,  and, if so, returns to its caller.  The caller must also check if
-.code p->killed 
-is set, and must return to its caller if set, and so on.
-Eventually the process unwinds its stack to
-.code trap ,
-and 
-.code trap
-will check 
-.code p->killed .
-If it is set, 
-the process calls
-.code exit , 
-terminating itself.
-We see an example of the checking of
-.code p->killed
-in a
-.code while
-loop around
+This is potentially dangerous because 
+the condition being waiting for may not be true.
+However, xv6 calls to
 .code sleep
-in the implementation of pipes
-.line pipe.c:/proc-\>killed/ .
-.PP
-There is a
+are always wrapped in a
 .code while
-loop that doesn't check for
-.code p->killed .
+loop that re-tests the condition after
+.code sleep
+returns.
+Some calls to
+.code sleep
+also test
+.code p->killed
+in the loop, and abandon the current activity if it is set.
+This is only done when such abandonment would be correct.
+For example, the pipe read and write code
+.line pipe.c:/proc-\>killed/ 
+returns if the killed flag is set; eventually the
+code will return back to trap, which will again
+check the flag and exit.
+.PP
+Some xv6 
+.code sleep
+loops do not check
+.code p->killed 
+because the code is in the middle of a multi-step
+system call that should be atomic.
 The ide driver
 .line ide.c:/sleep/ 
-immediately invokes 
-.code sleep
-again.
-The reason is that it is guaranteed to be woken up because it is waiting for a
-disk interrupt.  And, if it doesn't wait for the disk interrupt, xv6 may get
-confused.  If a second process calls
-.code iderw
-before the outstanding interrupt happens, then
-.code ideintr
-will wake up that second process, instead of the process that was originally waiting
-for the interrupt.   That second process will believe it has received the data
-it was waiting on, but it has received the data that the first process was
-reading!
+is an example: it does not check
+.code p->killed
+because a disk operation may be one of a set of
+writes that are all needed in order for the file system to
+be left in a correct state.
 .\"
 .section "Real world"
 .\"
@@ -1524,10 +1506,36 @@ using explicit mechanisms for exception handling, such as
 Furthermore, there are other events that can cause a sleeping process to be
 woken up, even though the events it is waiting for has not happened yet.  For
 example, when a process is sleeping, another process may send a 
-.code-index signal to it.  In this case, the
+.code-index signal
+to it.  In this case, the
 process will return from the interrupted system call with the value -1 and with
 the error code set to EINTR. The application can check for these values and
 decide what to do.  Xv6 doesn't support signals and this complexity doesn't arise.
+.PP
+Xv6's support for
+.code kill
+is not entirely satisfactory: there are sleep loops
+which probably should check fo
+.code p->killed .
+A related problem is that, even for 
+.code sleep
+loops that check
+.code p->killed ,
+there is a race between 
+.code sleep
+and
+.code kill ;
+the latter may set
+.code p->killed
+and try to wake up the victim just after the victim's loop
+checks
+.code p->killed
+but before it calls
+.code sleep .
+If this problem occurs, the victim won't notice the
+.code p->killed
+until the condition it is waiting for occurs.
+
 .\"
 .section "Exercises"
 .\"
@@ -1570,4 +1578,14 @@ You can use mutexes but do not use sleep and wakeup.
 Replace the uses of sleep and wakeup in xv6
 with semaphores.  Judge the result.
 
-
+4. Fix the race mentioned above between
+.code kill
+and 
+.code sleep ,
+so that a
+.code kill
+that occurs after the victim's sleep loop checks
+.code p->killed
+but before it calls
+.code sleep
+results in the victim abandoning the current system call.
