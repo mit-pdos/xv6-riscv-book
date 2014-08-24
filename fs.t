@@ -1527,8 +1527,10 @@ used a scavenger during reboot (for example, the UNIX
 program) to examine every file and directory and the block and inode
 free lists, looking for and resolving inconsistencies. Scavenging can take
 hours for large file systems, and there are situations where it is not
-possible to guess the correct resolution of an inconsistency. Recovery
-from a log is much faster and is correct.
+possible to resolve inconsistencies in a way that causes the original
+system calls to be atomic. Recovery
+from a log is much faster and causes system calls to be atomic
+in the face of crashes.
 .PP
 Xv6 uses the same basic on-disk layout of inodes and directories
 as early UNIX;
@@ -1540,7 +1542,7 @@ This is reasonable when directories are only a few disk blocks,
 but is expensive for directories holding many files.
 Microsoft Windows's NTFS, Mac OS X's HFS, and Solaris's ZFS, just to name a few, implement
 a directory as an on-disk balanced tree of blocks.
-This complicated but guarantees logarithmic-time directory lookups.
+This is complicated but guarantees logarithmic-time directory lookups.
 .PP
 Xv6 is naive about disk failures: if a disk
 operation fails, xv6 panics.
@@ -1551,7 +1553,7 @@ sees failures so infrequently that panicking is okay.
 On the other hand, operating systems using plain disks
 should expect failures and handle them more gracefully,
 so that the loss of a block in one file doesn't affect the
-use of the rest of the files system.
+use of the rest of the file system.
 .PP
 Xv6 requires that the file system
 fit on one disk device and not change in size.
@@ -1563,24 +1565,26 @@ logical disk.  Hardware solutions such as RAID are still the
 most popular, but the current trend is moving toward implementing
 as much of this logic in software as possible.
 These software implementations typically 
-allowing rich functionality like growing or shrinking the logical
+allow rich functionality like growing or shrinking the logical
 device by adding or removing disks on the fly.
 Of course, a storage layer that can grow or shrink on the fly
 requires a file system that can do the same: the fixed-size array
-of inode blocks used by Unix file systems does not work well
+of inode blocks used by xv6 would not work well
 in such environments.
 Separating disk management from the file system may be
 the cleanest design, but the complex interface between the two
 has led some systems, like Sun's ZFS, to combine them.
 .PP
-Xv6's file system lacks many other features in today file systems; for example,
+Xv6's file system lacks many other features of modern file systems; for example,
 it lacks support for snapshots and incremental backup.
 .PP
-Xv6 has two different file implementations: pipes and inodes.
-Modern Unix systems have many: pipes, network connections, and
-inodes from many different types of file systems, including
-network file systems.
-Instead of the
+Modern Unix systems allow many kinds of resources to be
+accessed with the same system calls as on-disk storage:
+named pipes, network connections,
+remotely-accessed network file systems, and monitoring and control
+interfaces such as
+.code /proc .
+Instead of xv6's
 .code if
 statements in
 .code-index fileread
