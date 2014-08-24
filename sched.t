@@ -1369,13 +1369,17 @@ loops do not check
 .code p->killed 
 because the code is in the middle of a multi-step
 system call that should be atomic.
-The ide driver
+The IDE driver
 .line ide.c:/sleep/ 
 is an example: it does not check
 .code p->killed
 because a disk operation may be one of a set of
 writes that are all needed in order for the file system to
 be left in a correct state.
+To avoid the complication of cleaning up after a partial operation, xv6 delays
+the killing of a process that is in the IDE driver until some point later when
+it is easy to kill the process (e.g., when the complete file system operation
+has completed and the process is about to return to user space).
 .\"
 .section "Real world"
 .\"
@@ -1515,7 +1519,7 @@ decide what to do.  Xv6 doesn't support signals and this complexity doesn't aris
 Xv6's support for
 .code kill
 is not entirely satisfactory: there are sleep loops
-which probably should check fo
+which probably should check for
 .code p->killed .
 A related problem is that, even for 
 .code sleep
@@ -1534,8 +1538,10 @@ but before it calls
 .code sleep .
 If this problem occurs, the victim won't notice the
 .code p->killed
-until the condition it is waiting for occurs.
-
+until the condition it is waiting for occurs. This may be quite a bit later
+(e.g., when the IDE driver returns a disk block that the victim is waiting for) or never
+(e.g., if the victim is waiting from input from the console, but the user
+doesn't type any input).
 .\"
 .section "Exercises"
 .\"
@@ -1589,3 +1595,15 @@ that occurs after the victim's sleep loop checks
 but before it calls
 .code sleep
 results in the victim abandoning the current system call.
+.ig
+Answer: a solution is to to check in sleep if p->killed is set before setting
+the processes's state to sleep. 
+..
+
+5. Design a plan so that every sleep loop checks 
+.code p->killed
+so that, for example, a process that is in the IDE driver can return quickly from the while loop
+if another kills that process.
+.ig
+Answer: this is difficult.  Moderns Unixes do this with setjmp and longjmp and very carefully programming to clean any partial state that the interrupted systems call may have built up.
+..
