@@ -7,14 +7,15 @@
    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
    xmlns:svg="http://www.w3.org/2000/svg"
    xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    width="744.09448819"
    height="1052.3622047"
    id="svg2976"
    version="1.1"
-   inkscape:version="0.47 r22583"
-   sodipodi:docname="fslayer.svg">
+   inkscape:version="0.48.4 r9939"
+   sodipodi:docname="fslayer.eps">
   <defs
      id="defs2978">
     <marker
@@ -116,74 +117,52 @@
          id="flowPara2866" /></flowRoot>    <text
        xml:space="preserve"
        style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
-       x="20"
-       y="212.36218"
-       id="text3685"
-       sodipodi:linespacing="125%"><tspan
-         sodipodi:role="line"
-         id="tspan3687"
-         x="20"
-         y="212.36218">System calls</tspan></text>
-    <text
-       xml:space="preserve"
-       style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
-       x="20"
-       y="272.36218"
-       id="text3693"
-       sodipodi:linespacing="125%"><tspan
-         sodipodi:role="line"
-         id="tspan3695"
-         x="20"
-         y="272.36218">Pathnames</tspan></text>
-    <text
-       xml:space="preserve"
-       style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
-       x="300"
+       x="344"
        y="332.36218"
        id="text3697"
        sodipodi:linespacing="125%"><tspan
          sodipodi:role="line"
          id="tspan3699"
-         x="300"
-         y="332.36218">Directory inodes</tspan></text>
+         x="344"
+         y="332.36218">Directory</tspan></text>
     <text
        xml:space="preserve"
        style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
-       x="240"
+       x="366"
        y="392.36218"
        id="text3715"
        sodipodi:linespacing="125%"><tspan
          sodipodi:role="line"
          id="tspan3717"
-         x="240"
-         y="392.36218">Inodes and block allocator</tspan></text>
+         x="366"
+         y="392.36218">Inode</tspan></text>
     <text
        xml:space="preserve"
        style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
-       x="340"
+       x="352"
        y="452.36218"
        id="text3719"
        sodipodi:linespacing="125%"><tspan
          sodipodi:role="line"
          id="tspan3721"
-         x="340"
+         x="352"
          y="452.36218">Logging </tspan></text>
     <text
        xml:space="preserve"
        style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
-       x="340"
+       x="324"
        y="512.36218"
        id="text3723"
        sodipodi:linespacing="125%"><tspan
          sodipodi:role="line"
          id="tspan3725"
-         x="340"
+         x="324"
          y="512.36218">Buffer cache</tspan></text>
     <rect
-       style="fill:none;stroke:#000000;stroke-width:1.99999988;stroke-miterlimit:4;stroke-opacity:0.95454544;stroke-dasharray:none;stroke-dashoffset:0"
+       style="fill:none;stroke:#000000;stroke-width:2.16024685;stroke-miterlimit:4;stroke-opacity:0.95454544;stroke-dasharray:none;stroke-dashoffset:0"
        id="rect3748"
        width="380"
-       height="360"
+       height="420"
        x="220"
        y="172.36218" />
     <path
@@ -200,62 +179,29 @@
          sodipodi:role="line"
          id="tspan3785"
          x="20"
-         y="512.36218">Blocks</tspan></text>
+         y="512.36218" /></text>
     <text
        xml:space="preserve"
        style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
-       x="20"
-       y="452.36218"
-       id="text3787"
-       sodipodi:linespacing="125%"><tspan
-         sodipodi:role="line"
-         id="tspan3789"
-         x="20"
-         y="452.36218">Transactions</tspan></text>
-    <text
-       xml:space="preserve"
-       style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
-       x="20"
-       y="392.36218"
-       id="text3791"
-       sodipodi:linespacing="125%"><tspan
-         sodipodi:role="line"
-         id="tspan3793"
-         x="20"
-         y="392.36218">Files</tspan></text>
-    <text
-       xml:space="preserve"
-       style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
-       x="20"
-       y="332.36218"
-       id="text3795"
-       sodipodi:linespacing="125%"><tspan
-         sodipodi:role="line"
-         id="tspan3797"
-         x="20"
-         y="332.36218">Directories</tspan></text>
-    <text
-       xml:space="preserve"
-       style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
-       x="280"
+       x="338"
        y="272.36218"
        id="text3799"
        sodipodi:linespacing="125%"><tspan
          sodipodi:role="line"
          id="tspan3801"
-         x="280"
-         y="272.36218">Recursive lookup</tspan></text>
+         x="338"
+         y="272.36218">Pathname</tspan></text>
     <text
        xml:space="preserve"
        style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
-       x="300"
+       x="314"
        y="212.36218"
        id="text3803"
        sodipodi:linespacing="125%"><tspan
          sodipodi:role="line"
          id="tspan3805"
-         x="300"
-         y="212.36218">File descriptors</tspan></text>
+         x="314"
+         y="212.36218">File descriptor</tspan></text>
     <path
        id="path3807"
        d="m 220.00001,412.36218 c 379.99999,0 379.99999,0 379.99999,0"
@@ -272,5 +218,47 @@
        style="fill:none;stroke:#000000;stroke-width:0.99999994px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
        d="m 220.00001,232.36218 c 379.99999,0 379.99999,0 379.99999,0"
        id="path3813" />
+    <image
+       y="531.36218"
+       x="219"
+       id="image3065"
+       xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAX0AAAABCAIAAAC9jOkIAAAAA3NCSVQICAjb4U/gAAAAGElEQVQ4
+jWOor69nGAWjYBSMAnqB+vp6AKtqAvsfl866AAAAAElFTkSuQmCC
+"
+       height="1"
+       width="381" />
+    <text
+       xml:space="preserve"
+       style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       x="383.10901"
+       y="561.81305"
+       id="text3871"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan3873"
+         x="383.10901"
+         y="561.81305" /></text>
+    <text
+       xml:space="preserve"
+       style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       x="350.59421"
+       y="568.88147"
+       id="text3875"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan3877"
+         x="350.59421"
+         y="568.88147" /></text>
+    <text
+       sodipodi:linespacing="125%"
+       id="text3891"
+       y="570.36218"
+       x="374"
+       style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+       xml:space="preserve"><tspan
+         y="570.36218"
+         x="374"
+         id="tspan3893"
+         sodipodi:role="line">Disk</tspan></text>
   </g>
 </svg>

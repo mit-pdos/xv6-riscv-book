@@ -56,27 +56,28 @@ The rest of this chapter explains how xv6 addresses these challenges.
 .section "Overview"
 .PP
 The xv6 file system implementation is
-organized in 6 layers, as shown in 
+organized in seven layers, shown in 
 .figref fslayer .
-The lowest layer reads and writes blocks on
-the IDE disk through the buffer cache, which synchronizes access to
-disk blocks, making sure that only one kernel process at a time can edit the
-file system data stored in any particular block.  The second layer allows higher
+The disk layer reads and writes blocks on an IDE hard drive.
+The buffer cache layer caches disk blocks and synchronizes access to them,
+making sure that only one kernel process at a time can modify the
+data stored in any particular block.  The logging layer allows higher
 layers to wrap updates to several blocks in a
 .italic-index transaction ,
-to ensure that the blocks are updated atomically (i.e., all of them are updated
-or none).
-The third layer provides unnamed files, each represented using
-an 
+and ensures that the blocks are updated atomically in the
+face of crashes (i.e., all of them are updated or none).
+The inode layer provides individual files, each represented as an
 .italic-index inode
-and a sequence of blocks holding the file's data.  The fourth
-layer implements directories as a special kind of
+with a unique i-number
+and some blocks holding the file's data.  The directory
+layer implements each directory as a special kind of
 inode whose content is a sequence of directory entries, each of which contains a
-name and a reference to the named file's inode.  The fifth layer provides
+file's name and i-number.
+The pathname layer provides
 hierarchical path names like
 .code /usr/rtm/xv6/fs.c ,
-using recursive lookup.
-The final layer abstracts many Unix resources (e.g., pipes, devices,
+and resolves them with recursive lookup.
+The file descriptor layer abstracts many Unix resources (e.g., pipes, devices,
 files, etc.) using the file system interface, simplifying the lives of
 application programmers.
 .figure fslayer
@@ -92,12 +93,13 @@ block 0 (it holds the boot sector).  Block 1 is called the
 it contains metadata about the file system (the file system size in blocks, the
 number of data blocks, the number of inodes, and the number of blocks in the
 log).  Blocks starting at 2 hold inodes, with multiple inodes per block.  After
-those come bitmap blocks tracking which data blocks in use.
-Most of the remaining blocks are data blocks, which hold file and
-directory contents.  The blocks at the end of the disk hold a log 
-that is part of the transaction layer.
+those come bitmap blocks tracking which data blocks are in use.
+Most of the remaining blocks are data blocks; each is either marked
+free in the bitmap block, or holds content for a file or directory.
+The blocks at the end of the disk hold the logging layer's log.
 .PP
-The rest of this chapter discusses each layer, starting from the bottom.
+The rest of this chapter discusses each layer, starting with the
+buffer cache.
 Look out for situations where well-chosen abstractions at lower layers
 ease the design of higher ones.
 .\"
@@ -597,7 +599,7 @@ avoids the need for explicit locking.
 .\"
 .\" -------------------------------------------
 .\"
-.section "Inodes"
+.section "Inode layer"
 .PP
 The term 
 .italic-index inode 
