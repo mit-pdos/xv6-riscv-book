@@ -485,7 +485,7 @@ A typical use of the log in a system call looks like this:
 .PP
 .code-index begin_trans
 .line log.c:/^begin.trans/
-waits until it obtains exclusive use of the log and then returns.
+waits to obtain exclusive use of the log and then returns.
 .PP
 .code-index log_write
 .line log.c:/^log.write/
@@ -514,9 +514,11 @@ to read each block from the log and write it to the proper
 place in the file system.
 Finally
 .code commit_trans
-writes the log header with a count of zero,
-so that a crash after the next transaction starts
-will result in the recovery code ignoring the log.
+writes the log header with a count of zero;
+this has to happen before the next transaction starts writing
+logged blocks, so that a crash doesn't result in recovery
+using one transaction's header with the subsequent transaction's
+logged blocks.
 .PP
 .code-index recover_from_log
 .line log.c:/^recover_from_log/
