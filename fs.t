@@ -606,7 +606,7 @@ The inner loop checks all
 bits in a single bitmap block.
 The race that might occur if two processes try to allocate
 a block at the same time is prevented by the fact that
-the buffer cache only lets one process use a block at a time.
+the buffer cache only lets one process use any one bitmap block at a time.
 .PP
 .code Bfree
 .line fs.c:/^bfree/
@@ -616,6 +616,12 @@ Again the exclusive use implied by
 and
 .code brelse
 avoids the need for explicit locking.
+.PP
+As with much of the code described in the remainder of this chapter, 
+.code balloc
+and
+.code bfree
+must be called inside a transaction.
 .\"
 .\" -------------------------------------------
 .\"
@@ -650,7 +656,7 @@ The
 .code nlink
 field counts the number of directory entries that
 refer to this inode, in order to recognize when the
-inode should be freed.
+on-disk inode and its data blocks should be freed.
 The
 .code size
 field records the number of bytes of content in the file.
@@ -683,15 +689,15 @@ current working directories, and transient kernel code
 such as
 .code exec .
 .PP
-Holding a pointer to an inode returned by
+A pointer returned by
 .code iget()
-guarantees that the inode
-will stay in the cache and will not be deleted (and in particular
-will not be re-used for a different file). Thus a pointer
-returned by
+is guaranteed to be valid until the corresponding call to
+.code iput() ;
+the inode won't be deleted, and the memory referred to
+by the pointer won't be re-used for a different inode.
 .code iget()
-is a weak form of lock, though it does not entitle the holder
-to actually look at the inode.
+provides non-exclusive access to an inode, so that
+there can be many pointers to the same inode.
 Many parts of the file system code depend on this behavior of
 .code iget() ,
 both to hold long-term references to inodes (as open files
@@ -773,7 +779,7 @@ scans, it records the position of the first empty slot
 .lines fs.c:/^....if.empty.==.0/,/empty.=.ip/ ,
 which it uses if it needs to allocate a cache entry.
 .PP
-Callers must lock the inode using
+Code must lock the inode using
 .code-index ilock
 before reading or writing its metadata or content.
 .code Ilock
@@ -823,37 +829,40 @@ and finally unlocks the inode
 .PP
 The locking protocol in 
 .code-index iput
+in the case in which it frees the inode
 deserves a closer look.
-The first part worth examining is that when locking
-.code ip ,
+First, when locking
+.code ip 
+by setting
+.code I_BUSY ,
 .code-index iput
-simply assumed that it would be unlocked, instead of using a sleep loop.
-This must be the case, because the caller is required to unlock
+assumes that it is unlocked.
+This must be the case: the caller is required to unlock
 .code ip
 before calling
 .code iput ,
-and
-the caller has the only reference to it
-.code ip->ref "" (
-.code ==
-.code 1 ).
+and no other process can lock this inode,
+because no other process can get a pointer to it.
+That is because, in this code path, the inode has no references,
+no links (i.e., no pathname refers to it),
+and is not (yet) marked free.
 The second part worth examining is that
 .code iput
 temporarily releases
 .line fs.c:/^....release/
 and reacquires
 .line fs.c:/^....acquire/
-the cache lock.
-This is necessary because
+the inode cache lock,
+because
 .code-index itrunc
 and
 .code-index iupdate
-will sleep during disk i/o,
-but we must consider what might happen while the lock is not held.
+will sleep during disk i/o.
+But we must consider what might happen while the lock is not held.
 Specifically, once 
 .code iupdate
-finishes, the on-disk structure is marked as available
-for use, and a concurrent call to
+finishes, the on-disk inode is marked as free,
+and a concurrent call to
 .code-index ialloc
 might find it and reallocate it before 
 .code iput
