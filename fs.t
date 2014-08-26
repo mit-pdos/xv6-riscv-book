@@ -256,17 +256,17 @@ kinds of havoc, because sectors 3 and 4 have different content; xv6 uses them
 for storing inodes.
 ..
 .PP
-If there is no buffer for the given sector,
+If there is no cached buffer for the given sector,
 .code-index bget
 must make one, possibly reusing a buffer that held
 a different sector.
-It scans the buffer list a second time, looking for a block
+It scans the buffer list a second time, looking for a buffer
 that is not busy:
-any such block can be used.
+any such buffer can be used.
 .code Bget
-edits the block metadata to record the new device and sector number
-and mark the block busy before
-returning the block
+edits the buffer metadata to record the new device and sector number
+and marks the buffer busy before
+returning the buffer
 .lines bio.c:/flags.=.B_BUSY/,/return.b/ .
 Note that the assignment to
 .code flags
@@ -276,10 +276,10 @@ bit but also clears the
 .code-index B_VALID
 and
 .code-index B_DIRTY
-bits, making sure that
+bits, thus ensuring that
 .code bread
-will refresh the buffer data from disk
-rather than use the previous block's contents.
+will read the block data from disk
+rather than incorrectly using the buffer's previous contents.
 .PP
 Because the buffer cache is used for synchronization,
 it is important that
@@ -329,14 +329,14 @@ is cryptic but worth learning:
 it originated in Unix and is used in BSD, Linux, and Solaris too.)
 .code Brelse
 .line bio.c:/^brelse/
-moves the buffer from its position in the linked list
-to the front of the list
+moves the buffer
+to the front of the linked list
 .lines 'bio.c:/b->next->prev.=.b->prev/,/bcache.head.next.=.b/' ,
 clears the
 .code-index B_BUSY
 bit, and wakes any processes sleeping on the buffer.
-Moving the buffer has the effect that the
-buffers are ordered by how recently they were used (meaning released):
+Moving the buffer causes the
+list to be ordered by how recently the buffers were used (meaning released):
 the first buffer in the list is the most recently used,
 and the last is the least recently used.
 The two loops in
@@ -350,7 +350,7 @@ and following
 .code next
 pointers) will reduce scan time when there is good locality of reference.
 The scan to pick a buffer to reuse picks the least recently used
-block by scanning backward
+buffer by scanning backward
 (following 
 .code prev
 pointers).
@@ -407,8 +407,9 @@ operation's writes appear on the disk, or none of them appear.
 .PP
 The log resides at a known fixed location at the end of the disk.
 It consists of a header block followed by a sequence
-of data blocks. The header block contains an array of sector
-numbers, one for each of the logged data blocks. The header block
+of updated block copies (``logged blocks'').
+The header block contains an array of sector
+numbers, one for each of the logged blocks. The header block
 also contains the count of logged blocks. Xv6 writes the header
 block when a transaction commits, but not before, and sets the
 count to zero after copying the logged blocks to the file system.
@@ -423,8 +424,9 @@ call can be in a transaction at any one time: other processes must
 wait until any ongoing transaction has finished. Thus the log holds at
 most one transaction at a time.
 .PP
-Xv6 does not allow concurrent transactions, in order to avoid the
-following kind of problem.
+For simplicity, xv6 does not allow concurrent transactions.
+Here's an example of the kind of problem it would have to
+solve if it did allow them.
 Suppose transaction X has written a modification to an
 inode into the log. Concurrent transaction Y then reads a different
 inode in the same block, updates that inode, writes the inode block to
@@ -433,12 +435,20 @@ commit writes to the disk contains modifications by X, which has
 not committed. A crash and recovery at this point would expose one
 of X's modifications but not all, thus breaking the promise that
 transactions are atomic.
-There are sophisticated ways to solve this problem; xv6 solves it by
-outlawing concurrent transactions.
 .PP
-Xv6 allows read-only system calls to execute concurrently with a
-transaction. Inode locks cause the transaction to appear atomic to the
-read-only system call.
+A serious drawback of allowing only one transaction at a time
+is that there can be no concurrency inside the file system:
+even if two processes are using different files, they cannot
+execute file system system calls in parallel, and one
+cannot execute while the other process is waiting for the disk.
+We plan to modify the logging layer to allow concurrent
+transactions in a future version of xv6.
+This is why
+other parts of the file system code are designed for
+concurrency (e.g., the buffer cache's 
+.code B_BUSY
+mechanism),
+even though it currently cannot occur.
 .PP
 Xv6 dedicates a fixed amount of space on the disk to hold the log.
 No system call
