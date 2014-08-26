@@ -118,7 +118,7 @@ The main interface exported by the buffer cache consists of
 and
 .code-index bwrite ;
 the former obtains a
-.italic-index buffer
+.italic-index buf
 containing a copy of a block which can be read or modified in memory, and the
 latter writes a modified buffer to the appropriate block on the disk.
 A kernel thread must release a buffer by calling
@@ -158,7 +158,7 @@ initializes the list with the
 buffers in the static array
 .code buf
 .lines bio.c:/Create.linked.list/,/^..}/ .
-All other access to the buffer cache refers to the linked list via
+All other access to the buffer cache refer to the linked list via
 .code-index bcache.head ,
 not the
 .code buf
@@ -166,7 +166,7 @@ array.
 .PP
 A buffer has three state bits associated with it.
 .code-index B_VALID
-indicates that the buffer contains a valid copy of the block.
+indicates that the buffer contains a copy of the block.
 .code-index B_DIRTY
 indicates that the buffer content has been modified and needs
 to be written to the disk.
@@ -214,11 +214,18 @@ there is no guarantee that
 is still the right buffer: maybe it has been reused for
 a different disk sector.
 .code Bget
-has no choice but to start over
+must start over
 .line bio.c:/goto.loop/ ,
 hoping that the outcome will be different this time.
+.ig
 .figure bufrace
 .PP
+rtm says: this example doesn't really work: if one deleted
+the goto, the code would continue on to the "recycle" loop instead
+of returning the buffer found before the sleep. maybe we could present
+the code for a different and broken implementation, and use that for
+the example, but that seems a bit complex. in any case the end
+of the previous paragraph explains the potential problems.
 If
 .code-index bget
 didn't have the
@@ -247,6 +254,7 @@ and return from
 but the buffer contains sector 4, instead of 3.  This error could result in all
 kinds of havoc, because sectors 3 and 4 have different content; xv6 uses them
 for storing inodes.
+..
 .PP
 If there is no buffer for the given sector,
 .code-index bget
