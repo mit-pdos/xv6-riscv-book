@@ -890,6 +890,15 @@ before releasing the inode lock.
 It does this by zeroing
 .code flags
 .line 'fs.c:/^....ip->flags.=.0/' .
+.PP
+.code iput()
+can write the disk.
+This means that any system call that uses the file system
+may write the disk, even calls like
+.code read()
+that appear to be read-only.
+This, in turn, means that even read-only system calls
+must be wrapped in transactions if they use the file system.
 .\"
 .\"
 .\"
@@ -970,41 +979,44 @@ position within the block
 If the block number exceeds
 .code NDIRECT+NINDIRECT ,
 .code bmap 
-panics: callers are responsible for not asking about out-of-range block numbers.
+panics; 
+.code writei
+contains the check that prevents this from happening
+.line 'fs.c:/off...n...MAXFILE.BSIZE/' .
 .PP
 .code Bmap
-allocates block as needed.
-Unallocated blocks are denoted by a block number of zero.
+allocates blocks as needed.
+An
+.code ip->addrs[]
+or indirect
+entry of zero indicates that no block is allocated.
 As
 .code bmap
 encounters zeros, it replaces them with the numbers of fresh blocks,
 allocated on demand.
 .line "'fs.c:/^....if..addr.=.*==.0/,/./' 'fs.c:/^....if..addr.*NDIRECT.*==.0/,/./'" .
 .PP
-.code Bmap
-allocates blocks on demand as the inode grows;
 .code-index itrunc
-frees them, resetting the inode's size to zero.
+frees a file's blocks, resetting the inode's size to zero.
 .code Itrunc
 .line fs.c:/^itrunc/
 starts by freeing the direct blocks
-.lines 'fs.c:/^..for.i.=.0.*NDIRECT/,/^..}/'
-and then the ones listed in the indirect block
+.lines 'fs.c:/^..for.i.=.0.*NDIRECT/,/^..}/' ,
+then the ones listed in the indirect block
 .lines 'fs.c:/^....for.j.=.0.*NINDIRECT/,/^....}/' ,
 and finally the indirect block itself
 .lines 'fs.c:/^....bfree.*NDIRECT/,/./' .
 .PP
 .code Bmap
-makes it easy to write functions to access the inode's data stream,
-like 
+makes it easy for
 .code-index readi
 and
-.code-index writei .
+.code-index writei 
+to get at an inode's data.
 .code Readi
 .line fs.c:/^readi/
-reads data from the inode.
-It starts 
-making sure that the offset and count are not reading
+starts by
+making sure that the offset and count are not 
 beyond the end of the file.
 Reads that start beyond the end of the file return an error
 .lines 'fs.c:/^..if.off.>.ip->size/,/./'
@@ -1019,7 +1031,6 @@ copying data from the buffer into
 .\" for writei because so many of the lines are identical
 .\" to those in readi.  Luckily, identical lines probably
 .\" don't need to be commented upon.
-The function
 .code-index writei
 .line fs.c:/^writei/
 is identical to
