@@ -128,7 +128,9 @@ the Unix Bourne shell.  Its implementation can be found at line
 .PP
 An xv6 process consists of user-space memory (instructions, data, and stack)
 and per-process state private to the kernel.
-Xv6 provides time-sharing: it transparently switches the available CPUs
+Xv6 provides 
+.italic-index time-sharing :
+it transparently switches the available CPUs
 among the set of processes waiting to execute.
 When a process is not executing, xv6 saves its CPU registers,
 restoring them when it next runs the process.
