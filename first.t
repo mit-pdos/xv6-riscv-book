@@ -145,7 +145,7 @@ privileged instruction.  If an application in user mode attempts to execute such
 an instruction, then the processor doesn't execute the instruction, but switches
 to kernel mode so that the software in kernel mode can clean up the application,
 because it did something it shouldn't be doing. 
-.figref os
+.figref unix:os
 in Chapter  \*[CH:UNIX] illustrates this organization.  All applications can
 execute only user-mode instructions (e.g., adding numbers, etc.) and is said to
 be running in 
