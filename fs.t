@@ -418,40 +418,20 @@ count of zero in the log's header block; a crash after a commit
 will result in a non-zero count.
 .PP
 Each system call's code indicates the start and end of the sequence of
-writes that must be atomic; we'll call such a sequence a transaction,
-though it is much simpler than a database transaction. Only one system
-call can be in a transaction at any one time: other processes must
-wait until any ongoing transaction has finished. Thus the log holds at
-most one transaction at a time.
-.PP
-For simplicity, xv6 does not allow concurrent transactions.
-Here's an example of the kind of problem it would have to
-solve if it did allow them.
-Suppose transaction X has written a modification to an
-inode into the log. Concurrent transaction Y then reads a different
-inode in the same block, updates that inode, writes the inode block to
-the log, and commits. This is a disaster: the inode block that Y's
-commit writes to the disk contains modifications by X, which has
-not committed. A crash and recovery at this point would expose one
-of X's modifications but not all, thus breaking the promise that
-transactions are atomic.
-.PP
-A serious drawback of allowing only one transaction at a time
-is that there can be no concurrency inside the file system:
-even if two processes are using different files, they cannot
-execute file system system calls in parallel, and one
-cannot execute while the other process is waiting for the disk.
-We plan to modify the logging layer to allow concurrent
-transactions in a future version of xv6.
-This is why
-other parts of the file system code are designed for
-concurrency (e.g., the buffer cache's 
-.code B_BUSY
-mechanism),
-even though it currently cannot occur.
+writes that must be atomic.
+For efficiency, and to allow a degree of concurrency in the
+file system code, the logging system can accumulate the writes
+of multiple system calls into each transaction.
+Thus a single commit may involve the writes of multiple
+complete system calls.
+In order to preserve atomicity, the logging system
+only commits when no file system system calls are underway.
 .PP
 Xv6 dedicates a fixed amount of space on the disk to hold the log.
-No system call
+The total number of blocks written by the system calls in a
+transaction must fit in that space.
+This has two consequences.
+No single system call
 can be allowed to write more distinct blocks than there is space
 in the log. This is not a problem for most system calls, but two
 of them can potentially write many blocks: 
@@ -467,6 +447,10 @@ and
 .code unlink
 doesn't cause problems because in practice the xv6 file system uses
 only one bitmap block.
+The other consequence of limited log space
+is that the logging system cannot allow a system call to start
+unless it is certain that the system call's writes will
+fit in the space remaining in the log.
 .\"
 .\"
 .\"
@@ -474,46 +458,71 @@ only one bitmap block.
 .PP
 A typical use of the log in a system call looks like this:
 .P1
-  begin_trans();
+  begin_op();
   ...
   bp = bread(...);
   bp->data[...] = ...;
   log_write(bp);
   ...
-  commit_trans();
+  end_op();
 .P2
 .PP
-.code-index begin_trans
-.line log.c:/^begin.trans/
-waits to obtain exclusive use of the log and then returns.
+.code-index begin_op
+.line log.c:/^begin.op/
+waits until
+the logging system is not currently committing, and until
+there is enough free log space to hold
+the writes from this call and all currently executing system calls.
+.code log.outstanding
+counts that number of calls;
+the increment both reserves space and prevents a commit
+from occuring during this system call.
+The code conservatively assumes that each system call might write up to
+.code MAXOPBLOCKS
+distinct blocks.
 .PP
 .code-index log_write
 .line log.c:/^log.write/
 acts as a proxy for 
-.code-index bwrite ;
-it appends the block's new content to the log on disk and
-records the block's sector number in memory.
-.code log_write
-leaves the modified block in the in-memory buffer cache,
-so that subsequent reads of the block during the transaction
-will yield the modified block.
+.code-index bwrite .
+It records the block's sector number in memory,
+reserving it a slot in the log on disk,
+and marks the buffer
+.code B_DIRTY
+to prevent the block cache from evicting it.
+The block must stay in the cache until committed:
+until then, the cached copy is the only record
+of the modification; it cannot be written to
+its place on disk until after commit;
+and other reads in the same transaction must
+see the modifications.
 .code log_write
 notices when a block is written multiple times during a single
-transaction, and overwrites the block's previous copy in the log.
+transaction, and allocates that block the same slot in the log.
 .PP
-.code-index commit_trans
-.line log.c:/^commit.trans/
-first writes the log's header block to disk, so that a crash
-after this point will cause recovery to re-write the blocks
-in the log. 
-.code commit_trans
-then calls
+.code-index end_op
+.line log.c:/^end.op/
+first decrements the count of outstanding system calls.
+If the count is now zero, it commits the current
+transaction by calling
+.code commit().
+There are four stages in this process.
+.code write_log()
+.line log.c:/^write.log/
+copies each block modified in the transaction from the buffer
+cache to its slot in the log on disk.
+.code write_head()
+.line log.c:/^write.head/
+writes the header block to disk: this is the
+commit point, and a crash after the write will
+result in recovery replaying the transaction's writes from the log.
+.code install_trans()
 .code-index install_trans
 .line log.c:/^install_trans/
-to read each block from the log and write it to the proper
+reads each block from the log and write it to the proper
 place in the file system.
 Finally
-.code commit_trans
+.code end_op
 writes the log header with a count of zero;
 this has to happen before the next transaction starts writing
 logged blocks, so that a crash doesn't result in recovery
@@ -528,7 +537,7 @@ is called from
 which is called during boot before the first user process runs.
 .line proc.c:/initlog/
 It reads the log header, and mimics the actions of
-.code commit_trans
+.code end_op
 if the header indicates that the log contains a committed transaction.
 .PP
 An example use of the log occurs in 
@@ -536,11 +545,11 @@ An example use of the log occurs in
 .line file.c:/^filewrite/ .
 The transaction looks like this:
 .P1
-      begin_trans();
+      begin_op();
       ilock(f->ip);
       r = writei(f->ip, ...);
       iunlock(f->ip);
-      commit_trans();
+      end_op();
 .P2
 This code is wrapped in a loop that breaks up large writes into individual
 transactions of just a few sectors at a time, to avoid overflowing
@@ -549,14 +558,6 @@ the log.  The call to
 writes many blocks as part of this
 transaction: the file's inode, one or more bitmap blocks, and some data
 blocks.
-The call to
-.code-index ilock
-occurs after the
-.code-index begin_trans
-as part of an overall strategy to avoid deadlock:
-since there is effectively a lock around each transaction,
-the deadlock-avoiding lock ordering rule is transaction
-before inode.
 .\"
 .\"
 .\"
@@ -1555,9 +1556,9 @@ instead using a hash table for lookups and a heap for LRU evictions.
 Modern buffer caches are typically integrated with the
 virtual memory system to support memory-mapped files.
 .PP
-Xv6's logging system is woefully inefficient. It does not allow concurrent
-updating system calls, even when the system calls operate on entirely
-different parts of the file system. It logs entire blocks, even if
+Xv6's logging system is inefficient.
+A commit cannot occur concurrently with file system system calls.
+The system logs entire blocks, even if
 only a few bytes in a block are changed. It performs synchronous
 log writes, a block at a time, each of which is likely to require an
 entire disk rotation time. Real logging systems address all of these
