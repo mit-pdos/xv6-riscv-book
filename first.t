@@ -514,7 +514,7 @@ mappings for kernel code and data.
 .code switchuvm
 also sets up a task state segment
 .code-index SEG_TSS
-that instructs the hardware
+that instructs the hardware to
 execute system calls and interrupts
 on the process's kernel stack.
 We will re-examine the task state segment in Chapter \*[CH:TRAP].
