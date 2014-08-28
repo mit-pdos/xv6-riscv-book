@@ -50,8 +50,8 @@ the computation acts. The stack organizes the program's procedure calls.
 .PP
 When a
 process needs to invoke a kernel service, it invokes a procedure call
-in the operating system interface.  Such procedures are call
-.italic-index "system calls" .
+in the operating system interface.  Such a procedure is called a
+.italic-index "system call" .
 The system call enters the kernel;
 the kernel performs the service and returns.
 Thus a process alternates between executing in

@@ -17,25 +17,27 @@ talk a little about initial page table conditions:
 .chapter CH:FIRST "Operating system organization"
 .PP
 A key requirement for an operating system is to support several activities.  For
-example, in xv6 a program can start new programs using 
+example, using the system call interface described in
+chapter \*[CH:UNIX]
+a process can start new processes using 
 .code fork .
-The operating system must arrange that these programs can
+The operating system must arrange that these processes can
 .italic-index time-share 
-the resources of the computer.  For example, a program may start more new
-programs than there are processors in the computer, yet all programs must be
+the resources of the computer.  For example, a process may start more new
+processes than there are processors in the computer, yet all processes must be
 able to make some progress.  In addition, the operating system must arrange for
 .italic-index isolation 
 between the processes.
-That is, if one program has a bug and fails, it shouldn't impact programs that
-don't have a dependency on the failed program.
+That is, if one process has a bug and fails, it shouldn't impact processes that
+don't have a dependency on the failed process.
 Complete isolation, however, is too strong, since it should be possible for
-programs to interact; for example, it is convenient for users to combine
-programs to perform complex tasks (e.g., by using pipes).  
+processes to interact; for example, it is convenient for users to combine
+processes to perform complex tasks (e.g., by using pipes).  
 Thus, the implementation of
 an operating system must achieve three requirements: multiplexing, isolation,
 and interaction.
 .PP
-This chapter provides an overview how operating systems are organized to achieve
+This chapter provides an overview of how operating systems are organized to achieve
 these 3 requirements.  It turns out there are many ways to do so, but this text
 focuses on mainstream designs centered around a 
 .italic-index "monolithic kernel" , 
@@ -59,7 +61,7 @@ come up. Appendix \*[APP:HW] briefly outlines the PC platform.
 .\"
 .PP
 The first question one might ask is why have an operating system at all?  That
-is, one could provide the system call function described in chapter \*[CH:UNIX]
+is, one could implement the system calls described in chapter \*[CH:UNIX]
 as a library, with which applications link.  In this plan, each application
 could even have its own library, perhaps tailored to its needs.  In this plan,
 the application can directly interact with the hardware resources and use those
@@ -82,31 +84,33 @@ distrustful.
 To achieve strong isolation a helpful approach is to disallow applications to
 have direct access to the hardware resources, but instead to abstract the
 resources into services.  For example, applications interact with a file system
-through
+only through
 .code open ,
 .code read ,
 .code write , 
 and
 .code close
-system calls ,
+system calls,
 instead of read and writing raw disk sectors. 
 This provides the application with the convenience of pathnames, and it allows
 the operating system (as the implementor of the interface) to manage the disk. 
+.PP
 Similarly, in Unix applications run as processes using 
 .code fork ,
 allowing the operating system to save and restore registers on behalf of the application
 when switching between different processes, so that application don't have to be
 aware of process switching.  Furthermore, it allows the operating system to forcefully
-switch an application out of a processor, if it, for example, is an end-less loop.
+switch an application out of a processor, if the application, for example, is an end-less loop.
 .PP
-As another example, in Unix processes use 
+As another example, Unix processes use 
 .code exec
 to build up their memory image, instead of directly interacting with physical
 memory.  This allows the operating system to decide where to place a process in
 memory and move things around if there is a shortage of memory, and provides
 applications with the convenience of a file system to store their images.  
 .PP 
-To support controled interaction between applications, Unix applications can use file
+To support controled interaction between applications, Unix applications can use
+only file
 descriptors, instead of to make up some sharing convention of their own (e.g.,
 reserving a piece of physical memory).  Unix file descriptors abstract all the
 sharing details away, hiding from the application if the interaction is
@@ -123,14 +127,14 @@ way to abstract resources, but it has proven to be a very good one.
 .section "User mode, kernel mode, and system calls"
 .\"
 .PP
-To provide strong isolation between the user of the operating system interface
-and its implementation, we need a hard boundary between applications and the
-operating system.  If the application makes a mistake, we don't want the
-operating system to fail.  Instead, the operating system should be able to clean
-up the application and continue running other applications.  This strong
-isolation means that application shouldn't be able to write over data structures
-maintained by the operating system, shouldn't be able to overwrite instructions
-of the operating system, etc.
+To provide strong isolation between the software that uses system calls and the
+software that implements the system calls, we need a hard boundary between
+applications and the operating system.  If the application makes a mistake, we
+don't want the operating system to fail.  Instead, the operating system should
+be able to clean up the application and continue running other applications.
+This strong isolation means that application shouldn't be able to write over
+data structures maintained by the operating system, shouldn't be able to
+overwrite instructions of the operating system, etc.
 .PP
 To provide for such strong isolation processors provide hardware support.   For
 example, the x86 processor, like many other processors, has two modes in which
@@ -141,12 +145,12 @@ and
 In kernel mode the processor is allowed to execute 
 .italic-index "privileged instructions" .
 For example, read and writing to the disk (or any other I/O device) is a
-privileged instruction.  If an application in user mode attempts to execute such
-an instruction, then the processor doesn't execute the instruction, but switches
+privileged instruction.  If an application in user mode attempts to execute
+a privileged instruction, then the processor doesn't execute the instruction, but switches
 to kernel mode so that the software in kernel mode can clean up the application,
 because it did something it shouldn't be doing. 
 .figref unix:os
-in Chapter  \*[CH:UNIX] illustrates this organization.  All applications can
+in Chapter  \*[CH:UNIX] illustrates this organization.  Applications can
 execute only user-mode instructions (e.g., adding numbers, etc.) and is said to
 be running in 
 .italic-index "user space"  ,
@@ -157,25 +161,27 @@ The software running in kernel space (or in kernel mode) is called
 the
 . italic-index "kernel"  .
 .PP
-If a user-mode application, for example, must read or write to disk, it must ask the kernel to
-do so through a
-. italic-index "system call"  ,
-because the application itself can not execute I/O instructions.
-A system call is a special instruction that switches the processor from user mode to
-kernel mode and enters the kernel at an entry point specified by the kernel.
-The kernel can then validate the arguments of the system call, decide whether the application is
-allowed to perform the requested operation, and then deny it or execute it.  It
-is important that the kernel decide the entry point; if the application could
-decide, a malicious application could enter the kernel at a point where the
+If a user-mode application must read or write to disk, it must transition to the
+kernel to do so, because the application itself can not execute I/O
+instructions.  Processors provide a special instruction that switches the
+processor from user mode to kernel mode and enters the kernel at an entry point
+specified by the kernel.  (The x86
+processor provides the 
+.code int
+instruction for this purpose.)  Once the processor has switched to kernel mode,
+the kernel can then validate the arguments of the system call, decide whether
+the application is allowed to perform the requested operation, and then deny it
+or execute it.  It is important that the kernel sets the entry point when
+transition to kernel mode; if the application could decide the kernel entry
+point, a malicious application could enter the kernel at a point where the
 validation of arguments etc. is skipped.
-
 .\"
 .section "Kernel organization"
 .\"
 .PP
 A key design question for an operating system is what part of the operating
-system should run in kernel mode.   In other words, what calls are system calls?
-A simple answer is that the operating system interface is the system call
+system should run in kernel mode. 
+A simple answer is that the kernel interface is the system call
 interface.  That is, 
 .code fork ,
 .code exec ,
@@ -183,7 +189,7 @@ interface.  That is,
 .code close ,
 .code read ,
 .code write ,
-etc.  are all system calls.  This means that the complete implementation of the
+etc.  are all kernel calls.  This choice means that the complete implementation of the
 operating system runs in kernel mode.  This kernel organization is called a
 . italic-index "monolithic kernel"  .
 .PP
@@ -199,7 +205,7 @@ different parts of the operating system are often complex (as we will see in the
 rest of this text), and therefore it is easy for an operating system developer
 to make a mistake.  In a monolithic kernel, a mistake is fatal, because an error
 in kernel mode will often result in the kernel to fail.  If the kernel fails,
-the computer stops working, and thus all applications fail to.  The computer
+the computer stops working, and thus all applications fail too.  The computer
 must reboot to start again.
 .PP
 To reduce the risk of mistakes in the kernel, OS designers can make the lines of
@@ -216,7 +222,7 @@ read or write a file, it sends a message to the file server and waits for a
 response.  This kernel organization is called a
 . italic-index "microkernel"  .
 .PP
-In a microkernel, the system call interface consists of a few low-level
+In a microkernel, the kernel interface consists of a few low-level
 functions for starting applications, performing I/O, sending messages to
 applications, etc.  This organization allows the kernel to be implemented with a
 few lines of code, since it doesn't do much, as most functionality of the
@@ -226,9 +232,9 @@ In the real-world, one can find both monolithic kernels and microkernels.  For
 example, Linux is mostly implemented as a monolithic kernel, although some OS
 functions run as user-level servers (e.g., the windowing system).  Xv6 is
 implemented as a monolithic kernel, following most Unix operating systems.
-Thus, in xv6, the system call interface corresponds to the operating system
-interface, and the kernel implements the complete operating system.  Since the
-xv6 OS interface doesn't provide many functions, its kernel is smaller than some
+Thus, in xv6, the kernel interface corresponds to the operating system
+interface, and the kernel implements the complete operating system.  Since 
+xv6 doesn't provide many functions, its kernel is smaller than some
 microkernels.
 .\"
 .section "Process overview"
@@ -307,7 +313,7 @@ Each process has two stacks: a user stack and a kernel stack
 .code-index p->kstack  ). (
 When the process is executing user instructions, only its user stack
 is in use, and its kernel stack is empty.
-When the process enters the kernel (via a system call or interrupt),
+When the process enters the kernel (for a system call or interrupt),
 the kernel code executes on the process's kernel stack; while
 a process is in the kernel, its user stack still contains saved
 data, but isn't actively used.
@@ -342,6 +348,13 @@ addresses of the physical pages allocated to store the process's memory.
 .\"
 .section "Code: the first address space"
 .\"
+To make the xv6 organization more concrete, we look how the kernel creates the
+first address space (for itself), how the kernel creates and starts the first
+process, and the first system call that that process makes.  By tracing these
+operations we see in detail how xv6 provides strong isolation for processes.
+The first step in providing strong isolation is setting up the kernel to run in
+its own address space.
+.PP
 When a PC powers on, it initializes itself and then loads a
 .italic-index "boot loader"
 from disk into memory and executes it.
@@ -471,6 +484,10 @@ Now the kernel is running in high addresses in the function
 .\"
 .section "Code: creating the first process"
 .\"
+.PP
+Now the kernel runs within its own address space, we look at how the kernel
+creates user-level processes and ensures strong isolation between the kernel and
+user-level processes, and between processes themselves.
 .PP
 After
 .code main
@@ -875,6 +892,10 @@ So the process is constrained to using only its own memory.
 .\"
 .section "The first system call: exec"
 .\"
+.PP
+Now we have seen how the kernel provides strong isolation for processes, let's
+see how a user-level process can enter back into the kernel to ask for services
+that it cannot perform itself.
 .PP
 The first action of 
 .code initcode.S
