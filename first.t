@@ -211,16 +211,19 @@ must reboot to start again.
 To reduce the risk of mistakes in the kernel, OS designers can make the lines of
 code that run in kernel mode small.  Most of the operating system doesn't need
 access to privileged instructions, and can thus run as ordinary user-level
-applications.  For example, an OS designer can implement most of the file system
-as a user-level application, often then called a server.  In this plan, the
-kernel provides a thin interface over I/O devices such as a disk and checks that
-only certain application use that interface.  For example, it enforces that only
-the file server performs disk operations.  To allow application to interact with
-the file server, the kernel provides a minimal mechanism to send messages from
-one user-mode application to another.  For example, if an application wants to
-read or write a file, it sends a message to the file server and waits for a
-response.  This kernel organization is called a
+applications, with which applications interact with through messages.  
+This kernel organization is called a
 . italic-index "microkernel"  .
+.figure mkernel
+.PP
+.figref mkernel
+illustrates this microkernel design.  In the figure, the file system runs as a
+user-level application.  Operating systems that services that run as ordinary
+user programs are called servers.  To allow application to interact with the
+file server, the kernel provides a minimal mechanism to send messages from one
+user-mode application to another.  For example, if an application like the shell
+wants to read or write a file, it sends a message to the file server and waits
+for a response. 
 .PP
 In a microkernel, the kernel interface consists of a few low-level
 functions for starting applications, performing I/O, sending messages to
