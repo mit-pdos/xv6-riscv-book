@@ -425,7 +425,17 @@ of multiple system calls into each transaction.
 Thus a single commit may involve the writes of multiple
 complete system calls.
 In order to preserve atomicity, the logging system
-only commits when no file system system calls are underway.
+commits only when no file system system calls are underway.
+.PP
+The idea of committing several transaction together is known as 
+.italic-index "group commit" .
+Group commit allows several transactions to run concurrently and allows
+the file system to
+.italic-index batch 
+several disk operations and issue a single disk operation to the disk driver.  This allows
+the disk to schedule the writing of the blocks cleverly and write at the
+rate of the disk's bandwidth.   Xv6's IDE driver doesn't support batching, but 
+xv6's file system design allows for it.
 .PP
 Xv6 dedicates a fixed amount of space on the disk to hold the log.
 The total number of blocks written by the system calls in a
@@ -499,6 +509,13 @@ see the modifications.
 .code log_write
 notices when a block is written multiple times during a single
 transaction, and allocates that block the same slot in the log.
+This optimization is often called
+.italic-index "absorption" .
+It is common that, for example, the disk block containing inodes
+of several files is written several times within a transaction.  By absorbing
+several disk writes into one, the file system can save log space and
+can achieve better performance because only one copy of the disk block must be
+written to disk.
 .PP
 .code-index end_op
 .line log.c:/^end.op/
