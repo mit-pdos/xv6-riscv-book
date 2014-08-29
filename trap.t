@@ -533,7 +533,6 @@ If it was the kernel running, there must be a kernel bug:
 .code trap
 prints details about the surprise and then calls
 .code-index panic .
-.PP
 .\"
 .section "Code: System calls"
 .\"
