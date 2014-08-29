@@ -674,7 +674,10 @@ ones.
 2. If xv6 had not used super pages, what would be the right declaration for
 .code entrypgdir?
 
-3. Unix implementations of 
+3. Modify xv6 so that the pages for the kernel are shared among processes, which
+reduces memory consumption.
+
+4. Unix implementations of 
 .code exec
 traditionally include special handling for shell scripts.
 If the file to execute begins with the text
