@@ -1066,8 +1066,7 @@ typically devices are slower than CPU, so the hardware uses
 interrupts to notify the operating system of status changes.
 Modern disk controllers typically
 accept a 
-.italic-index
-batch 
+.italic-index batch 
 of disk requests at a time and even reorder
 them to make most efficient use of the disk arm.
 When disks were simpler, operating system often reordered the
