@@ -60,14 +60,15 @@ come up. Appendix \*[APP:HW] briefly outlines the PC platform.
 .section "Abstracting physical resources"
 .\"
 .PP
-The first question one might ask is why have an operating system at all?  That
-is, one could implement the system calls described in chapter \*[CH:UNIX]
-as a library, with which applications link.  In this plan, each application
-could even have its own library, perhaps tailored to its needs.  In this plan,
-the application can directly interact with the hardware resources and use those
-resources in the best way for the application (e.g., to achieve high performance
-or predictable performance).  Some tiny operating systems for embedded devices
-or real-time systems are organized in this way.
+The first question one might ask when encountering an operating system is why
+have it at all?  That is, one could implement the system calls in
+.figref unix:api
+as a library, with which applications link.  In this plan,
+each application could even have its own library, perhaps tailored to its needs.
+In this plan, the application can directly interact with the hardware resources
+and use those resources in the best way for the application (e.g., to achieve
+high performance or predictable performance).  Some tiny operating systems for
+embedded devices or real-time systems are organized in this way.
 .PP
 The downside of this approach is that applications are free to use the library,
 which means they can also 
@@ -118,10 +119,12 @@ happening with the terminal, file system, or pipes, yet allows the operating
 system to control the interaction.  For example, if one application fails, it
 can shut down the communication channel.  
 .PP
-As you can see, the interface described in chapter \*[CH:UNIX] is carefully
-designed to provide programmer convenience but also for the implementation of
-the interface to enforce strong isolation.  The Unix interface is not the only
-way to abstract resources, but it has proven to be a very good one.
+As you can see, the system call interface in
+.figref unix:api
+is carefully designed to provide programmer convenience but also for the
+implementation of the interface to enforce strong isolation.  The Unix interface
+is not the only way to abstract resources, but it has proven to be a very good
+one.
 
 .\"
 .section "User mode, kernel mode, and system calls"
