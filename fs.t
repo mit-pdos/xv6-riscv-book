@@ -1662,16 +1662,14 @@ and wait for the response before returning.
 .\"
 .section "Exercises"
 .PP
-1. why panic in balloc?  Can we recover?
+1. Why panic in balloc?  Can xv6 recover?
 .PP
-2. why panic in ialloc?  Can we recover?
+2. Why panic in ialloc?  Can xv6 recover?
 .PP
-3. inode generation numbers.
-.PP
-4. Why doesn't filealloc panic when it runs out of files?
+3. Why doesn't filealloc panic when it runs out of files?
 Why is this more common and therefore worth handling?
 .PP
-5. Suppose the file corresponding to 
+4. Suppose the file corresponding to 
 .code ip
 gets unlinked by another process
 between 

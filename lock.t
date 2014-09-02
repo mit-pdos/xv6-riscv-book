@@ -613,15 +613,13 @@ searches, and one atomic instruction to insert an item in a list.
 .section "Exercises"
 .\"
 
-1. get rid off the xchg in acquire. explain what happens when you run xv6?
+1. Remove the xchg in acquire. explain what happens when you run xv6?
 
-2. move the acquire in iderw to before sleep.  is there a race? why don't you
+2. Move the acquire in iderw to before sleep.  is there a race? why don't you
 observe it when booting xv6 and run stressfs?  increase critical section with a
 dummy loop; what do you see now?  explain.
 
-3. do posted homework question.
-
-4.  Setting a bit in a buffer's
+3.  Setting a bit in a buffer's
 .code flags
 is not an atomic operation: the processor makes a copy of 
 .code flags
