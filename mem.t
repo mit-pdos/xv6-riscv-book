@@ -304,7 +304,7 @@ structure in the free page itself,
 since there's nothing else stored there.
 The free list is
 protected by a spin lock 
-.line kalloc.c:/^struct/,/}/ .
+.line 'kalloc.c:/^struct.{/,/}/' .
 The list and the lock are wrapped in a struct
 to make clear that the lock protects the fields
 in the struct.

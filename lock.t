@@ -572,7 +572,7 @@ of x86 processors make different guarantees about memory ordering.  If
 .code lk->locked=0 ,
 were allowed to be re-ordered say after
 .code popcli ,
-than 
+then 
 .code acquire 
 might break, because to another thread interrupts would be enabled
 before a lock is released. To avoid relying on unclear processor
