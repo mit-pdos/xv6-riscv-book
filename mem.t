@@ -674,10 +674,21 @@ ones.
 2. If xv6 had not used super pages, what would be the right declaration for
 .code entrypgdir?
 
-3. Modify xv6 so that the pages for the kernel are shared among processes, which
+3. Write a user program that grows its address space with 1 byte by calling
+.code sbrk(1) .
+Run the  program and investigate the page table for the program before the call
+to 
+.code sbrk
+and after the call to
+.code sbrk .
+How much space has the kernel allocated?  What does the
+.code pte
+for the new memory contain?
+
+4. Modify xv6 so that the pages for the kernel are shared among processes, which
 reduces memory consumption.
 
-4. Unix implementations of 
+5. Unix implementations of 
 .code exec
 traditionally include special handling for shell scripts.
 If the file to execute begins with the text
