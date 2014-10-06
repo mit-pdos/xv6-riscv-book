@@ -14,7 +14,7 @@
    height="990"
    id="svg2"
    version="1.1"
-   inkscape:version="0.47 r22583"
+   inkscape:version="0.48.2 r9819"
    sodipodi:docname="x86_pagetable.svg">
   <sodipodi:namedview
      id="base"
@@ -25,7 +25,7 @@
      inkscape:pageshadow="2"
      inkscape:zoom="0.8359833"
      inkscape:cx="543.11346"
-     inkscape:cy="418.67866"
+     inkscape:cy="657.91789"
      inkscape:document-units="mm"
      inkscape:current-layer="layer1"
      showgrid="false"
@@ -956,7 +956,7 @@
          y="347.16104"
          x="293.66302"
          id="tspan9864"
-         sodipodi:role="line">VIrtual address</tspan></text>
+         sodipodi:role="line">Virtual address</tspan></text>
     <text
        id="text9880"
        y="351.2977"

@@ -288,7 +288,7 @@ Interrupt
 is handled by the
 code at the address in
 .code-index vectors[i] .
-Each entry point is different, because the x86 provides
+Each entry point is different, because the x86
 does not provide the trap number to the interrupt handler.
 Using 256 different handlers is the only way to distinguish
 the 256 cases.
@@ -506,7 +506,7 @@ If the trap is
 calls the system call handler
 .code-index syscall .
 We'll revisit the two
-.code-index cp->killed
+.code-index proc->killed
 checks in Chapter \*[CH:SCHED].  \" XXX really?
 .PP
 After checking for a system call, trap looks for hardware interrupts
@@ -533,7 +533,6 @@ If it was the kernel running, there must be a kernel bug:
 .code trap
 prints details about the surprise and then calls
 .code-index panic .
-.PP
 .\"
 .section "Code: System calls"
 .\"
@@ -688,7 +687,7 @@ find the code to manage it in
 .PP
 With the advent of multiprocessor PC boards, a new way of handling
 interrupts was needed, because each CPU needs an interrupt controller
-to handle interrupts send to it, and there must be a method for
+to handle interrupts sent to it, and there must be a method for
 routing interrupts to processors.  This way consists of two parts: a
 part that is in the I/O system (the IO APIC,
 .code ioapic.c), 
@@ -779,7 +778,7 @@ The timer interrupts through vector 32 (which xv6 chose to handle IRQ
 .line main.c:/idtinit/ .
 The only difference between vector 32 and vector 64 (the one for
 system calls) is that vector 32 is an interrupt gate instead of a trap
-gate.  Interrupt gates clears
+gate.  Interrupt gates clear
 .code IF ,
 so that the interrupted processor doesn't receive interrupts while it
 is handling the current interrupt.  From here on until
@@ -790,7 +789,7 @@ the same code path as system calls and exceptions, building up a trap frame.
 .code Trap
 when it's called for a time interrupt, does just two things:
 increment the ticks variable 
-.line trap.c:/ticks++/ , 
+.line trap.c:/ticks!+!+/ , 
 and call
 .code-index wakeup . 
 The latter, as we will see in Chapter \*[CH:SCHED], may cause the
@@ -806,7 +805,7 @@ point out that we are trying to be manly with interrupts, by turning them on oft
 .\"
 A
 .italic-index driver
-is the piece of code in an operating system that manage a particular device: it
+is the piece of code in an operating system that manages a particular device: it
 provides interrupt handlers for a device, causes a device to perform operations,
 causes a device to generate interrupts, etc.  Driver code can be tricky to write
 because a driver executes concurrently with the device that it manages.  In
@@ -1004,7 +1003,7 @@ and the interrupt will signal that the data has been written to disk.
 If the operation is a read, the interrupt will signal that the
 data is ready, and the handler will read it.
 Note that
-.code-index iderw
+.code-index idestart
 has detailed knowledge about the IDE device, and writes the right values at the
 right ports.  If any of these 
 .code outb
@@ -1065,7 +1064,9 @@ but the basic ideas are the same:
 typically devices are slower than CPU, so the hardware uses
 interrupts to notify the operating system of status changes.
 Modern disk controllers typically
-accept multiple outstanding disk requests at a time and even reorder
+accept a 
+.italic-index batch 
+of disk requests at a time and even reorder
 them to make most efficient use of the disk arm.
 When disks were simpler, operating system often reordered the
 request queue themselves.

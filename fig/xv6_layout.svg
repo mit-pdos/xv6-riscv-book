@@ -13,8 +13,8 @@
    height="990"
    id="svg3255"
    version="1.1"
-   inkscape:version="0.47 r22583"
-   sodipodi:docname="xv6_layout.svg">
+   inkscape:version="0.48.2 r9819"
+   sodipodi:docname="xv6_layout.eps">
   <defs
      id="defs3257">
     <marker
@@ -338,7 +338,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title />
+        <dc:title></dc:title>
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -465,9 +465,10 @@
        d="m 120.76282,917.26319 212.59842,0"
        id="path3338" />
     <path
-       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       d="m 533.49731,783.94173 199.61602,0"
-       id="path3358" />
+       style="fill:none;stroke:#000000;stroke-width:0.99999994px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="m 533.49731,754.05065 199.61602,0"
+       id="path3358"
+       inkscape:connector-curvature="0" />
     <text
        xml:space="preserve"
        style="font-size:40px;font-style:normal;font-weight:normal;text-align:center;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
@@ -621,13 +622,13 @@
     <text
        xml:space="preserve"
        style="font-size:40px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
-       x="337.5596"
-       y="436.20486"
+       x="335.38568"
+       y="522.0744"
        id="text4921"><tspan
          sodipodi:role="line"
          id="tspan4923"
-         x="337.5596"
-         y="436.20486"
+         x="335.38568"
+         y="522.0744"
          style="font-size:14px;text-align:start;text-anchor:start">RW--</tspan></text>
     <text
        id="text4925"
@@ -685,13 +686,13 @@
     <text
        xml:space="preserve"
        style="font-size:14px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
-       x="180.57053"
-       y="472.2067"
+       x="174.04878"
+       y="503.72842"
        id="text3260"><tspan
          sodipodi:role="line"
          id="tspan3262"
-         x="180.57053"
-         y="472.2067">Free memory</tspan></text>
+         x="174.04878"
+         y="503.72842">Free memory</tspan></text>
     <text
        xml:space="preserve"
        style="font-size:14px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
@@ -747,33 +748,37 @@
     <text
        xml:space="preserve"
        style="font-size:14px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
-       x="429.87436"
-       y="786.4632"
+       x="438.57001"
+       y="754.94141"
        id="text3428"><tspan
          sodipodi:role="line"
          id="tspan3430"
-         x="429.87436"
-         y="786.4632">PHYSTOP</tspan></text>
+         x="438.57001"
+         y="754.94141">PHYSTOP</tspan></text>
     <text
        xml:space="preserve"
        style="font-size:14px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
-       x="590.32831"
-       y="731.61566"
+       x="546.85004"
+       y="796.83307"
        id="text3545"><tspan
          sodipodi:role="line"
-         id="tspan3547"
-         x="590.32831"
-         y="731.61566">Devices</tspan></text>
+         x="546.85004"
+         y="796.83307"
+         id="tspan3410">Unused if less than 2 Gig</tspan><tspan
+         sodipodi:role="line"
+         x="546.85004"
+         y="814.33307"
+         id="tspan3416"> of physical memory</tspan></text>
     <text
        xml:space="preserve"
        style="font-size:14px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
-       x="556.78345"
-       y="866.28943"
+       x="566.56604"
+       y="895.63727"
        id="text3549"><tspan
          sodipodi:role="line"
          id="tspan3551"
-         x="556.78345"
-         y="866.28943">Extended memory</tspan></text>
+         x="566.56604"
+         y="895.63727">Extended memory</tspan></text>
     <text
        xml:space="preserve"
        style="font-size:14px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
@@ -910,14 +915,16 @@
        d="M 335.69561,682.25231 C 526.88988,1019.0349 528.64396,1020.789 528.64396,1020.789 l 0,0 -1.75408,0"
        id="path4506" />
     <path
-       style="fill:none;stroke:#000000;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:3.99999992, 3.99999992;stroke-dashoffset:9.3999998"
-       d="m 333.2744,364.76457 c 197.12362,418.0054 197.12362,418.0054 197.12362,418.0054"
-       id="path4510" />
+       style="fill:none;stroke:#000000;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:3.99999995, 3.99999995;stroke-dashoffset:9.39999989"
+       d="m 330.01354,471.28632 c 202.5584,381.04887 202.5584,381.04887 202.5584,381.04887"
+       id="path4510"
+       inkscape:connector-curvature="0" />
     <path
        style="fill:none;stroke:#000000;stroke-width:0.99921262;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker-end:url(#Arrow1Mend)"
-       d="m 502.63137,782.978 17.71654,0"
+       d="m 509.15311,751.45626 17.71654,0"
        id="path4597"
-       sodipodi:nodetypes="cc" />
+       sodipodi:nodetypes="cc"
+       inkscape:connector-curvature="0" />
     <path
        style="fill:none;stroke:#000000;stroke-width:0.99921262;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker-end:url(#Arrow1Mend)"
        d="m 505.89224,1022.1084 17.71654,0"
@@ -943,13 +950,15 @@
        id="path4623" />
     <text
        id="text2980"
-       y="667.37469"
-       x="490.95636"
+       y="668.46167"
+       x="488.78244"
        style="font-size:40px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
-       xml:space="preserve"><tspan
+       xml:space="preserve"
+       inkscape:transform-center-x="-6.5217391"
+       inkscape:transform-center-y="-185.86957"><tspan
          style="font-size:14px;text-align:start;text-anchor:start"
-         y="667.37469"
-         x="490.95636"
+         y="668.46167"
+         x="488.78244"
          id="tspan2982"
          sodipodi:role="line">4 Gig</tspan></text>
     <path
@@ -1004,5 +1013,80 @@
        id="path3039"
        d="m 532.41035,941.55043 199.61602,0"
        style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    <path
+       id="path3147"
+       d="m 532.41035,854.59391 199.61602,0"
+       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       inkscape:connector-curvature="0" />
+    <text
+       xml:space="preserve"
+       style="font-size:22px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Sans Bold"
+       x="471.73914"
+       y="788.91302"
+       id="text3149"
+       sodipodi:linespacing="100%"
+       transform="translate(0,62.362323)"><tspan
+         sodipodi:role="line"
+         id="tspan3151"
+         x="471.73914"
+         y="788.91302" /></text>
+    <text
+       inkscape:transform-center-y="-185.86957"
+       inkscape:transform-center-x="-6.5217391"
+       xml:space="preserve"
+       style="font-size:40px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       x="431.17374"
+       y="861.94"
+       id="text3165"><tspan
+         sodipodi:role="line"
+         id="tspan3167"
+         x="431.17374"
+         y="861.94"
+         style="font-size:14px;text-align:start;text-anchor:start">At most 2 Gig</tspan></text>
+    <path
+       id="path3169"
+       d="m 333.52168,365.94797 c 197.65671,384.36088 199.47008,386.36279 199.47008,386.36279 l 0,0 -1.81337,0"
+       style="fill:none;stroke:#000000;stroke-width:0.99999994;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:1.99999999, 3.99999998;stroke-dashoffset:0"
+       inkscape:connector-curvature="0" />
+    <path
+       inkscape:connector-curvature="0"
+       style="fill:none;stroke:#000000;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:1.99999999, 3.99999997;stroke-dashoffset:0"
+       d="m 330.26081,264.86101 c 197.65671,412.47532 199.47008,414.62366 199.47008,414.62366 l 0,0 -1.81337,0"
+       id="path3171" />
+    <text
+       id="text3197"
+       y="712.05048"
+       x="572.93701"
+       style="font-size:14px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       xml:space="preserve"
+       inkscape:transform-center-x="-8.6956522"
+       inkscape:transform-center-y="96.73913"><tspan
+         y="712.05048"
+         x="572.93701"
+         id="tspan3199"
+         sodipodi:role="line">Memory-mapped</tspan><tspan
+         y="729.55048"
+         x="572.93701"
+         sodipodi:role="line"
+         id="tspan3201">32-bit I/O devices</tspan></text>
+    <path
+       id="path3203"
+       d="m 116.74029,469.91993 212.59843,0"
+       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       inkscape:connector-curvature="0" />
+    <text
+       id="text3418"
+       y="415.31134"
+       x="141.41525"
+       style="font-size:14px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       xml:space="preserve"><tspan
+         id="tspan3420"
+         y="415.31134"
+         x="141.41525"
+         sodipodi:role="line">Unused if less than 2 Gig</tspan><tspan
+         id="tspan3422"
+         y="432.81134"
+         x="141.41525"
+         sodipodi:role="line"> of physical memory</tspan></text>
   </g>
 </svg>

@@ -304,7 +304,7 @@ must already hold the lock, and control of the lock passes to the
 switched-to code.  This convention is unusual with locks; the typical
 convention is the thread that acquires a lock is also responsible of
 releasing the lock, which makes it easier to reason about correctness.
-For context switching is necessary to break the typical convention because
+For context switching it is necessary to break the typical convention because
 .code-index ptable.lock
 protects invariants on the process's
 .code state
@@ -1471,7 +1471,7 @@ The implementation of
 .code wakeup
 wakes up all processes that are waiting on a particular channel, and it might be
 the case that many processes are waiting for that particular channel.   The
-operating system will schedules all these processes and they will race to check
+operating system will schedule all these processes and they will race to check
 the sleep condition.  Processes that behave in this way are sometimes called a
 .italic-index "thundering herd" ,
 and it is best avoided.

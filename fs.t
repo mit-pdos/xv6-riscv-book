@@ -427,6 +427,16 @@ complete system calls.
 To avoid splitting a system call across transactions, the logging system
 only commits when no file system system calls are underway.
 .PP
+The idea of committing several transaction together is known as 
+.italic-index "group commit" .
+Group commit allows several transactions to run concurrently and allows
+the file system to
+.italic-index batch 
+several disk operations and issue a single disk operation to the disk driver.  This allows
+the disk to schedule the writing of the blocks cleverly and write at the
+rate of the disk's bandwidth.   Xv6's IDE driver doesn't support batching, but 
+xv6's file system design allows for it.
+.PP
 Xv6 dedicates a fixed amount of space on the disk to hold the log.
 The total number of blocks written by the system calls in a
 transaction must fit in that space.
@@ -499,6 +509,13 @@ see the modifications.
 .code log_write
 notices when a block is written multiple times during a single
 transaction, and allocates that block the same slot in the log.
+This optimization is often called
+.italic-index "absorption" .
+It is common that, for example, the disk block containing inodes
+of several files is written several times within a transaction.  By absorbing
+several disk writes into one, the file system can save log space and
+can achieve better performance because only one copy of the disk block must be
+written to disk.
 .PP
 .code-index end_op
 .line log.c:/^end.op/
@@ -1645,16 +1662,14 @@ and wait for the response before returning.
 .\"
 .section "Exercises"
 .PP
-1. why panic in balloc?  Can we recover?
+1. Why panic in balloc?  Can xv6 recover?
 .PP
-2. why panic in ialloc?  Can we recover?
+2. Why panic in ialloc?  Can xv6 recover?
 .PP
-3. inode generation numbers.
-.PP
-4. Why doesn't filealloc panic when it runs out of files?
+3. Why doesn't filealloc panic when it runs out of files?
 Why is this more common and therefore worth handling?
 .PP
-5. Suppose the file corresponding to 
+4. Suppose the file corresponding to 
 .code ip
 gets unlinked by another process
 between 
