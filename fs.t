@@ -424,7 +424,7 @@ file system code, the logging system can accumulate the writes
 of multiple system calls into each transaction.
 Thus a single commit may involve the writes of multiple
 complete system calls.
-In order to preserve atomicity, the logging system
+To avoid splitting a system call across transactions, the logging system
 only commits when no file system system calls are underway.
 .PP
 Xv6 dedicates a fixed amount of space on the disk to hold the log.
