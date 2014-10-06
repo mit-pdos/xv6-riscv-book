@@ -238,8 +238,7 @@ Once the lock is acquired,
 .code acquire
 records, for debugging, the CPU and stack trace
 that acquired the lock.
-When a process acquires a lock
-and forget to release it, this information
+If a process forgets to release a lock, this information
 can help to identify the culprit.
 These debugging fields are protected by the lock
 and must only be edited while holding the lock.
@@ -386,11 +385,11 @@ help convey how to use locks.
 .\"
 .section "Lock ordering"
 .\"
-If a code path through the kernel must take out several locks, it is
+If a code path through the kernel must hold several locks at the same time, it is
 important that all code paths acquire the locks in the same order.  If
 they don't, there is a risk of deadlock.  Let's say two code paths in
 xv6 needs locks A and B, but code path 1 acquires locks in the order A
-and B, and the other code acquires them in the order B and A. This
+then B, and the other code acquires them in the order B then A. This
 situation can result in a deadlock, because code path 1 might acquire
 lock A and before it acquires lock B, code path 2 might acquire lock
 B. Now neither code path can proceed, because code path 1 needs lock
@@ -398,8 +397,8 @@ B, which code path 2 holds, and code path 2 needs lock A, which code
 path 1 holds.  To avoid such deadlocks, all code paths must acquire
 locks in the same order. Deadlock avoidance is another example
 illustrating why locks must be part of a function's specification: the
-caller must invoke functions in a consistent order so that the
-functions acquire locks in the same order.
+caller must invoke functions in a way that causes locks to be acquired
+in the agreed-on order.
 .PP
 Because xv6 uses coarse-grained locks and xv6 is simple, xv6 has
 few lock-order chains.  The longest chain is only two deep. For
@@ -556,10 +555,10 @@ higher performance.  If an instruction takes many cycles to complete,
 a processor may want to issue the instruction early so that it can
 overlap with other instructions and avoid processor stalls. For
 example, a processor may notice that in a serial sequence of
-instruction A and B are not dependent on each other and start
+instructions A and B are not dependent on each other and start
 instruction B before A so that it will be completed when the processor
 completes A.  Concurrency, however, may expose this reordering to
-software, which lead to incorrect behavior.
+software, which can lead to incorrect behavior.
 .PP
 For example, one might wonder what happens if
 .code-index release
@@ -569,8 +568,8 @@ instead of using
 .code xchg .
 The answer to this question is unclear, because different generations
 of x86 processors make different guarantees about memory ordering.  If
-.code lk->locked=0 ,
-were allowed to be re-ordered say after
+.code lk->locked=0 
+were allowed to be re-ordered after
 .code popcli ,
 then 
 .code acquire 
@@ -596,7 +595,7 @@ xv6 applications.
 It is possible to implement locks without atomic instructions, but it is
 expensive, and most operating systems use atomic instructions.
 .PP
-Atomic instructions are not free either when a lock is contented.  If one
+Atomic instructions can take a long time when a lock is contended.  If one
 processor has a lock cached in its local cache, and another processor must
 acquire the lock, then the atomic instruction to update the line that holds the
 lock must move the line from the one processor's cache to the other processor's
@@ -606,7 +605,7 @@ expensive than fetching a line from a local cache.
 .PP
 To avoid the expenses associated with locks, many operating systems use
 lock-free data structures and algorithms, and try to avoid atomic operations in
-those algorithms.  For example, it is possible to implemented a link list like
+those algorithms.  For example, it is possible to implement a linked list like
 the one in the beginning of the chapter that requires no locks during list
 searches, and one atomic instruction to insert an item in a list.
 .\"
