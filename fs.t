@@ -365,9 +365,14 @@ involve multiple writes to the disk, and a crash after a subset of the
 writes may leave the on-disk file system in an inconsistent state. For
 example, depending on the order of the disk writes, a crash during
 file deletion may either leave a directory entry pointing to a free
-inode, or it may leave an allocated but unreferenced inode. The latter is relatively
+inode, or it may leave an allocated but unreferenced inode.
+.PP
+The latter is relatively
 benign, but a directory entry that refers to a freed inode is
-likely to cause serious problems after a reboot.
+likely to cause serious problems after a reboot.  After reboot,
+the kernel might allocate that inode to another file, and now
+we have two different file names pointing unintentionally to the same inode.
+Now a user can read and write the file using the first name.
 .PP
 Xv6 solves the problem of crashes during file system operations with a
 simple version of logging. An xv6 system call does not directly write
