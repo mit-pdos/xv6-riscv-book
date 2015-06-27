@@ -92,11 +92,13 @@ block 0 (it holds the boot sector).  Block 1 is called the
 .italic-index "superblock" ; 
 it contains metadata about the file system (the file system size in blocks, the
 number of data blocks, the number of inodes, and the number of blocks in the
-log).  Blocks starting at 2 hold inodes, with multiple inodes per block.  After
+log).  Blocks starting at 2 hold the log.  After the log are the inodes, with multiple inodes per block.  After
 those come bitmap blocks tracking which data blocks are in use.
-Most of the remaining blocks are data blocks; each is either marked
+The remaining blocks are data blocks; each is either marked
 free in the bitmap block, or holds content for a file or directory.
-The blocks at the end of the disk hold the logging layer's log.
+The superblock is filled in by a separate program, called
+.code-index mfks ,
+which builds an initial file system.
 .PP
 The rest of this chapter discusses each layer, starting with the
 buffer cache.
@@ -410,7 +412,7 @@ operation's writes appear on the disk, or none of them appear.
 .\"
 .section "Log design"
 .PP
-The log resides at a known fixed location at the end of the disk.
+The log resides at a known fixed location, specified in the superblock.
 It consists of a header block followed by a sequence
 of updated block copies (``logged blocks'').
 The header block contains an array of sector
@@ -591,8 +593,10 @@ xv6's block allocator
 maintains a free bitmap on disk, with one bit per block. 
 A zero bit indicates that the corresponding block is free;
 a one bit indicates that it is in use.
-The bits corresponding to the boot sector, superblock, inode
-blocks, and bitmap blocks are always set.
+The program
+.code mkfs
+sets the bits corresponding to the boot sector, superblock, log blocks, inode
+blocks, and bitmap blocks.
 .PP
 The block allocator provides two functions:
 .code-index balloc
@@ -600,17 +604,9 @@ allocates a new disk block, and
 .code-index bfree
 frees a block.
 .code Balloc
-.line fs.c:/^balloc/
-starts by calling
-.code-index readsb
-to read the superblock from the disk (or buffer cache) into
-.code sb .
+The loop in
 .code balloc
-decides which blocks hold the data block free bitmap
-by calculating how many blocks are consumed by the
-boot sector, the superblock, and the inodes (using 
-.code BBLOCK ).
-The loop
+at
 .line fs.c:/^..for.b.=.0/
 considers every block, starting at block 0 up to 
 .code sb.size ,
