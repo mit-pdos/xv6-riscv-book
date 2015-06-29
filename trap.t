@@ -7,7 +7,7 @@
 .PP
 When running a process, a CPU executes the normal processor loop: read an
 instruction, advance the program counter, execute the instruction, repeat.  But
-there are events on which control from a user program must transferred back to
+there are events on which control from a user program must transfer back to
 the kernel instead of executing the next instruction.  These events include a
 device signaling that it wants attention, a user program doing something illegal
 (e.g., references a virtual address for which there is no PTE), or a user
