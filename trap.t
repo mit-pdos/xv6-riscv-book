@@ -1136,6 +1136,16 @@ point?  Explain the output of x/37x $esp at that breakpoint with each value
 labeled as to what it is (e.g., saved %ebp for trap, trapframe.eip, scratch
 space, etc.).
 
-2. Add a new system call
+2. Add a new system call that returns the uptime (i.e., return the number
+of ticks since xv6 booted).
 
-3. Add a network driver
+3. The disk driver writes one sector (512 bytes) at the time and as a result the
+disk can do, for example, no scheduling to achieve better performance.  Set
+.code BSIZE
+to a multiple of the sector size (e.g., 4,096 bytes) and modify the driver to
+issue a single IDE command for all sectors of a block and wakeup the issuing
+process when the complete IDE command has finished.  You will have to study
+the IDE specification to figure how to program multi-sector
+IDE commands.
+
+4. Add simple driver for an Ethernet card.
