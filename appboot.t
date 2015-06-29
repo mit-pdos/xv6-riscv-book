@@ -7,7 +7,7 @@
 ..
 .PP
 .index "boot loader
-When an x86 PC boots, it starts executing a program called the BIOS,
+When an x86 PC boots, it starts executing a program called the BIOS (Basic Input/Output System),
 which is stored in non-volatile memory on the motherboard.
 The BIOS's job is to prepare the hardware and
 .index "boot loader
@@ -641,7 +641,9 @@ less space-constrained BIOS for disk access rather than
 trying to drive the disk itself.  Then the full loader,
 relieved of the 512-byte limit, can implement the complexity
 needed to locate, load, and execute the desired kernel.
-Perhaps a more modern design would have the BIOS directly read
+Modern PCs avoid many of the above complexities, because
+they support the Unified Extensible Firmware Interface (UEFI),
+which allows the PC to read
 a larger boot loader from the disk (and start it in
 protected and 32-bit mode).
 .PP
