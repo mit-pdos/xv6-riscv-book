@@ -1142,9 +1142,9 @@ of ticks since xv6 booted).
 3. The disk driver writes one sector (512 bytes) at the time and as a result the
 disk can do, for example, no scheduling to achieve better performance.  Set
 .code BSIZE
-to a multiple of the sector size (e.g., 4,096 bytes) and modify the driver to
+to a multiple of the sector size (e.g., 2,048 bytes) and modify the driver to
 issue a single IDE command for all sectors of a block and wakeup the issuing
-process when the complete IDE command has finished.  You will have to study
+process when the complete IDE command has finished.   You will have to study
 the IDE specification to figure how to program multi-sector
 IDE commands.
 
