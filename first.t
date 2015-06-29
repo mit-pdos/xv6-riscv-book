@@ -434,10 +434,17 @@ it loads the physical address of
 .code-index entrypgdir
 into control register
 .register cr3.
-The paging hardware must know the physical address of
-.code entrypgdir, 
-because it doesn't know how to translate virtual addresses yet; it doesn't have
-a page table yet.
+The value in
+.register cr3
+must a physical address
+to boot strap the paging hardware.
+It wouldn't make sense for
+.register cr3
+to hold the virtual address of
+.code entrypgdir ,
+because the paging hardware 
+doesn't know how to translate virtual addresses yet; it
+doesn't have a page table yet.
 The symbol
 .code entrypgdir
 refers to an address in high memory,
@@ -957,7 +964,9 @@ system call are
 .code $init
 and
 .code $argv .
-The final zero makes this hand-written system call look like the
+The final zero indicates the end of
+.code argv .
+This code manually crafts the first system call to like like
 ordinary system calls, as we will see in Chapter \*[CH:TRAP].  As
 before, this setup avoids special-casing the first process (in this
 case, its first system call), and instead reuses code that xv6 must
