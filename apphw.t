@@ -162,46 +162,23 @@ The control registers and segment registers are important to any operating syste
 The floating-point and debug registers are less interesting
 and not used by xv6.
 .PP
-Registers are fast but expensive.
-Most processors provide at most a few tens of general-purpose
-registers. 
-The next conceptual level of storage is the main
-random-access memory (RAM).  Main memory is 10-100x slower
-than a register, but it is much cheaper, so there can be more
-of it.
-One reason main memory is relatively slow is that it is
-physically separate from the processor chip.
-An x86 processor has a few dozen registers,
-but a typical PC today has gigabytes of main memory. 
-Because of the enormous differences in both access
-speed and size between registers and main memory, most
-processors, including the x86, store copies of
-recently-accessed sections of main memory in on-chip
-cache memory.
-The cache memory serves as a middle ground
-between registers and memory both in access time and in size.
-Today's x86 processors typically have two levels of
-cache, a small first-level cache with access times relatively
-close to the processor's clock rate and a larger
-second-level cache with access times in between the
-first-level cache and main memory.
-This table shows actual numbers for an Intel Core 2 Duo system:
-.sp
-.TS
-center ;
-cB s s 
-cBI s s
-cB cB cB
-c n n .
-Intel Core 2 Duo E7200 at 2.53 GHz
-TODO: Plug in non-made-up numbers!
-storage	access time	size
-register	0.6 ns	64 bytes
-L1 cache	0.5 ns	64 kilobytes
-L2 cache	10 ns	4 megabytes
-main memory	100 ns	4 gigabytes
-.TE
-.sp
+Registers are fast but expensive.  Most processors provide at most a few tens of
+general-purpose registers.  The next conceptual level of storage is the main
+random-access memory (RAM).  Main memory is 10-100x slower than a register, but
+it is much cheaper, so there can be more of it.  One reason main memory is
+relatively slow is that it is physically separate from the processor chip.  An
+x86 processor has a few dozen registers, but a typical PC today has gigabytes of
+main memory.  Because of the enormous differences in both access speed and size
+between registers and main memory, most processors, including the x86, store
+copies of recently-accessed sections of main memory in on-chip cache memory.
+The cache memory serves as a middle ground between registers and memory both in
+access time and in size.  Today's x86 processors typically have three levels of
+cache. Each core has a small first-level cache with access times relatively close to the
+processor's clock rate and a larger second-level cache.  Several
+cores share an L3 cache.
+.figref xeon
+shows the levels in the memory hierarchy and their access times for an Intel i7 Xeon processor.
+.figure xeon
 .PP
 For the most part, x86 processors hide the cache from the
 operating system, so we can think of the processor as having
