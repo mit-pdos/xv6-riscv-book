@@ -1710,4 +1710,17 @@ until after the
 .code iput
 would not cause deadlocks.
 Why not?
+.PP
+8. Implement the
+.code lseek
+system call.  Supporting
+.code lseek
+will also require that you modify
+.code filewrite
+to fill holes in the file with zero if
+.code lseek
+sets
+.code off
+beyond
+.code f->ip->size.
 
