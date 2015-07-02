@@ -301,7 +301,7 @@ specially: it specifies that the gate is of type ``trap'' by passing a value of
 .code 1
 as second argument.
 Trap gates don't clear the 
-.code-index FL
+.code-index IF
 flag, allowing other interrupts during the system call handler.
 .PP
 The kernel also sets the system call gate privilege to
