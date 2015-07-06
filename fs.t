@@ -191,7 +191,7 @@ to do that before returning the buffer.
 .code Bget
 .line bio.c:/^bget/
 scans the buffer list for a buffer with the given device and sector numbers
-.lines bio.c:/Is.the.sector.already/,/^..}/ .
+.lines bio.c:/Is.the.block.already/,/^..}/ .
 If there is such a buffer,
 and the buffer is not busy,
 .code-index bget

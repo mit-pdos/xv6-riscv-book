@@ -169,7 +169,7 @@ the convention on the x86 is that these are
 .register ebp,
 .register ebx,
 .register esi,
-.register ebp,
+.register edi,
 and
 .register esp.
 .code Swtch
@@ -905,7 +905,7 @@ and calling
 At some point later, a process will call
 .code wakeup(chan) .
 .code Wakeup
-.line proc.c:/^wakeup/
+.line 'proc.c:/^wakeup!(/'
 acquires
 .code-index ptable.lock
 and calls
@@ -1005,7 +1005,7 @@ The interrupt handler uses
 .code wakeup
 to alert the process that its request has completed.
 .PP
-An more complex example is the implementation of pipes.
+A more complex example is the implementation of pipes.
 We saw the interface for pipes in Chapter \*[CH:UNIX]:
 bytes written to one end of a pipe are copied
 in an in-kernel buffer and then can be read out

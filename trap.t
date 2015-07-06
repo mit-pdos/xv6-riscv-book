@@ -525,7 +525,7 @@ divide by zero) as part of the code that was executing before the
 trap.  
 If the code that caused the trap was a user program, xv6 prints
 details and then sets
-.code cp->killed
+.code proc->killed
 to remember to clean up the user process.
 We will look at how xv6 does this cleanup in Chapter \*[CH:SCHED].
 .PP
