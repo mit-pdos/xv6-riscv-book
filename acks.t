@@ -12,9 +12,9 @@ Communications; ISBN: 1-57398-013-7; 1st edition (June 14, 2000)). See
 http://pdos.csail.mit.edu/6.828 for pointers to on-line
 resources for v6 and xv6.
 
-We have used this text in 6.828, the operating system class at MIT.  We thank the
-faculty, TAs, and students of 6.828 who all directly or indirectly contributed
+We have used this text in 6.828, the operating systems class at MIT.  We thank the
+faculty, TAs, and students of 6.828 who have all directly or indirectly contributed
 to xv6.  In particular, we would like to thank Austin Clements and Nickolai
 Zeldovich.
 
-If you have comments, please send email to 6.828-staff@pdos.csail.mit.edu.
+If you have comments, please send them to 6.828-staff@pdos.csail.mit.edu.

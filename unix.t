@@ -75,7 +75,7 @@ is the interface that user programs see.
 The xv6 kernel provides a subset of the services and system calls
 that Unix kernels traditionally offer.  
 .figref api 
-lists all xv6's system calls.
+lists all of xv6's system calls.
 .PP
 The rest of this chapter outlines xv6's services—\c
 processes, memory, file descriptors, pipes, and file system—\c
@@ -215,17 +215,17 @@ The xv6 shell uses the above calls to run programs on behalf of
 users. The main structure of the shell is simple; see
 .code main 
 .line sh.c:/main/ .
-The main loop reads the input on the command line using
+The main loop reads a line of input from the user with
 .code-index getcmd .
 Then it calls 
 .code fork , 
 which creates a copy of the shell process. The
-parent shell calls
+parent calls
 .code wait ,
-while the child process runs the command.  For example, if the user
+while the child runs the command.  For example, if the user
 had typed
 .code "echo hello" '' ``
-at the prompt, 
+to the shell,
 .code runcmd
 would have been called with
 .code "echo hello" '' ``

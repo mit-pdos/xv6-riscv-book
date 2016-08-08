@@ -4,15 +4,15 @@ center ;
 lB lB
 l l .
 System call	Description
-fork()	Create process
-exit()	Terminate current process
+fork()	Create a process
+exit()	Terminate the current process
 wait()	Wait for a child process to exit
 kill(pid)	Terminate process pid
-getpid()	Return current process's id
+getpid()	Return the current process's pid
 sleep(n)	Sleep for n seconds
 exec(filename, *argv)	Load a file and execute it
 sbrk(n)	Grow process's memory by n bytes
-open(filename, flags)	Open a file; flags indicate read/write
+open(filename, flags)	Open a file; the flags indicate read/write
 read(fd, buf, n)	Read n byes from an open file into buf
 write(fd, buf, n)	Write n bytes to an open file
 close(fd)	Release open file fd

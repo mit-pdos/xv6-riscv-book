@@ -254,8 +254,8 @@ from wrecking the kernel itself (i.e., from preventing the kernel to enforce
 isolation).  The kernel must implement the process abstraction with care because
 a buggy or malicious application may trick the kernel or hardware in doing
 something bad (e.g., circumventing enforced isolation).  The mechanisms used by
-the kernel to implement processes include user/kernel mode flag, address spaces,
-and time slicing of threads, which this subsection provides an overview of.
+the kernel to implement processes include the user/kernel mode flag, address spaces,
+and time slicing of threads, of which this subsection provides an overview.
 .PP
 To be able to enforce isolation, a process is an abstraction that provides the
 illusion to a program that it has its own abstract machine.  A process provides
