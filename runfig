@@ -1,11 +1,13 @@
 #!/bin/sh
 
+. paths.sh
+
 export GS_FONTPATH=font
 export TROFFONTS=font
 
 chap=$1
 name=$2
 file=$3
-(echo '.ds the-figure "'$name; /usr/ucb/tbl $file) | /usr/ucb/troff -mpictures -rp1 book.mac z.fignums z.figs - | ./ditspaces >z.$chap.$name.fig
+(echo '.ds the-figure "'$name; $TBL $file) | $TROFF -mpictures -rp1 book.mac z.fignums z.figs - | ./ditspaces >z.$chap.$name.fig
 echo .nr fig-$name-height $(grep 'x X end' z.$chap.$name.fig | awk '{print $NF}') >>z.figs
 echo .ds fig-$name-file z.$chap.$name.fig >>z.figs

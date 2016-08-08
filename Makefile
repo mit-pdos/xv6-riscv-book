@@ -46,7 +46,7 @@ dit: $(DIT)
 .PHONY: all pdf ps dit
 
 book.ps: $(DIT)
-	/usr/ucb/dpost $(DIT) >book.ps || rm -f book.ps
+	/usr/local/ucb/dpost $(DIT) >book.ps || rm -f book.ps
 
 %.dit: book.mac %.t z.%.first $(SCRIPTS) z.fignums
 	./run1 $*
