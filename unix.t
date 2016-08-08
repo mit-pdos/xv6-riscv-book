@@ -427,7 +427,8 @@ and then execing the new program.
 Here is a simplified version of the code a shell runs for the
 command
 .code cat
-.code <input.txt :
+.code <
+.code input.txt :
 .P1
 char *argv[2];
 
@@ -461,8 +462,8 @@ Now it should be clear why it is a good idea that
 .code fork
 and 
 .code exec 
-are separate calls.  This separation allows the shell to fix up the
-child process before the child runs the intended program.
+are separate calls.  This separation allows the child shell to
+redirect I/O before it runs the program.
 .PP
 Although
 .code fork
@@ -581,8 +582,8 @@ if(fork() == 0) {
   close(p[1]);
   exec("/bin/wc", argv);
 } else {
-  write(p[1], "hello world\en", 12);
   close(p[0]);
+  write(p[1], "hello world\en", 12);
   close(p[1]);
 }
 .P2
@@ -602,8 +603,9 @@ and execs
 When 
 .code wc
 reads from its standard input, it reads from the pipe.
-The parent writes to the write end of the pipe
-and then closes both of its file descriptors.
+The parent closes the read side of the pipe,
+writes to the pipe,
+and then closes the write side.
 .PP
 If no data is available, a
 .code read
@@ -631,14 +633,16 @@ in a manner similar to the above code
 .line sh.c:/case.PIPE/ .
 The child process creates a pipe to connect the left end of the pipeline
 with the right end. Then it calls
+.code fork
+and
 .code runcmd
 for the left end of the pipeline
 and 
+.code fork
+and
 .code runcmd
-for the right end, and waits for the left and the right
-ends to finish, by calling
-.code wait
-twice.  The right end of the pipeline may be a command that itself includes a
+for the right end, and waits for both to finish.
+The right end of the pipeline may be a command that itself includes a
 pipe (e.g.,
 .code a
 .code |
@@ -665,8 +669,8 @@ could be implemented without pipes as
 .P1
 echo hello world >/tmp/xyz; wc </tmp/xyz
 .P2
-There are at least three key differences between
-pipes and temporary files.
+Pipes have at least four advantages over temporary files
+in this situation.
 First, pipes automatically clean themselves up;
 with the file redirection, a shell would have to
 be careful to remove
@@ -675,14 +679,12 @@ when done.
 Second, pipes can pass arbitrarily long streams of
 data, while file redirection requires enough free space
 on disk to store all the data.
-Third, pipes allow for synchronization:
-two processes can use a pair of pipes to
-send messages back and forth to each other,
-with each
-.code read
-blocking its calling process until the other process has
-sent data with
-.code write .
+Third, pipes allow for parallel execution of pipeline stages,
+while the file approach requires the first program to finish
+before the second starts.
+Fourth, if you are implementing inter-process communication,
+pipes' blocking reads and writes are more efficient
+than the non-blocking semantics of files.
 .\"
 .\"	File system
 .\"
@@ -692,7 +694,6 @@ The xv6 file system provides data files,
 which are uninterpreted byte arrays,
 and directories, which
 contain named references to data files and other directories.
-Xv6 implements directories as a special kind of file.
 The directories form a tree, starting
 at a special directory called the 
 .italic-index root .
@@ -726,7 +727,7 @@ open("/a/b/c", O_RDONLY);
 .P2
 The first fragment changes the process's current directory to
 .code /a/b ;
-the second neither refers to nor modifies the process's current directory.
+the second neither refers to nor changes the process's current directory.
 .PP
 .PP
 There are multiple system calls to create a new file or directory:
