@@ -16,33 +16,35 @@ talk a little about initial page table conditions:
 
 .chapter CH:FIRST "Operating system organization"
 .PP
-A key requirement for an operating system is to support several activities.  For
+A key requirement for an operating system is to support several activities at once.  For
 example, using the system call interface described in
 chapter \*[CH:UNIX]
-a process can start new processes using 
+a process can start new processes with 
 .code fork .
-The operating system must arrange that these processes can
+The operating system must 
 .italic-index time-share 
-the resources of the computer.  For example, a process may start more new
-processes than there are processors in the computer, yet all processes must be
-able to make some progress.  In addition, the operating system must arrange for
+the resources of the computer among these processes.
+For example, even if there are more processes
+than there are hardware processors, the operating
+system must ensure that all of the processes
+make progress.  The operating system must also arrange for
 .italic-index isolation 
 between the processes.
-That is, if one process has a bug and fails, it shouldn't impact processes that
-don't have a dependency on the failed process.
+That is, if one process has a bug and fails, it shouldn't affect processes that
+don't depend on the failed process.
 Complete isolation, however, is too strong, since it should be possible for
-processes to interact; for example, it is convenient for users to combine
-processes to perform complex tasks (e.g., by using pipes).  
-Thus, the implementation of
-an operating system must achieve three requirements: multiplexing, isolation,
+processes to interact; pipelines are an example.
+Thus
+an operating system must fulfil three requirements: multiplexing, isolation,
 and interaction.
 .PP
 This chapter provides an overview of how operating systems are organized to achieve
 these 3 requirements.  It turns out there are many ways to do so, but this text
 focuses on mainstream designs centered around a 
 .italic-index "monolithic kernel" , 
-which is used by many Unix operating systems.  This chapter illustrates this
-organization by tracing the first process that is created when xv6 starts
+which is used by many Unix operating systems.  This chapter 
+introduces xv6's design by
+tracing the creation of the first process when xv6 starts
 running.  In doing so, the text provides a glimpse of the implementation of all
 major abstractions that xv6 provides, how they interact, and how the three
 requirements of multiplexing, isolation, and interaction are met.  Most of xv6
@@ -64,26 +66,25 @@ The first question one might ask when encountering an operating system is why
 have it at all?  That is, one could implement the system calls in
 .figref unix:api
 as a library, with which applications link.  In this plan,
-each application could even have its own library, perhaps tailored to its needs.
-In this plan, the application can directly interact with the hardware resources
+each application could even have its own library tailored to its needs.
+Applications could directly interact with hardware resources
 and use those resources in the best way for the application (e.g., to achieve
-high performance or predictable performance).  Some tiny operating systems for
+high or predictable performance).  Some operating systems for
 embedded devices or real-time systems are organized in this way.
 .PP
-The downside of this approach is that applications are free to use the library,
-which means they can also 
-.italic not 
-use it.  If they don't use the operating system library, then the operating
-system cannot enforce time sharing.  It must rely on the application to behave
-properly and, for example, periodically give up a processor so that another
-application can run.  Such a 
+The downside of this library approach is that, if there is more than one
+application running, the applications must be well-behaved.
+For example, each application must periodically give up the
+processor so that other applications can run.
+Such a 
 .italic cooperative 
-time-sharing scheme is maybe OK for a system where all applications trust each
-other, but doesn't provide strong isolation if applications are mutually
-distrustful.
+time-sharing scheme may be OK if all applications trust each
+other and have no bugs. It's more typical for applications
+to not trust each other, and to have bugs, so one often wants
+stronger isolation than a cooperative scheme provides.
 .PP
-To achieve strong isolation a helpful approach is to disallow applications to
-have direct access to the hardware resources, but instead to abstract the
+To achieve strong isolation it's helpful to forbid applications from
+directly accessing sensitive hardware resources, and instead to abstract the
 resources into services.  For example, applications interact with a file system
 only through
 .code open ,
@@ -96,33 +97,33 @@ instead of read and writing raw disk sectors.
 This provides the application with the convenience of pathnames, and it allows
 the operating system (as the implementor of the interface) to manage the disk. 
 .PP
-Similarly, in Unix applications run as processes using 
-.code fork ,
-allowing the operating system to save and restore registers on behalf of the application
-when switching between different processes, so that application don't have to be
-aware of process switching.  Furthermore, it allows the operating system to forcefully
-switch an application out of a processor, if the application, for example, is an end-less loop.
+Similarly, Unix transparently switches hardware processors among processes,
+saving and restoring register state as necessary,
+so that applications don't have to be
+aware of time sharing.  This transparency allows the operating system to share
+processors even if some applications are in infinite loops.
 .PP
 As another example, Unix processes use 
 .code exec
 to build up their memory image, instead of directly interacting with physical
 memory.  This allows the operating system to decide where to place a process in
-memory and move things around if there is a shortage of memory, and provides
-applications with the convenience of a file system to store their images.  
+memory; if memory is tight, the operating system might even store some of
+a process's data on disk.
+.code Exec
+also provides
+users with the convenience of a file system to store executable program images.  
 .PP 
-To support controled interaction between applications, Unix applications can use
-only file
-descriptors, instead of to make up some sharing convention of their own (e.g.,
-reserving a piece of physical memory).  Unix file descriptors abstract all the
-sharing details away, hiding from the application if the interaction is
-happening with the terminal, file system, or pipes, yet allows the operating
-system to control the interaction.  For example, if one application fails, it
-can shut down the communication channel.  
+Many forms of interaction among Unix processes occur via file descriptors.
+Not only do file descriptors abstract away many details (e.g. 
+where data in a pipe or file is stored), they also are defined in a
+way that simplifies interaction.
+For example, if one application in a pipeline fails, the kernel
+generates end-of-file for the next process in the pipeline.
 .PP
 As you can see, the system call interface in
 .figref unix:api
-is carefully designed to provide programmer convenience but also for the
-implementation of the interface to enforce strong isolation.  The Unix interface
+is carefully designed to provide both programmer convenience and
+the possibility of strong isolation.  The Unix interface
 is not the only way to abstract resources, but it has proven to be a very good
 one.
 
