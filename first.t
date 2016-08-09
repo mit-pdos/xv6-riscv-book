@@ -131,41 +131,40 @@ one.
 .section "User mode, kernel mode, and system calls"
 .\"
 .PP
-To provide strong isolation between the software that uses system calls and the
-software that implements the system calls, we need a hard boundary between
+Strong isolation requires a hard boundary between
 applications and the operating system.  If the application makes a mistake, we
 don't want the operating system to fail.  Instead, the operating system should
-be able to clean up the application and continue running other applications.
-This strong isolation means that application shouldn't be able to write over
-data structures maintained by the operating system, shouldn't be able to
-overwrite instructions of the operating system, etc.
+be able to clean up the failed application and continue running other applications.
+Applications shouldn't be able to modify (or even read)
+the operating system's data structures or instructions,
+should be able to access other process's memory, etc.
 .PP
-To provide for such strong isolation processors provide hardware support.   For
+Processors provide hardware support for strong isolation.   For
 example, the x86 processor, like many other processors, has two modes in which
-the processor executes instructions: 
+the processor can execute instructions: 
 .italic-index "kernel mode"
 and
 .italic-index "user mode" .
 In kernel mode the processor is allowed to execute 
 .italic-index "privileged instructions" .
-For example, read and writing to the disk (or any other I/O device) is a
-privileged instruction.  If an application in user mode attempts to execute
+For example, reading and writing the disk (or any other I/O device) involves
+privileged instructions.  If an application in user mode attempts to execute
 a privileged instruction, then the processor doesn't execute the instruction, but switches
 to kernel mode so that the software in kernel mode can clean up the application,
 because it did something it shouldn't be doing. 
 .figref unix:os
-in Chapter  \*[CH:UNIX] illustrates this organization.  Applications can
+in Chapter  \*[CH:UNIX] illustrates this organization.  An application can
 execute only user-mode instructions (e.g., adding numbers, etc.) and is said to
 be running in 
 .italic-index "user space"  ,
-while the software in kernel mode can execute also privileged instructions and
+while the software in kernel mode can also execute privileged instructions and
 is said to be running in
 .italic-index "kernel space"  .
 The software running in kernel space (or in kernel mode) is called
 the
 . italic-index "kernel"  .
 .PP
-If a user-mode application must read or write to disk, it must transition to the
+An application that wants to read or write a file on disk must transition to the
 kernel to do so, because the application itself can not execute I/O
 instructions.  Processors provide a special instruction that switches the
 processor from user mode to kernel mode and enters the kernel at an entry point
@@ -175,29 +174,23 @@ processor provides the
 instruction for this purpose.)  Once the processor has switched to kernel mode,
 the kernel can then validate the arguments of the system call, decide whether
 the application is allowed to perform the requested operation, and then deny it
-or execute it.  It is important that the kernel sets the entry point when
-transition to kernel mode; if the application could decide the kernel entry
+or execute it.  It is important that the kernel sets the entry point for
+transitions to kernel mode; if the application could decide the kernel entry
 point, a malicious application could enter the kernel at a point where the
 validation of arguments etc. is skipped.
 .\"
 .section "Kernel organization"
 .\"
 .PP
-A key design question for an operating system is what part of the operating
+A key design question is what part of the operating
 system should run in kernel mode. 
-A simple answer is that the kernel interface is the system call
-interface.  That is, 
-.code fork ,
-.code exec ,
-.code open ,
-.code close ,
-.code read ,
-.code write ,
-etc.  are all kernel calls.  This choice means that the complete implementation of the
-operating system runs in kernel mode.  This kernel organization is called a
+One possibility is that the entire operating system resides
+in the kernel, so that the implementations of all system calls
+run in kernel mode.
+This organization is called a
 . italic-index "monolithic kernel"  .
 .PP
-In this organization the complete operating system runs with full hardware
+In this organization the entire operating system runs with full hardware
 privilege. This organization is convenient because the OS designer doesn't have
 to decide which part of the operating system doesn't need full hardware
 privilege.  Furthermore, it easy for different parts of the operating system to
@@ -212,36 +205,36 @@ in kernel mode will often result in the kernel to fail.  If the kernel fails,
 the computer stops working, and thus all applications fail too.  The computer
 must reboot to start again.
 .PP
-To reduce the risk of mistakes in the kernel, OS designers can make the lines of
-code that run in kernel mode small.  Most of the operating system doesn't need
-access to privileged instructions, and can thus run as ordinary user-level
-applications, with which applications interact with through messages.  
+To reduce the risk of mistakes in the kernel, OS designers can minimize the
+amount of operating system code that runs in kernel mode, and execute the
+bulk of the operating system in user mode.
 This kernel organization is called a
 . italic-index "microkernel"  .
 .figure mkernel
 .PP
 .figref mkernel
 illustrates this microkernel design.  In the figure, the file system runs as a
-user-level application.  Operating systems that services that run as ordinary
-user programs are called servers.  To allow application to interact with the
-file server, the kernel provides a minimal mechanism to send messages from one
-user-mode application to another.  For example, if an application like the shell
+user-level process.  OS services running as processes are called servers.
+To allow applications to interact with the
+file server, the kernel provides an inter-process communication
+mechanism to send messages from one
+user-mode process to another.  For example, if an application like the shell
 wants to read or write a file, it sends a message to the file server and waits
 for a response. 
 .PP
 In a microkernel, the kernel interface consists of a few low-level
-functions for starting applications, performing I/O, sending messages to
-applications, etc.  This organization allows the kernel to be implemented with a
-few lines of code, since it doesn't do much, as most functionality of the
-operating system is implemented by user-level servers.
+functions for starting applications, sending messages,
+accessing device hardware, etc.  This organization allows the kernel to be 
+relatively simple, as most of the operating system
+resides in user-level servers.
 .PP
-In the real-world, one can find both monolithic kernels and microkernels.  For
-example, Linux is mostly implemented as a monolithic kernel, although some OS
+In the real world, one can find both monolithic kernels and microkernels.  For
+example, Linux has a monolithic kernel, although some OS
 functions run as user-level servers (e.g., the windowing system).  Xv6 is
 implemented as a monolithic kernel, following most Unix operating systems.
 Thus, in xv6, the kernel interface corresponds to the operating system
 interface, and the kernel implements the complete operating system.  Since 
-xv6 doesn't provide many functions, its kernel is smaller than some
+xv6 doesn't provide many services, its kernel is smaller than some
 microkernels.
 .\"
 .section "Process overview"
