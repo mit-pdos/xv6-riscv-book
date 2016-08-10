@@ -1,7 +1,5 @@
 #!/bin/sh
 
-. paths.sh
-
 export GS_FONTPATH=font
 export TROFFONTS=font
 
@@ -11,8 +9,8 @@ p=$(cat z.$chap.first | bc)
 grep '^\.ds fig:'$chap':' z.fignums | sed 's/ds fig:'$chap':/ds fig:/' >z.figs
 grep '^\.figure ' $chap.t | awk '{system("./runfig '$chap' " $2 " fig/" $2 ".t")}'
 
-$TBL $chap.t |
-	$TROFF -mpictures -rp$p book.mac z.fignums z.figs - |
+$UCB/tbl $chap.t |
+	$UCB/troff -mpictures -rp$p book.mac z.fignums z.figs - |
 	./twopage |
 	./savelast $chap |
 	./figures >$chap.dit

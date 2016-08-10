@@ -39,6 +39,8 @@ PS=$(patsubst %,%.ps,$(ORDER))
 PDF=$(patsubst %,%.pdf,$(ORDER))
 DIT=$(patsubst %,%.dit,$(ORDER))
 
+export UCB = /usr/local/ucb
+
 all: book.pdf
 pdf: $(PDF)
 ps: $(PS)
@@ -46,7 +48,7 @@ dit: $(DIT)
 .PHONY: all pdf ps dit
 
 book.ps: $(DIT)
-	/usr/local/ucb/dpost $(DIT) >book.ps || rm -f book.ps
+	$(UCB)/dpost $(DIT) >book.ps || rm -f book.ps
 
 %.dit: book.mac %.t z.%.first $(SCRIPTS) z.fignums
 	./run1 $*

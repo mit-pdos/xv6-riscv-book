@@ -244,14 +244,15 @@ The unit of isolation in xv6 (as in other Unix operating systems) is a
 .italic-index "process" .
 The process abstraction prevents one process from wrecking or spying on
 another process' memory, CPU, file descriptors, etc.  It also prevents a process
-from wrecking the kernel itself (i.e., from preventing the kernel to enforce
-isolation).  The kernel must implement the process abstraction with care because
+from wrecking the kernel itself, so that a process can't subvert the kernel's
+isolation mechanisms.
+The kernel must implement the process abstraction with care because
 a buggy or malicious application may trick the kernel or hardware in doing
 something bad (e.g., circumventing enforced isolation).  The mechanisms used by
 the kernel to implement processes include the user/kernel mode flag, address spaces,
-and time slicing of threads, of which this subsection provides an overview.
+and time-slicing of threads.
 .PP
-To be able to enforce isolation, a process is an abstraction that provides the
+To be able to enforce isolation, the process abstraction provides the
 illusion to a program that it has its own abstract machine.  A process provides
 a program with what appears to be a private memory system, or
 .italic-index "address space" , 
