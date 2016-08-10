@@ -252,8 +252,8 @@ something bad (e.g., circumventing enforced isolation).  The mechanisms used by
 the kernel to implement processes include the user/kernel mode flag, address spaces,
 and time-slicing of threads.
 .PP
-To be able to enforce isolation, the process abstraction provides the
-illusion to a program that it has its own abstract machine.  A process provides
+To help enforce isolation, the process abstraction provides the
+illusion to a program that it has its own private machine.  A process provides
 a program with what appears to be a private memory system, or
 .italic-index "address space" , 
 which other processes cannot read or write.
@@ -285,7 +285,7 @@ When a process invokes a system call, the system call
 executes in the kernel mappings of the process's address space.
 This arrangement exists so that the kernel's system call
 code can directly refer to user memory.
-In order to leave room for user memory to grow,
+In order to leave plenty of room for user memory,
 xv6's address spaces map the kernel at high addresses,
 starting at
 .address 0x80100000 .
@@ -351,7 +351,7 @@ addresses of the physical pages allocated to store the process's memory.
 .\"
 To make the xv6 organization more concrete, we look how the kernel creates the
 first address space (for itself), how the kernel creates and starts the first
-process, and the first system call that that process makes.  By tracing these
+process, and how that process performs the first system call.  By tracing these
 operations we see in detail how xv6 provides strong isolation for processes.
 The first step in providing strong isolation is setting up the kernel to run in
 its own address space.
@@ -431,8 +431,7 @@ into control register
 .register cr3.
 The value in
 .register cr3
-must a physical address
-to boot strap the paging hardware.
+must be a physical address.
 It wouldn't make sense for
 .register cr3
 to hold the virtual address of
@@ -493,9 +492,8 @@ Now the kernel is running in high addresses in the function
 .section "Code: creating the first process"
 .\"
 .PP
-Now the kernel runs within its own address space, we look at how the kernel
-creates user-level processes and ensures strong isolation between the kernel and
-user-level processes, and between processes themselves.
+Now we'll look at how the kernel
+creates user-level processes and ensures that they are strongly isolated.
 .PP
 After
 .code main
