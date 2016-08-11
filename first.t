@@ -349,7 +349,7 @@ addresses of the physical pages allocated to store the process's memory.
 .\"
 .section "Code: the first address space"
 .\"
-To make the xv6 organization more concrete, we look how the kernel creates the
+To make the xv6 organization more concrete, we'll look how the kernel creates the
 first address space (for itself), how the kernel creates and starts the first
 process, and how that process performs the first system call.  By tracing these
 operations we see in detail how xv6 provides strong isolation for processes.
@@ -497,10 +497,11 @@ creates user-level processes and ensures that they are strongly isolated.
 .PP
 After
 .code main
+.line main.c:/^main/  
 initializes several devices and subsystems, 
 it creates the first process by calling 
 .code userinit
-.line main.c:/userinit/  .
+.line proc.c:/^userinit/  .
 .code Userinit 's
 first action is to call
 .code-index allocproc .
@@ -623,7 +624,7 @@ The first process is going to execute a small program
 .line initcode.S:1 ).
 The process needs physical memory in which to store this
 program, the program needs to be copied to that memory,
-and the process needs a page table that refers to
+and the process needs a page table that maps user-space addresses to
 that memory.
 .PP
 .code-index userinit
@@ -641,7 +642,7 @@ create an address space
 as shown 
 .figref as .
 .PP
-The initial contents of the first process's memory are
+The initial contents of the first process's user-space memory are
 the compiled form of
 .code-index initcode.S ;
 as part of the kernel build process, the linker
@@ -671,7 +672,7 @@ register contains a segment selector for the
 .code-index SEG_UCODE
 segment running at privilege level
 .code-index DPL_USER
-(i.e., user mode not kernel mode),
+(i.e., user mode rather than kernel mode),
 and similarly
 .register ds ,
 .register es ,
@@ -742,7 +743,7 @@ to the process it found and calls
 .code-index switchuvm
 to tell the hardware to start using the target
 process's page table
-.line vm.c:/lcr3.*p..pgdir/ .
+.line vm.c:/lcr3.*v2p.p..pgdir/ .
 Changing page tables while executing in the kernel
 works because 
 .code-index setupkvm
@@ -766,11 +767,7 @@ and calls
 .line swtch.S:/^swtch/ 
 to perform a context switch to the target process's kernel thread.
 .code swtch 
-saves the current registers and loads the saved registers
-of the target kernel thread
-.code proc->context ) (
-into the x86 hardware registers,
-including the stack pointer and instruction pointer.
+first saves the current registers.
 The current context is not a process but rather a special
 per-cpu scheduler context, so
 .code scheduler
@@ -779,6 +776,12 @@ tells
 to save the current hardware registers in per-cpu storage
 .code-index cpu->scheduler ) (
 rather than in any process's kernel thread context.
+.code swtch
+then loads the saved registers
+of the target kernel thread
+.code p->context ) (
+into the x86 hardware registers,
+including the stack pointer and instruction pointer.
 We'll examine
 .code-index swtch
 in more detail in Chapter \*[CH:SCHED].
