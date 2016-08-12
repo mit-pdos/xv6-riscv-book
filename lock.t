@@ -185,13 +185,11 @@ Logically, xv6 should acquire a lock by executing code like
    30	}
 .P2
 Unfortunately, this implementation does not
-guarantee mutual exclusion on a modern
-multiprocessor.
-It could happen that two (or more) CPUs simultaneously
+guarantee mutual exclusion on a multiprocessor.
+It could happen that two CPUs simultaneously
 reach line 25, see that 
 .code lk->locked
-is zero, and then both grab the lock by executing lines
-26 and 27.
+is zero, and then both grab the lock by executing line 26.
 At this point, two different CPUs hold the lock,
 which violates the mutual exclusion property.
 Rather than helping us avoid race conditions,
@@ -205,7 +203,7 @@ to be correct, lines 25 and 26 must execute in one
 (i.e., indivisible) step.
 .PP
 To execute those two lines atomically, 
-xv6 relies on a special 386 hardware instruction,
+xv6 relies on a special x86 instruction,
 .code-index xchg
 .line x86.h:/^xchg/ .
 In one atomic operation,
@@ -217,11 +215,11 @@ The function
 repeats this
 .code xchg
 instruction in a loop;
-each iteration reads
+each iteration atomically reads
 .code lk->locked
-and atomically sets it to 1
+and sets it to 1
 .line spinlock.c:/xchg..lk/ .
-If the lock is held,
+If the lock is already held,
 .code lk->locked
 will already be 1, so the
 .code xchg
