@@ -785,7 +785,7 @@ defined in
 .code stat.h
 as:
 .P1
-.so ../xv6-dev/stat.h
+.so ../xv6/stat.h
 .P2
 .PP
 A file's name is distinct from the file itself;
