@@ -80,13 +80,15 @@ lists all of xv6's system calls.
 The rest of this chapter outlines xv6's services—\c
 processes, memory, file descriptors, pipes, and file system—\c
 and illustrates them with code snippets and discussions
-of how the shell uses them.
+of how the 
+.italic-index "shell" , 
+which is the primary user interface to 
+traditional Unix-like systems, uses them.
 The shell's use of system calls illustrates how carefully they
 have been designed.
 .PP
 The shell is an ordinary program that reads commands from the user
-and executes them, and is the primary user interface to
-traditional Unix-like systems.
+and executes them.
 The fact that the shell is a user program, not part of the kernel, 
 illustrates the power of the system call interface: there is nothing
 special about the shell.
@@ -170,9 +172,19 @@ returns, causing the parent to print
 .P1
 parent: child 1234 is done
 .P2
-Note that the parent and child were executing with
-different memory and different registers:
-changing a variable in one does not affect the other.
+Although the child has the same memory contents as the parent initially, the
+parent and child are executing with different memory and different registers:
+changing a variable in one does not affect the other. For example, when the
+return value of
+.code wait
+is stored into
+.code pid 
+in the parent process,
+it doesn't change the variable 
+.code pid
+in the child.  The value of
+.code pid
+in the child will still be zero.
 .PP
 The
 .code-index exec
@@ -773,7 +785,7 @@ defined in
 .code stat.h
 as:
 .P1
-.so ../xv6/stat.h
+.so ../xv6-dev/stat.h
 .P2
 .PP
 A file's name is distinct from the file itself;
@@ -838,15 +850,15 @@ that will be cleaned up when the process closes
 .code fd
 or exits.
 .PP
-Xv6 commands for file system operations are implemented
+Shell commands for file system operations are implemented
 as user-level programs such as
 .code mkdir ,
 .code ln ,
 .code rm ,
-etc. This design allows anyone to extend the shell with new user
-commands.  In hind-sight this plan seems obvious, but
-other systems designed at the time of Unix often built
-such commands into the shell (and built the shell into the kernel).
+etc. This design allows anyone to extend the shell with new user commands by
+just adding a new user-level program.  In hind-sight this plan seems obvious,
+but other systems designed at the time of Unix often built such commands into
+the shell (and built the shell into the kernel).
 .PP
 One exception is
 .code cd ,
