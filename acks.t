@@ -9,12 +9,12 @@ v6, but is implemented in ANSI C for an x86-based multiprocessor.
 The text should be read along with the source code for xv6. This approach is
 inspired by John Lions's Commentary on UNIX 6th Edition (Peer to Peer
 Communications; ISBN: 1-57398-013-7; 1st edition (June 14, 2000)). See
-http://pdos.csail.mit.edu/6.828 for pointers to on-line
+https://pdos.csail.mit.edu/6.828 for pointers to on-line
 resources for v6 and xv6.
 
-We have used this text in 6.828, the operating systems class at MIT.  We thank the
-faculty, TAs, and students of 6.828 who have all directly or indirectly contributed
-to xv6.  In particular, we would like to thank Austin Clements and Nickolai
-Zeldovich.
+We have used this text in 6.828, the operating systems class at MIT.  We thank
+the faculty, teaching assistants, and students of 6.828 who have all directly or
+indirectly contributed to xv6.  In particular, we would like to thank Austin
+Clements and Nickolai Zeldovich.
 
 If you have comments, please send them to 6.828-staff@pdos.csail.mit.edu.
