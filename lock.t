@@ -543,7 +543,7 @@ might run while
 is in the middle of manipulating the linked list, and the linked list
 will end up in an incorrect state.
 .\"
-.section "Memory ordering"
+.section "Instruction and memory ordering"
 .\"
 .PP
 This chapter has assumed that processors start and complete
@@ -558,24 +558,43 @@ instruction B before A so that it will be completed when the processor
 completes A.  Concurrency, however, may expose this reordering to
 software, which can lead to incorrect behavior.
 .PP
-For example, one might wonder what happens if
-.code-index release
-just assigned 0 to
-.code lk->locked ,
-instead of using
-.code xchg .
-The answer to this question is unclear, because different generations
-of x86 processors make different guarantees about memory ordering.  If
+For example, consider
+.code-index release ,
+which assigns 0 to
+.code lk->locked .
+If
 .code lk->locked=0 
-were allowed to be re-ordered after
-.code popcli ,
-then 
-.code acquire 
-might break, because to another thread interrupts would be enabled
-before a lock is released. To avoid relying on unclear processor
-specifications about memory ordering, xv6 takes no risk and uses
-.code xchg ,
-which processors must guarantee not to reorder.
+were allowed to be before an instruction inside the critical section that the
+lock is protecting, then another processor may acquire the lock and observe a
+partial update. This re-odering could break the invariant of the critical
+section.  To tell the hardware and compiler not to perform such re-orderings,
+xv6 uses
+.code __sync_synchronize() ,
+both in
+.code acquire
+and
+.code release .
+_sync_synchronize() tells compiler to not reorder instructions across the
+barrier. The compiler also inserts a special instruction so that the CPU doesn't
+reorder instructions across the barrier either.
+.PP
+The barrier also tells the processor to make all updates to memory 
+before the barrier (e.g., the update
+to
+.code
+lk->locked ) visible to other processors.  Many processors, including the x86,
+don't guarantee this by default to obtain high performance.  The barrier forbids
+delaying updates to memory and re-ordering of memory references.
+.PP
+Xv6 worries about ordering only in
+.code acquire
+and
+.code release ,
+because concurrent access to other data structures than the lock structure is
+performed between an
+.code acquire
+and
+.code release .
 .\"
 .section "Real world"
 .\"
@@ -593,19 +612,22 @@ xv6 applications.
 It is possible to implement locks without atomic instructions, but it is
 expensive, and most operating systems use atomic instructions.
 .PP
-Atomic instructions can take a long time when a lock is contended.  If one
-processor has a lock cached in its local cache, and another processor must
-acquire the lock, then the atomic instruction to update the line that holds the
-lock must move the line from the one processor's cache to the other processor's
-cache, and perhaps invalidate any other copies of the cache line.  Fetching a
-cache line from another processor's cache can be orders of magnitude more
-expensive than fetching a line from a local cache.
+Locks can be expensive when they are contended.  If one processor has a lock
+cached in its local cache, and another processor must acquire the lock, then the
+atomic instruction to update the line that holds the lock must move the line
+from the one processor's cache to the other processor's cache, and perhaps
+invalidate any other copies of the cache line.  Fetching a cache line from
+another processor's cache can be orders of magnitude more expensive than
+fetching a line from a local cache.
 .PP
 To avoid the expenses associated with locks, many operating systems use
-lock-free data structures and algorithms, and try to avoid atomic operations in
-those algorithms.  For example, it is possible to implement a linked list like
-the one in the beginning of the chapter that requires no locks during list
-searches, and one atomic instruction to insert an item in a list.
+lock-free data structures and algorithms.  For example, it is possible to
+implement a linked list like the one in the beginning of the chapter that
+requires no locks during list searches, and one atomic instruction to insert an
+item in a list.  Lock-free programming is more complicated, however, than
+programming locks; for example, one must worry about instruction and memory
+reordering.  Programming with locks is already hard, so xv6 avoids the
+additional complexity of lock-free programming.
 .\"
 .section "Exercises"
 .\"
