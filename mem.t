@@ -13,8 +13,8 @@ talk a little about initial page table conditions:
 Page tables are the mechanism through which the operating system controls what
 memory addresses mean.  They allow xv6 to multiplex the address spaces of
 different processes onto a single physical memory, and to protect the memories
-of different processes.  The level of indirection provided by page tables is
-also a source for many neat tricks.  xv6 uses page
+of different processes.  The level of indirection provided by page tables allows
+many neat tricks.  xv6 uses page
 tables primarily to
 multiplex address spaces and to protect memory.  It also uses a few
 simple page-table tricks: mapping the same memory (the kernel) in several address spaces,
@@ -178,7 +178,7 @@ require page table switches.
 For the most part the kernel does not have its own page
 table; it is almost always borrowing some process's page table.
 .PP
-To review, xv6 ensures that each process can only use its own memory,
+To review, xv6 ensures that each process can use only its own memory,
 and that each process sees its memory as having contiguous virtual addresses
 starting at zero.
 xv6 implements the first by setting the
@@ -262,7 +262,7 @@ to find the address of the PTE in the page table page
 .section "Physical memory allocation"
 .\"
 .PP
-The kernel needs to allocate and free physical memory at run-time for
+The kernel must allocate and free physical memory at run-time for
 page tables,
 process user memory,
 kernel stacks,
@@ -414,8 +414,9 @@ removes and returns the first element in the free list.
 .PP
 .figref processlayout 
 shows the layout of the user memory of an executing process in xv6.
-The heap is above the stack so that it can expand (with
-.code-index sbrk ).
+The heap is above the stack so that it can expand when the process
+calls 
+.code-index sbrk .
 The stack is a single page, and is
 shown with the initial contents as created by exec.
 Strings containing the command-line arguments, as well as an
@@ -562,6 +563,7 @@ to deal with arguments that are too large;
 in that situation, 
 the
 .code-index copyout
+.line vm.c:/^copyout/
 function that
 .code exec
 uses to copy arguments to the stack will notice that
