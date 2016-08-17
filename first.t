@@ -639,7 +639,7 @@ at a high level
 and 
 .code userinit 
 create an address space
-as shown 
+as shown in
 .figref as .
 .PP
 The initial contents of the first process's user-space memory are
@@ -796,7 +796,7 @@ Now the processor is running on the kernel stack of process
 .code p .
 .PP
 .code Allocproc
-set
+had previously set
 .code initproc 's
 .code p->context->eip
 to
@@ -881,7 +881,7 @@ holds 4096.
 These are virtual addresses in the process's address space.
 The processor's paging hardware translates them into physical addresses.
 .code-index allocuvm
-set up the process's page table so that virtual address
+has set up the process's page table so that virtual address
 zero refers
 to the physical memory allocated for this process,
 and set a flag

@@ -13,7 +13,7 @@ Finally, operating systems provide controlled ways for programs
 to interact, so that they can share data or work together.
 .PP
 An operating system provides services to user programs through an interface.
-.index "interface design
+.index "interface design"
 Designing a good interface turns out to be
 difficult.  On the one hand, we would like the interface to be
 simple and narrow because that makes it easier to get the
@@ -856,7 +856,7 @@ as user-level programs such as
 .code ln ,
 .code rm ,
 etc. This design allows anyone to extend the shell with new user commands by
-just adding a new user-level program.  In hind-sight this plan seems obvious,
+just adding a new user-level program.  In hindsight this plan seems obvious,
 but other systems designed at the time of Unix often built such commands into
 the shell (and built the shell into the kernel).
 .PP
