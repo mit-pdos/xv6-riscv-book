@@ -184,7 +184,7 @@ The
 .code-index int
 instruction is a complex instruction, and one might wonder whether all
 these actions are necessary.  The check CPL <= DPL allows the kernel to
-forbid systems for some privilege levels.  For example, for a user
+forbid system calls for some privilege levels.  For example, for a user
 program to execute 
 .code int 
 instruction succesfully, the DPL must be 3.
@@ -403,7 +403,7 @@ when the kernel returns to the current process,
 so that the processor can continue exactly as it was when
 the trap started.  Recall from Chapter \*[CH:MEM], that 
 .code userinit
-build a trapframe by hand to achieve this goal (see 
+built a trapframe by hand to achieve this goal (see 
 .figref first:newkernelstack ).
 .PP
 In the case of the first system call, the saved 
@@ -581,10 +581,10 @@ Later chapters will examine the implementation of
 particular system calls.
 This chapter is concerned with the mechanisms for system calls.
 There is one bit of mechanism left: finding the system call arguments.
-The helper functions argint, argptr, and argstr retrieve the 
+The helper functions argint, argptr, argstr, and argfd retrieve the 
 .italic n 'th 
 system call
-argument, as either an integer, pointer, or a string.
+argument, as either an integer, pointer, a string, or a file descriptor.
 .code-index argint 
 uses the user-space 
 .register esp 
@@ -636,12 +636,21 @@ of the argument.
 Then the argument, itself a user pointer, is checked.
 .PP
 .code-index argstr 
-is the final member of the system call argument trio.
-It interprets the
+interprets the
 .italic n th 
 argument as a pointer.  It ensures that the pointer points at a
 NUL-terminated string and that the complete string is located below
 the end of the user part of the address space.
+.PP
+Finally,
+.code-index argfd
+.line sysfile.c:/^argfd/
+uses
+.code argint
+to retrieve a file descriptor number, checks if it is valid
+file descriptor, and returns the corresponding
+.code struct
+.code file .
 .PP
 The system call implementations (for example, sysproc.c and sysfile.c)
 are typically wrappers: they decode the arguments using 
@@ -657,7 +666,7 @@ uses these functions to get at its arguments.
 .section "Code: Interrupts"
 .\"
 .PP
-Devices on the motherboard can generate interrupts, and xv6 must setup
+Devices on the motherboard can generate interrupts, and xv6 must set up
 the hardware to handle these interrupts.  Without device support xv6
 wouldn't be usable; a user couldn't type on the keyboard, a file
 system couldn't store data on disk, etc. Fortunately, adding
@@ -956,7 +965,7 @@ Disk accesses typically take milliseconds,
 a long time for a processor.
 The boot loader
 issues disk read commands and reads the status
-bits repeatedly until the data is ready.
+bits repeatedly until the data is ready (see Appendix \*[APP:BOOT]).
 This 
 .italic-index polling 
 or 
@@ -997,7 +1006,9 @@ the buffers ahead of it are taken care of.
 .line ide.c:/^idestart/
 issues either a read or a write for the buffer's device and sector,
 according to the flags.
-If the operation is a write, idestart must supply the data now
+If the operation is a write,
+.code idestart
+must supply the data now
 .line ide.c:/outsl/
 and the interrupt will signal that the data has been written to disk.
 If the operation is a read, the interrupt will signal that the

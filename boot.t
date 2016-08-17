@@ -739,8 +739,7 @@ to
 .line bootmain.c:/^waitdisk/
 reads the status byte until the bits are set that way.
 Chapter \*[CH:DISK] will examine more efficient ways to wait for hardware
-status changes, but busy waiting like this (also called 
-.italic-index polling )
+status changes, but busy waiting like this
 is fine for the boot loader.
 .PP
 Once the disk is ready,

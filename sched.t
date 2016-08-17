@@ -578,8 +578,13 @@ rarely, the receiver will spend most
 of its time spinning in the 
 .code while
 loop hoping for a pointer.
-The receiver's CPU could find more productive work
-if there were a way for the receiver to yield the CPU
+The receiver's CPU could find more productive work than
+.italic-index "busy waiting"
+by repeatedly 
+.italic-index polling
+.code q->ptr .
+Avoiding busy waiting requires
+a way for the receiver to yield the CPU
 and resume only when 
 .code send
 delivered a pointer.
@@ -1119,7 +1124,7 @@ Now that
 .code p->lock
 is available,
 .code piperead
-manages to acquire it and start running in earnest:
+manages to acquire it and enters its critical section:
 it finds that
 .code p->nread
 .code !=
@@ -1173,7 +1178,7 @@ will see the condition is still false and sleep again.
 and
 .code wakeup
 can be used for many kinds of waiting.
-An interesting example, seen Chapter \*[CH:UNIX],
+An interesting example, seen in Chapter \*[CH:UNIX],
 is the
 .code-index wait
 system call that a parent process uses to wait for a child to exit.
@@ -1520,7 +1525,7 @@ using explicit mechanisms for exception handling, such as
 .code longjmp .
 Furthermore, there are other events that can cause a sleeping process to be
 woken up, even though the events it is waiting for has not happened yet.  For
-example, when a process is sleeping, another process may send a 
+example, when a Unix process is sleeping, another process may send a 
 .code-index signal
 to it.  In this case, the
 process will return from the interrupted system call with the value -1 and with

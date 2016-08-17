@@ -541,10 +541,9 @@ cache to its slot in the log on disk.
 writes the header block to disk: this is the
 commit point, and a crash after the write will
 result in recovery replaying the transaction's writes from the log.
-.code install_trans()
 .code-index install_trans
 .line log.c:/^install_trans/
-reads each block from the log and write it to the proper
+reads each block from the log and writes it to the proper
 place in the file system.
 Finally
 .code end_op
@@ -877,7 +876,7 @@ because
 .code-index itrunc
 and
 .code-index iupdate
-will sleep during disk i/o.
+will sleep during disk I/O.
 But we must consider what might happen while the lock is not held.
 Specifically, once 
 .code iupdate
@@ -912,7 +911,7 @@ It does this by zeroing
 .line 'fs.c:/^....ip->flags.=.0/' .
 .PP
 .code iput()
-can write the disk.
+can write to the disk.
 This means that any system call that uses the file system
 may write the disk, even calls like
 .code read()
@@ -1496,7 +1495,7 @@ with the
 .code-index O_CREATE
 flag makes a new ordinary file,
 .code-index mkdir
-makes a new directoryy,
+makes a new directory,
 and
 .code-index mkdev
 makes a new device file.
@@ -1781,4 +1780,15 @@ sets
 .code off
 beyond
 .code f->ip->size.
-
+.PP
+9. Add
+.code O_TRUNC
+and
+.code O_APPEND
+to
+.code open ,
+so that
+.code >
+and
+.code >>
+operators work in the shell.

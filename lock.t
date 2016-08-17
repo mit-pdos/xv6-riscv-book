@@ -2,7 +2,7 @@
 ..
 .chapter CH:LOCK "Locking"
 .PP
-Xv6 runs on multiprocessors, computers with
+Xv6 runs on multiprocessors: computers with
 multiple CPUs executing code independently.
 These multiple CPUs operate on a single physical
 address space and share data structures; xv6 must
@@ -95,7 +95,8 @@ might change the timing of the execution enough
 to make the race disappear.
 .PP
 The typical way to avoid races is to use a lock.
-Locks ensure mutual exclusion,
+Locks ensure
+.italic-index "mutual exclusion" ,
 so that only one CPU can execute 
 .code insert
 at a time; this makes the scenario above
@@ -119,6 +120,14 @@ adds just a few lines (not numbered):
      	  release(&listlock);
    17	}
 .P2
+The sequence of instructions between
+.code acquire
+and
+.code release
+is often called a
+.italic-index "critical section" ,
+and the lock protects
+.code list .
 .PP
 When we say that a lock protects data, we really mean
 that the lock protects some collection of invariants
@@ -158,7 +167,7 @@ happened because a second CPU executed
 code that depended on the list invariants
 while they were (temporarily) violated.
 Proper use of a lock ensures that only one CPU at a time
-can operate on the data structure, so that
+can operate on the data structure in the critical section, so that
 no CPU will execute a data structure operation when the 
 data structure's invariants do not hold.
 .\"
@@ -167,7 +176,7 @@ data structure's invariants do not hold.
 Xv6's represents a lock as a
 .code-index "struct spinlock"
 .line spinlock.h:/struct.spinlock/ .
-The critical field in the structure is
+The important field in the structure is
 .code locked ,
 a word that is zero when the lock is available
 and non-zero when it is held.
@@ -424,7 +433,7 @@ locks in the order first parent directory and then the file.
 .section "Interrupt handlers"
 .\"
 Xv6 uses locks to protect interrupt handlers
-running on one CPU from non-interrupt code accessing the same
+running on one CPU from kernel code accessing the same
 data on another CPU.
 For example,
 the timer interrupt handler 
@@ -530,7 +539,7 @@ The interaction between interrupt handlers and non-interrupt code
 provides a nice example why recursive locks are problematic.  If xv6
 used recursive locks (a second acquire on a CPU is allowed if the
 first acquire happened on that CPU too), then interrupt handlers could
-run while non-interrupt code is in a critical section.  This could
+run while kernel code is in a critical section.  This could
 create havoc, since when the interrupt handler runs, invariants that
 the handler relies on might be temporarily violated.  For example,
 .code-index ideintr
@@ -598,7 +607,7 @@ and
 .\"
 .section "Real world"
 .\"
-Concurrency primitives and parallel programming are active areas of of research,
+Concurrency primitives and parallel programming are active areas of research,
 because programming with locks is still challenging.  It is best to use locks as the
 base for higher-level constructs like synchronized queues, although xv6 does not
 do this.  If you program with locks, it is wise to use a tool that attempts to
@@ -614,7 +623,7 @@ expensive, and most operating systems use atomic instructions.
 .PP
 Locks can be expensive when they are contended.  If one processor has a lock
 cached in its local cache, and another processor must acquire the lock, then the
-atomic instruction to update the line that holds the lock must move the line
+atomic instruction to update the cache line that holds the lock must move the line
 from the one processor's cache to the other processor's cache, and perhaps
 invalidate any other copies of the cache line.  Fetching a cache line from
 another processor's cache can be orders of magnitude more expensive than
@@ -635,7 +644,7 @@ additional complexity of lock-free programming.
 1. Remove the xchg in acquire. explain what happens when you run xv6?
 
 2. Move the acquire in iderw to before sleep.  is there a race? why don't you
-observe it when booting xv6 and run stressfs?  increase critical section with a
+observe it when booting xv6 and run stressfs?  Increase critical section with a
 dummy loop; what do you see now?  explain.
 
 3.  Setting a bit in a buffer's
