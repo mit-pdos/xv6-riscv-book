@@ -72,13 +72,20 @@ chapter examines the implementation of pipes.
 As shown in 
 .figref switch ,
 to switch between processes, xv6 performs two
-kinds of context switches at a low level:
+context switches:
 from a process's kernel thread to the current CPU's scheduler
 thread, and from the scheduler thread to a process's kernel thread.
 xv6 never directly switches from one user-space process to
 another; this happens by way of a user-kernel transition (system
 call or interrupt), a context switch to the scheduler, a context
 switch to a new process's kernel thread, and a trap return.
+The reason that xv6 uses two context switches is because the scheduler
+runs on its own stack; the reasons why the scheduler runs on its own stack
+is that it simplifies cleaning up user processes, as we will see
+when discussing the code for
+.code exit
+and
+.code kill .
 In this section we'll example the mechanics of switching
 between a kernel thread and a scheduler thread.
 .PP
@@ -416,9 +423,9 @@ and holds
 whenever those invariants are not true.
 One invariant is that if a process is
 .code RUNNING ,
-things must be set up so that a timer interrupt's
+a timer interrupt's
 .code-index yield
-can correctly switch away from the process;
+must be able to switch away from the process;
 this means that the CPU registers must hold the process's register values
 (i.e. they aren't actually in a
 .code context ),
@@ -434,9 +441,9 @@ must refer to the process's
 slot.
 Another invariant is that if a process is
 .code-index RUNNABLE ,
-things must be set up so that an idle CPU's
+an idle CPU's
 .code-index scheduler
-can run it;
+must be able to run it;
 this means that 
 .code-index p->context
 must hold the process's kernel thread variables,
@@ -725,7 +732,10 @@ It does that, but it also deadlocks:
 holds the lock while it sleeps,
 so the sender will block forever waiting for the lock.
 .PP
-We'll fix the preceding scheme by passing the lock to
+We'll fix the preceding scheme by changing
+.code sleep 's
+interface:
+the caller must pass the lock to
 .code sleep
 so it can release the lock after
 the calling process is marked as asleep and waiting on the
@@ -1183,7 +1193,9 @@ If the parent exits before the child, the
 process
 adopts the child and waits for it, so that
 every child has a parent to clean up after it.
-Keep in mind the possibility of races between
+.PP
+An implementation challenge is
+the possibility of races between
 parent and child
 .code wait
 and
@@ -1192,7 +1204,6 @@ as well as
 .code exit
 and
 .code exit .
-.PP
 .code Wait
 begins by
 acquiring 
@@ -1606,4 +1617,27 @@ so that, for example, a process that is in the IDE driver can return quickly fro
 if another kills that process.
 .ig
 Answer: this is difficult.  Moderns Unixes do this with setjmp and longjmp and very carefully programming to clean any partial state that the interrupted systems call may have built up.
+..
+
+6. Design a plan that uses only one context switch when switching from one user
+process to another.  This plan involves running the scheduler procedure on the
+kernel stack of the user process, instead of the dedicated scheduler stack.  The
+main challenge is to clean up a user process correctly.  Measure the performance
+benefit of avoiding one context switch.
+.ig
+Answer: maybe keep the current design but create a fast path for when there is
+a runnable user process available.
+..
+
+7. The lock
+.code p->lock
+protects many invariants, and when looking at a particular piece of xv6 code that
+is protected by
+.code p->lock ,
+it can be difficult to figure out which invariant is being enforced.  Design a
+plan that is more clean by perhaps splitting
+.code p->lock
+in several locks.
+.ig
+Answer: don't know.
 ..
