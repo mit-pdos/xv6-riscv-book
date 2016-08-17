@@ -369,12 +369,13 @@ example, depending on the order of the disk writes, a crash during
 file deletion may either leave a directory entry pointing to a free
 inode, or it may leave an allocated but unreferenced inode.
 .PP
-The latter is relatively
-benign, but a directory entry that refers to a freed inode is
-likely to cause serious problems after a reboot.  After reboot,
-the kernel might allocate that inode to another file, and now
-we have two different file names pointing unintentionally to the same inode.
-Now a user can read and write the file using the first name.
+The latter is relatively benign, but a directory entry that refers to a freed
+inode is likely to cause serious problems after a reboot.  After reboot, the
+kernel might allocate that inode to another file, and now we have two different
+file names pointing unintentionally to the same inode.  If xv6 would support
+several users, this situation would be a security problem: now one user could
+potentially read another user's file, even if that user doesn't have permission
+to read the file.
 .PP
 Xv6 solves the problem of crashes during file system operations with a
 simple version of logging. An xv6 system call does not directly write
@@ -428,7 +429,7 @@ Each system call's code indicates the start and end of the sequence of
 writes that must be atomic.
 For efficiency, and to allow a degree of concurrency in the
 file system code, the logging system can accumulate the writes
-of multiple system calls into each transaction.
+of multiple system calls into one transaction.
 Thus a single commit may involve the writes of multiple
 complete system calls.
 To avoid splitting a system call across transactions, the logging system
@@ -1245,6 +1246,63 @@ and prepares for the next iteration by setting
 .lines 'fs.c:/^....if..next.*dirlookup/,/^....ip.=.next/' .
 When the loop runs out of path elements, it returns
 .code ip .
+.PP
+The procedure
+.code namex
+may take a long time to complete: it could involve several disk operations to
+read inodes and directory blocks for the directories traversed in the pathname
+(if they are not in the buffer cache).  Xv6 is carefully designed so that if an
+invocation of
+.code namex
+by one kernel thread is blocked on a disk I/O, another kernel thread looking up
+a different pathname can proceed concurrently.
+.code namex
+locks each directory in the path separately so that lookups in different
+directories can proceed in parallel.
+.PP
+This concurrency introduces some challenges. For example, while one kernel
+thread is looking up a pathname another kernel thread may be changing the
+directory tree by unlinking a directory.  A potential risk is that a lookup
+maybe searching a directory that has been deleted by another kernel thread and
+its blocks have been re-used for another directory or file.
+.PP
+Xv6 avoids such races.  For example, when executing
+.code dirlookup
+in
+.code namex ,
+the lookup thread holds the lock on the directory and
+.code dirlookup
+returns an inode that was obtained using
+.code iget .
+.code iget
+increases the reference count of the inode.  Only after receiving the
+inode from
+.code dirlookup
+does
+.code namex
+release the lock on the directory.  Now another thread may unlink the inode from
+the directory but xv6 will not delete the inode yet, because the reference count
+of the inode is still larger than zero.
+.PP
+Another risk is deadlock.  For example,
+.code next
+points to the same inode as
+.code ip ,
+when looking up "." in the directory.
+Locking
+.code next
+before releasing the lock on
+.code ip
+would result in a deadlock.
+To avoid this deadlock,
+.code namex
+unlocks the directory before obtaining a lock on
+.code next .
+Here again we see why the separation between
+.code iget
+and
+.code ilock
+is important.
 .\"
 .\"
 .\"
