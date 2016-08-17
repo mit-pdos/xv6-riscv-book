@@ -902,8 +902,8 @@ So the process is constrained to using only its own memory.
 .section "The first system call: exec"
 .\"
 .PP
-Now we have seen how the kernel provides strong isolation for processes, let's
-see how a user-level process can enter back into the kernel to ask for services
+Now that we have seen how the kernel provides strong isolation for processes, let's
+look at how a user-level process re-enters the kernel to ask for services
 that it cannot perform itself.
 .PP
 The first action of 
@@ -944,6 +944,10 @@ which is a pointer to
 the NUL-terminated string
 .code "/init"
 .line initcode.S:/init.0/,/init.0/ .
+The other argument is the
+.code argv
+array of command-line arguments; the zero at the
+end of the array marks its end.
 If the
 .code exec
 fails and does return,
@@ -954,16 +958,8 @@ system call, which definitely
 should not return
 .line initcode.S:/for.*exit/,/jmp.exit/ .
 .PP
-The arguments to the
-.code exec
-system call are
-.code $init
-and
-.code $argv .
-The final zero indicates the end of
-.code argv .
-This code manually crafts the first system call to like like
-ordinary system calls, as we will see in Chapter \*[CH:TRAP].  As
+This code manually crafts the first system call to look like
+an ordinary system call, which we will see in Chapter \*[CH:TRAP].  As
 before, this setup avoids special-casing the first process (in this
 case, its first system call), and instead reuses code that xv6 must
 provide for standard operation.
@@ -971,7 +967,7 @@ provide for standard operation.
 Chapter \*[CH:MEM] will cover the implementation of
 .code exec 
 in detail, but at a high level it
-will replace 
+replaces
 .code initcode 
 with the 
 .code-index /init
