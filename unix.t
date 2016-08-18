@@ -901,10 +901,11 @@ POSIX compliant.  It misses system calls (including basic ones such as
 it implements systems calls only partially, etc.  Our main goals for xv6 are
 simplicity and clarity while providing a simple UNIX-like system-call interface.
 Several people have extended xv6 with a few more basic system calls and a simple
-C library so that they can run basic Unix programs.
-Modern kernels, however, provide many more system calls, and
-many more kinds of kernel services, than xv6.  For example, they support
-networking, Window systems, user-level threads, drivers for many devices, and so on.
+C library so that they can run basic Unix programs.  Modern kernels, however,
+provide many more system calls, and many more kinds of kernel services, than
+xv6.  For example, they support networking, Window systems, user-level threads,
+drivers for many devices, and so on.  Modern kernels evolve continuously and
+rapidly, and offer many features beyond POSIX.
 .PP
 For the most part, modern Unix-derived operating systems
 have not followed the early
