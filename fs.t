@@ -210,7 +210,7 @@ cannot assume that the buffer is now available.
 In fact, since 
 .code sleep
 released and reacquired
-.code-index buf_table_lock ,
+.code-index bcache.lock ,
 there is no guarantee that 
 .code b 
 is still the right buffer: maybe it has been reused for
@@ -294,7 +294,7 @@ first loop determined that no buffer already existed for that sector,
 and
 .code bget
 has not given up
-.code buf_table_lock
+.code bcache.lock
 since then.
 .PP
 If all the buffers are busy, something has gone wrong:
