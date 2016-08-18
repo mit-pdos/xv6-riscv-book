@@ -10,7 +10,9 @@ A PC is a computer that adheres to several industry standards,
 with the goal that a given piece of software can run on PCs
 sold by multiple vendors.
 These standards
-evolve over time and a PC from 1990s doesn't look like a PC now. 
+evolve over time and a PC from 1990s doesn't look like a PC now.
+Many of the current standards are public and you can find documentation
+for them online.
 .PP
 From the outside a PC is a box with a keyboard, a screen, and various devices
 (e.g., CD-ROM, etc.).  Inside the box is a circuit board (the ``motherboard'')
