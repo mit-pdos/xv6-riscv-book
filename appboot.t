@@ -256,7 +256,8 @@ and the xv6 kernel expects to be placed at
 The boot loader itself is at
 .address 0x7c00
 through
-.address 0x7d00 .
+.address 0x7e00 
+(512 bytes).
 Essentially any other section of memory would be a fine
 location for the stack.
 The boot loader chooses
