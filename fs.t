@@ -1720,11 +1720,17 @@ and wait for the response before returning.
 .\"
 .section "Exercises"
 .PP
-1. Why panic in balloc?  Can xv6 recover?
+1. Why panic in
+.code balloc ?
+Can xv6 recover?
 .PP
-2. Why panic in ialloc?  Can xv6 recover?
+2. Why panic in
+.code ialloc ?
+Can xv6 recover?
 .PP
-3. Why doesn't filealloc panic when it runs out of files?
+3. Why doesn't
+.code filealloc
+panic when it runs out of files?
 Why is this more common and therefore worth handling?
 .PP
 4. Suppose the file corresponding to 

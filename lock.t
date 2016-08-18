@@ -640,13 +640,13 @@ additional complexity of lock-free programming.
 .\"
 .section "Exercises"
 .\"
-
-1. Remove the xchg in acquire. explain what happens when you run xv6?
-
-2. Move the acquire in iderw to before sleep.  is there a race? why don't you
+.PP
+1. Remove the xchg in acquire. Explain what happens when you run xv6?
+.PP
+2. Move the acquire in iderw to before sleep.  Is there a race? Why don't you
 observe it when booting xv6 and run stressfs?  Increase critical section with a
 dummy loop; what do you see now?  explain.
-
+.PP
 3.  Setting a bit in a buffer's
 .code flags
 is not an atomic operation: the processor makes a copy of 

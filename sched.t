@@ -818,8 +818,10 @@ the value from a previous
 .PP
 Let's look at the implementation of
 .code-index sleep
+.line proc.c:/^sleep/
 and
 .code-index wakeup
+.line proc.c:/^wakeup/
 in xv6.
 The basic idea is to have
 .code sleep
@@ -832,6 +834,13 @@ to release the processor;
 looks for a process sleeping on the given wait channel
 and marks it as 
 .code-index RUNNABLE .
+Callers of
+.code sleep
+and
+.code wakeup
+can use any mutually convenient number as the channel.
+Xv6 often uses the address
+of a kernel data structure involved in the waiting.
 .PP
 .code Sleep
 .line proc.c:/^sleep/
@@ -859,7 +868,7 @@ it
 ensured that no other process (in the example,
 one running
 .code send )
-could start a call
+could start a call to
 .code wakeup(chan) .
 Now that
 .code sleep
@@ -899,7 +908,7 @@ and skips them entirely
 .line proc.c:/sleeplock0/ .
 For example,
 .code wait
-.line proc.c:/^wait/
+.line 'proc.c:/^wakeup!(/'
 calls
 .code sleep
 with 
@@ -992,9 +1001,6 @@ they must sleep again.
 For this reason sleep is always called inside a loop that
 checks the condition.
 .PP
-Callers of sleep and wakeup can use any mutually convenient
-number as the channel; in practice xv6 often uses the address
-of a kernel data structure involved in the waiting, such as a disk buffer.
 No harm is done if two uses of sleep/wakeup accidentally
 choose the same channel: they will see spurious wakeups,
 but looping as described above will tolerate this problem.
@@ -1059,7 +1065,7 @@ distinguish a full buffer
 .code ==
 .code nread+PIPESIZE )
 from an empty buffer
-.code nwrite
+.code nwrite "" (
 .code ==
 .code nread ),
 but it means that indexing into the buffer
@@ -1561,7 +1567,9 @@ doesn't type any input).
 .\"
 .section "Exercises"
 .\"
-1. Sleep has to check lk != &ptable.lock
+.PP
+1. Sleep has to check
+.code "lk != &ptable.lock"
 to avoid a deadlock
 .lines proc.c:/sleeplock0/,/^..}/ .
 It could eliminate the special case by 
@@ -1580,7 +1588,7 @@ acquire(&ptable.lock);
 Doing this would break
 .code sleep .
 How?
-
+.PP
 2. Most process cleanup could be done by either
 .code exit
 or
@@ -1594,12 +1602,12 @@ It turns out that
 must be the one to close the open files.
 Why?
 The answer involves pipes.
-
+.PP
 3. Implement semaphores in xv6.
 You can use mutexes but do not use sleep and wakeup.
 Replace the uses of sleep and wakeup in xv6
 with semaphores.  Judge the result.
-
+.PP
 4. Fix the race mentioned above between
 .code kill
 and 
@@ -1615,7 +1623,7 @@ results in the victim abandoning the current system call.
 Answer: a solution is to to check in sleep if p->killed is set before setting
 the processes's state to sleep. 
 ..
-
+.PP
 5. Design a plan so that every sleep loop checks 
 .code p->killed
 so that, for example, a process that is in the IDE driver can return quickly from the while loop
@@ -1623,7 +1631,7 @@ if another kills that process.
 .ig
 Answer: this is difficult.  Moderns Unixes do this with setjmp and longjmp and very carefully programming to clean any partial state that the interrupted systems call may have built up.
 ..
-
+.PP
 6. Design a plan that uses only one context switch when switching from one user
 process to another.  This plan involves running the scheduler procedure on the
 kernel stack of the user process, instead of the dedicated scheduler stack.  The
@@ -1633,7 +1641,7 @@ benefit of avoiding one context switch.
 Answer: maybe keep the current design but create a fast path for when there is
 a runnable user process available.
 ..
-
+.PP
 7. The lock
 .code p->lock
 protects many invariants, and when looking at a particular piece of xv6 code that
