@@ -829,8 +829,14 @@ disk as a numbered sequence of 512-byte
 (also called 
 .italic sectors ): 
 .index sector
-sector 0 is the first 512 bytes, sector 1 is the next, and so on.  To represent disk
-sectors an operating system has a structure that corresponds to one sector.  The
+sector 0 is the first 512 bytes, sector 1 is the next, and so on. The block size
+that an operating system uses for its file system maybe different than the
+sector size that a disk uses, but typically the block size is a multiple of the
+sector size.  Xv6's block size is identical to the disk's sector size.  To
+represent a block xv6 has a structure
+.code "struct buf"
+.line buf.h:/^struct.buf/ .
+The
 data stored in this structure is often out of sync with the disk: it might have
 not yet been read in from disk (the disk is working on it but hasn't returned
 the sector's content yet), or it might have been updated but not yet written
@@ -848,12 +854,13 @@ but the interface is simple and lets us concentrate on the
 overall structure of a driver instead of the details of a
 particular piece of hardware.
 .PP
-The disk driver represent disk sectors
-with a data structure called a
-.italic-index buffer ,
+Xv6 represent file system blocks using
 .code-index "struct buf"
 .line buf.h:/^struct.buf/ .
-Each buffer represents the contents of one sector on a particular
+.code BSIZE
+.line fs.h:/BSIZE/
+is identical to the IDE's sector size and thus
+each buffer represents the contents of one sector on a particular
 disk device.  The
 .code dev
 and
@@ -862,6 +869,13 @@ fields give the device and sector
 number and the
 .code data
 field is an in-memory copy of the disk sector.
+Although the xv6 file system chooses
+.code BSIZE
+to be identical to the IDE's sector size, the driver can handle
+a
+.code BSIZE
+that is a multiple of the sector size. Operating systems often use
+bigger blocks than 512 bytes to obtain higher disk throughput.
 .PP
 The
 .code flags
@@ -1150,13 +1164,9 @@ space, etc.).
 2. Add a new system call that returns the uptime (i.e., return the number
 of ticks since xv6 booted).
 
-3. The disk driver writes one sector (512 bytes) at the time and as a result the
-disk can do, for example, no scheduling to achieve better performance.  Set
-.code BSIZE
-to a multiple of the sector size (e.g., 2,048 bytes) and modify the driver to
-issue a single IDE command for all sectors of a block and wakeup the issuing
-process when the complete IDE command has finished.   You will have to study
-the IDE specification to figure how to program multi-sector
-IDE commands.
+3. Write a driver for a disk that supports the SATA standard (search for SATA on
+the Web). Unlike IDE, SATA isn't obsolete.  Use SATA's tagged command queuing to
+issue many commands to the disk so that the disk internally can reorder commands
+to obtain high performance.
 
 4. Add simple driver for an Ethernet card.
