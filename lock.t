@@ -614,9 +614,21 @@ do this.  If you program with locks, it is wise to use a tool that attempts to
 identify race conditions, because it is easy to miss an invariant that requires
 a lock.
 .PP
-User-level programs need locks too, but in xv6 applications have one thread of
-execution and processes don't share memory, and so there is no need for locks in
+User-level programs need locks too, but in xv6 processes have only one thread
+and processes don't share memory, and so there is no need for locks in
 xv6 applications.
+.PP
+Most operating systems support POSIX threads (Pthreads), which allow a user
+process to have several threads running concurrently on different processors.
+Pthreads has support for locks, barriers, etc.  Supporting Pthreads requires
+support from the operating system. For example, it should be the case that if
+one pthread blocks in a system call, another pthread of the same process should
+be able to run on that processor.  As another example, if a pthread changes its
+process's address space (e.g., grow or shrink it), the kernel must arrange that
+other processors that run threads of the same process update their hardware page
+tables to reflect the change in the address space.  On the x86, this involves
+shooting down the translation look-aside buffer (TLB) of other processors using
+inter-processor interrupts (IPIs).
 .PP
 It is possible to implement locks without atomic instructions, but it is
 expensive, and most operating systems use atomic instructions.
@@ -641,13 +653,17 @@ additional complexity of lock-free programming.
 .section "Exercises"
 .\"
 .PP
-1. Remove the xchg in acquire. Explain what happens when you run xv6?
+1. Write a parallel program using POSIX threads, which is supported on most
+operating systems. For example, implement a parallel hash table and measure if
+the number of puts/gets scales with increasing number of cores.
 .PP
-2. Move the acquire in iderw to before sleep.  Is there a race? Why don't you
+2. Remove the xchg in acquire. Explain what happens when you run xv6?
+.PP
+3. Move the acquire in iderw to before sleep.  Is there a race? Why don't you
 observe it when booting xv6 and run stressfs?  Increase critical section with a
 dummy loop; what do you see now?  explain.
 .PP
-3.  Setting a bit in a buffer's
+4. Setting a bit in a buffer's
 .code flags
 is not an atomic operation: the processor makes a copy of 
 .code flags
@@ -663,5 +679,12 @@ but edits the
 .code B_VALID
 and
 .code B_WRITE
-flags without holding any locks.
-Why is this safe?
+flags without holding any locks.  Why is this safe?
+.PP
+5. Implement a subset of Pthreads in xv6.  That is, implement a user-level
+thread library so that a user process can have more than 1 thread and arrange
+that these threads can run in parallel on different processors.  Come up with a
+design that correctly handles a thread making a blocking system call and
+changing its shared address space.
+
+
