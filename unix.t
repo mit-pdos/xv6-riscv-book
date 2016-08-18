@@ -892,8 +892,20 @@ and the shell was the first so-called ``scripting language.''
 The Unix system call interface persists today in systems like
 BSD, Linux, and Mac OS X.
 .PP
-Modern kernels provide many more system calls, and
-many more kinds of kernel services, than xv6.
+The Unix system call interface has been standardized through the Portable
+Operating System Interface (POSIX) standard.
+Xv6 is
+.italic not
+POSIX compliant.  It misses system calls (including basic ones such as
+.code lseek ),
+it implements systems calls only partially, etc.  Our main goals for xv6 are
+simplicity and clarity while providing a simple UNIX-like system-call interface.
+Several people have extended xv6 with a few more basic system calls and a simple
+C library so that they can run basic Unix programs.
+Modern kernels, however, provide many more system calls, and
+many more kinds of kernel services, than xv6.  For example, they support
+networking, Window systems, user-level threads, drivers for many devices, and so on.
+.PP
 For the most part, modern Unix-derived operating systems
 have not followed the early
 Unix model of exposing devices as special files, like the
