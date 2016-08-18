@@ -16,7 +16,7 @@ We have used this text in 6.828, the operating systems class at MIT.  We thank
 the faculty, teaching assistants, and students of 6.828 who have all directly or
 indirectly contributed to xv6.  In particular, we would like to thank Austin
 Clements and Nickolai Zeldovich.  Finally, we would like to thank people who
-emailed us bugs in the text: Abutalib Aghayev, Sebastian Boehm , Raphael
+emailed us bugs in the text: Abutalib Aghayev, Sebastian Boehm, Raphael
 Carvalho, Color Fuzzy, Giuseppe, Jacek Masiulaniec, Askar Safin, Pawel Szczurko,
 Warren Tooney, and Zou Chang Wei.
 
