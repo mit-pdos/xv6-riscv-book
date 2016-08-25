@@ -372,13 +372,13 @@ inode, or it may leave an allocated but unreferenced inode.
 The latter is relatively benign, but a directory entry that refers to a freed
 inode is likely to cause serious problems after a reboot.  After reboot, the
 kernel might allocate that inode to another file, and now we have two different
-file names pointing unintentionally to the same inode.  If xv6 would support
-several users, this situation would be a security problem: now one user could
-potentially read another user's file, even if that user doesn't have permission
-to read the file.
+file names pointing unintentionally to the same inode.  If xv6 supported
+multiple users, this situation could be a security problem, since the
+old owner would be able to name the file even if the new owner hid the
+new file name in a read-protected directory.
 .PP
 Xv6 solves the problem of crashes during file system operations with a
-simple version of logging. An xv6 system call does not directly write
+simple form of logging. An xv6 system call does not directly write
 the on-disk file system data structures. Instead, it places a
 description of all the disk writes it wishes to make in a 
 .italic-index log 
@@ -1262,7 +1262,7 @@ directories can proceed in parallel.
 This concurrency introduces some challenges. For example, while one kernel
 thread is looking up a pathname another kernel thread may be changing the
 directory tree by unlinking a directory.  A potential risk is that a lookup
-maybe searching a directory that has been deleted by another kernel thread and
+may be searching a directory that has been deleted by another kernel thread and
 its blocks have been re-used for another directory or file.
 .PP
 Xv6 avoids such races.  For example, when executing
@@ -1286,8 +1286,8 @@ of the inode is still larger than zero.
 Another risk is deadlock.  For example,
 .code next
 points to the same inode as
-.code ip ,
-when looking up "." in the directory.
+.code ip
+when looking up ".".
 Locking
 .code next
 before releasing the lock on
