@@ -743,7 +743,7 @@ to the process it found and calls
 .code-index switchuvm
 to tell the hardware to start using the target
 process's page table
-.line vm.c:/lcr3.*v2p.p..pgdir/ .
+.line vm.c:/lcr3.*V2P.p..pgdir/ .
 Changing page tables while executing in the kernel
 works because 
 .code-index setupkvm

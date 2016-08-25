@@ -366,7 +366,7 @@ addresses as mapped in high memory, not by their physical
 addresses, which is why
 .code kinit
 uses
-.code p2v(PHYSTOP)
+.code P2V(PHYSTOP)
 to translate
 .code PHYSTOP
 (a physical address)
