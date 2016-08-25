@@ -611,28 +611,27 @@ To understand the importance of these checks, consider what could happen
 if xv6 didn't check
 .code "if(ph.vaddr + ph.memsz < ph.vaddr)" .
 This is a check for whether the sum overflows a 32-bit integer.
-Without the check, a user could construct an ELF binary choosing
+Without the check, a user could construct an ELF binary with a
 .code ph.vaddr
+that points into the kernel,
 and
 .code ph.memsz
-in such a way that their sum would overflow to 0x1000,
-bypassing the check
+large enough that the sum overflows to 0x1000.
+Since the sum is small, it would pass the check
 .code "if(newsz >= KERNBASE)"
 in
 . code allocuvm .
-.code Allocuvm
-uses an unsigned integer to compute the address for the new pages.
-That integer,
-.code a ,
-wouldn't overflow and in the loop will reach an address above
-.code KERNBASE .
-.code Allocuvm
-will then allocate a new page in the kernel address space to which
+The subsequent call to 
 .code loaduvm
-loads data supplied by the ELF binary.  This could be exploited by a user
+uses 
+.code ph.vaddr
+by itself, without adding
+.code ph.memsz ,
+and would thus copy data from the ELF binary into the kernel.
+This could be exploited by a user
 program to run arbitrary user code with kernel privileges.  As this example
-illustrates, argument checking must be done with great care to avoid risks like
-these.  It is easy for a kernel developer to omit a crucial check, and
+illustrates, argument checking must be done with great care.
+It is easy for a kernel developer to omit a crucial check, and
 real-world kernels have a long history of missing checks whose absence
 can be exploited by user programs to obtain kernel privileges.  It is likely that xv6 doesn't do a complete job of validating
 user-level data supplied to the kernel, which a malicious user program might be able to exploit to circumvent xv6's isolation.
