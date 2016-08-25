@@ -598,27 +598,30 @@ returns 0.
 .PP
 .PP
 .code Exec
-loads bytes from the ELF file into memory at locations specified by the ELF file. This
-is risky, because the user code may overwrite kernel code and data, accidentally
-or on purpose.  The former may crash the kernel if the user code has a bug. The
-latter could allow a user program to run with kernel privileges, which breaks
-isolation. xv6 performs a number of argument checks to avoid these risks.
+loads bytes from the ELF file into memory at addresses specified by the ELF file.
+Users or processes can place whatever addresses they want into an ELF file.
+Thus
+.code exec
+is risky, because the addresses in the ELF file may refer to the kernel, accidentally
+or on purpose. The consequences for an unwary kernel could range from
+a crash to a malicious subversion of the kernel's isolation mechanisms
+(i.e., a security exploit).
+xv6 performs a number of checks to avoid these risks.
 To understand the importance of these checks, consider what could happen
-if xv6 wouldn't check
+if xv6 didn't check
 .code "if(ph.vaddr + ph.memsz < ph.vaddr)" .
-Then, a user could construct an ELF binary choosing
+This is a check for whether the sum overflows a 32-bit integer.
+Without the check, a user could construct an ELF binary choosing
 .code ph.vaddr
 and
 .code ph.memsz
-in such a way that their sum would overflow in the argument to
-.code loaduvm ,
-and become 0x1000,
+in such a way that their sum would overflow to 0x1000,
 bypassing the check
 .code "if(newsz >= KERNBASE)"
 in
 . code allocuvm .
 .code Allocuvm
-uses an unsigned integer to compute the address where to map the new pages.
+uses an unsigned integer to compute the address for the new pages.
 That integer,
 .code a ,
 wouldn't overflow and in the loop will reach an address above
