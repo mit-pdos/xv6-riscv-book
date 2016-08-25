@@ -3,31 +3,44 @@
 .chapter CH:LOCK "Locking"
 .PP
 Xv6 runs on multiprocessors: computers with
-multiple CPUs executing code independently.
-These multiple CPUs operate on a single physical
-address space and share data structures; xv6 must
-introduce a coordination mechanism to keep them
-from interfering with each other.
-Even on a uniprocessor, xv6 must use some mechanism
-to keep interrupt handlers from interfering with
-non-interrupt code.
-Xv6 uses the same low-level concept for both: a
+multiple CPUs executing independently.
+These multiple CPUs share physical RAM,
+and xv6 exploits the sharing to maintain
+data structures that all CPUs read and write.
+This sharing raises the possibility of
+simultaneous writes to the same data structure
+from multiple CPUs, or even reads parallel with a write;
+without careful design such parallel access is likely
+to yield incorrect results or a broken data structure.
+Even on a uniprocessor, an interrupt routine that uses
+the same data as some interruptible code could damage
+the data if the interrupt occurs at just the wrong time.
+.PP
+Any code that accesses shared data concurrently from multiple CPUs (or
+at interrupt time) must have a strategy for maintaining correctness
+despite concurrency. xv6 uses a handful of simple concurrency control
+strategies; much more sophistication is possible.
+This chapter focuses on one of the strategies used extensively
+in xv6 and many other systems: the 
 .italic-index lock .
+.PP
 A lock provides mutual exclusion, ensuring that only one CPU at a time can hold
-the lock.  If xv6 only accesses a data structure while holding a particular
-lock, then xv6 can be sure that only one CPU at a time is accessing the data
-structure.  In this situation, we say that the lock protects the data structure.
+the lock. If a lock is associated with each shared data item,
+and the code always holds the associated lock when using a given
+item,
+then we can be sure that the item is used from only one CPU at a time.
+In this situation, we say that the lock protects the data item.
 .PP
 The rest of this chapter explains why xv6 needs locks, how xv6 implements them, and how
-it uses them.  A key observation will be that if you look at a line of code in
-xv6, you must be asking yourself is there another processor that could change
-the intended behavior of the line (e.g., because another processor is also
-executing that line or another line of code that modifies a shared variable) and what
-would happen if an interrupt handler ran. In both cases, you must keep in mind that a
+it uses them.  A key observation will be that if you look at some code in
+xv6, you must ask yourself if another processor (or interrupt) could change
+the intended behavior of the code by modifying data (or hardware resources)
+it depends on.
+You must keep in mind that a
 single C statement can be several machine instructions and thus another processor or an interrupt may
-muck around in the middle of the C statement.  You cannot assume that lines of code
-on the page are executed sequentially, nor can you assume that a single C
-statement will execute atomically.   Concurrency makes reasoning about the
+muck around in the middle of a C statement.  You cannot assume that lines of code
+on the page are executed atomically.
+Concurrency makes reasoning about 
 correctness much more difficult.
 .\"
 .section "Race conditions"
