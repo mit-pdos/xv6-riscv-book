@@ -274,7 +274,7 @@ and then releases the lock.
 .\"
 .section "Code: Using locks"
 .\"
-Xv6 is carefully programmed with locks to avoid race conditions.  A simple
+Xv6 uses locks in many places to avoid race conditions.  A simple
 example is in the IDE driver
 .sheet ide.c .
 As mentioned in the beginning of the chapter,
@@ -290,7 +290,7 @@ acquires the
 .code-index idelock 
 .line ide.c:/DOC:acquire-lock/
 and 
-releases at the end of the function.
+releases it at the end of the function.
 Exercise 1 explores how to trigger the race condition that we saw at the
 beginning of the chapter by moving the 
 .code acquire
@@ -314,10 +314,12 @@ by a single lock to ensure the invariant is maintained.
 The rules above say when locks are necessary but say nothing about
 when locks are unnecessary, and it is important for efficiency not to
 lock too much, because locks reduce parallelism.  If efficiency wasn't important, then one could use a
-uniprocessor computer and no worry at all about locks.  For protecting
-kernel data structures, it would suffice to create a single lock that
+uniprocessor computer and not worry at all about locks.  For protecting
+kernel data structures, it might suffice to create a single lock that
 must be acquired on entering the kernel and released on exiting the
-kernel.  Many uniprocessor operating systems have been converted to
+kernel (though system calls such as pipe reads or
+.code wait
+would pose a problem).  Many uniprocessor operating systems have been converted to
 run on multiprocessors using this approach, sometimes called a ``giant
 kernel lock,'' but the approach sacrifices true concurrency: only one
 CPU can execute in the kernel at a time.  If the kernel does any heavy
@@ -333,8 +335,9 @@ fine-grained approach would be to have a lock per entry in the process
 table so that threads working on different entries in the process
 table can proceed in parallel.  However, it complicates operations
 that have invariants over the whole process table, since they might
-have to take out several locks. Hopefully, the examples of xv6 will
-help convey how to use locks.
+have to take out several locks. Subsequent chapters will discuss
+how each part of xv6 deals with concurrency, illustrating
+how to use locks.
 .\"
 .section "Lock ordering"
 .\"
@@ -348,13 +351,13 @@ lock A and before it acquires lock B, code path 2 might acquire lock
 B. Now neither code path can proceed, because code path 1 needs lock
 B, which code path 2 holds, and code path 2 needs lock A, which code
 path 1 holds.  To avoid such deadlocks, all code paths must acquire
-locks in the same order. Deadlock avoidance is another example
-illustrating why locks must be part of a function's specification: the
+locks in the same order. The need for a global lock acquisition order
+means that locks are effectively part of each function's specification: the
 caller must invoke functions in a way that causes locks to be acquired
 in the agreed-on order.
 .PP
-Because xv6 uses coarse-grained locks and xv6 is simple, xv6 has
-few lock-order chains.  The longest chain is only two deep. For
+Because xv6 uses relatively few coarse-grained locks, it has
+few lock-order chains.  The longest chains are only two deep. For
 example,
 .code-index ideintr
 holds the ide lock while calling 
@@ -385,11 +388,13 @@ For example,
 the timer interrupt handler 
 .line trap.c:/T_IRQ0...IRQ_TIMER/
 increments
-.code-index ticks
+.code-index ticks ,
 but another CPU might be in
 .code-index sys_sleep
-at the same time, using the variable
-.line sysproc.c:/ticks0.=.ticks/ .
+.line sysproc.c:/ticks0.=.ticks/ 
+reading
+.code ticks
+at the same time.
 The lock
 .code-index tickslock
 synchronizes access by the two CPUs to the
@@ -429,7 +434,7 @@ and
 .line spinlock.c:/^popcli/
 to manage a stack of ``disable interrupts'' operations
 .code-index cli "" (
-is the x86 instruction that disables interrupts.
+is the x86 instruction that disables interrupts).
 .code Acquire
 calls
 .code-index pushcli
@@ -456,7 +461,7 @@ to
 .code popcli
 to undo two calls to
 .code pushcli ;
-this way, if code acquires two different locks,
+this way, if code holds two locks,
 interrupts will not be reenabled until both
 locks have been released.
 .PP
@@ -480,67 +485,47 @@ only after the
 .code-index xchg
 that releases the lock
 .line spinlock.c:/xchg.*0/ .
-.PP
-The interaction between interrupt handlers and non-interrupt code
-provides a nice example why recursive locks are problematic.  If xv6
-used recursive locks (a second acquire on a CPU is allowed if the
-first acquire happened on that CPU too), then interrupt handlers could
-run while kernel code is in a critical section.  This could
-create havoc, since when the interrupt handler runs, invariants that
-the handler relies on might be temporarily violated.  For example,
-.code-index ideintr
-.line ide.c:/^ideintr/
-assumes that the linked list with outstanding requests is well-formed.
-If xv6 would have used recursive locks, then 
-.code ideintr
-might run while 
-.code-index iderw
-is in the middle of manipulating the linked list, and the linked list
-will end up in an incorrect state.
 .\"
 .section "Instruction and memory ordering"
 .\"
 .PP
-This chapter has assumed that processors start and complete
-instructions in the order in which they appear in the program.  Many
-processors, however, execute instructions out of order to achieve
+This chapter has assumed that code executes in the order
+in which the code appears in the program.  Many
+compilers and processors, however, execute code out of order
+to achieve
 higher performance.  If an instruction takes many cycles to complete,
 a processor may want to issue the instruction early so that it can
 overlap with other instructions and avoid processor stalls. For
 example, a processor may notice that in a serial sequence of
 instructions A and B are not dependent on each other and start
 instruction B before A so that it will be completed when the processor
-completes A.  Concurrency, however, may expose this reordering to
+completes A.
+A compiler may perform a similar re-ordering by emitting instruction
+B before instruction A in the executable file.
+Concurrency, however, may expose this reordering to
 software, which can lead to incorrect behavior.
 .PP
 For example, consider
 .code-index release ,
 which assigns 0 to
 .code lk->locked .
-If
+If the processor executed
 .code lk->locked=0 
-were allowed to be before an instruction inside the critical section that the
-lock is protecting, then another processor may acquire the lock and observe a
-partial update. This re-odering could break the invariant of the critical
-section.  To tell the hardware and compiler not to perform such re-orderings,
+before an instruction inside the critical section that the
+lock is protecting, then another processor could acquire the lock and observe a
+partial update. This re-ordering could break the invariant of the critical
+section.
+.PP
+To tell the hardware and compiler not to perform such re-orderings,
 xv6 uses
 .code __sync_synchronize() ,
 both in
 .code acquire
 and
 .code release .
-_sync_synchronize() tells compiler to not reorder instructions across the
-barrier. The compiler also inserts a special instruction so that the CPU doesn't
-reorder instructions across the barrier either.
-.PP
-The barrier also tells the processor to make all updates to memory 
-before the barrier (e.g., the update
-to
-.code
-lk->locked ) visible to other processors.  Many processors, including the x86,
-don't guarantee this by default to obtain high performance.  The barrier forbids
-delaying updates to memory and re-ordering of memory references.
-.PP
+_sync_synchronize() is a memory barrier:
+it tells the compiler to not reorder instructions across the
+barrier, and to tell the CPU not to reorder either.
 Xv6 worries about ordering only in
 .code acquire
 and
@@ -618,6 +603,23 @@ while holding a lock that
 .code f 
 needs.
 Locks force themselves into our abstractions.
+.PP
+The interaction between interrupt handlers and non-interrupt code
+provides a nice example why recursive locks are problematic.  If xv6
+used recursive locks (a second acquire on a CPU is allowed if the
+first acquire happened on that CPU too), then interrupt handlers could
+run while kernel code is in a critical section.  This could
+create havoc, since when the interrupt handler runs, invariants that
+the handler relies on might be temporarily violated.  For example,
+.code-index ideintr
+.line ide.c:/^ideintr/
+assumes that the linked list with outstanding requests is well-formed.
+If xv6 would have used recursive locks, then 
+.code ideintr
+might run while 
+.code-index iderw
+is in the middle of manipulating the linked list, and the linked list
+will end up in an incorrect state.
 .\"
 .section "Real world"
 .\"
