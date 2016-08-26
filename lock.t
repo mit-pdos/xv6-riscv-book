@@ -339,7 +339,7 @@ have to take out several locks. Subsequent chapters will discuss
 how each part of xv6 deals with concurrency, illustrating
 how to use locks.
 .\"
-.section "Lock ordering"
+.section "Deadlock and lock ordering"
 .\"
 If a code path through the kernel must hold several locks at the same time, it is
 important that all code paths acquire the locks in the same order.  If
@@ -519,13 +519,13 @@ section.
 To tell the hardware and compiler not to perform such re-orderings,
 xv6 uses
 .code __sync_synchronize() ,
-both in
+in both
 .code acquire
 and
 .code release .
 _sync_synchronize() is a memory barrier:
-it tells the compiler to not reorder instructions across the
-barrier, and to tell the CPU not to reorder either.
+it tells the compiler and CPU to not reorder loads or stores across the
+barrier.
 Xv6 worries about ordering only in
 .code acquire
 and
