@@ -15,7 +15,7 @@ program asking the kernel for a service with a system call.  There are three
 main challenges in handling these events: 1) the kernel must arrange that a
 processor switches from user mode to kernel mode (and back); 2) the kernel and
 devices must coordinate their parallel activities; and 3) the kernel must
-understand the interface of the devices well.  Addressing these 3 challenges
+understand the interface of the devices.  Addressing these 3 challenges
 requires detailed understanding of hardware and careful programming, and can
 result in opaque kernel code.  This chapter explains how xv6 addresses these
 three challenges.
@@ -27,13 +27,13 @@ the kernel. First, a system call: when a user program asks for an operating
 system service, as we saw at the end of the last chapter.
 Second, an
 .italic-index exception :
-when a program performs an illegal action. Examples of illegal programs actions
+when a program performs an illegal action. Examples of illegal actions
 include divide by zero, attempt to access memory for a PTE that is not present,
 and so on.
 Third, an
 .italic-index interrupt :
 when a device generates a signal to indicate that
-it needs attention of the operating system.  For example, a clock chip may
+it needs attention from the operating system.  For example, a clock chip may
 generate an interrupt every 100 msec to allow the kernel to implement
 time sharing.  As another example, when the disk has read a block from
 disk, it generates an interrupt to alert the operating system that the
@@ -147,7 +147,7 @@ Save
 .register esp
 and
 .register ss
-in a CPU-internal registers, but only if the target segment
+in CPU-internal registers, but only if the target segment
 selector's PL < CPL.
 .IP \[bu] 
 Load
@@ -183,21 +183,24 @@ to the values in the descriptor.
 The
 .code-index int
 instruction is a complex instruction, and one might wonder whether all
-these actions are necessary.  The check CPL <= DPL allows the kernel to
-forbid system calls for some privilege levels.  For example, for a user
+these actions are necessary.  For example, the check CPL <= DPL allows the kernel to
+forbid 
+.code int
+calls to inappropriate IDT entries such as device interrupt routines.  For a user
 program to execute 
-.code int 
-instruction succesfully, the DPL must be 3.
+.code int ,
+the IDT entry's DPL must be 3.
 If the user program doesn't have the appropriate privilege, then 
 .code int
-instruction will result in
+will result in
 .code int 
 13, which is a general protection fault.
 As another example, the
 .code int
-instruction cannot use the user stack to save values, because the user
-might not have set up an appropriate stack so that hardware uses the
-stack specified in the task segments, which is setup in kernel mode.
+instruction cannot use the user stack to save values, because the process
+may not have a valid stack pointer;
+instead, the hardware uses the
+stack specified in the task segment, which is set by the kernel.
 .figure intkstack
 .PP
 .figref intkstack 
@@ -256,7 +259,7 @@ that the kernel invokes the right kernel function (i.e.,
 .code sys_exec ),
 and that the kernel can retrieve the arguments for
 .code-index sys_exec .
-The next few subsections describes how xv6 arranges this for system
+The next few subsections describe how xv6 arranges this for system
 calls, and then we will discover that we can reuse the same code for
 interrupts and exceptions.
 .\"
@@ -505,7 +508,7 @@ If the trap is
 .code trap
 calls the system call handler
 .code-index syscall .
-We'll revisit the two
+We'll revisit the 
 .code-index proc->killed
 checks in Chapter \*[CH:SCHED].  \" XXX really?
 .PP
@@ -606,7 +609,7 @@ to read the value at that address from user memory and write it to
 .code fetchint 
 can simply cast the address to a pointer, because the user and the
 kernel share the same page table, but the kernel must verify that the
-pointer by the user is indeed a pointer in the user part of the address
+pointer lies within the user part of the address
 space.
 The kernel has set up the page-table hardware to make sure
 that the process cannot access memory outside its local private memory:
@@ -614,23 +617,17 @@ if a user program tries to read or write memory at an address of
 .code-index p->sz 
 or above, the processor will cause a segmentation trap, and trap will
 kill the process, as we saw above.
-Now though, the kernel is running and it can derefence any address that the user might have passed, so it must check explicitly that the address is below
-.code p->sz 
+The kernel, however,
+can derefence any address that the user might have passed, so it must check explicitly that the address is below
+.code p->sz .
 .PP
 .code-index argptr
-is similar in purpose to 
-.code argint : 
-it interprets the 
+fetches the
 .italic n th 
-system call argument.
-.code argptr 
-calls 
-.code argint 
-to fetch the argument as an integer and then checks
-if the integer as a user pointer is indeed in the user part of
-the address space.
+system call argument and checks that this argument is a valid
+user-space pointer.
 Note that two checks occur during a call to 
-code argptr .
+.code argptr .
 First, the user stack pointer is checked during the fetching
 of the argument.
 Then the argument, itself a user pointer, is checked.
@@ -667,12 +664,16 @@ uses these functions to get at its arguments.
 .\"
 .PP
 Devices on the motherboard can generate interrupts, and xv6 must set up
-the hardware to handle these interrupts.  Without device support xv6
-wouldn't be usable; a user couldn't type on the keyboard, a file
-system couldn't store data on disk, etc. Fortunately, adding
-interrupts and support for simple devices doesn't require much
-additional complexity.  As we will see, interrupts can use the same
-code as for systems calls and exceptions.
+the hardware to handle these interrupts.
+Devices usually interrupt in order to tell the kernel that some hardware
+event has occured, such as I/O completion.
+Interrupts are usually optional in the sense that the kernel could
+instead periodically check (or "poll") the device hardware to check
+for new events.
+Interrupts are preferable to polling if the events are relatively
+rare, so that polling would waste CPU time.
+Interrupt handling shares some of the code already needed
+for system calls and exceptions.
 .PP
 Interrupts are similar to system calls, except devices generate them
 at any time.  There is hardware on the motherboard to signal the CPU
@@ -814,9 +815,11 @@ point out that we are trying to be manly with interrupts, by turning them on oft
 .\"
 A
 .italic-index driver
-is the piece of code in an operating system that manages a particular device: it
-provides interrupt handlers for a device, causes a device to perform operations,
-causes a device to generate interrupts, etc.  Driver code can be tricky to write
+is the code in an operating system that manages a particular device:
+it tells the device hardware to perform operations,
+configures the device to generate interrupts when done,
+and handles the resulting interrupts.
+Driver code can be tricky to write
 because a driver executes concurrently with the device that it manages.  In
 addition, the driver must understand the device's interface (e.g., which I/O
 ports do what), and that interface can be complex and poorly documented.
