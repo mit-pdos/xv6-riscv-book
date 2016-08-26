@@ -568,18 +568,19 @@ calls
 .code allocproc
 at a time when enough invariants hold that the latter won't break.
 This pattern arises in other places in xv6. Thus the programmer
-often has to be aware of what locks callees expect to be held.
+often has to be aware of what locks callees expect to be held,
+and what invariants they need.
 .PP
 It might seem that one could simplify situations where both
 caller and callee need a lock by allowing 
 .italic-index "recursive locks" ,
-so that if a thread already holds a lock,
-that thread is allowed to acquire the lock again.
+so that if a function holds a lock,
+any function it calls is allowed to re-acquire the lock.
 However, the programmer would then need to reason about
 all combinations of caller and callee, because it
 will no longer be the case that the data structure's
 invariants always hold after an acquire.
-Whether this is better than xv6's use of conventions about
+Whether recursive locks are better than xv6's use of conventions about
 functions that require a lock to be held is not clear.
 The larger lesson is that 
 (as with global lock ordering to avoid deadlock) lock requirements 
@@ -590,7 +591,7 @@ One situation in which locks are insufficient is when one thread needs
 to wait for another thread to update a data structure. The first
 thread cannot hold the lock on the data while waiting, since that
 would prevent the second thread's update. Instead, xv6 provides
-a separate mechanism that that jointly manages the lock and
+a separate mechanism that jointly manages the lock and
 event wait; see the description of
 .code sleep
 and
@@ -608,7 +609,7 @@ and
 structures.
 In all three examples, there is a flag that indicates that the slot
 is in use (examined and set while holding a spin-lock protecting
-the allocation status of the whole set of slots), but after
+the allocation flags of the whole set of slots), but after
 allocation the owning thread holds no spin-lock on the object. No
 other thread should ever need to wait for a particular slot to become
 free, so a per-object lock representing in-use can only invite
