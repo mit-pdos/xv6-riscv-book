@@ -593,33 +593,32 @@ The last case would be a good one to construct an example around.
 maybe the directory example in lecture notes
 ..
 .PP
-Since there is no ideal transparent solution,
-we must consider locks part of the function's
-specification.
-The programmer must arrange that function doesn't
-invoke a function 
-.code f 
-while holding a lock that 
-.code f 
-needs.
-Locks force themselves into our abstractions.
-.PP
 The interaction between interrupt handlers and non-interrupt code
 provides a nice example why recursive locks are problematic.  If xv6
-used recursive locks (a second acquire on a CPU is allowed if the
-first acquire happened on that CPU too), then interrupt handlers could
+used recursive locks,
+then interrupt handlers could
 run while kernel code is in a critical section.  This could
 create havoc, since when the interrupt handler runs, invariants that
 the handler relies on might be temporarily violated.  For example,
 .code-index ideintr
 .line ide.c:/^ideintr/
 assumes that the linked list with outstanding requests is well-formed.
-If xv6 would have used recursive locks, then 
+If xv6 used recursive locks, then 
 .code ideintr
 might run while 
 .code-index iderw
 is in the middle of manipulating the linked list, and the linked list
-will end up in an incorrect state.
+would end up in an incorrect state.
+.PP
+We must consider locks part of a function's
+specification.
+If a function acquires a lock, the programmer must
+ensure that the caller doesn't already hold it;
+if a function assumes some lock is already held
+(i.e., uses the protected data but doesn't acquire the lock),
+the programmer must ensure that the caller already
+holds the lock.
+Locks force themselves into our abstractions.
 .\"
 .section "Real world"
 .\"
