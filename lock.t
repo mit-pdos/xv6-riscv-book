@@ -585,6 +585,34 @@ The larger lesson is that
 (as with global lock ordering to avoid deadlock) lock requirements 
 sometimes can't be private, but intrude themselves on
 the interfaces of functions and modules.
+.PP
+One situation in which locks are insufficient is when one thread needs
+to wait for another thread to update a data structure. The first
+thread cannot hold the lock on the data while waiting, since that
+would prevent the second thread's update. Instead, xv6 provides
+a separate mechanism that that jointly manages the lock and
+event wait; see the description of
+.code sleep
+and
+.code wakeup
+in Chapter \*[CH:SCHED].
+.PP
+A situation in which locks aren't appropriate is when a thread is
+allocating a previously empty slot in a cache, or effectively allocating memory.
+Examples in
+xv6 include allocation of
+.code proc ,
+.code buf ,
+and
+.code inode
+structures.
+In all three examples, there is a flag that indicates that the slot
+is in use (examined and set while holding a spin-lock protecting
+the allocation status of the whole set of slots), but after
+allocation the owning thread holds no spin-lock on the object. No
+other thread should ever need to wait for a particular slot to become
+free, so a per-object lock representing in-use can only invite
+programmer errors.
 .\"
 .section "Real world"
 .\"
@@ -595,13 +623,9 @@ do this.  If you program with locks, it is wise to use a tool that attempts to
 identify race conditions, because it is easy to miss an invariant that requires
 a lock.
 .PP
-User-level programs need locks too, but in xv6 processes have only one thread
-and processes don't share memory, and so there is no need for locks in
-xv6 applications.
-.PP
 Most operating systems support POSIX threads (Pthreads), which allow a user
 process to have several threads running concurrently on different processors.
-Pthreads has support for locks, barriers, etc.  Supporting Pthreads requires
+Pthreads has support for user-level locks, barriers, etc.  Supporting Pthreads requires
 support from the operating system. For example, it should be the case that if
 one pthread blocks in a system call, another pthread of the same process should
 be able to run on that processor.  As another example, if a pthread changes its
@@ -614,7 +638,8 @@ inter-processor interrupts (IPIs).
 It is possible to implement locks without atomic instructions, but it is
 expensive, and most operating systems use atomic instructions.
 .PP
-Locks can be expensive when they are contended.  If one processor has a lock
+Locks can be expensive if many processors try to acquire the same lock
+at the same time.  If one processor has a lock
 cached in its local cache, and another processor must acquire the lock, then the
 atomic instruction to update the cache line that holds the lock must move the line
 from the one processor's cache to the other processor's cache, and perhaps
