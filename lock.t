@@ -9,7 +9,7 @@ and xv6 exploits the sharing to maintain
 data structures that all CPUs read and write.
 This sharing raises the possibility of
 simultaneous writes to the same data structure
-from multiple CPUs, or even reads parallel with a write;
+from multiple CPUs, or even reads simultaneous with a write;
 without careful design such parallel access is likely
 to yield incorrect results or a broken data structure.
 Even on a uniprocessor, an interrupt routine that uses
@@ -77,9 +77,9 @@ concurrent requests, you might implement the linked list as follows:
 .figure race
 Proving this implementation correct is a typical
 exercise in a data structures and algorithms class.
-Even though this implementation can be proved
-correct, it isn't, at least not on a multiprocessor.
-If two different CPUs execute
+However, the code is not correct if more than one
+copy executes concurrently.
+If two CPUs execute
 .code insert
 at the same time,
 it could happen that both execute line 15
@@ -98,10 +98,11 @@ the node involved in the first assignment
 will be lost.
 This kind of problem is called a 
 .italic-index "race condition" .
-The problem with races is that they depend on
+The outcome of a race depends on
 the exact timing of the two CPUs involved and
 how their memory operations are ordered by the memory system,
-and are consequently difficult to reproduce.
+which can make race-induced errors difficult to reproduce
+and debug.
 For example, adding print statements while debugging
 .code insert
 might change the timing of the execution enough
@@ -186,7 +187,7 @@ data structure's invariants do not hold.
 .\"
 .section "Code: Locks"
 .\"
-Xv6's represents a lock as a
+Xv6 represents a lock as a
 .code-index "struct spinlock"
 .line spinlock.h:/struct.spinlock/ .
 The important field in the structure is
@@ -270,74 +271,6 @@ is the opposite of
 .code acquire :
 it clears the debugging fields
 and then releases the lock.
-.\"
-.section "Modularity and recursive locks"
-.\"
-.PP
-System design strives for clean, modular abstractions:
-it is best when a caller does not need to know how a
-callee implements particular functionality.
-Locks interfere with this modularity.
-For example, if a CPU holds a particular lock,
-it cannot call any function 
-.code f 
-that will try to 
-reacquire that lock: since the caller can't release
-the lock until 
-.code f 
-returns, if 
-.code f 
-tries to acquire
-the same lock, it will spin forever, or deadlock.
-.PP
-There are no transparent solutions that allow the
-caller and callee to hide which locks they use.
-One common, transparent, but unsatisfactory solution
-is 
-.italic-index "recursive locks" ,
-which allow a callee to
-reacquire a lock already held by its caller.
-The problem with this solution is that recursive
-locks can't be used to protect invariants.
-After
-.code insert
-called
-.code acquire(&listlock)
-above, it can assume that no other function
-holds the lock, that no other function is in the middle
-of a list operation, and most importantly that all
-the list invariants hold.
-In a system with recursive locks,
-.code insert
-can assume nothing after it calls
-.code acquire :
-perhaps
-.code acquire
-succeeded only because one of 
-.code insert 's
-caller already held the lock
-and was in the middle of editing the list data structure.
-Maybe the invariants hold or maybe they don't.
-The list no longer protects them.
-Locks are just as important for protecting callers and callees
-from each other as they are for protecting different CPUs
-from each other;
-recursive locks give up that property.
-.ig
-The last case would be a good one to construct an example around.
-maybe the directory example in lecture notes
-..
-.PP
-Since there is no ideal transparent solution,
-we must consider locks part of the function's
-specification.
-The programmer must arrange that function doesn't
-invoke a function 
-.code f 
-while holding a lock that 
-.code f 
-needs.
-Locks force themselves into our abstractions.
 .\"
 .section "Code: Using locks"
 .\"
@@ -617,6 +550,74 @@ performed between an
 .code acquire
 and
 .code release .
+.\"
+.section "Modularity and recursive locks"
+.\"
+.PP
+System design strives for clean, modular abstractions:
+it is best when a caller does not need to know how a
+callee implements particular functionality.
+Locks interfere with this modularity.
+For example, if a CPU holds a particular lock,
+it cannot call any function 
+.code f 
+that will try to 
+reacquire that lock: since the caller can't release
+the lock until 
+.code f 
+returns, if 
+.code f 
+tries to acquire
+the same lock, it will spin forever, or deadlock.
+.PP
+There are no transparent solutions that allow the
+caller and callee to hide which locks they use.
+One common, transparent, but unsatisfactory solution
+is 
+.italic-index "recursive locks" ,
+which allow a callee to
+reacquire a lock already held by its caller.
+The problem with this solution is that recursive
+locks can't be used to protect invariants.
+After
+.code insert
+called
+.code acquire(&listlock)
+above, it can assume that no other function
+holds the lock, that no other function is in the middle
+of a list operation, and most importantly that all
+the list invariants hold.
+In a system with recursive locks,
+.code insert
+can assume nothing after it calls
+.code acquire :
+perhaps
+.code acquire
+succeeded only because one of 
+.code insert 's
+caller already held the lock
+and was in the middle of editing the list data structure.
+Maybe the invariants hold or maybe they don't.
+The list no longer protects them.
+Locks are just as important for protecting callers and callees
+from each other as they are for protecting different CPUs
+from each other;
+recursive locks give up that property.
+.ig
+The last case would be a good one to construct an example around.
+maybe the directory example in lecture notes
+..
+.PP
+Since there is no ideal transparent solution,
+we must consider locks part of the function's
+specification.
+The programmer must arrange that function doesn't
+invoke a function 
+.code f 
+while holding a lock that 
+.code f 
+needs.
+Locks force themselves into our abstractions.
 .\"
 .section "Real world"
 .\"
