@@ -536,89 +536,55 @@ performed between an
 and
 .code release .
 .\"
-.section "Modularity and recursive locks"
+.section "Limitations of spin-locks"
 .\"
 .PP
-System design strives for clean, modular abstractions:
-it is best when a caller does not need to know how a
-callee implements particular functionality.
-Locks interfere with this modularity.
-For example, if a CPU holds a particular lock,
-it cannot call any function 
-.code f 
-that will try to 
-reacquire that lock: since the caller can't release
-the lock until 
-.code f 
-returns, if 
-.code f 
-tries to acquire
-the same lock, it will spin forever, or deadlock.
+Spin-locks are often a clean solution to concurrency problems,
+but there are times when they are awkward, and situations
+where other techniques are preferable. Subsequent chapters will
+point out such situations in xv6; this section outlines some
+of the problems that come up.
 .PP
-There are no transparent solutions that allow the
-caller and callee to hide which locks they use.
-One common, transparent, but unsatisfactory solution
-is 
+Sometimes a lock must be held
+by a group of functions that call each other, perhaps because the lock protects
+a complex collection of invariants or data items.
+For example, both
+.code allocproc
+and its callers
+.code fork
+and
+.code userinit
+need
+.code ptable.lock .
+They can't all acquire the lock, since that would lead to deadlock.
+Instead, there's a convention that whoever calls
+.code allocproc
+must already have acquired
+.code ptable.lock .
+The programmer must ensure the calls make sense, e.g.,
+that
+.code fork
+calls
+.code allocproc
+at a time when enough invariants hold that the latter won't break.
+This pattern arises in other places in xv6. Thus the programmer
+often has to be aware of what locks callees expect to be held.
+.PP
+It might seem that one could simplify situations where both
+caller and callee need a lock by allowing 
 .italic-index "recursive locks" ,
-which allow a callee to
-reacquire a lock already held by its caller.
-The problem with this solution is that recursive
-locks can't be used to protect invariants.
-After
-.code insert
-called
-.code acquire(&listlock)
-above, it can assume that no other function
-holds the lock, that no other function is in the middle
-of a list operation, and most importantly that all
-the list invariants hold.
-In a system with recursive locks,
-.code insert
-can assume nothing after it calls
-.code acquire :
-perhaps
-.code acquire
-succeeded only because one of 
-.code insert 's
-caller already held the lock
-and was in the middle of editing the list data structure.
-Maybe the invariants hold or maybe they don't.
-The list no longer protects them.
-Locks are just as important for protecting callers and callees
-from each other as they are for protecting different CPUs
-from each other;
-recursive locks give up that property.
-.ig
-The last case would be a good one to construct an example around.
-maybe the directory example in lecture notes
-..
-.PP
-The interaction between interrupt handlers and non-interrupt code
-provides a nice example why recursive locks are problematic.  If xv6
-used recursive locks,
-then interrupt handlers could
-run while kernel code is in a critical section.  This could
-create havoc, since when the interrupt handler runs, invariants that
-the handler relies on might be temporarily violated.  For example,
-.code-index ideintr
-.line ide.c:/^ideintr/
-assumes that the linked list with outstanding requests is well-formed.
-If xv6 used recursive locks, then 
-.code ideintr
-might run while 
-.code-index iderw
-is in the middle of manipulating the linked list, and the linked list
-would end up in an incorrect state.
-.PP
-We must consider locks part of a function's
-specification.
-If a function acquires a lock, the programmer must
-ensure that the caller doesn't already hold it;
-if a function assumes some lock is already held
-(i.e., uses the protected data but doesn't acquire the lock),
-the programmer must ensure that the caller already
-holds the lock.
-Locks force themselves into our abstractions.
+so that if a thread already holds a lock,
+that thread is allowed to acquire the lock again.
+However, the programmer would then need to reason about
+all combinations of caller and callee, because it
+will no longer be the case that the data structure's
+invariants always hold after an acquire.
+Whether this is better than xv6's use of conventions about
+functions that require a lock to be held is not clear.
+The larger lesson is that 
+(as with global lock ordering to avoid deadlock) lock requirements 
+sometimes can't be private, but intrude themselves on
+the interfaces of functions and modules.
 .\"
 .section "Real world"
 .\"
