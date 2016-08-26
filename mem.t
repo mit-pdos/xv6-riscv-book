@@ -611,7 +611,7 @@ To understand the importance of these checks, consider what could happen
 if xv6 didn't check
 .code "if(ph.vaddr + ph.memsz < ph.vaddr)" .
 This is a check for whether the sum overflows a 32-bit integer.
-Without the check, a user could construct an ELF binary with a
+The danger is that a user could construct an ELF binary with a
 .code ph.vaddr
 that points into the kernel,
 and
@@ -623,10 +623,14 @@ in
 . code allocuvm .
 The subsequent call to 
 .code loaduvm
-uses 
+passes
 .code ph.vaddr
 by itself, without adding
-.code ph.memsz ,
+.code ph.memsz 
+and without checking
+.code ph.vaddr
+against
+.code KERNBASE ,
 and would thus copy data from the ELF binary into the kernel.
 This could be exploited by a user
 program to run arbitrary user code with kernel privileges.  As this example
