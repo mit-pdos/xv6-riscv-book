@@ -540,8 +540,7 @@ and
 .\"
 .PP
 Spin-locks are often a clean solution to concurrency problems,
-but there are times when they are awkward, and situations
-where other techniques are preferable. Subsequent chapters will
+but there are times when they are awkward. Subsequent chapters will
 point out such situations in xv6; this section outlines some
 of the problems that come up.
 .PP
@@ -557,17 +556,18 @@ and
 need
 .code ptable.lock .
 They can't all acquire the lock, since that would lead to deadlock.
-Instead, there's a convention that whoever calls
+Instead, the xv6 code has a convention that whoever calls
 .code allocproc
 must already have acquired
 .code ptable.lock .
-The programmer must ensure the calls make sense, e.g.,
-that
+In addition,
 .code fork
-calls
+amd
+.code userinit
+must call
 .code allocproc
 at a time when enough invariants hold that the latter won't break.
-This pattern arises in other places in xv6. Thus the programmer
+This pattern arises in other places in xv6. Thus a kernel programmer
 often has to be aware of what locks callees expect to be held,
 and what invariants they need.
 .PP
@@ -587,33 +587,17 @@ The larger lesson is that
 sometimes can't be private, but intrude themselves on
 the interfaces of functions and modules.
 .PP
-One situation in which locks are insufficient is when one thread needs
-to wait for another thread to update a data structure. The first
-thread cannot hold the lock on the data while waiting, since that
-would prevent the second thread's update. Instead, xv6 provides
+A situation in which locks are insufficient is when one thread needs
+to wait for another thread's update to a data structure, for example
+when a pipe's reader waits for some other thread to write the pipe. The waiting
+thread cannot hold the lock on the data, since that
+would prevent the update it is waiting for. Instead, xv6 provides
 a separate mechanism that jointly manages the lock and
 event wait; see the description of
 .code sleep
 and
 .code wakeup
 in Chapter \*[CH:SCHED].
-.PP
-A situation in which locks aren't appropriate is when a thread is
-allocating a previously empty slot in a cache, or effectively allocating memory.
-Examples in
-xv6 include allocation of
-.code proc ,
-.code buf ,
-and
-.code inode
-structures.
-In all three examples, there is a flag that indicates that the slot
-is in use (examined and set while holding a spin-lock protecting
-the allocation flags of the whole set of slots), but after
-allocation the owning thread holds no spin-lock on the object. No
-other thread should ever need to wait for a particular slot to become
-free, so a per-object lock representing in-use can only invite
-programmer errors.
 .\"
 .section "Real world"
 .\"
