@@ -11,11 +11,10 @@ Any operating system is likely to run with more processes than the
 computer has processors, and so a plan is needed to time-share the
 processors among the processes. Ideally the sharing would be transparent to user
 processes.  A common approach is to provide each process
-with the illusion that it has its own virtual processor, and have the
-operating system 
-.italic-index multiplex 
-multiple virtual processors on a single physical processor.
-This chapter explains how xv6 multiplexes a processor among several processes.
+with the illusion that it has its own virtual processor by
+.italic-index multiplexing
+the processes onto the available physical processors.
+This chapter explains how xv6 achieves this multiplexing.
 .\"
 .section "Multiplexing"
 .\"

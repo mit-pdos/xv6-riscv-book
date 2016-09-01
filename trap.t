@@ -711,8 +711,8 @@ to receive interrupts.
 To also work correctly on uniprocessors, Xv6 programs the programmable
 interrupt controler (PIC)
 .line picirq.c:/^picinit/ .  
-Each PIC can handle a maximum of 8 interrupts (i.e., devices) and
-multiplex them on the interrupt pin of the processor.  To allow for
+Each PIC handles a maximum of 8 interrupts (i.e., devices) and
+multiplexes them onto the interrupt pin of the processor.  To allow for
 more than 8 devices, PICs can be cascaded and typically boards have at
 least two.  Using
 .code-index inb
