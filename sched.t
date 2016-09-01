@@ -13,7 +13,7 @@ processors among the processes. Ideally the sharing would be transparent to user
 processes.  A common approach is to provide each process
 with the illusion that it has its own virtual processor by
 .italic-index multiplexing
-the processes onto the available physical processors.
+the processes onto the hardware processors.
 This chapter explains how xv6 achieves this multiplexing.
 .\"
 .section "Multiplexing"
@@ -68,24 +68,22 @@ chapter examines the implementation of pipes.
 .\"
 .figure switch
 .PP
-As shown in 
-.figref switch ,
-to switch between processes, xv6 performs two
-context switches:
-from a process's kernel thread to the current CPU's scheduler
-thread, and from the scheduler thread to a process's kernel thread.
-xv6 never directly switches from one user-space process to
-another; this happens by way of a user-kernel transition (system
-call or interrupt), a context switch to the scheduler, a context
-switch to a new process's kernel thread, and a trap return.
-The reason that xv6 uses two context switches is because the scheduler
-runs on its own stack; the reasons why the scheduler runs on its own stack
-is that it simplifies cleaning up user processes, as we will see
+.figref switch 
+outlines the steps involved in switching from one
+user process to another:
+a user-kernel transition (system
+call or interrupt) to the old process's kernel thread,
+a context switch to the local CPU's scheduler thread, a context
+switch to a new process's kernel thread, and a trap return
+to the user-level process.
+Xv6 uses two context switches because the scheduler
+runs on its own stack in order to
+simplify cleaning up user processes, as we will see
 when discussing the code for
 .code exit
 and
 .code kill .
-In this section we'll example the mechanics of switching
+In this section we'll examine the mechanics of switching
 between a kernel thread and a scheduler thread.
 .PP
 Every xv6 process has its own kernel stack and register set, as we saw in
@@ -93,7 +91,7 @@ Chapter \*[CH:MEM].
 Each CPU has a separate scheduler thread for use when it is executing
 the scheduler rather than any process's kernel thread.
 Switching from one thread to another involves saving the old thread's
-CPU registers, and restoring previously-saved registers of the
+CPU registers, and restoring the previously-saved registers of the
 new thread; the fact that
 .register esp
 and
@@ -105,8 +103,8 @@ switch what code it is executing.
 doesn't directly know about threads; it just saves and
 restores register sets, called 
 .italic-index "contexts" .
-When it is time for the process to give up the CPU,
-the process's kernel thread will call
+When it is time for a process to give up the CPU,
+the process's kernel thread calls
 .code swtch
 to save its own context and return to the scheduler context.
 Each context is represented by a
@@ -132,9 +130,9 @@ to
 .register esp,
 pops previously saved registers, and returns.
 .PP
-Instead of following the scheduler into
-.code swtch ,
-let's instead follow our user process back in.
+Let's follow the initial user process through
+.code swtch 
+into the scheduler.
 We saw in Chapter \*[CH:TRAP]
 that one possibility at the end of each interrupt
 is that 
@@ -154,8 +152,8 @@ and switch to the scheduler context previously saved in
 .PP
 .code Swtch
 .line swtch.S:/swtch/
-starts by loading its arguments off the stack
-into the registers
+starts by copying its arguments from the stack
+to the caller-saved registers
 .register eax
 and
 .register edx
@@ -170,7 +168,7 @@ Then
 .code swtch
 pushes the register state, creating a context structure
 on the current stack.
-Only the callee-save registers need to be saved;
+Only the callee-saved registers need to be saved;
 the convention on the x86 is that these are
 .register ebp,
 .register ebx,
@@ -189,13 +187,11 @@ written to
 .line swtch.S:/movl..esp/ .
 There is one more important register:
 the program counter 
-.register eip
-was saved by the
+.register eip .
+It has already been saved on the stack by the
 .code call
 instruction that invoked
-.code swtch
-and is on the stack just above
-.register ebp.
+.code swtch .
 Having saved the old context,
 .code swtch
 is ready to restore the new one.
@@ -307,10 +303,10 @@ across calls to
 the caller of
 .code-index swtch
 must already hold the lock, and control of the lock passes to the
-switched-to code.  This convention is unusual with locks; the typical
-convention is the thread that acquires a lock is also responsible of
+switched-to code.  This convention is unusual with locks; usually
+the thread that acquires a lock is also responsible for
 releasing the lock, which makes it easier to reason about correctness.
-For context switching it is necessary to break the typical convention because
+For context switching it is necessary to break this convention because
 .code-index ptable.lock
 protects invariants on the process's
 .code state
@@ -337,7 +333,7 @@ A kernel thread always gives up its
 processor in
 .code sched 
 and always switches to the same location in the scheduler, which
-(almost) always switches to a process in
+(almost) always switches to some kernel thread that previously called
 .code sched . 
 Thus, if one were to print out the line numbers where xv6 switches
 threads, one would observe the following simple pattern:
@@ -354,16 +350,16 @@ and
 .code-index scheduler
 are co-routines of each other.
 .PP
-There is one case when the scheduler's 
+There is one case when the scheduler's call to
 .code-index swtch
-to a new process does not end up in
+does not end up in
 .code-index sched .
 We saw this case in Chapter \*[CH:MEM]: when a
 new process is first scheduled, it begins at
 .code-index forkret
 .line proc.c:/^forkret/ .
 .code Forkret
-exists only to honor this convention by releasing the 
+exists to release the 
 .code-index ptable.lock ;
 otherwise, the new process could start at
 .code trapret .
