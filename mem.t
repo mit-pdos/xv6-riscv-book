@@ -828,7 +828,7 @@ The kernel also tells the paging hardware to allow super pages by setting the
 .code-index CR_PSE
 bit
 (Page Size Extension) in
-.register cr4.
+.register cr4 .
 .PP
 Xv6 should determine the actual RAM configuration, instead
 of assuming 240 MB.
