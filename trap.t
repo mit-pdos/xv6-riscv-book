@@ -711,8 +711,8 @@ to receive interrupts.
 To also work correctly on uniprocessors, Xv6 programs the programmable
 interrupt controler (PIC)
 .line picirq.c:/^picinit/ .  
-Each PIC can handle a maximum of 8 interrupts (i.e., devices) and
-multiplex them on the interrupt pin of the processor.  To allow for
+Each PIC handles a maximum of 8 interrupts (i.e., devices) and
+multiplexes them onto the interrupt pin of the processor.  To allow for
 more than 8 devices, PICs can be cascaded and typically boards have at
 least two.  Using
 .code-index inb
@@ -824,7 +824,7 @@ because a driver executes concurrently with the device that it manages.  In
 addition, the driver must understand the device's interface (e.g., which I/O
 ports do what), and that interface can be complex and poorly documented.
 .PP
-The disk driver provides a good example in xv6.  The disk driver copies data
+The disk driver provides a good example.  The disk driver copies data
 from and back to the disk.  Disk hardware traditionally presents the data on the
 disk as a numbered sequence of 512-byte 
 .italic blocks 

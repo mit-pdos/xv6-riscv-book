@@ -7,8 +7,8 @@ The operating system manages and abstracts
 the low-level hardware, so that, for example,
 a word processor need not concern itself with which type
 of disk hardware is being used.
-It also multiplexes the hardware, allowing many programs
-to share the computer and run (or appear to run) at the same time.
+It also shares the hardware among multiple programs so
+that they run (or appear to run) at the same time.
 Finally, operating systems provide controlled ways for programs
 to interact, so that they can share data or work together.
 .PP

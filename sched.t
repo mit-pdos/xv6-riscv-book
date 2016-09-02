@@ -11,11 +11,10 @@ Any operating system is likely to run with more processes than the
 computer has processors, and so a plan is needed to time-share the
 processors among the processes. Ideally the sharing would be transparent to user
 processes.  A common approach is to provide each process
-with the illusion that it has its own virtual processor, and have the
-operating system 
-.italic-index multiplex 
-multiple virtual processors on a single physical processor.
-This chapter explains how xv6 multiplexes a processor among several processes.
+with the illusion that it has its own virtual processor by
+.italic-index multiplexing
+the processes onto the hardware processors.
+This chapter explains how xv6 achieves this multiplexing.
 .\"
 .section "Multiplexing"
 .\"
@@ -69,24 +68,22 @@ chapter examines the implementation of pipes.
 .\"
 .figure switch
 .PP
-As shown in 
-.figref switch ,
-to switch between processes, xv6 performs two
-context switches:
-from a process's kernel thread to the current CPU's scheduler
-thread, and from the scheduler thread to a process's kernel thread.
-xv6 never directly switches from one user-space process to
-another; this happens by way of a user-kernel transition (system
-call or interrupt), a context switch to the scheduler, a context
-switch to a new process's kernel thread, and a trap return.
-The reason that xv6 uses two context switches is because the scheduler
-runs on its own stack; the reasons why the scheduler runs on its own stack
-is that it simplifies cleaning up user processes, as we will see
+.figref switch 
+outlines the steps involved in switching from one
+user process to another:
+a user-kernel transition (system
+call or interrupt) to the old process's kernel thread,
+a context switch to the local CPU's scheduler thread, a context
+switch to a new process's kernel thread, and a trap return
+to the user-level process.
+Xv6 uses two context switches because the scheduler
+runs on its own stack in order to
+simplify cleaning up user processes, as we will see
 when discussing the code for
 .code exit
 and
 .code kill .
-In this section we'll example the mechanics of switching
+In this section we'll examine the mechanics of switching
 between a kernel thread and a scheduler thread.
 .PP
 Every xv6 process has its own kernel stack and register set, as we saw in
@@ -94,7 +91,7 @@ Chapter \*[CH:MEM].
 Each CPU has a separate scheduler thread for use when it is executing
 the scheduler rather than any process's kernel thread.
 Switching from one thread to another involves saving the old thread's
-CPU registers, and restoring previously-saved registers of the
+CPU registers, and restoring the previously-saved registers of the
 new thread; the fact that
 .register esp
 and
@@ -106,8 +103,8 @@ switch what code it is executing.
 doesn't directly know about threads; it just saves and
 restores register sets, called 
 .italic-index "contexts" .
-When it is time for the process to give up the CPU,
-the process's kernel thread will call
+When it is time for a process to give up the CPU,
+the process's kernel thread calls
 .code swtch
 to save its own context and return to the scheduler context.
 Each context is represented by a
@@ -133,9 +130,9 @@ to
 .register esp,
 pops previously saved registers, and returns.
 .PP
-Instead of following the scheduler into
-.code swtch ,
-let's instead follow our user process back in.
+Let's follow the initial user process through
+.code swtch 
+into the scheduler.
 We saw in Chapter \*[CH:TRAP]
 that one possibility at the end of each interrupt
 is that 
@@ -155,8 +152,8 @@ and switch to the scheduler context previously saved in
 .PP
 .code Swtch
 .line swtch.S:/swtch/
-starts by loading its arguments off the stack
-into the registers
+starts by copying its arguments from the stack
+to the caller-saved registers
 .register eax
 and
 .register edx
@@ -171,7 +168,7 @@ Then
 .code swtch
 pushes the register state, creating a context structure
 on the current stack.
-Only the callee-save registers need to be saved;
+Only the callee-saved registers need to be saved;
 the convention on the x86 is that these are
 .register ebp,
 .register ebx,
@@ -190,13 +187,11 @@ written to
 .line swtch.S:/movl..esp/ .
 There is one more important register:
 the program counter 
-.register eip
-was saved by the
+.register eip .
+It has already been saved on the stack by the
 .code call
 instruction that invoked
-.code swtch
-and is on the stack just above
-.register ebp.
+.code swtch .
 Having saved the old context,
 .code swtch
 is ready to restore the new one.
@@ -308,10 +303,10 @@ across calls to
 the caller of
 .code-index swtch
 must already hold the lock, and control of the lock passes to the
-switched-to code.  This convention is unusual with locks; the typical
-convention is the thread that acquires a lock is also responsible of
+switched-to code.  This convention is unusual with locks; usually
+the thread that acquires a lock is also responsible for
 releasing the lock, which makes it easier to reason about correctness.
-For context switching it is necessary to break the typical convention because
+For context switching it is necessary to break this convention because
 .code-index ptable.lock
 protects invariants on the process's
 .code state
@@ -338,7 +333,7 @@ A kernel thread always gives up its
 processor in
 .code sched 
 and always switches to the same location in the scheduler, which
-(almost) always switches to a process in
+(almost) always switches to some kernel thread that previously called
 .code sched . 
 Thus, if one were to print out the line numbers where xv6 switches
 threads, one would observe the following simple pattern:
@@ -355,16 +350,16 @@ and
 .code-index scheduler
 are co-routines of each other.
 .PP
-There is one case when the scheduler's 
+There is one case when the scheduler's call to
 .code-index swtch
-to a new process does not end up in
+does not end up in
 .code-index sched .
 We saw this case in Chapter \*[CH:MEM]: when a
 new process is first scheduled, it begins at
 .code-index forkret
 .line proc.c:/^forkret/ .
 .code Forkret
-exists only to honor this convention by releasing the 
+exists to release the 
 .code-index ptable.lock ;
 otherwise, the new process could start at
 .code trapret .
@@ -587,7 +582,7 @@ Avoiding busy waiting requires
 a way for the receiver to yield the CPU
 and resume only when 
 .code send
-delivered a pointer.
+delivers a pointer.
 .PP
 Let's imagine a pair of calls, 
 .code-index sleep
@@ -678,7 +673,7 @@ is asleep waiting for a pointer
 that has already arrived.
 The next
 .code send
-will sleep waiting for 
+will wait for 
 .code recv
 to consume the pointer in the queue,
 at which point the system will be 
@@ -799,10 +794,9 @@ check of
 .code q->ptr
 and its call to
 .code sleep .
-Of course, the receiving process must release
-.code q->lock
-while it is sleeping so the sender can wake it up.
-So we want sleep to atomically release
+We need
+.code sleep
+to atomically release
 .code q->lock
 and put the receiving process to sleep.
 .PP
@@ -821,8 +815,7 @@ Let's look at the implementation of
 .line proc.c:/^sleep/
 and
 .code-index wakeup
-.line proc.c:/^wakeup/
-in xv6.
+.line proc.c:/^wakeup/ .
 The basic idea is to have
 .code sleep
 mark the current process as
@@ -986,7 +979,7 @@ sleeper has completed putting itself to sleep.
 .PP
 It is sometimes the case that multiple processes are sleeping
 on the same channel; for example, more than one process
-trying to read from a pipe.
+reading from a pipe.
 A single call to 
 .code wakeup
 will wake them all up.
@@ -1007,22 +1000,22 @@ but looping as described above will tolerate this problem.
 Much of the charm of sleep/wakeup is that it is both
 lightweight (no need to create special data
 structures to act as sleep channels) and provides a layer
-of indirection (callers need not know what specific process
+of indirection (callers need not know which specific process
 they are interacting with).
 .\"
 .section "Code: Pipes"
 .\"
 The simple queue we used earlier in this chapter
 was a toy, but xv6 contains two real queues
-that uses
+that use
 .code sleep
 and
 .code wakeup
 to synchronize readers and writers.
-One is in the IDE driver: processes add a disk requests to a queue and then
+One is in the IDE driver: a process adds a disk request to a queue and then
 calls
 .code sleep .
-The interrupt handler uses
+The IDE interrupt handler uses
 .code wakeup
 to alert the process that its request has completed.
 .PP
@@ -1031,7 +1024,7 @@ We saw the interface for pipes in Chapter \*[CH:UNIX]:
 bytes written to one end of a pipe are copied
 in an in-kernel buffer and then can be read out
 of the other end of the pipe.
-Future chapters will examine the file system support
+Future chapters will examine the file descriptor support
 surrounding pipes, but let's look now at the
 implementations of 
 .code-index pipewrite
@@ -1057,8 +1050,8 @@ The buffer wraps around:
 the next byte written after
 .code buf[PIPESIZE-1]
 is 
-.code buf[0] ,
-but the counts do not wrap.
+.code buf[0] .
+The counts do not wrap.
 This convention lets the implementation
 distinguish a full buffer 
 .code nwrite "" (
@@ -1188,7 +1181,7 @@ An interesting example, seen in Chapter \*[CH:UNIX],
 is the
 .code-index wait
 system call that a parent process uses to wait for a child to exit.
-In xv6, when a child exits, it does not die immediately.
+When a child exits, it does not die immediately.
 Instead, it switches to the
 .code-index ZOMBIE
 process state until the parent calls
