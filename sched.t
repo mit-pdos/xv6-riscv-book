@@ -582,7 +582,7 @@ Avoiding busy waiting requires
 a way for the receiver to yield the CPU
 and resume only when 
 .code send
-delivered a pointer.
+delivers a pointer.
 .PP
 Let's imagine a pair of calls, 
 .code-index sleep
@@ -673,7 +673,7 @@ is asleep waiting for a pointer
 that has already arrived.
 The next
 .code send
-will sleep waiting for 
+will wait for 
 .code recv
 to consume the pointer in the queue,
 at which point the system will be 
@@ -794,10 +794,9 @@ check of
 .code q->ptr
 and its call to
 .code sleep .
-Of course, the receiving process must release
-.code q->lock
-while it is sleeping so the sender can wake it up.
-So we want sleep to atomically release
+We need
+.code sleep
+to atomically release
 .code q->lock
 and put the receiving process to sleep.
 .PP
@@ -816,8 +815,7 @@ Let's look at the implementation of
 .line proc.c:/^sleep/
 and
 .code-index wakeup
-.line proc.c:/^wakeup/
-in xv6.
+.line proc.c:/^wakeup/ .
 The basic idea is to have
 .code sleep
 mark the current process as
@@ -981,7 +979,7 @@ sleeper has completed putting itself to sleep.
 .PP
 It is sometimes the case that multiple processes are sleeping
 on the same channel; for example, more than one process
-trying to read from a pipe.
+reading from a pipe.
 A single call to 
 .code wakeup
 will wake them all up.
@@ -1002,22 +1000,22 @@ but looping as described above will tolerate this problem.
 Much of the charm of sleep/wakeup is that it is both
 lightweight (no need to create special data
 structures to act as sleep channels) and provides a layer
-of indirection (callers need not know what specific process
+of indirection (callers need not know which specific process
 they are interacting with).
 .\"
 .section "Code: Pipes"
 .\"
 The simple queue we used earlier in this chapter
 was a toy, but xv6 contains two real queues
-that uses
+that use
 .code sleep
 and
 .code wakeup
 to synchronize readers and writers.
-One is in the IDE driver: processes add a disk requests to a queue and then
+One is in the IDE driver: a process adds a disk request to a queue and then
 calls
 .code sleep .
-The interrupt handler uses
+The IDE interrupt handler uses
 .code wakeup
 to alert the process that its request has completed.
 .PP
@@ -1026,7 +1024,7 @@ We saw the interface for pipes in Chapter \*[CH:UNIX]:
 bytes written to one end of a pipe are copied
 in an in-kernel buffer and then can be read out
 of the other end of the pipe.
-Future chapters will examine the file system support
+Future chapters will examine the file descriptor support
 surrounding pipes, but let's look now at the
 implementations of 
 .code-index pipewrite
@@ -1052,8 +1050,8 @@ The buffer wraps around:
 the next byte written after
 .code buf[PIPESIZE-1]
 is 
-.code buf[0] ,
-but the counts do not wrap.
+.code buf[0] .
+The counts do not wrap.
 This convention lets the implementation
 distinguish a full buffer 
 .code nwrite "" (
@@ -1183,7 +1181,7 @@ An interesting example, seen in Chapter \*[CH:UNIX],
 is the
 .code-index wait
 system call that a parent process uses to wait for a child to exit.
-In xv6, when a child exits, it does not die immediately.
+When a child exits, it does not die immediately.
 Instead, it switches to the
 .code-index ZOMBIE
 process state until the parent calls
