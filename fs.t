@@ -43,7 +43,7 @@ interrupt a sequence of updates and leave inconsistent on-disk data
 structures (e.g., a block that is both used in a file and marked free).
 .IP \[bu]  
 Different processes may operate on the file system at the same time,
-and must coordinate to maintain invariants.
+so the file system code must coordinate to maintain invariants.
 .IP \[bu]  
 Accessing a disk is orders of magnitude slower than accessing
 memory, so the file system must maintain an in-memory cache of
@@ -111,7 +111,7 @@ ease the design of higher ones.
 .PP
 The buffer cache has two jobs: (1) synchronize access to disk blocks to ensure
 that only one copy of a block is in memory and that only one kernel thread at a time
-uses that copy; (2) cache popular blocks so that they don't to be re-read from
+uses that copy; (2) cache popular blocks so that they don't need to be re-read from
 the slow disk. The code is in
 .code bio.c .
 .PP
@@ -365,17 +365,20 @@ One of the most interesting problems in file system design is crash
 recovery. The problem arises because many file system operations
 involve multiple writes to the disk, and a crash after a subset of the
 writes may leave the on-disk file system in an inconsistent state. For
-example, depending on the order of the disk writes, a crash during
-file deletion may either leave a directory entry pointing to a free
-inode, or it may leave an allocated but unreferenced inode.
+example, suppose a crash occurs during file truncation (setting
+the length of a file to zero and freeing its content blocks).
+Depending on the order of the disk writes, the crash 
+may either leave an inode with a reference
+to a content block that is marked free,
+or it may leave an allocated but unreferenced content block.
 .PP
-The latter is relatively benign, but a directory entry that refers to a freed
-inode is likely to cause serious problems after a reboot.  After reboot, the
-kernel might allocate that inode to another file, and now we have two different
-file names pointing unintentionally to the same inode.  If xv6 supported
+The latter is relatively benign, but an inode that refers to a freed
+block is likely to cause serious problems after a reboot.  After reboot, the
+kernel might allocate that block to another file, and now we have two different
+files pointing unintentionally to the same block.  If xv6 supported
 multiple users, this situation could be a security problem, since the
-old owner would be able to name the file even if the new owner hid the
-new file name in a read-protected directory.
+old file's owner would be able to read and write blocks in the
+new file, owned by a different user.
 .PP
 Xv6 solves the problem of crashes during file system operations with a
 simple form of logging. An xv6 system call does not directly write
