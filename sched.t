@@ -959,23 +959,53 @@ it changes that process's state to
 The next time the scheduler runs, it will
 see that the process is ready to be run.
 .PP
-.code Wakeup
-must always be called while holding a lock that
-guards whatever the wakeup
-condition is; in the example above that lock is
+Xv6 code always calls
+.code wakeup
+while holding the lock that guards the sleep condition;
+in the example above that lock is
 .code q->lock .
-The complete argument for why the sleeping process won't
-miss a wakeup is that at all times from before it
-checks the condition until after it is asleep, it holds either
+Strictly speaking it is sufficient if
+.code wakeup
+always follows the
+.code acquire
+(that is, one could call
+.code wakeup
+after the
+.code release ).
+Why do the locking rules for 
+.code sleep
+and
+.code wakeup
+ensure a sleeping process won't miss a wakeup it needs?
+The sleeping process holds either
 the lock on the condition or the
 .code ptable.lock 
-or both.
-Since
+or both from a point before it checks the condition
+to a point after it is marked as sleeping.
+If a concurrent thread causes the condition to be true,
+that thread must either hold the lock on the condition before the
+sleeping thread acquired it, or after the sleeping
+thread released it in
+.code sleep .
+If before, the sleeping thread must have seen the new condition
+value, and decided to sleep anyway, so it doesn't matter
+if it misses the wakeup.
+If after, then the earliest the waker could acquire the
+lock on the condition is after
+.code sleep
+acquires
+.code ptable.lock ,
+so that
+.code wakeup 's
+acquisition of
+.code ptable.lock
+must wait until
+.code sleep
+has completely finished putting the sleeper to sleep.
+Then 
 .code wakeup
-executes while holding both of those locks,
-the wakeup must execute either before the potential
-sleeper checks the condition, or after the potential
-sleeper has completed putting itself to sleep.
+will see the sleeping process and wake it up
+(unless something else wakes it up first).
 .PP
 It is sometimes the case that multiple processes are sleeping
 on the same channel; for example, more than one process
