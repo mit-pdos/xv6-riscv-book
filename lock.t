@@ -505,17 +505,19 @@ B before instruction A in the executable file.
 Concurrency, however, may expose this reordering to
 software, which can lead to incorrect behavior.
 .PP
-For example, consider
-.code-index release ,
-which assigns 0 to
-.code lk->locked .
-If the processor executed
-.code lk->locked=0 
-before an instruction inside the critical section that the
-lock is protecting, then another processor could acquire the lock and observe a
-partial update. This re-ordering could break the invariant of the critical
-section.
-.PP
+For example, in this code for
+.code insert ,
+it would be a disaster if the compiler or processor caused the effects
+of line 4 (or 3 or 5) to be visible to other cores after the effects
+of line 6:
+.P1
+    1	  acquire(&listlock);
+    2	  l = malloc(sizeof *l);
+    3	  l->data = data;
+    4	  l->next = list;
+    5	  list = l;
+    6	  release(&listlock);
+.P2
 To tell the hardware and compiler not to perform such re-orderings,
 xv6 uses
 .code __sync_synchronize() ,
@@ -530,8 +532,8 @@ Xv6 worries about ordering only in
 .code acquire
 and
 .code release ,
-because concurrent access to other data structures than the lock structure is
-performed between an
+because concurrent access to data structures other than the lock structure is
+performed between 
 .code acquire
 and
 .code release .
