@@ -20,4 +20,6 @@ emailed us bugs in the text: Abutalib Aghayev, Sebastian Boehm, Raphael
 Carvalho, Color Fuzzy, Giuseppe, Jacek Masiulaniec, Askar Safin, Pawel Szczurko,
 Warren Tooney, and Zou Chang Wei.
 
-If you have comments, please send them to 6.828-staff@pdos.csail.mit.edu.
+If you spot errors or have suggestions for improvement, please send email to
+Frans Kaashoek and Robert Morris (kaashoek,rtm@csail.mit.edu).
+
