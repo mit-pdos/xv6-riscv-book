@@ -6,6 +6,8 @@ cd heirloom-doctools
 make
 sudo make INSTALL=install STRIP=strip install	# sic
 
-This will install the binaries in /usr/ucb, which is
-what the run1 script expects.
+This will install the binaries in /usr/ucb, but
+you want to instal them in /usr/local/ucb, which is
+what the run1 script expects.  Move the binaries or
+update PREFIX in mk.config in heirloom-doctools.
 
