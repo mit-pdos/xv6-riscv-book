@@ -357,7 +357,7 @@ have to take out several locks. Subsequent chapters will discuss
 how each part of xv6 deals with concurrency, illustrating
 how to use locks.
 .ig
-XXX include the following table:
+XXX TODO include the following table:
 bcache.lock; protects allocation of a struct buffer in buf cache
 console.lock; several cores writing to console, interrupts
 ftable.lock; protects allocation of a struct file in file table
@@ -414,7 +414,7 @@ lock on a directory and the lock on a file in that directory to unlink
 a file from its parent directory correctly.  Xv6 always acquires the
 locks in the order first parent directory and then the file.
 .ig
-XXX update now xv6 is using sleeping locks
+XXX TODO update now xv6 is using sleeping locks
 ..
 .section "Interrupt handlers"
 .\"
@@ -637,6 +637,9 @@ event wait; see the description of
 and
 .code wakeup
 in Chapter \*[CH:SCHED].
+.ig
+XXX TODO mention sleeplocks
+..
 .\"
 .section "Real world"
 .\"
