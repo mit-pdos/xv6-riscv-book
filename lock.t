@@ -368,6 +368,8 @@ log.lock; serializes log operations
 pipe lock; protect pipe state
 ptable.lock; protects various things (e.g., proc->state, proctable, ...)
 tickslock; protects ticks.
+
+sleeplocks in bio.c and fs.c
 ..
 
 .\"
