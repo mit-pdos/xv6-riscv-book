@@ -10,10 +10,6 @@
 	
 	be sure to say buffer, not block 
 
-	figure out a way to make the parallel between BUSY and locks clear
-        maybe don't use sleep/wakeup but having something ref counts to avoid
-        the race in bget.
-
 	TODO: Explain the name sys_mknod.
 	Perhaps mknod was for a while the only way to create anything?
 	
@@ -107,7 +103,7 @@ ease the design of higher ones.
 .\"
 .\" -------------------------------------------
 .\"
-.section "Buffer cache Layer"
+.section "Buffer cache Layer and sleep locks"
 .PP
 The buffer cache has two jobs: (1) synchronize access to disk blocks to ensure
 that only one copy of a block is in memory and that only one kernel thread at a time
@@ -127,15 +123,69 @@ A kernel thread must release a buffer by calling
 .code-index brelse
 when it is done with it.
 .PP
-The buffer cache synchronizes access to each block by allowing at most
-one kernel thread to have a reference to the block's buffer. If one
-kernel thread has obtained a reference to a buffer but hasn't yet
-released it, other threads' calls to
-.code bread
-for the same block will wait.
-Higher file system layers rely on the buffer cache's block
-sychronization to help them maintain invariants.
+The buffer cache synchronizes access to each block using a
+.italic-index "sleep lock" .
+Like spin locks, sleep locks are a tool to guarantee mutually-exclusive
+access to shared data (in this case, a buffer in the buffer cache).  Unlike
+spin locks, sleep locks allow a kernel thread to hold a lock for a long time,
+namely across
+.code sleep
+operations.  For example, a kernel thread may hold a sleep lock on the buffer
+that contains a directory, find out that it must read another block in the file
+system (e.g., a block that contains a file in that directory), and then go to
+sleep waiting for the disk driver to read the block containing information about
+the file, while still holding the sleep lock on the buffer that contains the
+directory.  The reason why the kernel thread may have to hold on to the sleep
+lock on the directory buffer is that there are situations when xv6 must update
+two blocks atomically (e.g., unlinking a file from a directory).
 .PP
+If a kernel thread attempts to read a block that another kernel thread has
+locked, the thread's
+.code
+bread call will wait (using
+.code sleep )
+until the other thread returns the buffer to the buffer cache using
+.code brelse ,
+which releases the sleep lock. Since a kernel thread may hold on for a
+sleep lock for a long time, the waiting thread may wait for a long time and
+therefore sleep locks don't spin waiting for a lock, but use
+.code sleep
+to release a processor and
+.code wakeup
+to alert that the lock is available.
+.PP
+Why does xv6 have both sleep locks and spin locks?  One option is to use sleep
+locks instead of spin locks everywhere.  The reason not do so is that spin locks
+turn off interrupts and sleep locks don't.  There are critical sections in which
+interrupts must be turned off to avoid that an interrupt handler modifies shared
+data concurrently. For example, reading
+.code ticks
+must be done with interrupts turned off, otherwise the clock interrupt handler
+may increment it while a kernel thread is reading it. Xv6 must use spin locks
+for such critical sections.  The other option is to use spin locks instead of
+sleep locks, but that is undesirable too.  If xv6 were to use spin locks instead
+of sleep locks everywhere, then when a thread is waiting for a long-term lock,
+its processor might spin for a long time during which xv6 could have done useful
+work (e.g., run another user-level process).
+.PP
+A potential fix is to have a different spin lock that calls
+.code
+sleep after spinning for a while, so that a spinning processor can do something
+more useful.  But, that would mean that a kernel thread may run with interrupts
+disabled while sleeping.  This is undesirable because it may lead to deadlock.
+For example, consider xv6 running on a machine with one processor.  If a kernel
+thread goes to sleep while waiting for a disk interrupt with interrupts
+disabled, then the kernel thread will never learn when the disk is done and thus
+sleep forever.
+.PP
+In short, the properties that we want for spin locks and sleep locks are
+sufficiently different that in practice operating systems have two types of
+locks: spin locks for short critical sections and sleep locks for long critical
+sections.  Kernel developers can then chose which one is best for any given
+situation: use spin locks when a lock is needed for a few instructions and use
+sleep locks when a lock is needed across operations that might sleep.
+.PP
+Let's return to the buffer cache.
 The buffer cache has a fixed number of buffers to hold disk blocks,
 which means that if the file system asks for a block that is not
 already in the cache, the buffer cache must recycle a buffer currently
@@ -166,15 +216,12 @@ not the
 .code buf
 array.
 .PP
-A buffer has three state bits associated with it.
+A buffer has two state bits associated with it.
 .code-index B_VALID
 indicates that the buffer contains a copy of the block.
 .code-index B_DIRTY
 indicates that the buffer content has been modified and needs
 to be written to the disk.
-.code-index B_BUSY
-indicates that some kernel thread has a reference to this
-buffer and has not yet released it.
 .PP
 .code Bread
 .line bio.c:/^bread/
@@ -193,92 +240,39 @@ to do that before returning the buffer.
 scans the buffer list for a buffer with the given device and sector numbers
 .lines bio.c:/Is.the.block.already/,/^..}/ .
 If there is such a buffer,
-and the buffer is not busy,
 .code-index bget
-sets the
-.code-index B_BUSY
-flag and returns
-.lines 'bio.c:/if...b->flags.&.B_BUSY/,/^....}/' .
-If the buffer is already in use,
-.code bget
-sleeps on the buffer to wait for its release.
-When
-.code-index sleep
-returns,
-.code bget
-cannot assume that the buffer is now available.
-In fact, since 
-.code sleep
-released and reacquired
-.code-index bcache.lock ,
-there is no guarantee that 
-.code b 
-is still the right buffer: maybe it has been reused for
-a different disk sector.
-.code Bget
-must start over
-.line bio.c:/goto.loop/ ,
-hoping that the outcome will be different this time.
-.ig
-.figure bufrace
-.PP
-rtm says: this example doesn't really work: if one deleted
-the goto, the code would continue on to the "recycle" loop instead
-of returning the buffer found before the sleep. maybe we could present
-the code for a different and broken implementation, and use that for
-the example, but that seems a bit complex. in any case the end
-of the previous paragraph explains the potential problems.
-If
-.code-index bget
-didn't have the
-.code goto
-statement, then the race in 
-.figref bufrace 
-could occur.
-The first process has a buffer and has loaded sector 3 in it.
-Now two other processes come along. The first one does a 
-.code get
-for buffer 3 and sleeps in the loop for cached blocks.  The second one does a
-.code get
-for buffer 4, and could sleep on the same buffer but in the loop for freshly
-allocated blocks because there are no free buffers and the buffer that holds 3
-is the one at the front of the list and is selected for reuse.   The first
-process releases the buffer and 
+acquires the sleep lock for the buffer.
+Acquiring the sleep lock may take a long time,
+because another kernel thread may have the sleep lock.
+Therefore,
+the implementation of a sleep lock
+.lines sleeplock.c:/^acquiresleep/ ,
+releases the processor by calling
+.code sleep .
+When the holder of the sleep lock releases the sleep lock,
+it calls
 .code wakeup
-happens to schedule process 3 first, and it will grab the buffer and load sector
-4 in it.   When it is done it will release the buffer (containing sector 4) and
-wakeup process 2.  Without the 
-.code goto
-statement process 2 will mark the buffer 
-.code BUSY ,
-and return from
-.code bget ,
-but the buffer contains sector 4, instead of 3.  This error could result in all
-kinds of havoc, because sectors 3 and 4 have different content; xv6 uses them
-for storing inodes.
-..
+to alert any waiters that the lock is available.
+Once a waiter obtains the sleep lock,
+.code bget
+returns with the locked buffer.
 .PP
 If there is no cached buffer for the given sector,
 .code-index bget
 must make one, possibly reusing a buffer that held
 a different sector.
 It scans the buffer list a second time, looking for a buffer
-that is not busy:
+that is not locked:
 any such buffer can be used.
 .code Bget
 edits the buffer metadata to record the new device and sector number
-and marks the buffer busy before
-returning the buffer
-.lines bio.c:/flags.=.B_BUSY/,/return.b/ .
+and acquires its sleep lock before
+returning the locked buffer.
 Note that the assignment to
 .code flags
-not only sets the
-.code-index B_BUSY
-bit but also clears the
-.code-index B_VALID
-and
-.code-index B_DIRTY
-bits, thus ensuring that
+clears
+.code-index B_VALID ,
+thus ensuring that
 .code bread
 will read the block data from disk
 rather than incorrectly using the buffer's previous contents.
@@ -286,9 +280,8 @@ rather than incorrectly using the buffer's previous contents.
 Because the buffer cache is used for synchronization,
 it is important that
 there is only ever one buffer for a particular disk sector.
-The assignments
-.lines bio.c:/dev.=.dev/,/.flags.=.B_BUSY/
-are only safe because 
+Obtaining the sleep lock in the second loop
+is safe because 
 .code bget 's
 first loop determined that no buffer already existed for that sector,
 and
@@ -331,12 +324,10 @@ is cryptic but worth learning:
 it originated in Unix and is used in BSD, Linux, and Solaris too.)
 .code Brelse
 .line bio.c:/^brelse/
+releases the sleep lock and
 moves the buffer
 to the front of the linked list
-.lines 'bio.c:/b->next->prev.=.b->prev/,/bcache.head.next.=.b/' ,
-clears the
-.code-index B_BUSY
-bit, and wakes any processes sleeping on the buffer.
+.lines 'bio.c:/b->next->prev.=.b->prev/,/bcache.head.next.=.b/' .
 Moving the buffer causes the
 list to be ordered by how recently the buffers were used (meaning released):
 the first buffer in the list is the most recently used,
@@ -806,11 +797,7 @@ Code must lock the inode using
 before reading or writing its metadata or content.
 .code Ilock
 .line fs.c:/^ilock/
-uses a now-familiar sleep loop to wait for
-.code ip->flag 's
-.code-index I_BUSY
-bit to be clear and then sets it
-.lines 'fs.c:/^..while.ip->flags.&.I_BUSY/,/I_BUSY/' .
+uses a now-familiar sleep lock for this purpose.
 Once
 .code-index ilock
 has exclusive access to the inode, it can load the inode metadata
@@ -819,10 +806,9 @@ if needed.
 The function
 .code-index iunlock
 .line fs.c:/^iunlock/
-clears the
-.code-index I_BUSY
-bit and wakes any processes sleeping in
-.code ilock .
+releases the sleep lock,
+which may cause any processes sleeping
+to be woken up.
 .PP
 .code Iput
 .line fs.c:/^iput/
@@ -854,9 +840,7 @@ The locking protocol in
 in the case in which it frees the inode
 deserves a closer look.
 First, when locking
-.code ip 
-by setting
-.code I_BUSY ,
+.code ip ,
 .code-index iput
 assumes that it is unlocked.
 This must be the case: the caller is required to unlock
@@ -894,9 +878,8 @@ will return a reference to the block by calling
 .code-index iget ,
 which will find 
 .code ip
-in the cache, see that its 
-.code-index I_BUSY
-flag is set, and sleep.
+in the cache, see that
+it is locked, and sleep.
 Now the in-core inode is out of sync compared to the disk:
 .code ialloc
 reinitialized the disk version but relies on the 
@@ -904,9 +887,7 @@ caller to load it into memory during
 .code ilock .
 In order to make sure that this happens,
 .code iput
-must clear not only
-.code I_BUSY
-but also
+must clear
 .code-index I_VALID
 before releasing the inode lock.
 It does this by zeroing

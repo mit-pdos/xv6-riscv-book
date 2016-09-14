@@ -408,14 +408,21 @@ These orderings come about because
 and 
 .code wakeup 
 have a complicated invariant, as discussed in Chapter
-\*[CH:SCHED].  In the file system there are a number of examples of
-chains of two because the file system must, for example, acquire a
-lock on a directory and the lock on a file in that directory to unlink
-a file from its parent directory correctly.  Xv6 always acquires the
-locks in the order first parent directory and then the file.
-.ig
-XXX TODO update now xv6 is using sleeping locks
-..
+\*[CH:SCHED].
+.PP
+In the file system there are a number of examples of more complicated situations
+because the file system holds long-term locks, and a kernel thread may hold
+several of them.  For example, a kernel thread in the file system must acquire a
+lock on a directory and the lock on a file in that directory to unlink a file
+from its parent directory correctly.  Kernel threads always acquire the locks in
+the order first parent directory and then the file.  While doing so the kernel
+thread also holds long-term locks on the buffers from the buffer cache
+containing the parent directory and the file's inode.  In typical cases, the
+lock ordering avoids deadlocks.
+.PP
+It is possible for xv6 to deadlock, however, when, for example, running with a
+small buffer cache. Therefore, xv6 panics when it runs out of buffers rather
+waiting for a free buffer and run the risk of deadlock.
 .section "Interrupt handlers"
 .\"
 Xv6 uses locks to protect interrupt handlers
@@ -637,9 +644,18 @@ event wait; see the description of
 and
 .code wakeup
 in Chapter \*[CH:SCHED].
-.ig
-XXX TODO mention sleeplocks
-..
+.PP
+It is easy for xv6 to deadlock when holding a spin lock across
+.code sleep ,
+as we will see
+in Chapter \*[CH:FS],
+because spinlocks disable interrupts.
+Therefore, xv6 supports
+.code-index "sleep locks"
+for kernel threads that must hold long-term locks.  For example, a kernel thread
+may need to hold a lock on a block read from disk while reading another block
+from the disk so that it can update both blocks in an atomic operation.
+As will see, xv6 implements sleep locks using spin locks.
 .\"
 .section "Real world"
 .\"
@@ -696,25 +712,7 @@ the number of puts/gets scales with increasing number of cores.
 observe it when booting xv6 and run stressfs?  Increase critical section with a
 dummy loop; what do you see now?  explain.
 .PP
-4. Setting a bit in a buffer's
-.code flags
-is not an atomic operation: the processor makes a copy of 
-.code flags
-in a register, edits the register, and writes it back.
-Thus it is important that two processes are not writing to
-.code flags
-at the same time.
-xv6 edits the
-.code B_BUSY
-bit only while holding
-.code buflock
-but edits the 
-.code B_VALID
-and
-.code B_WRITE
-flags without holding any locks.  Why is this safe?
-.PP
-5. Implement a subset of Pthreads in xv6.  That is, implement a user-level
+4. Implement a subset of Pthreads in xv6.  That is, implement a user-level
 thread library so that a user process can have more than 1 thread and arrange
 that these threads can run in parallel on different processors.  Come up with a
 design that correctly handles a thread making a blocking system call and

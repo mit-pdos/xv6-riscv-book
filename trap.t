@@ -893,13 +893,6 @@ the
 flag means that
 .code data
 needs to be written out.
-The
-.code-index B_BUSY
-flag is a lock bit; it indicates that some process
-is using the buffer and other processes must not.
-When a buffer has the
-.code B_BUSY
-flag set, we say the buffer is locked.
 .PP
 The kernel initializes the disk driver at boot time by calling
 .code-index ideinit
