@@ -184,6 +184,8 @@ locks: spin locks for short critical sections and sleep locks for long critical
 sections.  Kernel developers can then chose which one is best for any given
 situation: use spin locks when a lock is needed for a few instructions and use
 sleep locks when a lock is needed across operations that might sleep.
+For example, the inode layer also uses sleep locks to hold long-term locks
+on inodes.
 .PP
 Let's return to the buffer cache.
 The buffer cache has a fixed number of buffers to hold disk blocks,
