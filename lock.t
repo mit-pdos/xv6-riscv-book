@@ -346,7 +346,9 @@ fine-grained locks, so that the kernel could execute on multiple CPUs
 simultaneously.
 .PP
 Ultimately, the choice of lock granularity is an exercise in parallel
-programming.  Xv6 uses a few coarse data-structure specific locks; for
+programming.  Xv6 uses a few coarse data-structure specific locks (see
+.figref locktable ).
+For
 example, xv6 uses a single lock protecting the process table and its
 invariants, which are described in Chapter \*[CH:SCHED].  A more
 fine-grained approach would be to have a lock per entry in the process
@@ -356,22 +358,7 @@ that have invariants over the whole process table, since they might
 have to take out several locks. Subsequent chapters will discuss
 how each part of xv6 deals with concurrency, illustrating
 how to use locks.
-.ig
-XXX TODO include the following table:
-bcache.lock; protects allocation of a struct buffer in buf cache
-console.lock; several cores writing to console, interrupts
-ftable.lock; protects allocation of a struct file in file table
-icache.lock: protects allocation of a struct inode in inode cache
-idelock; protects disk queue, interrupts
-kmem.lock; protects memory allocator for kfree/kalloc
-log.lock; serializes log operations
-pipe lock; protect pipe state
-ptable.lock; protects various things (e.g., proc->state, proctable, ...)
-tickslock; protects ticks.
-
-sleeplocks in bio.c and fs.c
-..
-
+.figure locktable
 .\"
 .section "Deadlock and lock ordering"
 .\"
