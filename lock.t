@@ -577,32 +577,21 @@ but there are times when they are awkward. Subsequent chapters will
 point out such situations in xv6; this section outlines some
 of the problems that come up.
 .PP
-Sometimes a lock must be held
-by a group of functions that call each other, perhaps because the lock protects
-a complex collection of invariants or data items.
-For example, both
-.code allocproc
-and its callers
-.code fork
-and
-.code userinit
-need
-.code ptable.lock .
-They can't all acquire the lock, since that would lead to deadlock.
-Instead, the xv6 code has a convention that whoever calls
-.code allocproc
-must already have acquired
-.code ptable.lock .
-In addition,
-.code fork
-amd
-.code userinit
-must call
-.code allocproc
-at a time when enough invariants hold that the latter won't break.
-This pattern arises in other places in xv6. Thus a kernel programmer
-often has to be aware of what locks callees expect to be held,
-and what invariants they need.
+Sometimes a function uses data which must be guarded by a lock,
+but the function is called both from code that already holds
+the lock and from code that wouldn't otherwise need the lock.
+One way to deal with this is to have two variants of the function,
+one that acquires the lock, and the other that expects the
+caller to already hold the lock; see
+.code wakeup1
+for an example
+.line proc.c:/^wakeup1/ .
+Another approach is for the function to require callers
+to hold the lock whether the caller needs it or not,
+as with 
+.code sched
+.line proc.c:/^sched/ .
+Kernel developers need to be aware of such requirements.
 .PP
 It might seem that one could simplify situations where both
 caller and callee need a lock by allowing 
