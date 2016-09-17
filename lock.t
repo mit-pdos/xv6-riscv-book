@@ -377,9 +377,8 @@ means that locks are effectively part of each function's specification: the
 caller must invoke functions in a way that causes locks to be acquired
 in the agreed-on order.
 .PP
-Because xv6 uses relatively few coarse-grained locks, it has
-few lock-order chains.  The longest chains are only two deep. For
-example,
+Because xv6 uses relatively few coarse-grained locks, it has few lock-order
+chains.  The longest chain with spinlocks is only two deep. For example,
 .code-index ideintr
 holds the ide lock while calling 
 .code-index wakeup ,
@@ -398,14 +397,21 @@ have a complicated invariant, as discussed in Chapter
 \*[CH:SCHED].
 .PP
 In the file system there are a number of examples of more complicated situations
-because the file system holds long-term locks, and a kernel thread may hold
-several of them.  For example, a kernel thread in the file system must acquire a
-lock on a directory and the lock on a file in that directory to unlink a file
-from its parent directory correctly.  Kernel threads always acquire the locks in
-the order first parent directory and then the file.  While doing so the kernel
-thread also holds long-term locks on the buffers from the buffer cache
-containing the parent directory and the file's inode.  In typical cases, the
-lock ordering avoids deadlocks.
+because the file system holds long-term locks (called
+.italic-index sleeplocks
+in xv6), and a
+kernel thread may hold several of them.  For example, a kernel thread in the
+file system must acquire a lock on a directory and the lock on a new file to add
+the file to the directory correctly.  In addition, the kernel thread may hold at
+the same time a lock on one buffer (e.g., holding a block of the new file).  To
+avoid deadlock, kernel threads always acquire the locks in the order first
+parent directory, then the file, and then a file block.
+.PP
+The longest lock chain in xv6 combines the above spinlock chain and the
+long-term lock chain. This chain is 5 locks long: the 3 long-term locks in the
+file system and then the ide lock and the
+.code ptable
+lock to read a file block from the disk.
 .PP
 It is possible for xv6 to deadlock, however, when, for example, running with a
 small buffer cache. Therefore, xv6 panics when it runs out of buffers rather
