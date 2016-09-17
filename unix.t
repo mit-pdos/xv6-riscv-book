@@ -469,13 +469,30 @@ child shell and that
 .code runcmd 
 will call
 .code exec
-to load the new program.
-Now it should be clear why it is a good idea that
+to load the new program.  Now it should be clear why it is a good idea that
 .code fork
 and 
 .code exec 
-are separate calls.  This separation allows the child shell to
-redirect I/O before it runs the program.
+are separate calls.  Because if they are separate, the shell can fork a child,
+use
+.code open ,
+.code close ,
+.code dup
+in the child to change the standard input and output
+file descriptors, and then
+.code exec .
+No changes to the program being exec-ed
+.code ( cat
+in our example)
+are required.
+If
+.code fork
+and
+.code exec
+were combined into a single
+system call, some other (probably more complex) scheme would be required for the
+shell to redirect standard input and output, or the program itself would have to
+understand how to redirect I/O.
 .PP
 Although
 .code fork
