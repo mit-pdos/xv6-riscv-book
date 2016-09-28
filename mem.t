@@ -22,7 +22,8 @@ mapping the same memory more than once in one address space
 (each user page is also mapped into the kernel's physical view of memory),
 and guarding a user stack with
 an unmapped page.  The rest of this chapter explains the page tables that the x86
-hardware provides and how xv6 uses them.
+hardware provides and how xv6 uses them.  Compared to a real-world operating
+system, xv6's design is restrictive, but it does illustrate the key ideas.
 .\"
 .section "Paging hardware"
 .\"
@@ -178,15 +179,15 @@ require page table switches.
 For the most part the kernel does not have its own page
 table; it is almost always borrowing some process's page table.
 .PP
-To review, xv6 ensures that each process can use only its own memory,
-and that each process sees its memory as having contiguous virtual addresses
-starting at zero.
-xv6 implements the first by setting the
+To review, xv6 ensures that each process can use only its own memory.  And, each
+process sees its memory as having contiguous virtual addresses starting at zero,
+while the process's physical memory can be non-contiguous.  xv6 implements the
+first by setting the
 .code-index PTE_U
-bit only on PTEs of virtual addresses that refer to the process's own memory.
-It implements the second using the ability of page tables to translate
-successive virtual addresses to whatever physical pages happen to
-be allocated to the process.
+bit only on PTEs of virtual addresses that refer to the process's own memory.  It
+implements the second using the ability of page tables to translate successive
+virtual addresses to whatever physical pages happen to be allocated to the
+process.
 .\"
 .section "Code: creating an address space"
 .\"
@@ -414,9 +415,18 @@ removes and returns the first element in the free list.
 .PP
 .figref processlayout
 shows the layout of the user memory of an executing process in xv6.
-The heap is above the stack so that it can expand when the process
+Each user process starts at address 0. The bottom of the address space
+contains the text for the user program, its data, and its stack.
+The heap is above the stack so that the heap can expand when the process
 calls
 .code-index sbrk .
+Note that all text, data, and stack are layed out contiguously in the process's
+address space but xv6 is free to use physical pages that are not contiguous.
+For example, when xv6 expands a process's heap, it can use any free physical page for
+the new virtual page and then program the page table hardware to map the virtual
+page to the allocated physical page.  This flexibility is a major advantage of
+using paging hardware.
+.PP
 The stack is a single page, and is
 shown with the initial contents as created by exec.
 Strings containing the command-line arguments, as well as an
@@ -432,6 +442,8 @@ To guard a stack growing off the stack page, xv6 places a guard page right below
 the stack.  The guard page is not mapped and so if the stack runs off the stack
 page, the hardware will generate an exception because it cannot translate the
 faulting address.
+A real-world operating system might allocate more space for the stack so that it can
+grow beyond one page.
 .\"
 .section "Code: exec"
 .\"
@@ -786,7 +798,11 @@ the function shellcode(), which is created by a user, will be executed according
 .\"
 .PP
 Like most operating systems, xv6 uses the paging hardware
-for memory protection and mapping. Most operating systems make far more sophisticated
+for memory protection and mapping. Most operating systems use x86's 64-bit paging
+hardware (which has 3 levels of translation). 64-bit address spaces allow for a
+less restrictive memory layout than xv6's; for example, it would be easy to
+remove xv6's limit of 2 Gbyte for physical memory.
+Most operating systems make far more sophisticated
 use of paging than xv6; for example, xv6 lacks demand
 paging from disk, copy-on-write fork, shared memory,
 lazily-allocated pages,
