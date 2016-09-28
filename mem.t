@@ -924,3 +924,6 @@ Implement support for this convention in xv6.
 in
 .code exec.c ,
 and construct a user  program that exploits that the check is missing.
+.PP
+7. How would you improve xv6's memory layout if xv6 where running on a 64-bit
+processor?
