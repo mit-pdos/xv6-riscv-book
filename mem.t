@@ -420,12 +420,12 @@ contains the text for the user program, its data, and its stack.
 The heap is above the stack so that the heap can expand when the process
 calls
 .code-index sbrk .
-Note that all text, data, and stack are layed out contiguously in the process's
-address space but xv6 is free to use physical pages that are not contiguous.
-For example, when xv6 expands a process's heap, it can use any free physical page for
-the new virtual page and then program the page table hardware to map the virtual
-page to the allocated physical page.  This flexibility is a major advantage of
-using paging hardware.
+Note that the text, data, and stack sections are layed out contiguously in the
+process's address space but xv6 is free to use non-contiguous physical pages for
+those sections. For example, when xv6 expands a process's heap, it can use any
+free physical page for the new virtual page and then program the page table
+hardware to map the virtual page to the allocated physical page.  This
+flexibility is a major advantage of using paging hardware.
 .PP
 The stack is a single page, and is
 shown with the initial contents as created by exec.
@@ -444,6 +444,10 @@ page, the hardware will generate an exception because it cannot translate the
 faulting address.
 A real-world operating system might allocate more space for the stack so that it can
 grow beyond one page.
+.ig
+Should we have a section here on sbrk, checking the argument of sbrk, and
+flushing the TLB after making a change to the address space?
+..
 .\"
 .section "Code: exec"
 .\"
