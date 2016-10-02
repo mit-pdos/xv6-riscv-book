@@ -444,14 +444,49 @@ page, the hardware will generate an exception because it cannot translate the
 faulting address.
 A real-world operating system might allocate more space for the stack so that it can
 grow beyond one page.
-.ig
-Should we have a section here on sbrk, checking the argument of sbrk, and
-flushing the TLB after making a change to the address space?
-..
+.\"
+.section "Code: sbrk"
+.\"
+.code Sbrk
+is the system call for a process to shrink or grow its memory. The system
+call is implemented by the function
+.code growproc
+.line proc.c:/^growproc/ .
+If
+.code n
+is postive,
+.code growproc
+allocates one or more physical pages and maps them at the top of the process's
+address space.  If
+.code n
+is negative,
+.code growproc
+unmaps one or more pages from the process's address space and frees the corresponding
+physical pages.
+To make these changes,
+.code
+xv6 modifies the process's page table.  The process's page table is stored in
+memory, and so the kernel can update the table with ordinary assignment
+statements, which is what
+.code allocuvm
+and
+.code deallocuvm
+do.
+The x86 hardware caches page table entries in a
+.italic-index "Translation Look-aside Buffer (TLB)" ,
+and when xv6 changes the page tables, it must invalidate the cached entries.  If
+it didn't invalidate the cached entries, then at some point later the TLB might
+use an old mapping, pointing to a physical page that in the mean time has been
+allocated to another process, and as a result, a process might be able to
+scribble on some other process's memory. Xv6 invalidates stale cached entries,
+by reloading
+.code cr3 ,
+the register that holds the address of the current page table.
 .\"
 .section "Code: exec"
 .\"
-Exec is the system call that creates the user part of an address space.  It
+.code Exec
+is the system call that creates the user part of an address space.  It
 initializes the user part of an address space from a file stored in the file
 system.
 .code Exec

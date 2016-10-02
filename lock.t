@@ -657,8 +657,9 @@ be able to run on that processor.  As another example, if a pthread changes its
 process's address space (e.g., grow or shrink it), the kernel must arrange that
 other processors that run threads of the same process update their hardware page
 tables to reflect the change in the address space.  On the x86, this involves
-shooting down the translation look-aside buffer (TLB) of other processors using
-inter-processor interrupts (IPIs).
+shooting down the
+.italic-index "Translation Look-aside Buffer (TLB)"
+of other processors using inter-processor interrupts (IPIs).
 .PP
 It is possible to implement locks without atomic instructions, but it is
 expensive, and most operating systems use atomic instructions.
