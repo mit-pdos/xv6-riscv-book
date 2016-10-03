@@ -7,18 +7,18 @@
 .PP
 When running a process, a CPU executes the normal processor loop: read an
 instruction, advance the program counter, execute the instruction, repeat.  But
-there are events on which control from a user program must transfer back to
-the kernel instead of executing the next instruction.  These events include a
-device signaling that it wants attention, a user program doing something illegal
-(e.g., references a virtual address for which there is no PTE), or a user
+there are events on which control from a user program must transfer back to the
+kernel instead of executing the next instruction.  These events include a device
+signaling that it wants attention, a user program doing something illegal (e.g.,
+references a virtual address for which there is no page table entry), or a user
 program asking the kernel for a service with a system call.  There are three
 main challenges in handling these events: 1) the kernel must arrange that a
 processor switches from user mode to kernel mode (and back); 2) the kernel and
 devices must coordinate their parallel activities; and 3) the kernel must
-understand the interface of the devices.  Addressing these 3 challenges
-requires detailed understanding of hardware and careful programming, and can
-result in opaque kernel code.  This chapter explains how xv6 addresses these
-three challenges.
+understand the interface of the devices.  Addressing these 3 challenges requires
+detailed understanding of hardware and careful programming, and can result in
+opaque kernel code.  This chapter explains how xv6 addresses these three
+challenges.
 .\"
 .section "Systems calls, exceptions, and interrupts"
 .\"
@@ -27,10 +27,9 @@ the kernel. First, a system call: when a user program asks for an operating
 system service, as we saw at the end of the last chapter.
 Second, an
 .italic-index exception :
-when a program performs an illegal action. Examples of illegal actions
-include divide by zero, attempt to access memory for a PTE that is not present,
-and so on.
-Third, an
+when a program performs an illegal action. Examples of illegal actions include
+divide by zero, attempt to access memory for a page-table entry that is not
+present, and so on.  Third, an
 .italic-index interrupt :
 when a device generates a signal to indicate that
 it needs attention from the operating system.  For example, a clock chip may
@@ -171,8 +170,9 @@ Push
 Push
 .register eip.
 .IP \[bu] 
-Clear some bits of
-.register eflags.
+Clear the IF bit in
+.register eflags ,
+but only on an interrupt.
 .IP \[bu] 
 Set 
 .register cs
@@ -358,9 +358,8 @@ The processor then pushes the
 .register cs,
 and
 .register eip
-registers.
-For some traps, the processor also pushes an error word.
-The processor then loads
+registers.  For some traps (e.g., a page fault), the processor also pushes an
+error word.  The processor then loads
 .register eip
 and
 .register cs
@@ -417,7 +416,9 @@ instruction.
 .register cs 
 is the user code segment selector.
 .register eflags
-is the content of the eflags register at the point of executing the 
+is the content of the
+.register eflags
+register at the point of executing the 
 .code int
 instruction.
 As part of saving the general-purpose registers,
@@ -763,7 +764,9 @@ interrupts to the local processor.
 .PP
 A processor can control if it wants to receive interrupts through the
 .code-index IF
-flag in the eflags register.
+flag in the
+.register eflags
+register.
 The instruction
 .code-index cli
 disables interrupts on the processor by clearing 
