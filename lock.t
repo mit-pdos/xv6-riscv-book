@@ -16,9 +16,13 @@ Even on a uniprocessor, an interrupt routine that uses
 the same data as some interruptible code could damage
 the data if the interrupt occurs at just the wrong time.
 .PP
-Any code that accesses shared data concurrently from multiple CPUs (or
-at interrupt time) must have a strategy for maintaining correctness
-despite concurrency. xv6 uses a handful of simple concurrency control
+Any code that accesses shared data concurrently
+must have a strategy for maintaining correctness
+despite concurrency.
+The concurrency may arise from accesses by multiple cores,
+or by multiple threads,
+or by interrupt code.
+xv6 uses a handful of simple concurrency control
 strategies; much more sophistication is possible.
 This chapter focuses on one of the strategies used extensively
 in xv6 and many other systems: the 
@@ -75,8 +79,7 @@ concurrent requests, you might implement the linked list as follows:
    17	}
 .P2
 .figure race
-Proving this implementation correct is a typical
-exercise in a data structures and algorithms class.
+This implementation is correct if executed in isolation.
 However, the code is not correct if more than one
 copy executes concurrently.
 If two CPUs execute
@@ -96,8 +99,14 @@ happen at line 16,
 the second one will overwrite the first;
 the node involved in the first assignment
 will be lost.
-This kind of problem is called a 
+.PP
+The lost update at line 16 is an example of a
 .italic-index "race condition" .
+A race condition is a situation in which a memory location is accessed
+concurrently, and at least one access is a write.
+A race is often a sign of a bug, either a lost update
+(if the accesses are writes) or a read of
+an incompletely-updated data structure.
 The outcome of a race depends on
 the exact timing of the two CPUs involved and
 how their memory operations are ordered by the memory system,
@@ -108,7 +117,7 @@ For example, adding print statements while debugging
 might change the timing of the execution enough
 to make the race disappear.
 .PP
-The typical way to avoid races is to use a lock.
+The usual way to avoid races is to use a lock.
 Locks ensure
 .italic-index "mutual exclusion" ,
 so that only one CPU can execute 
