@@ -1456,7 +1456,7 @@ and
 are a simple and effective synchronization method,
 but there are many others.
 The first challenge in all of them is to
-avoid the ``missed wakeups'' problem we saw at the
+avoid the ``lost wakeups'' problem we saw at the
 beginning of the chapter.
 The original Unix kernel's
 .code sleep
@@ -1473,7 +1473,7 @@ Plan 9's
 uses a callback function that runs with the scheduling
 lock held just before going to sleep;
 the function serves as a last minute check
-of the sleep condition, to avoid missed wakeups.
+of the sleep condition, to avoid lost wakeups.
 The Linux kernel's
 .code sleep
 uses an explicit process queue instead of
@@ -1540,7 +1540,7 @@ The integer value typically corresponds to a real
 count, such as the number of bytes available in a pipe buffer
 or the number of zombie children that a process has.
 Using an explicit count as part of the abstraction
-avoids the ``missed wakeup'' problem:
+avoids the ``lost wakeup'' problem:
 there is an explicit count of the number
 of wakeups that have occurred.
 The count also avoids the spurious wakeup
