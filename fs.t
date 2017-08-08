@@ -890,7 +890,7 @@ caller to load it into memory during
 In order to make sure that this happens,
 .code iput
 must clear
-.code-index I_VALID
+.code-index ip->valid
 before releasing the inode lock.
 It does this by zeroing
 .code flags
