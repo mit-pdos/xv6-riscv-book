@@ -648,12 +648,12 @@ which allows the PC to read
 a larger boot loader from the disk (and start it in
 protected and 32-bit mode).
 .PP
-This appendix is written as if the only thing that happens
-between power on and the execution of the boot loader
-is that the BIOS loads the boot sector.
-In fact the BIOS does a huge amount of initialization
-in order to make the complex hardware of a modern
-computer look like a traditional standard PC.
+This appendix is written as if the only thing that happens between power on and
+the execution of the boot loader is that the BIOS loads the boot sector.  In
+fact the BIOS does a huge amount of initialization in order to make the complex
+hardware of a modern computer look like a traditional standard PC.  The BIOS is
+really a small operating system embedded in the hardware, which is present after
+the computer has booted.
 .\"
 .\" -------------------------------------------
 .\"
@@ -669,8 +669,6 @@ Why doesn't the sloppy readsect cause problems?
 Answer is a combination of non-overlapping code/data pages
 and aligned virtual address/file offsets.
 ..
-.exercise
-something about BIOS lasting longer + security problems
 .exercise
 Suppose you wanted bootmain() to load the kernel at 0x200000
 instead of 0x100000, and you did so by modifying bootmain()
