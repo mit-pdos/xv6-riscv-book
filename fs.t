@@ -892,9 +892,7 @@ In order to make sure that this happens,
 must clear
 .code-index ip->valid
 before releasing the inode lock.
-It does this by zeroing
-.code flags
-.line 'fs.c:/^....ip->flags.=.0/' .
+.line 'fs.c:/^....ip->valid.=.0/' .
 .PP
 .code iput()
 can write to the disk.
