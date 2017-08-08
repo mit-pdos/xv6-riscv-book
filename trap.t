@@ -1160,8 +1160,11 @@ point?  Explain the output of x/37x $esp at that breakpoint with each value
 labeled as to what it is (e.g., saved %ebp for trap, trapframe.eip, scratch
 space, etc.).
 
-2. Add a new system call that returns the uptime (i.e., return the number
-of ticks since xv6 booted).
+2.  Add a new system call to get the current UTC time and return it to the user
+program. You may want to use the helper function, cmostime() (defined in
+lapic.c), to read the real time clock. The file date.h contains the definition
+of the struct rtcdate struct, which you will provide as an argument to
+cmostime() as a pointer.
 
 3. Write a driver for a disk that supports the SATA standard (search for SATA on
 the Web). Unlike IDE, SATA isn't obsolete.  Use SATA's tagged command queuing to
