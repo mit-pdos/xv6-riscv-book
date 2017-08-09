@@ -413,24 +413,27 @@ count of zero in the log's header block; a crash after a commit
 will result in a non-zero count.
 .PP
 Each system call's code indicates the start and end of the sequence of
-writes that must be atomic.
-For efficiency, and to allow a degree of concurrency in the
-file system code, the logging system can accumulate the writes
+writes that must be atomic with respect to crashes.
+To allow concurrent execution of file system operations
+by different processes,
+the logging system can accumulate the writes
 of multiple system calls into one transaction.
 Thus a single commit may involve the writes of multiple
 complete system calls.
 To avoid splitting a system call across transactions, the logging system
 only commits when no file system system calls are underway.
 .PP
-The idea of committing several transaction together is known as 
+The idea of committing several transactions together is known as 
 .italic-index "group commit" .
-Group commit allows several transactions to run concurrently and allows
-the file system to
-.italic-index batch 
-several disk operations and issue a single disk operation to the disk driver.  This allows
-the disk to schedule the writing of the blocks cleverly and write at the
-rate of the disk's bandwidth.   Xv6's IDE driver doesn't support batching, but 
-xv6's file system design allows for it.
+Group commit reduces the number of disk operations
+because it amortizes the fixed cost of a commit over multiple
+operations.
+Group commit also hands the disk system more concurrent writes
+at the same time, perhaps allowing the disk to write
+them all during a single disk rotation.
+Xv6's IDE driver doesn't support this kind of
+.italic-index batching ,
+but xv6's file system design allows for it.
 .PP
 Xv6 dedicates a fixed amount of space on the disk to hold the log.
 The total number of blocks written by the system calls in a
@@ -642,7 +645,7 @@ Or ``inode'' might refer to an in-memory inode, which contains
 a copy of the on-disk inode as well as extra information needed
 within the kernel.
 .PP
-All of the on-disk inodes
+The on-disk inodes
 are packed into a contiguous area
 of disk called the inode blocks.
 Every inode is the same size, so it is easy, given a
@@ -695,7 +698,34 @@ current working directories, and transient kernel code
 such as
 .code exec .
 .PP
-A pointer returned by
+There are four lock or lock-like mechanisms in xv6's
+inode code.
+.code icache.lock
+defends the invariant that an inode is present in the cache
+at most once, and the invariant that a cached inode's
+.code ref
+field counts the number of in-memory pointers to the cached inode.
+Each in-memory inode has a
+.code lock
+field containing a
+sleep-lock, which ensures exclusive access to the
+inode's fields (such as file length) as well as to the
+inode's file or directory content blocks.
+An inode's
+.code ref ,
+if it is greater than zero, causes the system to maintain
+the inode in the cache, and not re-use the cache entry for
+a different inode.
+Finally, each inode contains a
+.code nlink
+field (on disk and copied in memory if it is cached) that
+counts the number of directory entries that refer to a file;
+xv6 won't free an inode if its link count is greater than zero.
+.PP
+A
+.code struct
+.code inode
+pointer returned by
 .code iget()
 is guaranteed to be valid until the corresponding call to
 .code iput() ;
@@ -736,8 +766,8 @@ but only one process can lock the inode at a time.
 .PP
 The inode cache only caches inodes to which kernel code
 or data structures hold C pointers.
-Its main job is really synchronizing access by multiple processes,
-not caching.
+Its main job is really synchronizing access by multiple processes;
+caching is secondary.
 If an inode is used frequently, the buffer cache will probably
 keep it in memory if it isn't kept by the inode cache.
 The inode cache is write-through, which means that code that
@@ -793,12 +823,11 @@ Code must lock the inode using
 before reading or writing its metadata or content.
 .code Ilock
 .line fs.c:/^ilock/
-uses a now-familiar sleep lock for this purpose.
+uses a sleep lock for this purpose.
 Once
 .code-index ilock
-has exclusive access to the inode, it can load the inode metadata
-from the disk (more likely, the buffer cache)
-if needed.
+has exclusive access to the inode, it reads the inode
+from disk (more likely, the buffer cache) if needed.
 The function
 .code-index iunlock
 .line fs.c:/^iunlock/
@@ -822,71 +851,47 @@ and that the inode has no links to it (occurs in no
 directory), then the inode and its data blocks must
 be freed.
 .code Iput
-relocks the inode;
 calls
 .code-index itrunc
 to truncate the file to zero bytes, freeing the data blocks;
 sets the inode type to 0 (unallocated);
-writes the change to disk;
-and finally unlocks the inode
-.lines 'fs.c:/ip..ref.==.1/,/^..}/' .
+and writes the inode to disk
+.line 'fs.c:/inode.has.no.links/' .
 .PP
 The locking protocol in 
 .code-index iput
-in the case in which it frees the inode
-deserves a closer look.
-First, when locking
-.code ip ,
-.code-index iput
-assumes that it is unlocked.
-This must be the case: the caller is required to unlock
-.code ip
-before calling
-.code iput ,
-and no other process can lock this inode,
-because no other process can get a pointer to it.
-That is because, in this code path, the inode has no references,
-no links (i.e., no pathname refers to it),
-and is not (yet) marked free.
-The second part worth examining is that
+in the case in which it frees the inode deserves a closer look.
+One danger is that a concurrent thread might be waiting in
+.code ilock
+to use this inode (e.g. to read a file or list a directory),
+and won't be prepared to find the inode is not longer
+allocated. This can't happen because there is no way for
+a system call to get a pointer to a cached inode if it has
+no links to it and 
+.code ip->ref
+is one. That one reference is the reference owned by the
+thread calling
+.code iput .
+It's true that 
 .code iput
-temporarily releases
-.line fs.c:/^....release/
-and reacquires
-.line fs.c:/^....acquire/
-the inode cache lock,
-because
-.code-index itrunc
-and
-.code-index iupdate
-will sleep during disk I/O.
-But we must consider what might happen while the lock is not held.
-Specifically, once 
-.code iupdate
-finishes, the on-disk inode is marked as free,
-and a concurrent call to
-.code-index ialloc
-might find it and reallocate it before 
-.code iput
-can finish.
-.code Ialloc
-will return a reference to the block by calling
-.code-index iget ,
-which will find 
-.code ip
-in the cache, see that
-it is locked, and sleep.
-Now the in-core inode is out of sync compared to the disk:
+checks that the reference count is one outside of its
+.code icache.lock
+critical section, but at that point the link
+count is known to be zero, so no thread will try
+to acquire a new reference.
+The other main danger is that a concurrent call to
 .code ialloc
-reinitialized the disk version but relies on the 
-caller to load it into memory during
-.code ilock .
-In order to make sure that this happens,
+might choose the same inode that
 .code iput
-must clear
-.code-index ip->valid
-before releasing the inode lock.
-.line 'fs.c:/^....ip->valid.=.0/' .
+is freeing.
+This can only happen after the
+.code iupdate
+writes the disk so that the inode has type zero.
+This race is benign; the allocating thread will politely wait
+to acquire the inode's sleep-lock before reading or writing
+the inode, at which point
+.code iput
+is done with it.
 .PP
 .code iput()
 can write to the disk.
@@ -1285,8 +1290,8 @@ is important.
 .\"
 .section "File descriptor layer"
 .PP
-One of the cool aspect of the Unix interface is that most resources in Unix are
-represented as a file, including devices such as the console, pipes, and of
+A cool aspect of the Unix interface is that most resources in Unix are
+represented as files, including devices such as the console, pipes, and of
 course, real files.  The file descriptor layer is the layer that achieves this
 uniformity.
 .PP
