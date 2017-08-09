@@ -35,17 +35,21 @@ This multiplexing creates the illusion that
 each process has its own CPU, just as xv6 uses the memory allocator and hardware
 page tables to create the illusion that each process has its own memory.
 .PP
-Implementing multiplexing poses a few challenges. First, how to switch
-from one process to another? Xv6 uses the standard mechanism of context
-switching; although the idea is simple, the implementation is
-some of the most opaque code in the system. Second,
-how to do context switching transparently?  Xv6 uses the standard
-technique of using the timer interrupt handler to drive context switches.
-Third, many CPUs may be switching among processes concurrently, and a locking plan
-is necessary to avoid races. Fourth, when a process has exited its
-memory and other resources must be freed, but it cannot do all of
-this itself because (for example) it can't free its own kernel
-stack while still using it.
+Implementing multiplexing poses a few challenges. First, how to switch from one
+process to another? Xv6 uses the standard mechanism of context switching;
+although the idea is simple, the implementation is some of the most opaque code
+in the system. Second, how to do context switching transparently?  Xv6 uses the
+standard technique of using the timer interrupt handler to drive context
+switches.  Third, many CPUs may be switching among processes concurrently, and a
+locking plan is necessary to avoid races. Fourth, when a process has exited its
+memory and other resources must be freed, but it cannot do all of this itself
+because (for example) it can't free its own kernel stack while still using it.
+Finally, on a multiprocessor, each processor may run a process and
+when a processor switches from one process to another, the core must know which
+process it is running so that it can save the state of the currently-running
+process in the correct
+.code proc
+structure.
 Xv6 tries to solve these problems as
 simply as possible, but nevertheless the resulting code is
 tricky.
@@ -488,6 +492,72 @@ different functions of
 .code ptable.lock
 could be split up, certainly for clarity and perhaps
 for performance.
+.\"
+.section "Code: mycpu and myproc"
+.\"
+.PP
+In many places in xv6, a processor must identify which process it is running.
+For example, when a processor serves a
+.code yield
+system call,
+the processor must determine which process is invoking
+.code yield .
+Xv6 follows the standard plan that relies on a tiny bit of hardware support.
+Xv6 maintains an array of
+.code-index "struct cpu"
+.line proc.h:/struct.cpu/ .
+The array has one entry for each processor and each entry contains per-processor
+state, such as the current-running process, as well as a hardware identifier for
+that processor
+.code apicid ). (
+When a processor must find it's per-cpu state, it reads its
+identifier from its local APIC and uses that identifier to find its state in the
+array.
+.PP
+The kernel uses the function
+.code-index mycpu
+.line proc.c:/^mycpu/
+to find its
+.code apicid ,
+which in turn calls the
+function
+.code-index lapicid .
+.code
+The function
+.code lapicid
+returns the hardware identifier for this processor and
+.code mycpu
+uses that identifier to finds its
+.code "struct cpu" .
+These functions are invoked by a kernel thread and there is risk that the kernel
+thread may be scheduled to a different processor after reading the
+.code apicid
+but before
+.code mycpu
+returns.  If that happens the function returns the wrong
+.code apicid .
+To avoid this problem, xv6 requires that callers of
+.code mycpu
+invoke it with interrupts disabled.
+.PP
+The kernel uses the function
+.code-index myproc
+.line proc.c:/^myproc/
+to find the
+.code "struct proc"
+for the process that is running on the current processor.
+The function
+.code myproc
+disables interrupts, and invokes
+.code mycpu
+to find its processor's state, which contains a field
+.code proc .
+When a processor switches to a new process in
+.code scheduler ,
+it sets
+.code proc
+to that process's
+.code "struct proc" .
 .\"
 .section "Sleep and wakeup"
 .\"
