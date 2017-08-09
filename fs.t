@@ -289,19 +289,21 @@ though there would then be a possibility of deadlock.
 .PP
 Once
 .code-index bread
-has returned a buffer to its caller, the caller has
+has read the disk (if needed) and returned the
+buffer to its caller, the caller has
 exclusive use of the buffer and can read or write the data bytes.
-If the caller does write to the data, it must call
+If the caller does modify the buffer, it must call
 .code-index bwrite
 to write the changed data to disk before releasing the buffer.
 .code Bwrite
 .line bio.c:/^bwrite/
-sets the 
-.code-index B_DIRTY
-flag and calls
+calls
 .code-index iderw
-to write
-the buffer to disk.
+to talk to the disk hardware, after setting
+.code-index B_DIRTY
+to indicate that
+.code iderw
+should write (rather than read).
 .PP
 When the caller is done with a buffer,
 it must call
