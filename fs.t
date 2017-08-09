@@ -127,65 +127,52 @@ The buffer cache synchronizes access to each block using a
 .italic-index "sleep lock" .
 Like spin locks, sleep locks are a tool to guarantee mutually-exclusive
 access to shared data (in this case, a buffer in the buffer cache).  Unlike
-spin locks, sleep locks allow a kernel thread to hold a lock for a long time,
-namely across
+spin locks, sleep locks allow a kernel thread to hold a lock 
+across
 .code sleep
-operations.  For example, a kernel thread may hold a sleep lock on the buffer
-that contains a directory, find out that it must read another block in the file
-system (e.g., a block that contains a file in that directory), and then go to
-sleep waiting for the disk driver to read the block containing information about
-the file, while still holding the sleep lock on the buffer that contains the
-directory.  The reason why the kernel thread may have to hold on to the sleep
-lock on the directory buffer is that there are situations when xv6 must update
-two blocks atomically (e.g., unlinking a file from a directory).
+calls. This situation arises when the file system 
+locks one block and holds the lock while waiting to read
+a second block from the disk.
+You'll see examples in the code that
+allocates blocks for file content
+.line fs.c:/^bmap/ ,
+and the code that copies blocks to and from the on-disk log
+.line log.c:/^install.trans/ .
+.ig
+    I can't find a case where two block-level locks
+    are needed to make an operation atomic, since there
+    always seem to be higher-level locks (either an
+    inode lock or log.committing, which acts as a sleeping lock).
+    It's true that bread() always locks, but the lock is
+    usually not needed, so the need to support block locks
+    across sleep() seems like an accidental requirement.
+..
 .PP
-If a kernel thread attempts to read a block that another kernel thread has
-locked, the thread's
-.code
-bread call will wait (using
-.code sleep )
-until the other thread returns the buffer to the buffer cache using
-.code brelse ,
-which releases the sleep lock. Since a kernel thread may hold on for a
-sleep lock for a long time, the waiting thread may wait for a long time and
-therefore sleep locks don't spin waiting for a lock, but use
+A kernel thread waiting for a locked block may need to wait for
+a long time, because another thread may be
+reading the disk while holding the lock. The waiting thread
+waits in the sleep lock's acquire routine, which releases
+the processor with
 .code sleep
-to release a processor and
-.code wakeup
-to alert that the lock is available.
+so that other threads can execute.
 .PP
-Why does xv6 have both sleep locks and spin locks?  One option is to use sleep
-locks instead of spin locks everywhere.  The reason not do so is that spin locks
-turn off interrupts and sleep locks don't.  There are critical sections in which
-interrupts must be turned off to avoid that an interrupt handler modifies shared
-data concurrently. For example, reading
-.code ticks
-must be done with interrupts turned off, otherwise the clock interrupt handler
-may increment it while a kernel thread is reading it. Xv6 must use spin locks
-for such critical sections.  The other option is to use spin locks instead of
-sleep locks, but that is undesirable too.  If xv6 were to use spin locks instead
-of sleep locks everywhere, then when a thread is waiting for a long-term lock,
-its processor might spin for a long time during which xv6 could have done useful
-work (e.g., run another user-level process).
-.PP
-A potential fix is to have a different spin lock that calls
-.code
-sleep after spinning for a while, so that a spinning processor can do something
-more useful.  But, that would mean that a kernel thread may run with interrupts
-disabled while sleeping.  This is undesirable because it may lead to deadlock.
-For example, consider xv6 running on a machine with one processor.  If a kernel
-thread goes to sleep while waiting for a disk interrupt with interrupts
-disabled, then the kernel thread will never learn when the disk is done and thus
-sleep forever.
-.PP
-In short, the properties that we want for spin locks and sleep locks are
-sufficiently different that in practice operating systems have two types of
-locks: spin locks for short critical sections and sleep locks for long critical
-sections.  Kernel developers can then chose which one is best for any given
-situation: use spin locks when a lock is needed for a few instructions and use
-sleep locks when a lock is needed across operations that might sleep.
-For example, the inode layer also uses sleep locks to hold long-term locks
-on inodes.
+Why does xv6 have both sleep locks and spin locks? Spin locks turn off
+interrupts, which is necessary to avoid deadlock if an interrupt could
+try to acquire a held lock, and necessary in some scheduling code to
+prevent a thread from being moved to a different core.
+The guarantee that interrupts are disabled during a spin-lock
+critical section means that
+a spin lock cannot be held across a call to
+.code sleep ,
+since the kernel thread (or user process) that is then
+allowed to run will likely need interrupts to be enabled
+(e.g. in order to read the disk).
+xv6 needs both types of lock because sometimes it needs 
+interrupts off while holding a lock, and sometimes it needs to
+sleep while holding a lock.
+When neither of the above requirements exists,
+xv6 uses spin locks because they use less CPU time if the
+acquirer only has to wait a short period of time.
 .PP
 Let's return to the buffer cache.
 The buffer cache has a fixed number of buffers to hold disk blocks,
