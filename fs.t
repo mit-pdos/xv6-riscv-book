@@ -231,20 +231,8 @@ scans the buffer list for a buffer with the given device and sector numbers
 If there is such a buffer,
 .code-index bget
 acquires the sleep lock for the buffer.
-Acquiring the sleep lock may take a long time,
-because another kernel thread may have the sleep lock.
-Therefore,
-the implementation of a sleep lock
-.lines sleeplock.c:/^acquiresleep/ ,
-releases the processor by calling
-.code sleep .
-When the holder of the sleep lock releases the sleep lock,
-it calls
-.code wakeup
-to alert any waiters that the lock is available.
-Once a waiter obtains the sleep lock,
 .code bget
-returns with the locked buffer.
+then returns the locked buffer.
 .PP
 If there is no cached buffer for the given sector,
 .code-index bget
@@ -255,8 +243,7 @@ that is not locked and not dirty:
 any such buffer can be used.
 .code Bget
 edits the buffer metadata to record the new device and sector number
-and acquires its sleep lock before
-returning the locked buffer.
+and acquires its sleep lock.
 Note that the assignment to
 .code flags
 clears
@@ -266,20 +253,29 @@ thus ensuring that
 will read the block data from disk
 rather than incorrectly using the buffer's previous contents.
 .PP
-Because the buffer cache is used for synchronization,
-it is important that
-there is only ever one buffer for a particular disk sector.
-Obtaining the sleep lock in the second loop
-is safe because 
-.code bget 's
-first loop determined that no buffer already existed for that sector,
-and
+It is important that there is at most one cached buffer per
+disk sector, to ensure that readers see writes, and because the
+file system uses locks on buffers for synchronization.
 .code bget
-has not given up
+ensures this invariant by holding the
+.code bache.lock
+continuously from the first loop's check of whether the
+block is cached through the second loop's declaration that
+the block is now cached (by setting
+.code dev ,
+.code blockno ,
+and
+.code refcnt ).
+It is safe for the acquisition of the sleep lock to occur
+outside of the 
 .code bcache.lock
-since then.
+critical section: the sleep-lock protects reads
+and writes of the block's buffered content, while the
+.code bcache.lock
+protects the record of which blocks are cached.
 .PP
-If all the buffers are busy, something has gone wrong:
+If all the buffers are busy, then too many processes are
+simultaneously executing file system calls;
 .code bget
 panics.
 A more graceful response might be to sleep until a buffer became free,
@@ -736,6 +732,9 @@ Its main job is really synchronizing access by multiple processes,
 not caching.
 If an inode is used frequently, the buffer cache will probably
 keep it in memory if it isn't kept by the inode cache.
+The inode cache is write-through, which means that code that
+modifies a cached inode must immediately write it to disk with
+.code iupdate .
 .\"
 .\" -------------------------------------------
 .\"
