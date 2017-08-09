@@ -335,9 +335,6 @@ The function
 .line vm.c:/^switchuvm/ 
 stores the address of the top of the kernel stack of the user
 process into the task segment descriptor.
-.ig
-TODO: Replace SETGATE with real code.
-..
 .PP
 When a trap occurs, the processor hardware does the following.
 If the processor was executing in user mode,
