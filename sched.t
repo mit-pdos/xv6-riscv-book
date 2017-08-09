@@ -558,6 +558,17 @@ it sets
 .code proc
 to that process's
 .code "struct proc" .
+.PP
+The function
+.code mycpu
+scans the CPU array
+to find the
+.code "struct cpu"
+with the matching
+.code apicid .
+This scan is inefficient and kernels in the real-word
+often dedicate a CPU register to cache a pointer
+to the current processor's state.
 .\"
 .section "Sleep and wakeup"
 .\"
