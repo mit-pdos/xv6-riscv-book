@@ -264,7 +264,7 @@ If there is no cached buffer for the given sector,
 must make one, possibly reusing a buffer that held
 a different sector.
 It scans the buffer list a second time, looking for a buffer
-that is not locked:
+that is not locked and not dirty:
 any such buffer can be used.
 .code Bget
 edits the buffer metadata to record the new device and sector number
