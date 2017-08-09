@@ -152,7 +152,7 @@ to save the current context in
 .code proc->context
 and switch to the scheduler context previously saved in 
 .code-index cpu->scheduler
-.line proc.c:/swtch..proc/ .
+.line proc.c:/swtch..p/ .
 .PP
 .code Swtch
 .line swtch.S:/swtch/
@@ -236,7 +236,7 @@ That context had been saved by
 .code scheduler 's
 call to
 .code swtch
-.line proc.c:/swtch..cpu/ .
+.line 'proc.c:/swtch.&.c/' .
 When the
 .code-index swtch
 we have been tracing returns,
@@ -294,7 +294,7 @@ as though
 .code-index scheduler 's
 .code swtch
 had returned
-.line proc.c:/swtch..cpu/ .
+.line 'proc.c:/swtch.&.c/' .
 The scheduler continues the 
 .code for
 loop, finds a process to run, 
@@ -341,10 +341,10 @@ and always switches to the same location in the scheduler, which
 .code sched . 
 Thus, if one were to print out the line numbers where xv6 switches
 threads, one would observe the following simple pattern:
-.line proc.c:/swtch..cpu/ ,
-.line proc.c:/swtch..proc/ ,
-.line proc.c:/swtch..cpu/ ,
-.line proc.c:/swtch..proc/ ,
+.line 'proc.c:/swtch.&.c/' ,
+.line proc.c:/swtch..p/ ,
+.line 'proc.c:/swtch.&.c/' ,
+.line proc.c:/swtch..p/ ,
 and so on.  The procedures in which this stylized switching between
 two threads happens are sometimes referred to as 
 .italic-index coroutines ; 
@@ -920,7 +920,7 @@ of a kernel data structure involved in the waiting.
 .line proc.c:/^sleep/
 begins with a few sanity checks:
 there must be a current process
-.line proc.c:/proc.==.0/
+.line proc.c:/p.==.0/
 and
 .code sleep
 must have been passed a lock
@@ -1347,7 +1347,7 @@ acquires
 and then wakes up any process sleeping on a wait
 channel equal to the current process's parent
 .code proc
-.line "'proc.c:/wakeup1!(proc->parent!)/'" ;
+.line 'proc.c:/wakeup1.curproc->parent/' ;
 if there is such a process, it will be the parent in
 .code wait .
 This may look premature, since 
@@ -1484,7 +1484,7 @@ also test
 in the loop, and abandon the current activity if it is set.
 This is only done when such abandonment would be correct.
 For example, the pipe read and write code
-.line pipe.c:/proc-\>killed/ 
+.line pipe.c:/myproc..-\>killed/ 
 returns if the killed flag is set; eventually the
 code will return back to trap, which will again
 check the flag and exit.
