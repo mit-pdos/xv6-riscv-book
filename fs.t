@@ -701,7 +701,7 @@ such as
 There are four lock or lock-like mechanisms in xv6's
 inode code.
 .code icache.lock
-defends the invariant that an inode is present in the cache
+protects the invariant that an inode is present in the cache
 at most once, and the invariant that a cached inode's
 .code ref
 field counts the number of in-memory pointers to the cached inode.

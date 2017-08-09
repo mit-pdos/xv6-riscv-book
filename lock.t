@@ -8,8 +8,9 @@ These multiple CPUs share physical RAM,
 and xv6 exploits the sharing to maintain
 data structures that all CPUs read and write.
 This sharing raises the possibility of
-simultaneous writes to the same data structure
-from multiple CPUs, or even reads simultaneous with a write;
+one CPU reading a data structure while another
+CPU is mid-way through updating it, or even
+multiple CPUs updating the same data simultaneously;
 without careful design such parallel access is likely
 to yield incorrect results or a broken data structure.
 Even on a uniprocessor, an interrupt routine that uses
@@ -50,7 +51,7 @@ correctness much more difficult.
 .section "Race conditions"
 .\"
 .PP
-As an example on why we need locks, consider several processors sharing a single disk, such
+As an example of why we need locks, consider several processors sharing a single disk, such
 as the IDE disk in xv6.  The disk driver maintains a linked list of
 the outstanding disk requests 
 .line ide.c:/idequeue/
