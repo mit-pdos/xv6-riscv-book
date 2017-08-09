@@ -10,9 +10,6 @@
 	
 	be sure to say buffer, not block 
 
-	TODO: Explain the name sys_mknod.
-	Perhaps mknod was for a while the only way to create anything?
-	
 	Mount
 ..  
 .PP
