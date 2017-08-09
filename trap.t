@@ -442,14 +442,6 @@ sets
 and
 .register es
 .lines "'trapasm.S:/movw.*SEG_KDATA/,/%es/'" .
-It sets 
-.register fs
-and
-.register gs
-to point at the 
-.code-index SEG_KCPU
-per-CPU data segment
-.lines "'trapasm.S:/movw.*SEG_KCPU/,/%gs/'" .
 .PP
 Once the segments are set properly,
 .code-index alltraps
