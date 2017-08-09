@@ -266,13 +266,22 @@ the block is now cached (by setting
 .code blockno ,
 and
 .code refcnt ).
-It is safe for the acquisition of the sleep lock to occur
-outside of the 
+This causes the check for a block's presence and (if not
+present) the designation of a buffer to hold the block to
+be atomic.
+.PP
+It is safe for
+.code bget
+to acquire the buffer's sleep lock outside of the 
 .code bcache.lock
-critical section: the sleep-lock protects reads
+critical section,
+since the non-zero
+.code b->refcnt
+prevents the buffer from being re-used for a different disk block.
+The sleep-lock protects reads
 and writes of the block's buffered content, while the
 .code bcache.lock
-protects the record of which blocks are cached.
+protects information about which blocks are cached.
 .PP
 If all the buffers are busy, then too many processes are
 simultaneously executing file system calls;
