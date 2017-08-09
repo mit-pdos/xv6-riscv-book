@@ -691,11 +691,7 @@ not swamping the processor with handling interrupts.
 .PP
 Like the x86 processor itself, PC motherboards have evolved, and the
 way interrupts are provided has evolved too.  The early boards had a
-simple programmable interrupt controler (called the PIC), and you can
-.index "programmable interrupt controler (PIC)"
-find the code to manage it in
-.code picirq.c .
-.PP
+simple programmable interrupt controler (called the PIC).
 With the advent of multiprocessor PC boards, a new way of handling
 interrupts was needed, because each CPU needs an interrupt controller
 to handle interrupts sent to it, and there must be a method for
@@ -706,40 +702,11 @@ and a part that is attached to each processor (the
 local APIC, 
 .code lapic.c).
 Xv6 is designed for a
-board with multiple processors, and each processor must be programmed
-to receive interrupts.
+board with multiple processors: it ignores interrupts from the PIC, and
+configures the IOAPIC and local APIC.
 .PP
-To also work correctly on uniprocessors, Xv6 programs the programmable
-interrupt controler (PIC)
-.line picirq.c:/^picinit/ .  
-Each PIC handles a maximum of 8 interrupts (i.e., devices) and
-multiplexes them onto the interrupt pin of the processor.  To allow for
-more than 8 devices, PICs can be cascaded and typically boards have at
-least two.  Using
-.code-index inb
-and 
-.code-index outb
-instructions Xv6 programs the master to
-generate IRQ 0 through 7 and the slave to generate IRQ 8 through 16.
-Initially xv6 programs the PIC to mask all interrupts.
-The code in
-.code-index timer.c
-sets timer 1 and enables the timer interrupt
-on the PIC
-.line timer.c:/^timerinit/ .
-This description omits some of the details of programming the PIC.
-These details of the PIC (and the IOAPIC and LAPIC) are not important
-to this text but the interested reader can consult the manuals for
-each device, which are referenced in the source files.
-.PP
-On multiprocessors, xv6 must program the IOAPIC, and the LAPIC on
-each processor.
 The IO APIC has a table and the processor can program entries in the
-table through memory-mapped I/O, instead of using 
-.code inb
-and 
-.code outb
-instructions.
+table through memory-mapped I/O.
 During initialization, xv6 programs to map interrupt 0 to IRQ 0, and
 so on, but disables them all.  Specific devices enable particular
 interrupts and say to which processor the interrupt should be routed.
@@ -905,19 +872,14 @@ from
 .line main.c:/ideinit/ .
 .code Ideinit
 calls
-.code-index picenable
-and
 .code-index ioapicenable
 to enable the
 .code-index IDE_IRQ
 interrupt
-.lines ide.c:/picenable/,/ioapicenable/ .
+.line ide.c:/ioapicenable/ .
 The call to
-.code picenable
-enables the interrupt on a uniprocessor;
 .code ioapicenable
-enables the interrupt on a multiprocessor,
-but only on the last CPU
+enables the interrupt only on the last CPU
 .code ncpu-1 ): (
 on a two-processor system, CPU 1 handles disk interrupts.
 .PP
@@ -1115,10 +1077,6 @@ the device copies directly to or from main memory,
 interrupting once the copy is complete.
 Using DMA means that the CPU is not involved at all in the transfer,
 which can be more efficient and is less taxing for the CPU's memory caches.
-.PP
-Most of the devices in this chapter used I/O instructions to program them, which
-reflects the older nature of these devices.  All modern devices are programmed
-using memory-mapped I/O.  
 .PP
 Some drivers dynamically switch between polling and interrupts, because using
 interrupts can be expensive, but using polling can introduce delay until the
