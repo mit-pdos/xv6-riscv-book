@@ -4,17 +4,18 @@ center ;
 lB lB
 l l .
 Lock	Description
-bcache.lock	Serializes allocation of a struct buffer in buf cache
-console.lock	Serializes several cores writing to console and interrupts
+bcache.lock	Protects allocation of block buffer cache entries
+cons.lock	Serializes access to console hardware, avoids intermixed output
 ftable.lock	Serializes allocation of a struct file in file table
-icache.lock	Serializes allocation of a struct inode in inode cache
-idelock	Serializes operations on disk queue
+icache.lock	Protects allocation of inode cache entries
+idelock	Serializes access to disk hardware and disk queue
 kmem.lock	Serializes allocation of memory
 log.lock	Serializes operations on the transaction log
-pipe lock	Serializes operations on a pipe
+pipe's p->lock	Serializes operations on each pipe
 ptable.lock	Serializes context switching, and operations on proc->state and proctable
-tickslock	Serializes operations on ticks.
-sleeplocks	Serializes operations on blocks in the buffer cache and inodes
+tickslock	Serializes operations on the ticks counter
+inode's ip->lock	Serializes operations on each inode and its content
+buf's b->lock	Serializes operations on each block buffer
 .TE
 .F2
 Locks in xv6

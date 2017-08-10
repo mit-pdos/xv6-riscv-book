@@ -335,21 +335,23 @@ at the same time that another CPU can read or write it,
 a lock should be introduced to keep the two
 operations from overlapping.
 Second, remember that locks protect invariants:
-if an invariant involves multiple data structures,
-typically all of the structures need to be protected
+if an invariant involves multiple memory locations,
+typically all of them need to be protected
 by a single lock to ensure the invariant is maintained.
 .PP
 The rules above say when locks are necessary but say nothing about
 when locks are unnecessary, and it is important for efficiency not to
-lock too much, because locks reduce parallelism.  If efficiency wasn't important, then one could use a
-uniprocessor computer and not worry at all about locks.  For protecting
-kernel data structures, it might suffice to create a single lock that
+lock too much, because locks reduce parallelism.
+If parallelism isn't important, then one could arrange
+to have only a single thread and not worry about locks.
+A simple kernel can do this on a multiprocessor by having 
+a single lock that
 must be acquired on entering the kernel and released on exiting the
 kernel (though system calls such as pipe reads or
 .code wait
 would pose a problem).  Many uniprocessor operating systems have been converted to
 run on multiprocessors using this approach, sometimes called a ``giant
-kernel lock,'' but the approach sacrifices true concurrency: only one
+kernel lock,'' but the approach sacrifices parallelism: only one
 CPU can execute in the kernel at a time.  If the kernel does any heavy
 computation, it would be more efficient to use a larger set of more
 fine-grained locks, so that the kernel could execute on multiple CPUs
@@ -359,13 +361,13 @@ Ultimately, the choice of lock granularity is an exercise in parallel
 programming.  Xv6 uses a few coarse data-structure specific locks (see
 .figref locktable ).
 For
-example, xv6 uses a single lock protecting the process table and its
+example, xv6 has a lock that protects the whole process table and its
 invariants, which are described in Chapter \*[CH:SCHED].  A more
 fine-grained approach would be to have a lock per entry in the process
 table so that threads working on different entries in the process
 table can proceed in parallel.  However, it complicates operations
 that have invariants over the whole process table, since they might
-have to take out several locks. Subsequent chapters will discuss
+have to acquire several locks. Subsequent chapters will discuss
 how each part of xv6 deals with concurrency, illustrating
 how to use locks.
 .figure locktable
@@ -375,16 +377,20 @@ how to use locks.
 If a code path through the kernel must hold several locks at the same time, it is
 important that all code paths acquire the locks in the same order.  If
 they don't, there is a risk of deadlock.  Let's say two code paths in
-xv6 needs locks A and B, but code path 1 acquires locks in the order A
-then B, and the other code acquires them in the order B then A. This
-situation can result in a deadlock, because code path 1 might acquire
-lock A and before it acquires lock B, code path 2 might acquire lock
-B. Now neither code path can proceed, because code path 1 needs lock
-B, which code path 2 holds, and code path 2 needs lock A, which code
-path 1 holds.  To avoid such deadlocks, all code paths must acquire
+xv6 need locks A and B, but code path 1 acquires locks in the order A
+then B, and the other path acquires them in the order B then A. This
+situation can result in a deadlock if two threads execute the
+code paths concurrently.
+Suppose thread T1 executes code path 1 and acquires lock A,
+and thread T2 executes code path 2 and acquires lock B.
+Next T1 will try to acquire lock B, and T2 will try to acquire lock A.
+Both acquires will block indefinitely, because in both cases the
+other thread holds the needed lock, and won't release it until
+its acquire returns.
+To avoid such deadlocks, all code paths must acquire
 locks in the same order. The need for a global lock acquisition order
-means that locks are effectively part of each function's specification: the
-caller must invoke functions in a way that causes locks to be acquired
+means that locks are effectively part of each function's specification: 
+callers must invoke functions in a way that causes locks to be acquired
 in the agreed-on order.
 .PP
 Because xv6 uses relatively few coarse-grained locks, it has few lock-order
