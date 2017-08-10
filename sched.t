@@ -1496,7 +1496,7 @@ loops do not check
 because the code is in the middle of a multi-step
 system call that should be atomic.
 The IDE driver
-.line ide.c:/sleep/ 
+.line ide.c:/sleep.b/ 
 is an example: it does not check
 .code p->killed
 because a disk operation may be one of a set of
