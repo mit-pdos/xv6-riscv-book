@@ -194,6 +194,18 @@ Proper use of a lock ensures that only one CPU at a time
 can operate on the data structure in the critical section, so that
 no CPU will execute a data structure operation when the 
 data structure's invariants do not hold.
+.PP
+You can think of locks as
+.italic-index serializing
+concurrent critical sections so that they run one at a time,
+and thus preserve invariants (assuming they are correct
+in isolation).
+You can also think of critical sections as being
+atomic with respect to each other,
+so that a critical section that obtains the lock
+later sees only the complete set of
+changes from earlier critical sections, and never sees
+partially-completed updates.
 .\"
 .section "Code: Locks"
 .\"
@@ -321,16 +333,6 @@ acquires the
 .line ide.c:/DOC:acquire-lock/
 and 
 releases it at the end of the function.
-You can think of the
-.code idelock
-critical sections as making concurrent calls to
-.code iderw
-and
-.code ideintr
-atomic with respect to each other,
-or as
-.italic-index serializing
-the critical sections so that they run one at a time.
 .PP
 Exercise 1 explores how to trigger the IDE driver
 race condition that we saw at the
