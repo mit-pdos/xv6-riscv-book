@@ -321,7 +321,19 @@ acquires the
 .line ide.c:/DOC:acquire-lock/
 and 
 releases it at the end of the function.
-Exercise 1 explores how to trigger the race condition that we saw at the
+You can think of the
+.code idelock
+critical sections as making concurrent calls to
+.code iderw
+and
+.code ideintr
+atomic with respect to each other,
+or as
+.italic-index serializing
+the critical sections so that they run one at a time.
+.PP
+Exercise 1 explores how to trigger the IDE driver
+race condition that we saw at the
 beginning of the chapter by moving the 
 .code acquire
 to after the queue manipulation.
@@ -395,10 +407,11 @@ means that locks are effectively part of each function's specification:
 callers must invoke functions in a way that causes locks to be acquired
 in the agreed-on order.
 .PP
-Xv6 has many lock-order chains of length two, due to the fact that
-context-switch requires acquisition of the
+Xv6 has many lock-order chains of length two involving the
 .code ptable.lock ,
-as discussed in Chapter
+due to the way that
+.code sleep
+works as discussed in Chapter
 \*[CH:SCHED].
 For example,
 .code-index ideintr
@@ -418,24 +431,22 @@ To avoid deadlock, file system code always acquires locks in the order
 mentioned in the previous sentence.
 .section "Interrupt handlers"
 .\"
-Xv6 uses locks to protect interrupt handlers
-running on one CPU from kernel code accessing the same
-data on another CPU.
+Xv6 uses spin-locks in many situations to protect data that is used by
+both interrupt handlers and threads.
 For example,
-the timer interrupt handler 
+a timer interrupt handler 
 .line trap.c:/T_IRQ0...IRQ_TIMER/
-increments
-.code-index ticks ,
-but another CPU might be in
+that increments
+.code-index ticks 
+might occur at about the same time that a kernel
+thread reads
+.code ticks 
+while executing
 .code-index sys_sleep
-.line sysproc.c:/ticks0.=.ticks/ 
-reading
-.code ticks
-at the same time.
+.line sysproc.c:/ticks0.=.ticks/  .
 The lock
 .code-index tickslock
-synchronizes access by the two CPUs to the
-single variable.
+serializes the two accesses.
 .PP
 Interrupts can cause concurrency even on a single processor:
 if interrupts are enabled, kernel code can be stopped
