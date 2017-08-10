@@ -197,7 +197,9 @@ data structure's invariants do not hold.
 .\"
 .section "Code: Locks"
 .\"
-Xv6 represents a lock as a
+Xv6 has two types of locks: spin-locks and sleep-locks.
+We'll start with spin-locks.
+Xv6 represents a spin-lock as a
 .code-index "struct spinlock"
 .line spinlock.h:/struct.spinlock/ .
 The important field in the structure is
@@ -295,9 +297,9 @@ updates all 4 bytes atomically.  Xv6 cannot use a regular C assignment, because
 the C language specification does not specify that a single assignment is
 atomic.
 .PP
-Xv6's implementation of spinlocks is x86-specific, and xv6 is thus not directly
+Xv6's implementation of spin-locks is x86-specific, and xv6 is thus not directly
 portable to other processors.  To allow for portable implementations of
-spinlocks, the C language supports a library of atomic instructions; a portable
+spin-locks, the C language supports a library of atomic instructions; a portable
 operating system would use those instructions.
 .\"
 .section "Code: Using locks"
@@ -393,45 +395,27 @@ means that locks are effectively part of each function's specification:
 callers must invoke functions in a way that causes locks to be acquired
 in the agreed-on order.
 .PP
-Because xv6 uses relatively few coarse-grained locks, it has few lock-order
-chains.  The longest chain with spinlocks is only two deep. For example,
+Xv6 has many lock-order chains of length two, due to the fact that
+context-switch requires acquisition of the
+.code ptable.lock ,
+as discussed in Chapter
+\*[CH:SCHED].
+For example,
 .code-index ideintr
 holds the ide lock while calling 
 .code-index wakeup ,
 which acquires the 
 .code-index ptable 
 lock.
-There are a number of other examples involving 
-.code-index sleep
+The file system code contains xv6's longest lock chains.
+For example, creating a file requires simultaneously
+holding a lock on the directory, a lock on the new file's inode,
+a lock on a disk block buffer, 
+.code idelock ,
 and
-.code-index wakeup .
-These orderings come about because
-.code sleep
-and 
-.code wakeup 
-have a complicated invariant, as discussed in Chapter
-\*[CH:SCHED].
-.PP
-In the file system there are a number of examples of more complicated situations
-because the file system holds long-term locks (called
-.italic-index sleeplocks
-in xv6), and a
-kernel thread may hold several of them.  For example, a kernel thread in the
-file system must acquire a lock on a directory and the lock on a new file to add
-the file to the directory correctly.  In addition, the kernel thread may hold at
-the same time a lock on one buffer (e.g., holding a block of the new file).  To
-avoid deadlock, kernel threads always acquire the locks in the order first
-parent directory, then the file, and then a file block.
-.PP
-The longest lock chain in xv6 combines the above spinlock chain and the
-long-term lock chain. This chain is 5 locks long: the 3 long-term locks in the
-file system and then the ide lock and the
-.code ptable
-lock to read a file block from the disk.
-.PP
-It is possible for xv6 to deadlock, however, when, for example, running with a
-small buffer cache. Therefore, xv6 panics when it runs out of buffers rather
-waiting for a free buffer and run the risk of deadlock.
+.code ptable.lock .
+To avoid deadlock, file system code always acquires locks in the order 
+mentioned in the previous sentence.
 .section "Interrupt handlers"
 .\"
 Xv6 uses locks to protect interrupt handlers
@@ -643,17 +627,17 @@ and
 .code wakeup
 in Chapter \*[CH:SCHED].
 .PP
-It is easy for xv6 to deadlock when holding a spin lock across
+It is easy for xv6 to deadlock when holding a spin-lock across
 .code sleep ,
 as we will see
 in Chapter \*[CH:FS],
-because spinlocks disable interrupts.
+because spin-locks disable interrupts.
 Therefore, xv6 supports
-.code-index "sleep locks"
+.code-index "sleep-locks"
 for kernel threads that must hold long-term locks.  For example, a kernel thread
 may need to hold a lock on a block read from disk while reading another block
 from the disk so that it can update both blocks in an atomic operation.
-As will see, xv6 implements sleep locks using spin locks.
+As will see, xv6 implements sleep-locks using spin-locks.
 .\"
 .section "Real world"
 .\"
