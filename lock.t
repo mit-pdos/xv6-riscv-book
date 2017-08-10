@@ -436,14 +436,14 @@ mentioned in the previous sentence.
 Xv6 uses spin-locks in many situations to protect data that is used by
 both interrupt handlers and threads.
 For example,
-a timer interrupt handler 
+a timer interrupt might
 .line trap.c:/T_IRQ0...IRQ_TIMER/
-that increments
+increment
 .code-index ticks 
-might occur at about the same time that a kernel
+at about the same time that a kernel
 thread reads
 .code ticks 
-while executing
+in
 .code-index sys_sleep
 .line sysproc.c:/ticks0.=.ticks/  .
 The lock
@@ -473,47 +473,38 @@ will not continue running until
 .code ideintr
 returns—so the processor, and eventually the whole system, will deadlock.
 .PP
-To avoid this situation, if a lock is used by an interrupt handler,
+To avoid this situation, if a spin-lock is used by an interrupt handler,
 a processor must never hold that lock with interrupts enabled.
-Xv6 is more conservative: it never holds any lock with interrupts enabled.
-It uses
+Xv6 is more conservative: when a processor enters a spin-lock
+critical section, xv6 always ensures interrupts are disabled on
+that processor.
+Interrupts may still occur on other processors, so 
+an interrupt's
+.code acquire
+can wait for a thread to release a spin-lock; just not on the same processor.
+.PP
+xv6 re-enables interrupts when a processor holds no spin-locks; it must
+do a little book-keeping to cope with nested critical sections.
+.code acquire
+calls
 .code-index pushcli
 .line spinlock.c:/^pushcli/
 and
-.code-index popcli
-.line spinlock.c:/^popcli/
-to manage a stack of ``disable interrupts'' operations
-.code-index cli "" (
-is the x86 instruction that disables interrupts).
-.code Acquire
-calls
-.code-index pushcli
-before trying to acquire a lock
-.line spinlock.c:/pushcli/ ,
-and 
 .code release
 calls
 .code-index popcli
-after releasing the lock
-.line spinlock.c:/popcli/ .
-.code Pushcli
-.line spinlock.c:/^pushcli/
-and
-.code-index popcli
 .line spinlock.c:/^popcli/
-are more than just wrappers
-around 
-.code-index cli
+to track the nesting level of locks on the current processor.
+When that count reaches zero,
+.code popcli 
+restores the interrupt enable state that existed 
+at the start of the outermost critical section.
+The
+.code cli
 and
-.code-index sti :
-they are counted, so that it takes two calls
-to
-.code popcli
-to undo two calls to
-.code pushcli ;
-this way, if code holds two locks,
-interrupts will not be reenabled until both
-locks have been released.
+.code sti
+functions execute the x86 interrupt disable and enable
+instructions, respectively.
 .PP
 It is important that
 .code-index acquire
@@ -588,10 +579,65 @@ performed between
 and
 .code release .
 .\"
-.section "Limitations of spin-locks"
+.section "Sleep locks"
 .\"
 .PP
-Spin-locks are often a clean solution to concurrency problems,
+Sometimes xv6 code needs to hold a lock for a long time. For example,
+the file system (Chapter \*[CH:FS]) keeps a file locked while reading
+and writing its content on the disk, and these disk operations can
+take tens of milliseconds. Efficiency demands that the processor be
+yielded while waiting so that other threads can make
+progress, and this in turn means that xv6 needs locks that 
+work well when held across context switches.
+Xv6 provides such locks in the form of
+.italic-index "sleep-locks" .
+.PP
+Xv6 sleep-locks support yielding the processor during their critical
+sections. This property poses a design challenge: if thread T1 holds
+lock L1 and has yielded the processor, and thread T2 wishes to acquire
+L1, we have to ensure that T1 can execute while T2 is waiting so
+that T1 can release L1. T2 can't use the spin-lock acquire
+function here: it
+spins with interrupts turned off, and that would prevent T1
+from running. To avoid this deadlock, the sleep-lock acquire
+routine
+(called
+.code acquiresleep )
+yields the processor while waiting, and does not disable
+interrupts.
+.PP
+.code acquiresleep
+.line sleeplock.c:/^acquiresleep/
+uses techniques that will be explained in
+Chapter \*[CH:SCHED].
+At a high level, a sleep-lock has a
+.code locked
+field that is protected by a spinlock, and 
+.code acquiresleep 's
+call to
+.code sleep
+atomically yields the CPU and releases the spin-lock.
+The result is that other threads can execute while
+.code acquiresleep
+waits.
+.PP
+Because sleep-locks leave interrupts enabled, they cannot be
+used in interrupt handlers.
+Because
+.code acquiresleep
+may yield the processor,
+sleep-locks cannot be used inside spin-lock critical
+sections (though spin-locks can be used inside sleep-lock
+critical sections).
+.PP
+Xv6 uses spin-locks in most situations, since they have low overhead.
+It uses sleep-locks only in the file system, where it is convenient to
+be able to hold locks across lengthy disk operations.
+.\"
+.section "Limitations of locks"
+.\"
+.PP
+Locks often solve concurrency problems cleanly,
 but there are times when they are awkward. Subsequent chapters will
 point out such situations in xv6; this section outlines some
 of the problems that come up.
@@ -639,18 +685,6 @@ event wait; see the description of
 and
 .code wakeup
 in Chapter \*[CH:SCHED].
-.PP
-It is easy for xv6 to deadlock when holding a spin-lock across
-.code sleep ,
-as we will see
-in Chapter \*[CH:FS],
-because spin-locks disable interrupts.
-Therefore, xv6 supports
-.code-index "sleep-locks"
-for kernel threads that must hold long-term locks.  For example, a kernel thread
-may need to hold a lock on a block read from disk while reading another block
-from the disk so that it can update both blocks in an atomic operation.
-As will see, xv6 implements sleep-locks using spin-locks.
 .\"
 .section "Real world"
 .\"
