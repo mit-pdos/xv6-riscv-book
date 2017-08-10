@@ -100,7 +100,7 @@ ease the design of higher ones.
 .\"
 .\" -------------------------------------------
 .\"
-.section "Buffer cache Layer and sleep locks"
+.section "Buffer cache layer"
 .PP
 The buffer cache has two jobs: (1) synchronize access to disk blocks to ensure
 that only one copy of a block is in memory and that only one kernel thread at a time
@@ -119,57 +119,13 @@ latter writes a modified buffer to the appropriate block on the disk.
 A kernel thread must release a buffer by calling
 .code-index brelse
 when it is done with it.
-.PP
-The buffer cache synchronizes access to each block using a
-.italic-index "sleep lock" .
-Like spin locks, sleep locks are a tool to guarantee mutually-exclusive
-access to shared data (in this case, a buffer in the buffer cache).  Unlike
-spin locks, sleep locks allow a kernel thread to hold a lock 
-across
-.code sleep
-calls. This situation arises when the file system 
-locks one block and holds the lock while waiting to read
-a second block from the disk.
-You'll see examples in the code that
-allocates blocks for file content
-.line fs.c:/^bmap/ ,
-and the code that copies blocks to and from the on-disk log
-.line log.c:/^install.trans/ .
-.ig
-    I can't find a case where two block-level locks
-    are needed to make an operation atomic, since there
-    always seem to be higher-level locks (either an
-    inode lock or log.committing, which acts as a sleeping lock).
-    It's true that bread() always locks, but the lock is
-    usually not needed, so the need to support block locks
-    across sleep() seems like an accidental requirement.
-..
-.PP
-A kernel thread waiting for a locked block may need to wait for
-a long time, because another thread may be
-reading the disk while holding the lock. The waiting thread
-waits in the sleep lock's acquire routine, which releases
-the processor with
-.code sleep
-so that other threads can execute.
-.PP
-Why does xv6 have both sleep locks and spin locks? Spin locks turn off
-interrupts, which is necessary to avoid deadlock if an interrupt could
-try to acquire a held lock, and necessary in some scheduling code to
-prevent a thread from being moved to a different core.
-The guarantee that interrupts are disabled during a spin-lock
-critical section means that
-a spin lock cannot be held across a call to
-.code sleep ,
-since the kernel thread (or user process) that is then
-allowed to run will likely need interrupts to be enabled
-(e.g. in order to read the disk).
-xv6 needs both types of lock because sometimes it needs 
-interrupts off while holding a lock, and sometimes it needs to
-sleep while holding a lock.
-When neither of the above requirements exists,
-xv6 uses spin locks because they use less CPU time if the
-acquirer only has to wait a short period of time.
+The buffer cache uses a per-buffer sleep-lock to ensure
+that only one thread at a time uses each buffer
+(and thus each disk block);
+.code bread
+returns a locked buffer, and
+.code brelse
+releases the lock.
 .PP
 Let's return to the buffer cache.
 The buffer cache has a fixed number of buffers to hold disk blocks,
@@ -227,7 +183,7 @@ scans the buffer list for a buffer with the given device and sector numbers
 .lines bio.c:/Is.the.block.already/,/^..}/ .
 If there is such a buffer,
 .code-index bget
-acquires the sleep lock for the buffer.
+acquires the sleep-lock for the buffer.
 .code bget
 then returns the locked buffer.
 .PP
@@ -240,7 +196,7 @@ that is not locked and not dirty:
 any such buffer can be used.
 .code Bget
 edits the buffer metadata to record the new device and sector number
-and acquires its sleep lock.
+and acquires its sleep-lock.
 Note that the assignment to
 .code flags
 clears
@@ -269,7 +225,7 @@ be atomic.
 .PP
 It is safe for
 .code bget
-to acquire the buffer's sleep lock outside of the 
+to acquire the buffer's sleep-lock outside of the 
 .code bcache.lock
 critical section,
 since the non-zero
@@ -317,7 +273,7 @@ is cryptic but worth learning:
 it originated in Unix and is used in BSD, Linux, and Solaris too.)
 .code Brelse
 .line bio.c:/^brelse/
-releases the sleep lock and
+releases the sleep-lock and
 moves the buffer
 to the front of the linked list
 .lines 'bio.c:/b->next->prev.=.b->prev/,/bcache.head.next.=.b/' .
@@ -823,7 +779,7 @@ Code must lock the inode using
 before reading or writing its metadata or content.
 .code Ilock
 .line fs.c:/^ilock/
-uses a sleep lock for this purpose.
+uses a sleep-lock for this purpose.
 Once
 .code-index ilock
 has exclusive access to the inode, it reads the inode
@@ -831,7 +787,7 @@ from disk (more likely, the buffer cache) if needed.
 The function
 .code-index iunlock
 .line fs.c:/^iunlock/
-releases the sleep lock,
+releases the sleep-lock,
 which may cause any processes sleeping
 to be woken up.
 .PP
