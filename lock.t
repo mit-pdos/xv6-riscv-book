@@ -194,10 +194,24 @@ Proper use of a lock ensures that only one CPU at a time
 can operate on the data structure in the critical section, so that
 no CPU will execute a data structure operation when the 
 data structure's invariants do not hold.
+.PP
+You can think of locks as
+.italic-index serializing
+concurrent critical sections so that they run one at a time,
+and thus preserve invariants (assuming they are correct
+in isolation).
+You can also think of critical sections as being
+atomic with respect to each other,
+so that a critical section that obtains the lock
+later sees only the complete set of
+changes from earlier critical sections, and never sees
+partially-completed updates.
 .\"
 .section "Code: Locks"
 .\"
-Xv6 represents a lock as a
+Xv6 has two types of locks: spin-locks and sleep-locks.
+We'll start with spin-locks.
+Xv6 represents a spin-lock as a
 .code-index "struct spinlock"
 .line spinlock.h:/struct.spinlock/ .
 The important field in the structure is
@@ -295,9 +309,9 @@ updates all 4 bytes atomically.  Xv6 cannot use a regular C assignment, because
 the C language specification does not specify that a single assignment is
 atomic.
 .PP
-Xv6's implementation of spinlocks is x86-specific, and xv6 is thus not directly
+Xv6's implementation of spin-locks is x86-specific, and xv6 is thus not directly
 portable to other processors.  To allow for portable implementations of
-spinlocks, the C language supports a library of atomic instructions; a portable
+spin-locks, the C language supports a library of atomic instructions; a portable
 operating system would use those instructions.
 .\"
 .section "Code: Using locks"
@@ -319,7 +333,9 @@ acquires the
 .line ide.c:/DOC:acquire-lock/
 and 
 releases it at the end of the function.
-Exercise 1 explores how to trigger the race condition that we saw at the
+.PP
+Exercise 1 explores how to trigger the IDE driver
+race condition that we saw at the
 beginning of the chapter by moving the 
 .code acquire
 to after the queue manipulation.
@@ -393,65 +409,46 @@ means that locks are effectively part of each function's specification:
 callers must invoke functions in a way that causes locks to be acquired
 in the agreed-on order.
 .PP
-Because xv6 uses relatively few coarse-grained locks, it has few lock-order
-chains.  The longest chain with spinlocks is only two deep. For example,
+Xv6 has many lock-order chains of length two involving the
+.code ptable.lock ,
+due to the way that
+.code sleep
+works as discussed in Chapter
+\*[CH:SCHED].
+For example,
 .code-index ideintr
 holds the ide lock while calling 
 .code-index wakeup ,
 which acquires the 
 .code-index ptable 
 lock.
-There are a number of other examples involving 
-.code-index sleep
+The file system code contains xv6's longest lock chains.
+For example, creating a file requires simultaneously
+holding a lock on the directory, a lock on the new file's inode,
+a lock on a disk block buffer, 
+.code idelock ,
 and
-.code-index wakeup .
-These orderings come about because
-.code sleep
-and 
-.code wakeup 
-have a complicated invariant, as discussed in Chapter
-\*[CH:SCHED].
-.PP
-In the file system there are a number of examples of more complicated situations
-because the file system holds long-term locks (called
-.italic-index sleeplocks
-in xv6), and a
-kernel thread may hold several of them.  For example, a kernel thread in the
-file system must acquire a lock on a directory and the lock on a new file to add
-the file to the directory correctly.  In addition, the kernel thread may hold at
-the same time a lock on one buffer (e.g., holding a block of the new file).  To
-avoid deadlock, kernel threads always acquire the locks in the order first
-parent directory, then the file, and then a file block.
-.PP
-The longest lock chain in xv6 combines the above spinlock chain and the
-long-term lock chain. This chain is 5 locks long: the 3 long-term locks in the
-file system and then the ide lock and the
-.code ptable
-lock to read a file block from the disk.
-.PP
-It is possible for xv6 to deadlock, however, when, for example, running with a
-small buffer cache. Therefore, xv6 panics when it runs out of buffers rather
-waiting for a free buffer and run the risk of deadlock.
+.code ptable.lock .
+To avoid deadlock, file system code always acquires locks in the order 
+mentioned in the previous sentence.
 .section "Interrupt handlers"
 .\"
-Xv6 uses locks to protect interrupt handlers
-running on one CPU from kernel code accessing the same
-data on another CPU.
+Xv6 uses spin-locks in many situations to protect data that is used by
+both interrupt handlers and threads.
 For example,
-the timer interrupt handler 
+a timer interrupt might
 .line trap.c:/T_IRQ0...IRQ_TIMER/
-increments
-.code-index ticks ,
-but another CPU might be in
+increment
+.code-index ticks 
+at about the same time that a kernel
+thread reads
+.code ticks 
+in
 .code-index sys_sleep
-.line sysproc.c:/ticks0.=.ticks/ 
-reading
-.code ticks
-at the same time.
+.line sysproc.c:/ticks0.=.ticks/  .
 The lock
 .code-index tickslock
-synchronizes access by the two CPUs to the
-single variable.
+serializes the two accesses.
 .PP
 Interrupts can cause concurrency even on a single processor:
 if interrupts are enabled, kernel code can be stopped
@@ -476,47 +473,38 @@ will not continue running until
 .code ideintr
 returns—so the processor, and eventually the whole system, will deadlock.
 .PP
-To avoid this situation, if a lock is used by an interrupt handler,
+To avoid this situation, if a spin-lock is used by an interrupt handler,
 a processor must never hold that lock with interrupts enabled.
-Xv6 is more conservative: it never holds any lock with interrupts enabled.
-It uses
+Xv6 is more conservative: when a processor enters a spin-lock
+critical section, xv6 always ensures interrupts are disabled on
+that processor.
+Interrupts may still occur on other processors, so 
+an interrupt's
+.code acquire
+can wait for a thread to release a spin-lock; just not on the same processor.
+.PP
+xv6 re-enables interrupts when a processor holds no spin-locks; it must
+do a little book-keeping to cope with nested critical sections.
+.code acquire
+calls
 .code-index pushcli
 .line spinlock.c:/^pushcli/
 and
-.code-index popcli
-.line spinlock.c:/^popcli/
-to manage a stack of ``disable interrupts'' operations
-.code-index cli "" (
-is the x86 instruction that disables interrupts).
-.code Acquire
-calls
-.code-index pushcli
-before trying to acquire a lock
-.line spinlock.c:/pushcli/ ,
-and 
 .code release
 calls
 .code-index popcli
-after releasing the lock
-.line spinlock.c:/popcli/ .
-.code Pushcli
-.line spinlock.c:/^pushcli/
-and
-.code-index popcli
 .line spinlock.c:/^popcli/
-are more than just wrappers
-around 
-.code-index cli
+to track the nesting level of locks on the current processor.
+When that count reaches zero,
+.code popcli 
+restores the interrupt enable state that existed 
+at the start of the outermost critical section.
+The
+.code cli
 and
-.code-index sti :
-they are counted, so that it takes two calls
-to
-.code popcli
-to undo two calls to
-.code pushcli ;
-this way, if code holds two locks,
-interrupts will not be reenabled until both
-locks have been released.
+.code sti
+functions execute the x86 interrupt disable and enable
+instructions, respectively.
 .PP
 It is important that
 .code-index acquire
@@ -591,10 +579,65 @@ performed between
 and
 .code release .
 .\"
-.section "Limitations of spin-locks"
+.section "Sleep locks"
 .\"
 .PP
-Spin-locks are often a clean solution to concurrency problems,
+Sometimes xv6 code needs to hold a lock for a long time. For example,
+the file system (Chapter \*[CH:FS]) keeps a file locked while reading
+and writing its content on the disk, and these disk operations can
+take tens of milliseconds. Efficiency demands that the processor be
+yielded while waiting so that other threads can make
+progress, and this in turn means that xv6 needs locks that 
+work well when held across context switches.
+Xv6 provides such locks in the form of
+.italic-index "sleep-locks" .
+.PP
+Xv6 sleep-locks support yielding the processor during their critical
+sections. This property poses a design challenge: if thread T1 holds
+lock L1 and has yielded the processor, and thread T2 wishes to acquire
+L1, we have to ensure that T1 can execute while T2 is waiting so
+that T1 can release L1. T2 can't use the spin-lock acquire
+function here: it
+spins with interrupts turned off, and that would prevent T1
+from running. To avoid this deadlock, the sleep-lock acquire
+routine
+(called
+.code acquiresleep )
+yields the processor while waiting, and does not disable
+interrupts.
+.PP
+.code acquiresleep
+.line sleeplock.c:/^acquiresleep/
+uses techniques that will be explained in
+Chapter \*[CH:SCHED].
+At a high level, a sleep-lock has a
+.code locked
+field that is protected by a spinlock, and 
+.code acquiresleep 's
+call to
+.code sleep
+atomically yields the CPU and releases the spin-lock.
+The result is that other threads can execute while
+.code acquiresleep
+waits.
+.PP
+Because sleep-locks leave interrupts enabled, they cannot be
+used in interrupt handlers.
+Because
+.code acquiresleep
+may yield the processor,
+sleep-locks cannot be used inside spin-lock critical
+sections (though spin-locks can be used inside sleep-lock
+critical sections).
+.PP
+Xv6 uses spin-locks in most situations, since they have low overhead.
+It uses sleep-locks only in the file system, where it is convenient to
+be able to hold locks across lengthy disk operations.
+.\"
+.section "Limitations of locks"
+.\"
+.PP
+Locks often solve concurrency problems cleanly,
 but there are times when they are awkward. Subsequent chapters will
 point out such situations in xv6; this section outlines some
 of the problems that come up.
@@ -642,18 +685,6 @@ event wait; see the description of
 and
 .code wakeup
 in Chapter \*[CH:SCHED].
-.PP
-It is easy for xv6 to deadlock when holding a spin lock across
-.code sleep ,
-as we will see
-in Chapter \*[CH:FS],
-because spinlocks disable interrupts.
-Therefore, xv6 supports
-.code-index "sleep locks"
-for kernel threads that must hold long-term locks.  For example, a kernel thread
-may need to hold a lock on a block read from disk while reading another block
-from the disk so that it can update both blocks in an atomic operation.
-As will see, xv6 implements sleep locks using spin locks.
 .\"
 .section "Real world"
 .\"
