@@ -850,11 +850,12 @@ the inode, at which point
 is done with it.
 .PP
 .code iput()
-can write to the disk.
-This means that any system call that uses the file system
-may write the disk, even calls like
+can write to the disk.  This means that any system call that uses the file
+system may write the disk, because the system call may be the last one having a
+reference to the file. Even calls like
 .code read()
-that appear to be read-only.
+that appear to be read-only, may end up calling
+.code iput().
 This, in turn, means that even read-only system calls
 must be wrapped in transactions if they use the file system.
 .\"
