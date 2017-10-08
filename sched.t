@@ -8,7 +8,7 @@ pike et al, sleep and wakeup
 .chapter CH:SCHED "Scheduling"
 .PP
 Any operating system is likely to run with more processes than the
-computer has processors, and so a plan is needed to time-share the
+computer has processors, so a plan is needed to time-share the
 processors among the processes. Ideally the sharing would be transparent to user
 processes.  A common approach is to provide each process
 with the illusion that it has its own virtual processor by
@@ -36,20 +36,19 @@ each process has its own CPU, just as xv6 uses the memory allocator and hardware
 page tables to create the illusion that each process has its own memory.
 .PP
 Implementing multiplexing poses a few challenges. First, how to switch from one
-process to another? Xv6 uses the standard mechanism of context switching;
-although the idea is simple, the implementation is some of the most opaque code
-in the system. Second, how to do context switching transparently?  Xv6 uses the
-standard technique of using the timer interrupt handler to drive context
-switches.  Third, many CPUs may be switching among processes concurrently, and a
-locking plan is necessary to avoid races. Fourth, when a process has exited its
-memory and other resources must be freed, but it cannot do all of this itself
+process to another? 
+Although the idea of context switching
+is simple, the implementation is some of the most opaque code
+in xv6. Second, how to switch transparently to user processes?  Xv6 uses the
+standard technique of driving context switches with timer interrupts.
+Third, many CPUs may be switching among processes concurrently, and a
+locking plan is necessary to avoid races. Fourth, a process's
+memory and other resources must be freed when the process exits,
+but it cannot do all of this itself
 because (for example) it can't free its own kernel stack while still using it.
-Finally, on a multiprocessor, each processor may run a process and
-when a processor switches from one process to another, the core must know which
-process it is running so that it can save the state of the currently-running
-process in the correct
-.code proc
-structure.
+Finally, each core of a multi-core machine must remember which
+process it is executing so that system calls affect the correct
+process's kernel state.
 Xv6 tries to solve these problems as
 simply as possible, but nevertheless the resulting code is
 tricky.
@@ -77,23 +76,17 @@ outlines the steps involved in switching from one
 user process to another:
 a user-kernel transition (system
 call or interrupt) to the old process's kernel thread,
-a context switch to the local CPU's scheduler thread, a context
+a context switch to the current CPU's scheduler thread, a context
 switch to a new process's kernel thread, and a trap return
 to the user-level process.
-Xv6 uses two context switches because the scheduler
-runs on its own stack in order to
-simplify cleaning up user processes, as we will see
-when discussing the code for
-.code exit
-and
-.code kill .
+The xv6 scheduler has its own thread (saved registers and stack) because
+it is sometimes not safe for it execute on
+any process's kernel stack;
+we'll see an example in
+.code exit .
 In this section we'll examine the mechanics of switching
 between a kernel thread and a scheduler thread.
 .PP
-Every xv6 process has its own kernel stack and register set, as we saw in
-Chapter \*[CH:MEM].
-Each CPU has a separate scheduler thread for use when it is executing
-the scheduler rather than any process's kernel thread.
 Switching from one thread to another involves saving the old thread's
 CPU registers, and restoring the previously-saved registers of the
 new thread; the fact that
@@ -103,7 +96,10 @@ and
 are saved and restored means that the CPU will switch stacks and
 switch what code it is executing.
 .PP
+The function
 .code-index swtch
+performs the saves and restores for a thread switch.
+.code swtch
 doesn't directly know about threads; it just saves and
 restores register sets, called 
 .italic-index "contexts" .
@@ -123,7 +119,7 @@ and
 .code struct
 .code context
 .code *new .
-It pushes the current CPU register onto the stack
+It pushes the current registers onto the stack
 and saves the stack pointer in
 .code *old .
 Then
@@ -134,7 +130,7 @@ to
 .register esp,
 pops previously saved registers, and returns.
 .PP
-Let's follow the initial user process through
+Let's follow a user process through
 .code swtch 
 into the scheduler.
 We saw in Chapter \*[CH:TRAP]
@@ -245,9 +241,7 @@ it returns not to
 but to 
 .code-index scheduler ,
 and its stack pointer points at the current CPU's
-scheduler stack, not
-.code initproc 's
-kernel stack.
+scheduler stack.
 .\"
 .section "Code: Scheduling"
 .\"
@@ -256,8 +250,8 @@ The last section looked at the low-level details of
 .code-index swtch ;
 now let's take 
 .code swtch
-as a given and examine the conventions involved
-in switching from process to scheduler and back to process.
+as a given and examine 
+switching from a process through the scheduler to another process.
 A process
 that wants to give up the CPU must
 acquire the process table lock
@@ -371,7 +365,7 @@ otherwise, the new process could start at
 .code Scheduler
 .line proc.c:/^scheduler/ 
 runs a simple loop:
-find a process to run, run it until it stops, repeat.
+find a process to run, run it until it yields, repeat.
 .code-index scheduler
 holds
 .code-index ptable.lock
@@ -497,44 +491,43 @@ for performance.
 .\"
 .PP
 In many places in xv6, a processor must identify which process it is running.
-For example, when a processor serves a
+For example, when a processor executes a
 .code yield
 system call,
 the processor must determine which process is invoking
 .code yield .
-Xv6 follows the standard plan that relies on a tiny bit of hardware support.
+Xv6 relies on a tiny bit of hardware support for this.
 Xv6 maintains an array of
 .code-index "struct cpu"
-.line proc.h:/struct.cpu/ .
-The array has one entry for each processor and each entry contains per-processor
-state, such as the current-running process, as well as a hardware identifier for
+.line proc.h:/struct.cpu/ 
+with an entry for each processor.
+Each entry contains per-processor
+state, such as the currently-running process, as well as a hardware identifier for
 that processor
 .code apicid ). (
-When a processor must find it's per-cpu state, it reads its
-identifier from its local APIC and uses that identifier to find its state in the
+When xv6 needs local per-cpu state, it reads the processor
+identifier from its local APIC hardware and uses that identifier to find the state in the
 array.
 .PP
-The kernel uses the function
+The function
 .code-index mycpu
 .line proc.c:/^mycpu/
-to find its
-.code apicid ,
-which in turn calls the
-function
+finds the local
+.code apicid 
+by calling
 .code-index lapicid .
-.code
-The function
-.code lapicid
-returns the hardware identifier for this processor and
+Then
 .code mycpu
-uses that identifier to finds its
+uses that identifier to find the current processor's
 .code "struct cpu" .
-These functions are invoked by a kernel thread and there is risk that the kernel
-thread may be scheduled to a different processor after reading the
+There is risk that a timer interrupt may move the calling kernel
+thread to a different processor after 
+.code mycpu
+reads the
 .code apicid
 but before
 .code mycpu
-returns.  If that happens the function returns the wrong
+returns.  If that happened the function would return the wrong
 .code apicid .
 To avoid this problem, xv6 requires that callers of
 .code mycpu
@@ -552,9 +545,9 @@ disables interrupts, and invokes
 .code mycpu
 to find its processor's state, which contains a field
 .code proc .
-When a processor switches to a new process in
-.code scheduler ,
-it sets
+When
+.code scheduler 
+switches to a new process, it sets the current processor's
 .code proc
 to that process's
 .code "struct proc" .
@@ -566,9 +559,10 @@ to find the
 .code "struct cpu"
 with the matching
 .code apicid .
-This scan is inefficient and kernels in the real-word
-often dedicate a CPU register to cache a pointer
-to the current processor's state.
+This scan is inefficient; it might be better to
+dedicate a CPU register to cache a pointer
+to the current processor's 
+.code "struct cpu" .
 .\"
 .section "Sleep and wakeup"
 .\"
