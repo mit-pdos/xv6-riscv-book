@@ -1351,8 +1351,7 @@ has not marked the current process as a
 yet, but it is safe:
 although
 .code wakeup
-may mark the parent as
-.code RUNNABLE ,
+may cause the parent to run,
 the loop in
 .code wait
 cannot run until
@@ -1370,7 +1369,7 @@ the exiting process until after
 has set its state to
 .code ZOMBIE
 .line proc.c:/state.=.ZOMBIE/ .
-Before exit reschedules,
+Before exit yields the processor,
 it reparents all of
 the exiting process's children,
 passing them to the
@@ -1509,19 +1508,19 @@ in turn.  This policy is called
 .italic-index "round robin" .
 Real operating systems implement more sophisticated policies that, for example,
 allow processes to have priorities.  The idea is that a runnable high-priority process
-will be preferred by the scheduler over a runnable low-priority thread.   These
+will be preferred by the scheduler over a runnable low-priority process.   These
 policies can become complex quickly because there are often competing goals: for
 example, the operating might also want to guarantee fairness and
-high-throughput.  In addition, complex policies may lead to unintended
+high throughput.  In addition, complex policies may lead to unintended
 interactions such as
 .italic-index "priority inversion"
 and 
 .italic-index "convoys" .
 Priority inversion can happen when a low-priority and high-priority process
-share a lock, which when acquired by the low-priority process can cause the
-high-priority process to not run.  A long convoy can form when many
+share a lock, which when acquired by the low-priority process can prevent the
+high-priority process from making progress.  A long convoy can form when many
 high-priority processes are waiting for a low-priority process that acquires a
-shared lock; once a convoy has formed they can persist for long period of time.
+shared lock; once a convoy has formed it can persist for long time.
 To avoid these kinds of problems additional mechanisms are necessary in
 sophisticated schedulers.
 .PP
@@ -1624,11 +1623,11 @@ and thundering herd problems.
 Terminating processes and cleaning them up introduces much complexity in xv6.
 In most operating systems it is even more complex, because, for example, the
 victim process may be deep inside the kernel sleeping, and unwinding its
-stack requires much careful programming.  Many operating system unwind the stack
+stack requires much careful programming.  Many operating systems unwind the stack
 using explicit mechanisms for exception handling, such as
 .code longjmp .
 Furthermore, there are other events that can cause a sleeping process to be
-woken up, even though the events it is waiting for has not happened yet.  For
+woken up, even though the event it is waiting for has not happened yet.  For
 example, when a Unix process is sleeping, another process may send a 
 .code-index signal
 to it.  In this case, the
@@ -1670,7 +1669,7 @@ doesn't type any input).
 .code "lk != &ptable.lock"
 to avoid a deadlock
 .lines proc.c:/sleeplock0/,/^..}/ .
-It could eliminate the special case by 
+Suppose the special case were eliminated by
 replacing
 .P1
 if(lk != &ptable.lock){
