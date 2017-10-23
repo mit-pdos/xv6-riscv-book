@@ -360,8 +360,13 @@ The log resides at a known fixed location, specified in the superblock.
 It consists of a header block followed by a sequence
 of updated block copies (``logged blocks'').
 The header block contains an array of sector
-numbers, one for each of the logged blocks. The header block
-also contains the count of logged blocks. Xv6 writes the header
+numbers, one for each of the logged blocks, and 
+the count of log blocks.
+The count in the header block on disk is either
+zero, indicating that there is no transaction in the log,
+or non-zero, indicating that the log contains a complete committed
+transaction with the indicated number of logged blocks.
+Xv6 writes the header
 block when a transaction commits, but not before, and sets the
 count to zero after copying the logged blocks to the file system.
 Thus a crash midway through a transaction will result in a
@@ -435,11 +440,17 @@ A typical use of the log in a system call looks like this:
 .line log.c:/^begin.op/
 waits until
 the logging system is not currently committing, and until
-there is enough free log space to hold
-the writes from this call and all currently executing system calls.
+there is enough unreserved log space to hold
+the writes from this call.
 .code log.outstanding
-counts that number of calls;
-the increment both reserves space and prevents a commit
+counts the number of system calls that have reserved log
+space; the total reserved space is 
+.code log.outstanding
+times
+.code MAXOPBLOCKS .
+Incrementing
+.code log.outstanding
+both reserves space and prevents a commit
 from occuring during this system call.
 The code conservatively assumes that each system call might write up to
 .code MAXOPBLOCKS
