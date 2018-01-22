@@ -490,79 +490,63 @@ for performance.
 .section "Code: mycpu and myproc"
 .\"
 .PP
-In many places in xv6, a processor must identify which process it is running.
-For example, when a processor executes a
-.code yield
-system call,
-the processor must determine which process is invoking
-.code yield .
-Xv6 relies on a tiny bit of hardware support for this.
-Xv6 maintains an array of
+xv6 maintains a
 .code-index "struct cpu"
-.line proc.h:/struct.cpu/ 
-with an entry for each processor.
-Each entry contains per-processor
-state, such as the currently-running process, as well as a hardware identifier for
-that processor
-.code apicid ). (
-When xv6 needs local per-cpu state, it reads the processor
-identifier from its local APIC hardware and uses that identifier to find the state in the
-array.
-.PP
+for each processor, which records
+the process currently running
+on the processor (if any),
+the processor's unique hardware identifier
+.code apicid ), (
+and some other information.
 The function
 .code-index mycpu
 .line proc.c:/^mycpu/
-finds the local
-.code apicid 
-by calling
-.code-index lapicid .
-Then
-.code mycpu
-uses that identifier to find the current processor's
+returns the current processor's
 .code "struct cpu" .
-There is risk that a timer interrupt may move the calling kernel
-thread to a different processor after 
 .code mycpu
-reads the
-.code apicid
-but before
+does this by reading the processor
+identifier from the local APIC hardware and looking through
+the array of
+.code "struct cpu"
+for an entry with that identifier.
+The return value of
 .code mycpu
-returns.  If that happened the function would return the wrong
-.code apicid .
+is fragile: if the timer were to interrupt and cause
+the thread to be moved to a different processor, the
+return value would no longer be correct.
 To avoid this problem, xv6 requires that callers of
 .code mycpu
-invoke it with interrupts disabled.
+disable interrupts, and only enable
+them after they finish using the returned
+.code "struct cpu" .
 .PP
-The kernel uses the function
+The function
 .code-index myproc
 .line proc.c:/^myproc/
-to find the
+returns the
 .code "struct proc"
+pointer
 for the process that is running on the current processor.
-The function
 .code myproc
-disables interrupts, and invokes
-.code mycpu
-to find its processor's state, which contains a field
-.code proc .
-When
-.code scheduler 
-switches to a new process, it sets the current processor's
-.code proc
-to that process's
-.code "struct proc" .
-.PP
-The function
-.code mycpu
-scans the CPU array
-to find the
-.code "struct cpu"
-with the matching
-.code apicid .
-This scan is inefficient; it might be better to
-dedicate a CPU register to cache a pointer
-to the current processor's 
-.code "struct cpu" .
+disables interrupts, invokes
+.code mycpu ,
+fetches the current process pointer
+.code "c->proc" ) (
+out of the
+.code "struct cpu" ,
+and then enables interrupts.
+If there is no process running, because the the caller is
+executing in
+.code scheduler ,
+.code myproc
+returns zero.
+The return value of
+.code myproc
+is safe to use even if interrupts are enabled:
+if a timer interrupt moves the calling process to a
+different processor, its
+.code "struct proc"
+pointer will stay the same.
 .\"
 .section "Sleep and wakeup"
 .\"
