@@ -121,7 +121,7 @@ As shown in
 a process's user memory starts at virtual address
 zero and can grow up to
 .address KERNBASE ,
-allowing a process to address up to 2 GB of memory.
+allowing a process to address up to 2 gigabytes of memory.
 The file
 .file "memlayout.h"
 .sheet memlayout.h
@@ -160,11 +160,22 @@ to write a given page of physical memory, for example
 when creating page table pages; having every physical
 page appear at a predictable virtual address makes this convenient.
 A defect of this arrangement is that xv6 cannot make use of
-more than 2 GB of physical memory.
+more than 2 gigabytes of physical memory, because the kernel
+part of the address space is 2 gigabytes.
+Thus, xv6 requires that
+.address PHYSTOP
+be smaller than 2 gigabytes, even if the computer
+has more than 2 gigabytes of physical memory.
+.PP
 Some devices that use memory-mapped I/O appear at physical
 addresses starting at
 .address 0xFE000000 ,
 so xv6 page tables including a direct mapping for them.
+Thus,
+.address PHYSTOP
+must be smaller than two gigabytes - 16 megabytes (for the device memory).
+Thus
+.PP
 Xv6 does not set the
 .code-index PTE_U
 flag in the PTEs above
@@ -840,7 +851,7 @@ Like most operating systems, xv6 uses the paging hardware
 for memory protection and mapping. Most operating systems use x86's 64-bit paging
 hardware (which has 3 levels of translation). 64-bit address spaces allow for a
 less restrictive memory layout than xv6's; for example, it would be easy to
-remove xv6's limit of 2 Gbyte for physical memory.
+remove xv6's limit of 2 gigabytes for physical memory.
 Most operating systems make far more sophisticated
 use of paging than xv6; for example, xv6 lacks demand
 paging from disk, copy-on-write fork, shared memory,

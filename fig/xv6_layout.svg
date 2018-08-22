@@ -295,8 +295,8 @@
      units="mm"
      inkscape:window-width="1416"
      inkscape:window-height="1323"
-     inkscape:window-x="238"
-     inkscape:window-y="75"
+     inkscape:window-x="965"
+     inkscape:window-y="78"
      inkscape:window-maximized="0"
      showguides="true"
      inkscape:guide-bbox="true"
@@ -338,7 +338,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title />
+        <dc:title></dc:title>
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -758,28 +758,32 @@
          y="945.49701">0x100000</tspan></text>
     <text
        xml:space="preserve"
-       style="font-size:14px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       style="font-style:normal;font-weight:normal;font-size:14px;font-family:'Bitstream Vera Sans';fill:#000000;fill-opacity:1;stroke:none"
        x="438.57001"
-       y="754.94141"
+       y="861.46313"
        id="text3428"><tspan
          sodipodi:role="line"
          id="tspan3430"
          x="438.57001"
-         y="754.94141">PHYSTOP</tspan></text>
+         y="861.46313">PHYSTOP</tspan></text>
     <text
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;font-size:14px;font-family:'Bitstream Vera Sans';fill:#000000;fill-opacity:1;stroke:none"
-       x="533.80658"
-       y="795.74609"
+       x="555.54572"
+       y="790.31134"
        id="text3545"><tspan
          sodipodi:role="line"
-         x="533.80658"
-         y="795.74609"
-         id="tspan3410">Unused if less than 2 Gbyte</tspan><tspan
+         x="555.54572"
+         y="790.31134"
+         id="tspan3416">Unused if machine has </tspan><tspan
          sodipodi:role="line"
-         x="533.80658"
-         y="813.24609"
-         id="tspan3416"> of physical memory</tspan></text>
+         x="555.54572"
+         y="807.81134"
+         id="tspan3523">more than PHYSTOP </tspan><tspan
+         sodipodi:role="line"
+         x="555.54572"
+         y="825.31134"
+         id="tspan3529">memory</tspan></text>
     <text
        xml:space="preserve"
        style="font-size:14px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
@@ -931,8 +935,8 @@
        id="path4510"
        inkscape:connector-curvature="0" />
     <path
-       style="fill:none;stroke:#000000;stroke-width:0.99921262;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker-end:url(#Arrow1Mend)"
-       d="m 509.15311,751.45626 17.71654,0"
+       style="fill:none;stroke:#000000;stroke-width:0.99921262;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#Arrow1Mend)"
+       d="m 510.24007,855.80409 17.71654,0"
        id="path4597"
        sodipodi:nodetypes="cc"
        inkscape:connector-curvature="0" />
@@ -1042,19 +1046,6 @@
          x="471.73914"
          y="788.91302" /></text>
     <text
-       inkscape:transform-center-y="-185.86957"
-       inkscape:transform-center-x="-6.5217391"
-       xml:space="preserve"
-       style="font-style:normal;font-weight:normal;font-size:40px;font-family:'Bitstream Vera Sans';text-align:start;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
-       x="413.17374"
-       y="861.94"
-       id="text3165"><tspan
-         sodipodi:role="line"
-         id="tspan3167"
-         x="413.17374"
-         y="861.94"
-         style="font-size:14px;text-align:start;text-anchor:start">At most 2 Gbyte</tspan></text>
-    <text
        id="text3197"
        y="712.05048"
        x="572.93701"
@@ -1077,18 +1068,18 @@
        inkscape:connector-curvature="0" />
     <text
        id="text3418"
-       y="413.13742"
-       x="128.37178"
+       y="407.70264"
+       x="151.19786"
        style="font-style:normal;font-weight:normal;font-size:14px;font-family:'Bitstream Vera Sans';fill:#000000;fill-opacity:1;stroke:none"
        xml:space="preserve"><tspan
          id="tspan3420"
-         y="413.13742"
-         x="128.37178"
-         sodipodi:role="line">Unused if less than 2 Gbyte</tspan><tspan
+         y="407.70264"
+         x="151.19786"
+         sodipodi:role="line">Unused if PHYSTOP is</tspan><tspan
          id="tspan3422"
-         y="430.63742"
-         x="128.37178"
-         sodipodi:role="line"> of physical memory</tspan></text>
+         y="425.20264"
+         x="151.19786"
+         sodipodi:role="line">less than 2 Gbyte</tspan></text>
     <text
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;font-size:12.5px;line-height:125%;font-family:sans-serif;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
@@ -1106,5 +1097,21 @@
        id="path3574"
        d="m 510.06615,667.76061 17.71654,0"
        style="fill:none;stroke:#000000;stroke-width:0.99921262;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#Arrow1Mend)" />
+    <text
+       id="text3515"
+       y="755.48077"
+       x="416.69443"
+       style="font-style:normal;font-weight:normal;font-size:14px;font-family:'Bitstream Vera Sans';fill:#000000;fill-opacity:1;stroke:none"
+       xml:space="preserve"><tspan
+         y="755.48077"
+         x="416.69443"
+         id="tspan3517"
+         sodipodi:role="line">0xFE000000</tspan></text>
+    <path
+       style="fill:none;stroke:#000000;stroke-width:0.99921262;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#Arrow1Mend)"
+       d="m 510.06615,749.28235 17.71654,0"
+       id="path3519"
+       sodipodi:nodetypes="cc"
+       inkscape:connector-curvature="0" />
   </g>
 </svg>
