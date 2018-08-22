@@ -75,12 +75,12 @@ A challenge in the transition to and from the interrupt handler is
 that the processor should switch from user mode to kernel mode, and
 back.
 .PP
-A word on terminology: Although the official x86 term is interrupt,
-xv6 refers to all of these as 
-.italic-index traps , 
+A word on terminology: Although the official x86 term is exception,
+xv6 uses the term
+.italic-index trap , 
 largely because it was the term
 used by the PDP11/40 and therefore is the conventional Unix term.
-This chapter uses the terms trap and interrupt interchangeably, but it
+Furthermore, this chapter uses the terms trap and interrupt interchangeably, but it
 is important to remember that traps are caused by the current process
 running on a processor (e.g., the process makes a system call and as a
 result generates a trap), and interrupts are caused by devices and may
