@@ -13,8 +13,8 @@
    height="990"
    id="svg3255"
    version="1.1"
-   inkscape:version="0.48.2 r9819"
-   sodipodi:docname="xv6_layout.eps">
+   inkscape:version="0.91 r13725"
+   sodipodi:docname="xv6_layout.svg">
   <defs
      id="defs3257">
     <marker
@@ -293,10 +293,10 @@
      inkscape:current-layer="layer1"
      showgrid="false"
      units="mm"
-     inkscape:window-width="1286"
-     inkscape:window-height="1046"
-     inkscape:window-x="253"
-     inkscape:window-y="0"
+     inkscape:window-width="1416"
+     inkscape:window-height="1323"
+     inkscape:window-x="238"
+     inkscape:window-y="75"
      inkscape:window-maximized="0"
      showguides="true"
      inkscape:guide-bbox="true"
@@ -338,7 +338,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -423,6 +423,18 @@
        height="312.22552"
        x="527.97687"
        y="621.64404" />
+    <path
+       transform="translate(0,-62.362323)"
+       inkscape:connector-curvature="0"
+       style="display:inline;fill:none;stroke:#000000;stroke-width:0.98419327;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:1.96838648, 3.93677294000000000;stroke-dashoffset:0;stroke-opacity:1"
+       d="M 332.42645,264.86239 C 530.0995,664.36795 531.91302,666.44874 531.91302,666.44874 l 0,0 -1.81352,0"
+       id="path3171" />
+    <path
+       transform="translate(0,-62.362323)"
+       id="path3169"
+       d="m 333.52168,365.94797 c 197.65671,384.36088 199.47008,386.36279 199.47008,386.36279 l 0,0 -1.81337,0"
+       style="display:inline;fill:none;stroke:#000000;stroke-width:0.99999994;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:1.99999999, 3.99999998000000012;stroke-dashoffset:0"
+       inkscape:connector-curvature="0" />
   </g>
   <g
      inkscape:label="Layer 1"
@@ -441,10 +453,6 @@
          x="226.58351"
          id="tspan3316"
          sodipodi:role="line">User data</tspan></text>
-    <path
-       style="fill:none;stroke:#000000;stroke-width:0.99999994px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       d="m 120.76281,1009.8426 212.59842,0"
-       id="path3328" />
     <path
        style="fill:none;stroke:#000000;stroke-width:0.99999994px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
        d="m 120.76281,967.32292 212.59842,0"
@@ -563,8 +571,9 @@
     <path
        sodipodi:nodetypes="cc"
        id="path4222"
-       d="m 91.396559,363.89257 17.716541,0"
-       style="fill:none;stroke:#000000;stroke-width:0.99921262;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker-end:url(#Arrow1Mend)" />
+       d="m 97.396559,363.89257 17.716541,0"
+       style="fill:none;stroke:#000000;stroke-width:0.99921262;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#Arrow1Mend)"
+       inkscape:connector-curvature="0" />
     <text
        id="text4234"
        y="685.26569"
@@ -577,10 +586,11 @@
          id="tspan4236"
          sodipodi:role="line">KERNBASE</tspan></text>
     <path
-       style="fill:none;stroke:#000000;stroke-width:0.99921262;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker-end:url(#Arrow1Mend)"
-       d="m 99.7854,268.52974 17.71654,0"
+       style="fill:none;stroke:#000000;stroke-width:0.99921262;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#Arrow1Mend)"
+       d="m 97.7854,268.52974 17.71654,0"
        id="path4238"
-       sodipodi:nodetypes="cc" />
+       sodipodi:nodetypes="cc"
+       inkscape:connector-curvature="0" />
     <text
        xml:space="preserve"
        style="font-size:40px;font-style:normal;font-weight:normal;text-align:center;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
@@ -594,15 +604,15 @@
          style="font-size:14px;text-align:center;text-anchor:middle">Kernel data</tspan></text>
     <text
        xml:space="preserve"
-       style="font-size:40px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
-       x="51.825935"
-       y="270.63556"
+       style="font-style:normal;font-weight:normal;font-size:40px;font-family:'Bitstream Vera Sans';text-align:start;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
+       x="39.869415"
+       y="271.7225"
        id="text4256"><tspan
          sodipodi:role="line"
          id="tspan4258"
-         x="51.825935"
-         y="270.63556"
-         style="font-size:14px;text-align:start;text-anchor:start">4 Gig</tspan></text>
+         x="39.869415"
+         y="271.7225"
+         style="font-size:14px;text-align:start;text-anchor:start">4 Gbyte</tspan></text>
     <text
        xml:space="preserve"
        style="font-size:40px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
@@ -617,8 +627,9 @@
     <path
        sodipodi:nodetypes="cc"
        id="path4272"
-       d="m 103.04627,1009.8426 17.71654,0"
-       style="fill:none;stroke:#000000;stroke-width:0.99921262;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker-end:url(#Arrow1Mend)" />
+       d="m 97.04627,1009.8426 17.71654,0"
+       style="fill:none;stroke:#000000;stroke-width:0.99921262;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#Arrow1Mend)"
+       inkscape:connector-curvature="0" />
     <text
        xml:space="preserve"
        style="font-size:40px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
@@ -757,17 +768,17 @@
          y="754.94141">PHYSTOP</tspan></text>
     <text
        xml:space="preserve"
-       style="font-size:14px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
-       x="546.85004"
-       y="796.83307"
+       style="font-style:normal;font-weight:normal;font-size:14px;font-family:'Bitstream Vera Sans';fill:#000000;fill-opacity:1;stroke:none"
+       x="533.80658"
+       y="795.74609"
        id="text3545"><tspan
          sodipodi:role="line"
-         x="546.85004"
-         y="796.83307"
-         id="tspan3410">Unused if less than 2 Gig</tspan><tspan
+         x="533.80658"
+         y="795.74609"
+         id="tspan3410">Unused if less than 2 Gbyte</tspan><tspan
          sodipodi:role="line"
-         x="546.85004"
-         y="814.33307"
+         x="533.80658"
+         y="813.24609"
          id="tspan3416"> of physical memory</tspan></text>
     <text
        xml:space="preserve"
@@ -781,14 +792,14 @@
          y="895.63727">Extended memory</tspan></text>
     <text
        xml:space="preserve"
-       style="font-size:14px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
-       x="454.33875"
+       style="font-style:normal;font-weight:normal;font-size:14px;font-family:'Bitstream Vera Sans';fill:#000000;fill-opacity:1;stroke:none"
+       x="428.33875"
        y="968.48444"
        id="text3586"><tspan
          sodipodi:role="line"
          id="tspan3588"
-         x="454.33875"
-         y="968.48444">640K</tspan></text>
+         x="428.33875"
+         y="968.48444">640Kbyte</tspan></text>
     <text
        xml:space="preserve"
        style="font-size:14px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
@@ -950,17 +961,17 @@
        id="path4623" />
     <text
        id="text2980"
-       y="668.46167"
-       x="488.78244"
-       style="font-size:40px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       y="671.72253"
+       x="451.60852"
+       style="font-style:normal;font-weight:normal;font-size:40px;font-family:'Bitstream Vera Sans';text-align:start;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
        xml:space="preserve"
        inkscape:transform-center-x="-6.5217391"
        inkscape:transform-center-y="-185.86957"><tspan
          style="font-size:14px;text-align:start;text-anchor:start"
-         y="668.46167"
-         x="488.78244"
+         y="671.72253"
+         x="451.60852"
          id="tspan2982"
-         sodipodi:role="line">4 Gig</tspan></text>
+         sodipodi:role="line">4 Gbyte</tspan></text>
     <path
        id="path2979"
        d="m 118.5889,586.88814 212.59842,0"
@@ -1034,25 +1045,15 @@
        inkscape:transform-center-y="-185.86957"
        inkscape:transform-center-x="-6.5217391"
        xml:space="preserve"
-       style="font-size:40px;font-style:normal;font-weight:normal;text-align:start;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
-       x="431.17374"
+       style="font-style:normal;font-weight:normal;font-size:40px;font-family:'Bitstream Vera Sans';text-align:start;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
+       x="413.17374"
        y="861.94"
        id="text3165"><tspan
          sodipodi:role="line"
          id="tspan3167"
-         x="431.17374"
+         x="413.17374"
          y="861.94"
-         style="font-size:14px;text-align:start;text-anchor:start">At most 2 Gig</tspan></text>
-    <path
-       id="path3169"
-       d="m 333.52168,365.94797 c 197.65671,384.36088 199.47008,386.36279 199.47008,386.36279 l 0,0 -1.81337,0"
-       style="fill:none;stroke:#000000;stroke-width:0.99999994;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:1.99999999, 3.99999998;stroke-dashoffset:0"
-       inkscape:connector-curvature="0" />
-    <path
-       inkscape:connector-curvature="0"
-       style="fill:none;stroke:#000000;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:1.99999999, 3.99999997;stroke-dashoffset:0"
-       d="m 330.26081,264.86101 c 197.65671,412.47532 199.47008,414.62366 199.47008,414.62366 l 0,0 -1.81337,0"
-       id="path3171" />
+         style="font-size:14px;text-align:start;text-anchor:start">At most 2 Gbyte</tspan></text>
     <text
        id="text3197"
        y="712.05048"
@@ -1076,17 +1077,34 @@
        inkscape:connector-curvature="0" />
     <text
        id="text3418"
-       y="415.31134"
-       x="141.41525"
-       style="font-size:14px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans"
+       y="413.13742"
+       x="128.37178"
+       style="font-style:normal;font-weight:normal;font-size:14px;font-family:'Bitstream Vera Sans';fill:#000000;fill-opacity:1;stroke:none"
        xml:space="preserve"><tspan
          id="tspan3420"
-         y="415.31134"
-         x="141.41525"
-         sodipodi:role="line">Unused if less than 2 Gig</tspan><tspan
+         y="413.13742"
+         x="128.37178"
+         sodipodi:role="line">Unused if less than 2 Gbyte</tspan><tspan
          id="tspan3422"
-         y="432.81134"
-         x="141.41525"
+         y="430.63742"
+         x="128.37178"
          sodipodi:role="line"> of physical memory</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:12.5px;line-height:125%;font-family:sans-serif;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       x="517.3913"
+       y="669.7536"
+       id="text3513"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan3515"
+         x="517.3913"
+         y="669.7536" /></text>
+    <path
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="cc"
+       id="path3574"
+       d="m 510.06615,667.76061 17.71654,0"
+       style="fill:none;stroke:#000000;stroke-width:0.99921262;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#Arrow1Mend)" />
   </g>
 </svg>
