@@ -174,7 +174,6 @@ so xv6 page tables including a direct mapping for them.
 Thus,
 .address PHYSTOP
 must be smaller than two gigabytes - 16 megabytes (for the device memory).
-Thus
 .PP
 Xv6 does not set the
 .code-index PTE_U
