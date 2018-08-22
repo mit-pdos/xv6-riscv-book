@@ -131,13 +131,13 @@ one.
 .section "User mode, kernel mode, and system calls"
 .\"
 .PP
-Strong isolation requires a hard boundary between
-applications and the operating system.  If the application makes a mistake, we
-don't want the operating system to fail.  Instead, the operating system should
-be able to clean up the failed application and continue running other applications.
-Applications shouldn't be able to modify (or even read)
-the operating system's data structures or instructions,
-should be able to access other process's memory, etc.
+Strong isolation requires a hard boundary between applications and the operating
+system.  If the application makes a mistake, we don't want the operating system
+to fail or other applications to fail. Instead, the operating system should be
+able to clean up the failed application and continue running other applications.
+To achieve strong isolation, the operating system must arrange that applications cannot modify (or even
+read) the operating system's data structures and instructions and that
+applications cannot access other process's memory.
 .PP
 Processors provide hardware support for strong isolation.   For
 example, the x86 processor, like many other processors, has two modes in which
