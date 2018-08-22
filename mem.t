@@ -338,7 +338,7 @@ ought to determine how much physical
 memory is available, but this
 turns out to be difficult on the x86.
 Instead it assumes that the machine has
-240 megabytes
+224 megabytes
 .code PHYSTOP ) (
 of physical memory, and uses all the memory between the end of the kernel
 and
@@ -886,7 +886,7 @@ bit
 .register cr4 .
 .PP
 Xv6 should determine the actual RAM configuration, instead
-of assuming 240 MB.
+of assuming 224 MB.
 On the x86, there are at least three common algorithms:
 the first is to probe the physical address space looking for
 regions that behave like memory, preserving the values
