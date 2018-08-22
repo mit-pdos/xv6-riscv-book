@@ -871,12 +871,12 @@ is worthwhile.
 .PP
 On machines with lots of memory
 it might make sense to use
-the x86's 4 Mbyte ``super pages.''
+the x86's 4-megabytes ``super pages.''
 Small pages make sense
 when physical memory is small, to allow allocation and page-out to disk
 with fine granularity.
 For example, if a program
-uses only 8 Kbyte of memory, giving it a 4 Mbyte physical page is wasteful.
+uses only 8 kilobytes of memory, giving it a 4 megabytes physical page is wasteful.
 Larger pages make sense on machines with lots of RAM,
 and may reduce overhead for page-table manipulation.
 Xv6 uses super pages in one place:
