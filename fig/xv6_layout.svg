@@ -338,7 +338,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -775,11 +775,11 @@
          sodipodi:role="line"
          x="555.54572"
          y="790.31134"
-         id="tspan3416">Unused if machine has </tspan><tspan
+         id="tspan3416">Unused if computer has </tspan><tspan
          sodipodi:role="line"
          x="555.54572"
          y="807.81134"
-         id="tspan3523">more than PHYSTOP </tspan><tspan
+         id="tspan3523">more than 2 Gbyte of </tspan><tspan
          sodipodi:role="line"
          x="555.54572"
          y="825.31134"
