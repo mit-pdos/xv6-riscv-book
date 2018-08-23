@@ -6,7 +6,6 @@
 	I wonder if the Mac has an A20 line.
 ..
 .PP
-.index "boot loader
 When an x86 PC boots, it starts executing a program called the BIOS (Basic Input/Output System),
 which is stored in non-volatile memory on the motherboard.
 The BIOS's job is to prepare the hardware and

@@ -628,7 +628,7 @@ the
 function that
 .code exec
 uses to copy arguments to the stack will notice that
-the destination page in not accessible, and will
+the destination page is not accessible, and will
 return \-1.
 .PP
 During the preparation of the new memory image,

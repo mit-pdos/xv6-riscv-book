@@ -15,6 +15,6 @@ Local DRAM	~60 nsec
 Remote DRAM	~100 nsec
 .TE
 .F2
-Latency umbers for an Intel i7 Xeon system, based on
+Latency numbers for an Intel i7 Xeon system, based on
 http://software.intel.com\:/sites/products/\:collateral\:/hpc/\:vtune/\:performance_analysis_guide.pdf.
 .F3

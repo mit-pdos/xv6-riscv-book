@@ -243,7 +243,7 @@ microkernels.
 The unit of isolation in xv6 (as in other Unix operating systems) is a 
 .italic-index "process" .
 The process abstraction prevents one process from wrecking or spying on
-another process' memory, CPU, file descriptors, etc.  It also prevents a process
+another process's memory, CPU, file descriptors, etc.  It also prevents a process
 from wrecking the kernel itself, so that a process can't subvert the kernel's
 isolation mechanisms.
 The kernel must implement the process abstraction with care because
@@ -484,7 +484,8 @@ The indirect jump is needed because the assembler would
 otherwise generate a PC-relative direct jump, which would execute
 the low-memory version of 
 .code-index main .
-Main cannot return, since the there's no return PC on the stack.
+.code Main
+cannot return, since the there's no return PC on the stack.
 Now the kernel is running in high addresses in the function
 .code-index main 
 .line main.c:/^main/ .
