@@ -135,10 +135,10 @@ adds just a few lines (not numbered):
     9	insert(int data)
    10	{
    11	  struct list *l;
-   12	
+   12	  l = malloc(sizeof *l);
+   13	  l->data = data;
+   14	
      	  acquire(&listlock);
-   13	  l = malloc(sizeof *l);
-   14	  l->data = data;
    15	  l->next = list;
    16	  list = l;
      	  release(&listlock);
@@ -171,17 +171,10 @@ and that each node's
 field points at the next node.
 The implementation of
 .code insert
-violates this invariant temporarily: line 13 creates a new
-list element
+violates this invariant temporarily: in line 15,
 .code l
-with the intent that
-.code l
-be the first node in the list,
-but 
-.code l 's
-next pointer does not point at the next node
-in the list yet (reestablished at line 15)
-and
+points
+to the next list element, but
 .code list
 does not point at
 .code l
@@ -206,6 +199,23 @@ so that a critical section that obtains the lock
 later sees only the complete set of
 changes from earlier critical sections, and never sees
 partially-completed updates.
+.PP
+Note that it would also be correct to move up
+.code acquire
+to earlier in
+.code insert.
+For example, it is fine to move the call to
+.code acquire
+up to before line 12.
+This may reduce paralellism because then the calls
+to
+.code malloc
+are also serialized.
+The section "Using locks" below provides some guidelines for where to insert
+.code acquire
+and
+.code release
+invocations.
 .\"
 .section "Code: Locks"
 .\"
@@ -356,7 +366,8 @@ typically all of them need to be protected
 by a single lock to ensure the invariant is maintained.
 .PP
 The rules above say when locks are necessary but say nothing about
-when locks are unnecessary, and it is important for efficiency not to
+when locks are unnecessary.  
+It is important for efficiency not to
 lock too much, because locks reduce parallelism.
 If parallelism isn't important, then one could arrange
 to have only a single thread and not worry about locks.
@@ -549,16 +560,27 @@ software, which can lead to incorrect behavior.
 For example, in this code for
 .code insert ,
 it would be a disaster if the compiler or processor caused the effects
-of line 4 (or 3 or 5) to be visible to other cores after the effects
+of line 4 (or 2 or 5) to be visible to other cores after the effects
 of line 6:
 .P1
-    1	  acquire(&listlock);
-    2	  l = malloc(sizeof *l);
-    3	  l->data = data;
+    1	  l = malloc(sizeof *l);
+    2	  l->data = data;
+    3	  acquire(&listlock);
     4	  l->next = list;
     5	  list = l;
     6	  release(&listlock);
 .P2
+If the hardware or compiler would re-order, for example, the effects of line 4 to
+be visible after line 6, then another processor can acquire
+.code listlock
+and observe that
+.code list
+points to
+.code l ,
+but it won't observe that
+.code l->next
+is set to the remainder of the list and won't be able to read the rest of the list.
+.PP
 To tell the hardware and compiler not to perform such re-orderings,
 xv6 uses
 .code __sync_synchronize() ,
@@ -566,7 +588,8 @@ in both
 .code acquire
 and
 .code release .
-_sync_synchronize() is a memory barrier:
+.code _sync_synchronize()
+is a memory barrier:
 it tells the compiler and CPU to not reorder loads or stores across the
 barrier.
 Xv6 worries about ordering only in
@@ -732,15 +755,21 @@ additional complexity of lock-free programming.
 .section "Exercises"
 .\"
 .PP
-1. Write a parallel program using POSIX threads, which is supported on most
-operating systems. For example, implement a parallel hash table and measure if
-the number of puts/gets scales with increasing number of cores.
-.PP
-2. Remove the xchg in acquire. Explain what happens when you run xv6?
-.PP
-3. Move the acquire in iderw to before sleep.  Is there a race? Why don't you
+1. Move the
+.code acquire
+in
+.code iderw
+to before sleep.  Is there a race? Why don't you
 observe it when booting xv6 and run stressfs?  Increase critical section with a
 dummy loop; what do you see now?  explain.
+.PP
+2. Remove the xchg in
+.code acquire .
+Explain what happens when you run xv6?
+.PP
+3. Write a parallel program using POSIX threads, which is supported on most
+operating systems. For example, implement a parallel hash table and measure if
+the number of puts/gets scales with increasing number of cores.
 .PP
 4. Implement a subset of Pthreads in xv6.  That is, implement a user-level
 thread library so that a user process can have more than 1 thread and arrange
