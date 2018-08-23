@@ -365,16 +365,13 @@ if an invariant involves multiple memory locations,
 typically all of them need to be protected
 by a single lock to ensure the invariant is maintained.
 .PP
-The rules above say when locks are necessary but say nothing about
-when locks are unnecessary.  
-It is important for efficiency not to
-lock too much, because locks reduce parallelism.
-If parallelism isn't important, then one could arrange
-to have only a single thread and not worry about locks.
-A simple kernel can do this on a multiprocessor by having 
-a single lock that
-must be acquired on entering the kernel and released on exiting the
-kernel (though system calls such as pipe reads or
+The rules above say when locks are necessary but say nothing about when locks
+are unnecessary, and it is important for efficiency not to lock too much,
+because locks reduce parallelism.  If parallelism isn't important, then one
+could arrange to have only a single thread and not worry about locks.  A simple
+kernel can do this on a multiprocessor by having a single lock that must be
+acquired on entering the kernel and released on exiting the kernel (though
+system calls such as pipe reads or
 .code wait
 would pose a problem).  Many uniprocessor operating systems have been converted to
 run on multiprocessors using this approach, sometimes called a ``giant
