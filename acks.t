@@ -18,10 +18,10 @@ the faculty, teaching assistants, and students of 6.828 who have all directly or
 indirectly contributed to xv6.  In particular, we would like to thank Austin
 Clements and Nickolai Zeldovich.  Finally, we would like to thank people who
 emailed us bugs in the text or suggestions for provements: Abutalib Aghayev,
-Sebastian Boehm, Anton Burtsev, Raphael Carvalho, Color Fuzzy, Giuseppe, Tao
-Guo, Robert Hilderman, Wolfgang Keller, Austin Liew, Pavan Maddamsetti, Jacek
-Masiulaniec, Mark Morrissey, Harry Pan, Askar Safin, Salman Shah, Pawel
-Szczurko, Warren Toomey, and Zou Chang Wei.
+Sebastian Boehm, Anton Burtsev, Raphael Carvalho, Rasit Eskicioglu, Color Fuzzy,
+Giuseppe, Tao Guo, Robert Hilderman, Wolfgang Keller, Austin Liew, Pavan
+Maddamsetti, Jacek Masiulaniec, Mark Morrissey, Harry Pan, Askar Safin, Salman
+Shah, Pawel Szczurko, Warren Toomey, and Zou Chang Wei.
 
 If you spot errors or have suggestions for improvement, please send email to
 Frans Kaashoek and Robert Morris (kaashoek,rtm@csail.mit.edu).
