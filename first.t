@@ -1003,10 +1003,6 @@ in constant time instead of the linear-time search in
 xv6 uses the linear scan
 (the first of many) for simplicity.
 .PP
-xv6's address space layout has the defect that it cannot make use
-of more than 2 GB of physical RAM.  It's possible to fix this,
-though the best plan would be to switch to a machine with 64-bit
-addresses.
 .\"
 .section "Exercises"
 .\"

@@ -869,6 +869,17 @@ to the per-CPU data area, but the x86 has so few general
 registers that the extra effort required to use segmentation
 is worthwhile.
 .PP
+Xv6 maps the kernel in the address space of each user process but sets it up so
+that the kernel part of the address space is inaccessible when the processor is
+in user mode.  This setup is convenient because after a process switches from
+user space to kernel space, the kernel can easily access user memory by reading
+memory locations directly.  It is probably better for security, however, to have
+a separate page table for the kernel and switch to that page table when entering
+the kernel from user mode, so that the kernel and user processes are more
+separated from each other.  This design, for example, would help mitigating
+side-channels that are exposed by the Meltdown vulnerability and that allow a
+user process to read arbitrary kernel memory.
+.PP
 On machines with lots of memory
 it might make sense to use
 the x86's 4-megabytes ``super pages.''
