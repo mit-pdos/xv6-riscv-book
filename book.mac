@@ -241,7 +241,7 @@
 .font-change I "\\$1" "\\$2\\&" "\\$3"
 ..
 .de italic-index
-.font-change C "\\$1" "\\$2\&" "\\$3"
+.font-change I "\\$1" "\\$2\&" "\\$3"
 .index "\\$1
 ..
 .\"
