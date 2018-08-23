@@ -227,6 +227,13 @@ functions for starting applications, sending messages,
 accessing device hardware, etc.  This organization allows the kernel to be 
 relatively simple, as most of the operating system
 resides in user-level servers.
+.PP
+Xv6 is
+implemented as a monolithic kernel, following most Unix operating systems.
+Thus, in xv6, the kernel interface corresponds to the operating system
+interface, and the kernel implements the complete operating system.  Since 
+xv6 doesn't provide many services, its kernel is smaller than some
+microkernels.
 .\"
 .section "Process overview"
 .\"
@@ -984,14 +991,11 @@ The system is up.
 .section "Real world"
 .\"
 .PP
-In the real world, one can find both monolithic kernels and microkernels.  For
-example, Linux has a monolithic kernel, although some OS
-functions run as user-level servers (e.g., the windowing system).  Xv6 is
-implemented as a monolithic kernel, following most Unix operating systems.
-Thus, in xv6, the kernel interface corresponds to the operating system
-interface, and the kernel implements the complete operating system.  Since 
-xv6 doesn't provide many services, its kernel is smaller than some
-microkernels.
+In the real world, one can find both monolithic kernels and microkernels. Many
+Unix kernels are monolithic. For example, Linux has a monolithic kernel,
+although some OS functions run as user-level servers (e.g., the windowing
+system).  Kernels such as L4, Minix, QNX are organized as a microkernel with
+servers, and have seen wide deployment in embedded settings.
 .PP
 Most operating systems have adopted the process
 concept, and most processes look similar to xv6's.
