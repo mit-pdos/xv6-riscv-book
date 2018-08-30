@@ -823,7 +823,7 @@ calls
 to truncate the file to zero bytes, freeing the data blocks;
 sets the inode type to 0 (unallocated);
 and writes the inode to disk
-.line 'fs.c:/inode.has.no.links/' .
+.line 'fs.c:/inode.has.no.links.and/' .
 .PP
 The locking protocol in 
 .code-index iput
@@ -1057,7 +1057,7 @@ live in the file system; we will return to this case in the file descriptor laye
 .PP
 The function
 .code-index stati
-.line fs.c:/^stati/
+.line "'fs.c:/^stati!(/'"
 copies inode metadata into the 
 .code stat
 structure, which is exposed to user programs
@@ -1395,7 +1395,7 @@ and then advance it
 Pipes have no concept of offset.
 Recall that the inode functions require the caller
 to handle locking
-.lines "'file.c:/stati/-1,/iunlock/' 'file.c:/readi/-1,/iunlock/' 'file.c:/writei/-1,/iunlock/'" .
+.lines "'file.c:/stati/-1,/iunlock/' 'file.c:/readi/-1,/iunlock/' 'file.c:/writei!(f/-1,/iunlock/'" .
 The inode locking has the convenient side effect that the
 read and write offsets are updated atomically, so that
 multiple writing to the same file simultaneously
