@@ -987,3 +987,7 @@ and construct a user  program that exploits that the check is missing.
 .PP
 7. How would you improve xv6's memory layout if xv6 where running on a 64-bit
 processor?
+.PP
+8. Change xv6 so that user processes run with only a minimal part of the kernel
+mapped and so that the kernel runs with its own page table that doesn't include
+the user process.

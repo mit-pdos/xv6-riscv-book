@@ -1111,21 +1111,30 @@ using the paging hardware, without any copying.
 .\"
 .section "Exercises"
 .\"
-1. Set a breakpoint at the first instruction of syscall() to catch the very
+.PP
+1. Set a breakpoint at the first instruction of
+.code syscall
+to catch the very
 first system call (e.g., br syscall). What values are on the stack at this
 point?  Explain the output of x/37x $esp at that breakpoint with each value
 labeled as to what it is (e.g., saved %ebp for trap, trapframe.eip, scratch
 space, etc.).
-
+.PP
 2.  Add a new system call to get the current UTC time and return it to the user
-program. You may want to use the helper function, cmostime() (defined in
-lapic.c), to read the real time clock. The file date.h contains the definition
-of the struct rtcdate struct, which you will provide as an argument to
-cmostime() as a pointer.
-
+program. You may want to use the helper function,
+.code cmostime
+.line lapic.c:/cmostime/ ,
+to read the real time clock. The file date.h contains the definition
+of the
+.code "struct rtcdate"
+.line date.h:/rtcdate/ ,
+which you will provide as an argument to
+.code cmostime
+as a pointer.
+.PP
 3. Write a driver for a disk that supports the SATA standard (search for SATA on
 the Web). Unlike IDE, SATA isn't obsolete.  Use SATA's tagged command queuing to
 issue many commands to the disk so that the disk internally can reorder commands
 to obtain high performance.
-
+.PP
 4. Add simple driver for an Ethernet card.
