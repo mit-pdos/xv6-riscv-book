@@ -953,7 +953,11 @@ for the new memory contain?
 4. Modify xv6 so that the pages for the kernel are shared among processes, which
 reduces memory consumption.
 .PP
-5. Unix implementations of
+5. Modify xv6 so that when a user program dereferences a null pointer, it will
+receive a fault.  That is, modify xv6 so that virtual address 0 isn't mapped for
+user programs.
+.PP
+6. Unix implementations of
 .code exec
 traditionally include special handling for shell scripts.
 If the file to execute begins with the text
@@ -979,15 +983,15 @@ with command line
 .code arg1 .
 Implement support for this convention in xv6.
 .PP
-6. Delete the check
+7. Delete the check
 .code "if(ph.vaddr + ph.memsz < ph.vaddr)"
 in
 .code exec.c ,
 and construct a user  program that exploits that the check is missing.
 .PP
-7. How would you improve xv6's memory layout if xv6 where running on a 64-bit
-processor?
-.PP
 8. Change xv6 so that user processes run with only a minimal part of the kernel
 mapped and so that the kernel runs with its own page table that doesn't include
 the user process.
+.PP
+9. How would you improve xv6's memory layout if xv6 where running on a 64-bit
+processor?
