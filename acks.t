@@ -20,9 +20,9 @@ Clements and Nickolai Zeldovich.  Finally, we would like to thank people who
 emailed us bugs in the text or suggestions for provements: Abutalib Aghayev,
 Sebastian Boehm, Anton Burtsev, Raphael Carvalho, Rasit Eskicioglu, Color Fuzzy,
 Giuseppe, Tao Guo, Robert Hilderman, Wolfgang Keller, Austin Liew, Pavan
-Maddamsetti, Jacek Masiulaniec, miguelgvieira, Mark Morrissey, Harry Pan, Askar
-Safin, Salman Shah, Ruslan Savchenko, Pawel Szczurko, Warren Toomey, tyfkda, and
-Zou Chang Wei.
+Maddamsetti, Jacek Masiulaniec, Michael McConville, miguelgvieira, Mark
+Morrissey, Harry Pan, Askar Safin, Salman Shah, Ruslan Savchenko, Pawel
+Szczurko, Warren Toomey, tyfkda, and Zou Chang Wei.
 
 If you spot errors or have suggestions for improvement, please send email to
 Frans Kaashoek and Robert Morris (kaashoek,rtm@csail.mit.edu).
