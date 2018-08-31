@@ -1777,3 +1777,5 @@ so that
 and
 .code >>
 operators work in the shell.
+.PP
+10. Modify the file system to support symbolic links.
