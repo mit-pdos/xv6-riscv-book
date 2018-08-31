@@ -1723,7 +1723,14 @@ Answer: maybe keep the current design but create a fast path for when there is
 a runnable user process available.
 ..
 .PP
-7. The lock
+7. Modify xv6 to turn off a processor when it is idle and just spinning in the
+loop in
+.code scheduler .
+(Hint: look at the
+.code HLT
+instruction.)
+.PP
+8. The lock
 .code p->lock
 protects many invariants, and when looking at a particular piece of xv6 code that
 is protected by
