@@ -1726,7 +1726,7 @@ a runnable user process available.
 7. Modify xv6 to turn off a processor when it is idle and just spinning in the
 loop in
 .code scheduler .
-(Hint: look at the
+(Hint: look at the x86
 .code HLT
 instruction.)
 .PP
