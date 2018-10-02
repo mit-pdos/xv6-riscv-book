@@ -286,7 +286,7 @@ code can directly refer to user memory.
 In order to leave plenty of room for user memory,
 xv6's address spaces map the kernel at high addresses,
 starting at
-.address 0x80100000 .
+.address 0xFFFFFF0000100000 .
 .PP
 The xv6 kernel maintains many pieces of state for each process,
 which it gathers into a
