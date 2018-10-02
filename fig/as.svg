@@ -7,7 +7,6 @@
    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
    xmlns:svg="http://www.w3.org/2000/svg"
    xmlns="http://www.w3.org/2000/svg"
-   xmlns:xlink="http://www.w3.org/1999/xlink"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    width="1052.3622"
@@ -135,7 +134,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title />
+        <dc:title></dc:title>
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -328,28 +327,26 @@
          y="372.19543">heap</tspan></text>
     <text
        xml:space="preserve"
-       style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
-       x="741.16986"
-       y="206.61491"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:24px;line-height:125%;font-family:'Bitstream Vera Sans';-inkscape-font-specification:'Bitstream Vera Sans';text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
+       x="643.92419"
+       y="551.67828"
        id="text3044"
-       sodipodi:linespacing="125%"
-       transform="translate(0,308.2677)"><tspan
+       sodipodi:linespacing="125%"><tspan
          sodipodi:role="line"
          id="tspan3046"
-         x="741.16986"
-         y="206.61491">kernel</tspan></text>
+         x="643.92419"
+         y="551.67828">kernel</tspan></text>
     <text
        xml:space="preserve"
-       style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
-       x="742.48401"
-       y="443.15848"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:24px;line-height:125%;font-family:'Bitstream Vera Sans';-inkscape-font-specification:'Bitstream Vera Sans';text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
+       x="654.43719"
+       y="689.66199"
        id="text3075"
-       sodipodi:linespacing="125%"
-       transform="translate(0,308.2677)"><tspan
+       sodipodi:linespacing="125%"><tspan
          sodipodi:role="line"
          id="tspan3077"
-         x="742.48401"
-         y="443.15848">user</tspan></text>
+         x="654.43719"
+         y="689.66199">user</tspan></text>
     <path
        style="font-size:24px;fill:none;stroke:#000000;stroke-width:1.39999998;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker-end:url(#Arrow1Lend)"
        d="m 360,592.36218 c 40,0 40,0 40,0"
@@ -358,20 +355,6 @@
        id="path2869"
        d="m 360,372.36218 c 40,0 40,0 40,0"
        style="font-size:24px;fill:none;stroke:#000000;stroke-width:1.39999998;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker-end:url(#Arrow1Lend)" />
-    <image
-       y="372.36218"
-       x="660"
-       id="image2955"
-       height="240"
-       width="39"
-       xlink:href="file:///Users/kaashoek/classes/6828/xv6-book.git/fig/inkscape_pasted_image_20111011_090252.png" />
-    <image
-       xlink:href="file:///Users/kaashoek/classes/6828/xv6-book.git/fig/inkscape_pasted_image_20111011_090252.png"
-       width="39"
-       height="240"
-       id="image2959"
-       x="661"
-       y="612.36218" />
     <text
        sodipodi:linespacing="125%"
        id="text3395"
@@ -383,5 +366,10 @@
          x="86.732651"
          id="tspan3397"
          sodipodi:role="line">0xFFFFFFFFFFFFFFFFF</tspan></text>
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="m 600,612.36218 c 180,0 180,0 180,0"
+       id="path3418"
+       inkscape:connector-curvature="0" />
   </g>
 </svg>
