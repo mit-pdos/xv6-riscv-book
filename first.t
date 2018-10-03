@@ -368,7 +368,7 @@ virtual addresses map directly to physical addresses.
 The boot loader loads the xv6 kernel into memory at physical address
 .address 0x100000 .
 The reason it doesn't load the kernel at
-.address 0x80100000 ,
+.address 0xFFFFFF0000100000 ,
 where the kernel expects to find its instructions and data,
 is that there may not be any physical memory at such
 a high address on a small machine.
@@ -391,7 +391,7 @@ sets up a page table that maps virtual addresses starting at
 to physical addresses starting at
 .address 0x0
 (see
-.figref as ).
+.figref astmp ).
 Setting up two ranges of virtual addresses that map to the same physical memory
 range is a common use of page tables, and we will see more examples like this
 one.
