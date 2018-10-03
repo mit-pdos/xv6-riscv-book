@@ -286,7 +286,8 @@ code can directly refer to user memory.
 In order to leave plenty of room for user memory,
 xv6's address spaces map the kernel at high addresses,
 starting at
-.address 0xFFFFFF0000100000 .
+.address 0xFFFFFF0000100000 ,
+which is the start of the last terabyte of a 64-bit address space.
 .PP
 The xv6 kernel maintains many pieces of state for each process,
 which it gathers into a
@@ -356,13 +357,12 @@ its own address space.
 .PP
 When a PC powers on, it initializes itself and then loads a
 .italic-index "boot loader"
-from disk into memory and executes it.
-Appendix \*[APP:BOOT] explains the details.
-Xv6's boot loader loads the xv6 kernel from disk and executes it
-starting at 
-.code-index entry 
-.line entry.S:/^entry/ .
-The x86 paging hardware is not enabled when the kernel starts;
+from disk into memory and executes it. A widely-used boot loader
+is GRUB and it loads the xv6 kernel from disk and executes it starting at
+.code-index start
+.line entry.S:/^start/ .
+Xv6 starts with the x86 processor running in 32-bit mode (i.e., with 32-bit wide
+addresses) and the x86 paging hardware is not enabled when the kernel starts;
 virtual addresses map directly to physical addresses.
 .PP
 The boot loader loads the xv6 kernel into memory at physical address
@@ -382,9 +382,11 @@ contains I/O devices.
 .figure astmp
 .PP
 To allow the rest of the kernel to run,
-.code entry
-sets up a page table that maps virtual addresses starting at
-.address 0x80000000
+entry calls a procedure
+.code initpagetables
+.line 'entry.S:/^initpagetables/' 
+to set up a page table that maps virtual addresses starting at
+.address 0xFFFFFF0000000000
 (called
 .code-index KERNBASE 
 .line memlayout.h:/define.KERNBASE/ )
@@ -396,35 +398,37 @@ Setting up two ranges of virtual addresses that map to the same physical memory
 range is a common use of page tables, and we will see more examples like this
 one.
 .PP
-The entry page table is defined 
-in main.c
-.line 'main.c:/^pde_t.entrypgdir.*=/' .
+The entry page table is defined starting at line
+.line 'entry.S:/^pml4/' .
 We look at the details of page tables in Chapter  \*[CH:MEM],
-but the short story is that entry 0 maps virtual addresses
-.code 0:0x400000
+but the short story is
+.line entry.S:/initpagetables/ )
+sets up entry 0 to map virtual addresses
+.code 0:0x40000000 
 to physical addresses
-.code 0:0x400000 .
+.code 0:0x40000000 .
 This mapping is required as long as
 .code-index entry
 is executing at low addresses, but
 will eventually be removed.
 .PP
-Entry 512
+Entry 511
 maps virtual addresses
-.code KERNBASE:KERNBASE+0x400000
+.code KERNBASE:KERNBASE+0x40000000 
 to physical addresses
-.address 0:0x400000 .
+.address 0:0x40000000 .
 This entry will be used by the kernel after
 .code entry
 has finished; it maps the high virtual addresses at which
 the kernel expects to find its instructions and data
 to the low physical addresses where the boot loader loaded them.
-This mapping restricts the kernel instructions and data to 4 Mbytes.
+This mapping restricts the kernel instructions and data to 1 Gbytes.
 .PP
-Returning to
-.code entry,
-it loads the physical address of
-.code-index entrypgdir
+The function
+.code init32e
+.line entry.S:/init32e/
+loads the physical address of
+.code-index pml4
 into control register
 .register cr3.
 The value in
@@ -438,7 +442,7 @@ because the paging hardware
 doesn't know how to translate virtual addresses yet; it
 doesn't have a page table yet.
 The symbol
-.code entrypgdir
+.code pml4
 refers to an address in high memory,
 and the macro
 .code-index V2P_WO
@@ -454,39 +458,65 @@ in the control register
 The processor is still executing instructions at
 low addresses after paging is enabled, which works
 since
-.code entrypgdir
+.code pml4
 maps low addresses.
 If xv6 had omitted entry 0 from
-.code entrypgdir,
+.code pml4 ,
 the computer would have crashed when trying to execute
 the instruction after the one that enabled paging.
-.PP
-Now
-.code entry
-needs to transfer to the kernel's C code, and run
-it in high memory.
-First it makes the stack pointer,
-.register esp ,
-point to memory to be used as a stack
-.line entry.S:/movl.*stack.*esp/ .
+Using a trampoline
+.line 'entry.S:/^tramp64/' ,
+xv6 changes from running at low addresses to running at high addresses.
+It jumps to
+.code tramp64
+using
+.code ljmp ,
+to switch the processor from 32-bit mode to 64-bit mode (i.e., 64-bit wide
+addresses).
+.code tramp64
+then uses an indirect jump
+to jump to
+.code start64 .
 All symbols have high addresses, including
-.code stack ,
-so the stack will still be valid even when the
-low mappings are removed.
-Finally 
-.code entry
-jumps to
-.code-index main ,
-which is also a high address.
+.code start64 .
 The indirect jump is needed because the assembler would
 otherwise generate a PC-relative direct jump, which would execute
 the low-memory version of 
-.code-index main .
-.code Main
+.code-index start64 .
+.PP
+.code Start64
+transfers to the kernel's C code.  To
+do so, xv6 must setup a stack because C calling conventions require a stack.
+.code
+entry
+has reserved memory for a stack with the symbol
+.code stack
+.line 'entry.S:/stack/' .
+Since all symbols have high addresses,
+.code stack
+will still be valid even when the
+low mappings are removed.  But, the current
+value in
+.code %rsp
+is a low address,
+because xv6 was using the stack to call the functions
+.code initpagetables
+and
+.code init32e ,
+before page tables were setup.
+To correct this,
+.code start64
+.line entry.S:/^start64/
+loads the virtual address of stack
+into
+.code %rsp .
+Then, it calls the C function
+.code-index bpmain .
+.code Bpmain
 cannot return, since the there's no return PC on the stack.
 Now the kernel is running in high addresses in the function
-.code-index main 
-.line main.c:/^main/ .
+.code-index bpmain 
+.line main.c:/^bpmain/ .
 .\"
 .section "Code: creating the first process"
 .\"

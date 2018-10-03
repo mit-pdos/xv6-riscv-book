@@ -8,7 +8,6 @@ CONTENTS_INDEXED=\
 	fs\
 	sum\
 	apphw\
-	appboot\
 
 CONTENTS=\
 	$(CONTENTS_INDEXED)\
@@ -62,7 +61,7 @@ book.ps: $(DIT)
 clean:
 	rm -f $(PS) $(PDF) $(DIT) z.*
 
-xv6-code.pdf: ../xv6/xv6.pdf
+xv6-code.pdf: ../xv6-64/xv6.pdf
 	cp $^ $@
 
 include $(shell ./make-pageorder $(ORDER))

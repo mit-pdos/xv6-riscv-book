@@ -134,7 +134,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -371,5 +371,16 @@
        d="m 600,612.36218 c 180,0 180,0 180,0"
        id="path3418"
        inkscape:connector-curvature="0" />
+    <text
+       sodipodi:linespacing="125%"
+       id="text3390"
+       y="648.41089"
+       x="148.4968"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:24px;line-height:125%;font-family:'Bitstream Vera Sans';-inkscape-font-specification:'Bitstream Vera Sans';text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
+       xml:space="preserve"><tspan
+         y="648.41089"
+         x="148.4968"
+         id="tspan3392"
+         sodipodi:role="line">(KERNBASE)</tspan></text>
   </g>
 </svg>

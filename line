@@ -45,7 +45,7 @@ sub find($) {
 
 	my ($file, $pattern) = ($1, $2);
 	
-	open(F, "../xv6/fmt/$file") || die "open ../xv6/fmt/$file: $!";
+	open(F, "../xv6-64/fmt/$file") || die "open ../xv6-64/fmt/$file: $!";
 	@lines = <F>;
 	close F;
 	
