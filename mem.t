@@ -932,10 +932,7 @@ ones.
 .PP
 1. Look at real operating systems to see how they size memory.
 .PP
-2. If xv6 had not used super pages, what would be the right declaration for
-.code entrypgdir?
-.PP
-3. Write a user program that grows its address space with 1 byte by calling
+2. Write a user program that grows its address space with 1 byte by calling
 .code sbrk(1) .
 Run the  program and investigate the page table for the program before the call
 to
@@ -946,14 +943,14 @@ How much space has the kernel allocated?  What does the
 .code pte
 for the new memory contain?
 .PP
-4. Modify xv6 so that the pages for the kernel are shared among processes, which
+3. Modify xv6 so that the pages for the kernel are shared among processes, which
 reduces memory consumption.
 .PP
-5. Modify xv6 so that when a user program dereferences a null pointer, it will
+4. Modify xv6 so that when a user program dereferences a null pointer, it will
 receive a fault.  That is, modify xv6 so that virtual address 0 isn't mapped for
 user programs.
 .PP
-6. Unix implementations of
+5. Unix implementations of
 .code exec
 traditionally include special handling for shell scripts.
 If the file to execute begins with the text
@@ -979,15 +976,16 @@ with command line
 .code arg1 .
 Implement support for this convention in xv6.
 .PP
-7. Delete the check
+6. Delete the check
 .code "if(ph.vaddr + ph.memsz < ph.vaddr)"
 in
 .code exec.c ,
 and construct a user  program that exploits that the check is missing.
 .PP
+7. Change xv6 to use super pages to reduce the number of mappings for the kernel.
+.PP
 8. Change xv6 so that user processes run with only a minimal part of the kernel
 mapped and so that the kernel runs with its own page table that doesn't include
 the user process.
-.PP
-9. How would you improve xv6's memory layout if xv6 where running on a 64-bit
-processor?
+
+
