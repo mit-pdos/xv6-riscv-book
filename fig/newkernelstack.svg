@@ -13,8 +13,8 @@
    height="1052.3622047"
    id="svg2976"
    version="1.1"
-   inkscape:version="0.47 r22583"
-   sodipodi:docname="New document 1">
+   inkscape:version="0.91 r13725"
+   sodipodi:docname="newkernelstack.svg">
   <defs
      id="defs2978">
     <marker
@@ -58,16 +58,16 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="0.76095916"
-     inkscape:cx="568.44091"
-     inkscape:cy="407.32394"
+     inkscape:zoom="1.0761588"
+     inkscape:cx="541.28224"
+     inkscape:cy="406.57074"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="true"
      inkscape:window-width="1052"
      inkscape:window-height="1069"
      inkscape:window-x="664"
-     inkscape:window-y="0"
+     inkscape:window-y="34"
      inkscape:window-maximized="0">
     <inkscape:grid
        type="xygrid"
@@ -81,7 +81,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -136,34 +136,31 @@
          y="512.36218">p-&gt;tf</tspan></text>
     <text
        xml:space="preserve"
-       style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:American Typewriter;-inkscape-font-specification:American Typewriter"
+       style="font-size:24.00000095px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:'American Typewriter';-inkscape-font-specification:'American Typewriter, Normal';text-anchor:start;text-align:start;writing-mode:lr;line-height:125%;"
        x="460"
        y="342.36218"
-       id="text5350"><tspan
+       id="text5350"
+       sodipodi:linespacing="125%"><tspan
          sodipodi:role="line"
-         id="tspan5352"
-         x="460"
-         y="342.36218">esp</tspan></text>
+         id="tspan3395">rsp</tspan></text>
     <text
        xml:space="preserve"
-       style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:American Typewriter;-inkscape-font-specification:American Typewriter"
+       style="font-size:24.00000095px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:'American Typewriter';-inkscape-font-specification:'American Typewriter, Normal';text-anchor:start;text-align:start;writing-mode:lr;line-height:125%;"
        x="460"
        y="416.36218"
-       id="text5354"><tspan
+       id="text5354"
+       sodipodi:linespacing="125%"><tspan
          sodipodi:role="line"
-         id="tspan5356"
-         x="460"
-         y="416.36218">eip</tspan></text>
+         id="tspan3393">rip</tspan></text>
     <text
        xml:space="preserve"
-       style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:American Typewriter;-inkscape-font-specification:American Typewriter"
+       style="font-size:24.00000095px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:'American Typewriter';-inkscape-font-specification:'American Typewriter, Normal';text-anchor:start;text-align:start;writing-mode:lr;line-height:125%;"
        x="460"
        y="498.36218"
-       id="text5358"><tspan
+       id="text5358"
+       sodipodi:linespacing="125%"><tspan
          sodipodi:role="line"
-         id="tspan5360"
-         x="460"
-         y="498.36218">edi</tspan></text>
+         id="tspan3391">rax</tspan></text>
     <text
        xml:space="preserve"
        style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:American Typewriter;-inkscape-font-specification:American Typewriter"
@@ -176,14 +173,13 @@
          y="538.36218">trapret</tspan></text>
     <text
        xml:space="preserve"
-       style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:American Typewriter;-inkscape-font-specification:American Typewriter"
+       style="font-size:24.00000095px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:'American Typewriter';-inkscape-font-specification:'American Typewriter, Normal';text-anchor:start;text-align:start;writing-mode:lr;line-height:125%;"
        x="460"
        y="578.36218"
-       id="text5366"><tspan
+       id="text5366"
+       sodipodi:linespacing="125%"><tspan
          sodipodi:role="line"
-         id="tspan5368"
-         x="460"
-         y="578.36218">eip</tspan></text>
+         id="tspan3389">rip</tspan></text>
     <text
        xml:space="preserve"
        style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:American Typewriter;-inkscape-font-specification:American Typewriter"
@@ -196,14 +192,13 @@
          y="612.36218">...</tspan></text>
     <text
        xml:space="preserve"
-       style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:American Typewriter;-inkscape-font-specification:American Typewriter"
+       style="font-size:24.00000095px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:'American Typewriter';-inkscape-font-specification:'American Typewriter, Normal';text-anchor:start;text-align:start;writing-mode:lr;line-height:125%;"
        x="460"
        y="656.36218"
-       id="text5374"><tspan
+       id="text5374"
+       sodipodi:linespacing="125%"><tspan
          sodipodi:role="line"
-         id="tspan5376"
-         x="460"
-         y="656.36218">edi</tspan></text>
+         id="tspan3387">r15</tspan></text>
     <text
        xml:space="preserve"
        style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:American Typewriter;-inkscape-font-specification:American Typewriter"

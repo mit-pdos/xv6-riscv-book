@@ -511,12 +511,12 @@ loads the virtual address of stack
 into
 .code %rsp .
 Then, it calls the C function
-.code-index bpmain .
-.code Bpmain
+.code-index main .
+.code Main
 cannot return, since the there's no return PC on the stack.
 Now the kernel is running in high addresses in the function
-.code-index bpmain 
-.line main.c:/^bpmain/ .
+.code-index main 
+.line main.c:/^main/ .
 .\"
 .section "Code: creating the first process"
 .\"
@@ -589,13 +589,13 @@ does part of this work by setting up return program counter
 values that will cause the new process's kernel thread to first execute in
 .code-index forkret
 and then in
-.code-index trapret
-.lines proc.c:/uint.trapret/,/uint.forkret/ .
+.code-index sysexit
+.lines proc.c:/uint64.sysexit/,/uint64.forkret/ .
 The kernel thread will start executing
 with register contents copied from
 .code-index p->context .
 Thus setting
-.code p->context->eip
+.code p->context->rip
 to
 .code forkret
 will cause the kernel thread to execute at
@@ -612,15 +612,15 @@ sets the stack pointer to point just beyond the end of
 places
 .code p->context
 on the stack, and puts a pointer to
-.code-index trapret
+.code-index sysexit
 just above it; that is where
 .code-index forkret
 will return.
-.code-index trapret
+.code-index sysexit
 restores user registers
 from values stored at the top of the kernel stack and jumps
 into the process
-.line trapasm.S:/^trapret/ .
+.line trapasm.S:/^sysexit/ .
 This setup is the same for ordinary
 .code fork
 and for creating the first process, though in
@@ -629,17 +629,16 @@ user-space location zero rather than at a return from
 .code fork .
 .PP
 As we will see in Chapter \*[CH:TRAP],
-the way that control transfers from user software to the kernel
-is via an interrupt mechanism, which is used by system calls,
-interrupts, and exceptions.
-Whenever control transfers into the kernel while a process is running,
+one way that control transfers from user software to the kernel
+is via system calls.  Whenever a process transfers control
+into the kernel for a system call
 the hardware and xv6 trap entry code save user registers on the
 process's kernel stack.
 .code-index userinit
 writes values at the top of the new stack that
 look just like those that would be there if the
-process had entered the kernel via an interrupt
-.lines proc.c:/tf..cs.=./,/tf..eip.=./ ,
+process had entered the kernel via a system call
+.lines proc.c:/tf..cs.=./,/tf..rcx.=./ ,
 so that the ordinary code for returning from
 the kernel back to the process's user code will work.
 These values are a
@@ -703,22 +702,19 @@ segment running at privilege level
 .code-index DPL_USER
 (i.e., user mode rather than kernel mode),
 and similarly
-.register ds ,
-.register es ,
-and
 .register ss
-use
+uses
 .code-index SEG_UDATA
 with privilege
 .code-index DPL_USER .
 The
-.register eflags
+.register r11's
 .code-index FL_IF
 bit is set to allow hardware interrupts;
 we will reexamine this in Chapter \*[CH:TRAP].
 .PP
 The stack pointer 
-.register esp
+.register rsp
 is set to the process's largest valid virtual address,
 .code p->sz .
 The instruction pointer is set to the entry point
@@ -802,7 +798,7 @@ per-cpu scheduler context, so
 .code scheduler
 tells
 .code swtch
-to save the current hardware registers in per-cpu storage
+to save the callee-saved hardware registers in per-cpu storage
 .code-index cpu->scheduler ) (
 rather than in any process's kernel thread context.
 .code swtch
@@ -819,7 +815,7 @@ The final
 instruction 
 .line swtch.S:/ret$/
 pops the target process's
-.register eip
+.register rip
 from the stack, finishing the context switch.
 Now the processor is running on the kernel stack of process
 .code p .
@@ -827,7 +823,7 @@ Now the processor is running on the kernel stack of process
 .code Allocproc
 had previously set
 .code initproc 's
-.code p->context->eip
+.code p->context->rip
 to
 .code-index forkret ,
 so the 
@@ -849,53 +845,66 @@ arranged that the top word on the stack after
 .code-index p->context
 is popped off
 would be 
-.code-index trapret ,
+.code-index sysexit ,
 so now 
-.code trapret
+.code sysexit
 begins executing,
 with 
-.register esp
+.register rsp
 set to
 .code p->tf .
-.code Trapret
-.line trapasm.S:/^trapret/ 
+.code Sysexit
+.line trapasm.S:/^sysexit/ 
 uses pop instructions to restore registers from
 the trap frame
 .line x86.h:/^struct.trapframe/
 just as 
 .code-index swtch
 did with the kernel context:
-.code-index popal
-restores the general registers,
-then the
-.code-index popl 
+the
+.code-index pop 
 instructions restore
-.register gs ,
-.register fs ,
-.register es ,
-and
-.register ds .
+.register rax
+through
+.register r15 .
 The 
-.code-index addl
-skips over the two fields
-.code trapno
-and
-.code errcode .
+.code-index add
+skips over the five fields
+.code trapno ,
+.code errcode ,
+.code rip ,
+.code cs ,
+and 
+.code rflags .
+(There is another path back to user space, where these
+fields are restored from process's stack and not skipped.)
+Then,
+.code sysexit
+switches to the stack of the user process
+by moving the value at the top of
+the stack, which is rsp of the trapframe, into
+.register rsp .
+As we will see later the register
+.register gs
+has a special role and
+.code sysexit
+saves it by calling
+.code swapgs .
 Finally, the
-.code-index iret
-instruction pops 
-.register cs ,
-.register eip ,
-.register flags ,
-.register esp ,
+.code-index sysretq
+instruction loads
+.register rxc
+into
+.register rip
 and
-.register ss
-from the stack.
+.register r11
+into
+.register eflags .
 The contents of the trap frame
 have been transferred to the CPU state,
 so the processor continues at the
-.register eip
-specified in the trap frame.
+.register rip
+specified in r11 in the trap frame.
 For
 .code-index initproc ,
 that means virtual address zero,
@@ -903,9 +912,9 @@ the first instruction of
 .code-index initcode.S .
 .PP
 At this point,
-.register eip
+.register rip
 holds zero and
-.register esp
+.register rsp
 holds 4096.
 These are virtual addresses in the process's address space.
 The processor's paging hardware translates them into physical addresses.
