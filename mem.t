@@ -34,14 +34,14 @@ addresses.
 The x86 page table hardware connects these two kinds of addresses,
 by mapping each virtual address to a physical address.
 .PP
-An x86 page table is logically an array of 2^20
-(1,048,576)
+An x86 page table is logically an array of 2^52
+(4,503,599,627,370,495)
 .italic-index "page table entries (PTEs)".
 Each PTE contains a
-20-bit physical page number (PPN) and some flags. The paging
-hardware translates a virtual address by using its top 20 bits
+52-bit physical page number (PPN) and some flags. The paging
+hardware translates a virtual address by using its top 52 bits
 to index into the page table to find a PTE, and replacing
-the address's top 20 bits with the PPN in the PTE.  The paging hardware
+the address's top 52 bits with the PPN in the PTE.  The paging hardware
 copies the low 12 bits unchanged from the virtual to the
 translated physical address.  Thus a page table gives
 the operating system control over virtual-to-physical address translations
@@ -52,24 +52,27 @@ Such a chunk is called a
 .PP
 As shown in
 .figref x86_pagetable ,
-the actual translation happens in two steps.
-A page table is stored in physical memory as a two-level tree.
+the actual translation happens in four steps.
+A page table is stored in physical memory as a four-level tree.
 The root of the tree is a 4096-byte
 .italic-index "page directory"
-that contains 1024 PTE-like references to
-.italic-index "page table pages".
-Each page table page is an array of 1024 32-bit PTEs.
-The paging hardware uses the top 10 bits of a virtual address to
-select a page directory entry.
-If the page directory entry is present,
-the paging hardware uses the next 10 bits of the virtual
-address to select a PTE from the page table page that the
-page directory entry refers to.
-If either the page directory entry or the PTE is not present,
-the paging hardware raises a fault.
-This two-level structure allows a page table to omit entire
-page table pages in the common case in which large ranges of
-virtual addresses have no mappings.
+that contains 512 PTE-like references to page directories at level 1.  The
+paging hardware uses the L3 9 bits of a virtual address to select a page
+directory entry at the top level (level 3), then the L2 9 bits to select a
+page directory entry at level 2, and so on.
+At level 0, each page is an
+.italic-index "page table page" ,
+an array of 512 64-bit PTEs.  If any of the page directory entries or the PTE is
+not present, the paging hardware raises a fault.  This four-level structure
+allows a page table to omit entire page table pages in the common case in which
+large ranges of virtual addresses have no mappings.
+.PP
+The top 14 EXT bits of virtual address are not used for translation; in the
+future, x86-64 can use those bits to define more levels of translation.
+Similarly, the physical page number also has a number of EXT bits reserved for
+future growth.  Now it is common that physical page numbers are 28-bits wide
+(i.e., 24 unused bits), limiting physical memory to 2^40 (28+12) bytes (i.e., 1
+terabyte of physical memory).
 .PP
 Each PTE contains flag bits that tell the paging hardware
 how the associated virtual address is allowed to be used.
@@ -121,7 +124,7 @@ As shown in
 a process's user memory starts at virtual address
 zero and can grow up to
 .address KERNBASE ,
-allowing a process to address up to 2 gigabytes of memory.
+allowing a process to address in principle terabytes of memory.
 The file
 .file "memlayout.h"
 .sheet memlayout.h
@@ -159,21 +162,19 @@ Another reason is that the kernel sometimes needs to be able
 to write a given page of physical memory, for example
 when creating page table pages; having every physical
 page appear at a predictable virtual address makes this convenient.
-A defect of this arrangement is that xv6 cannot make use of
-more than 2 gigabytes of physical memory, because the kernel
-part of the address space is 2 gigabytes.
-Thus, xv6 requires that
-.address PHYSTOP
-be smaller than 2 gigabytes, even if the computer
-has more than 2 gigabytes of physical memory.
 .PP
 Some devices that use memory-mapped I/O appear at physical
 addresses starting at
-.address 0xFE000000 ,
+.address 0xFE000000
+through
+.address 0xFFFFFFFF
+(4 Gbyte),
 so xv6 page tables including a direct mapping for them.
+Xv6 doesn't map any physical addresses above
+.address 0xFFFFFFFF .
 Thus,
 .address PHYSTOP
-must be smaller than two gigabytes - 16 megabytes (for the device memory).
+must be smaller than 4 gigabytes - 16 megabytes (for the device memory).
 .PP
 Xv6 does not set the
 .code-index PTE_U
@@ -256,19 +257,20 @@ mimics the actions of the x86 paging hardware as it
 looks up the PTE for a virtual address (see
 .figref x86_pagetable ).
 .code walkpgdir
-uses the upper 10 bits of the virtual address to find
+traverses the 4-level page table down 9 bits at the time.
+It uses the level's 9 bits of the virtual address to find
 the page directory entry
 .line vm.c:/pde.=..pgdir/ .
 If the page directory entry isn't present, then
-the required page table page hasn't yet been allocated;
+the required page directory page hasn't yet been allocated;
 if the
 .code alloc
 argument is set,
 .code walkpgdir
 allocates it and puts its physical address in the page directory.
-Finally it uses the next 10 bits of the virtual address
+Finally it uses level 0's 9 bits of the virtual address
 to find the address of the PTE in the page table page
-.line vm.c:/return..pgtab/ .
+.line vm.c:/return..pgdir/ .
 .\"
 .section "Physical memory allocation"
 .\"
@@ -374,13 +376,17 @@ give it some to manage.
 .PP
 The allocator refers to physical pages by their virtual
 addresses as mapped in high memory, not by their physical
-addresses, which is why
-.code kinit
-uses
-.code P2V(PHYSTOP)
+addresses, which is why the calls to
+.code kinit1
+and
+.code kinit2
+in
+.code main.c
+use the
+.code P2V
+macro
 to translate
-.code PHYSTOP
-(a physical address)
+a physical address
 to a virtual address.
 The allocator sometimes treats addresses as integers
 in order to perform arithmetic on them (e.g.,
@@ -488,10 +494,16 @@ and when xv6 changes the page tables, it must invalidate the cached entries.  If
 it didn't invalidate the cached entries, then at some point later the TLB might
 use an old mapping, pointing to a physical page that in the mean time has been
 allocated to another process, and as a result, a process might be able to
-scribble on some other process's memory. Xv6 invalidates stale cached entries,
-by reloading
-.code cr3 ,
+scribble on some other process's memory.
+.code Growproc
+invalidates stale cached entries by calling
+.code switchuvm ,
+which reloads
+.register cr3 ,
 the register that holds the address of the current page table.
+Reloading
+.register cr3
+invalidates all entries in the TLB.
 .\"
 .section "Code: exec"
 .\"
@@ -568,12 +580,13 @@ the first user program created with
 looks like this:
 .P1
 # objdump -p _init
-
-_init:     file format elf32-i386
+_init:     file format elf64-x86-64
 
 Program Header:
-    LOAD off    0x00000054 vaddr 0x00000000 paddr 0x00000000 align 2**2
-         filesz 0x000008c0 memsz 0x000008cc flags rwx
+    LOAD off    0x00000000000000b0 vaddr 0x0000000000000000 paddr 0x0000000000000000 align 2**4
+         filesz 0x0000000000001061 memsz 0x0000000000001088 flags rwx
+   STACK off    0x0000000000000000 vaddr 0x0000000000000000 paddr 0x0000000000000000 align 2**4
+         filesz 0x0000000000000000 memsz 0x0000000000000000 flags rwx
 .P2
 .PP
 The program section header's
@@ -585,12 +598,12 @@ with zeroes (for C global variables) rather than read from the file.
 For
 .code /init ,
 .code filesz
-is 2240 bytes and
+is 4193 bytes and
 .code memsz
-is 2252 bytes,
+is 4232 bytes,
 and thus
 .code-index allocuvm
-allocates enough physical memory to hold 2252 bytes, but reads only 2240 bytes
+allocates enough physical memory to hold 4232 bytes, but reads only 4193 bytes
 from the file
 .code /init .
 .PP
@@ -671,7 +684,7 @@ xv6 performs a number of checks to avoid these risks.
 To understand the importance of these checks, consider what could happen
 if xv6 didn't check
 .code "if(ph.vaddr + ph.memsz < ph.vaddr)" .
-This is a check for whether the sum overflows a 32-bit integer.
+This is a check for whether the sum overflows a 64-bit integer.
 The danger is that a user could construct an ELF binary with a
 .code ph.vaddr
 that points into the kernel,
@@ -847,15 +860,13 @@ the function shellcode(), which is created by a user, will be executed according
 .\"
 .PP
 Like most operating systems, xv6 uses the paging hardware
-for memory protection and mapping. Most operating systems use x86's 64-bit paging
-hardware (which has 3 levels of translation). 64-bit address spaces allow for a
-less restrictive memory layout than xv6's; for example, it would be easy to
-remove xv6's limit of 2 gigabytes for physical memory.
+for memory protection and mapping.
 Most operating systems make far more sophisticated
 use of paging than xv6; for example, xv6 lacks demand
 paging from disk, copy-on-write fork, shared memory,
 lazily-allocated pages,
 and automatically extending stacks.
+XXXX
 The x86 supports address translation using segmentation (see Appendix \*[APP:BOOT]),
 but xv6 uses segments only for the common trick of
 implementing per-cpu variables such as
@@ -890,21 +901,6 @@ For example, if a program
 uses only 8 kilobytes of memory, giving it a 4 megabytes physical page is wasteful.
 Larger pages make sense on machines with lots of RAM,
 and may reduce overhead for page-table manipulation.
-Xv6 uses super pages in one place:
-the initial page table
-.line 'main.c:/^pde_t.entrypgdir.*=/' .
-The array initialization sets two of the 1024 PDEs,
-at indices zero and 512
-.code KERNBASE>>PDXSHIFT ), (
-leaving the other PDEs zero.
-Xv6 sets the
-.code PTE_PS
-bit in these two PDEs to mark them as super pages.
-The kernel also tells the paging hardware to allow super pages by setting the
-.code-index CR_PSE
-bit
-(Page Size Extension) in
-.register cr4 .
 .PP
 Xv6 should determine the actual RAM configuration, instead
 of assuming 224 MB.
