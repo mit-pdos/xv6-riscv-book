@@ -869,6 +869,7 @@ through
 .register r15 .
 The 
 .code-index add
+instruction
 skips over the five fields
 .code trapno ,
 .code errcode ,
@@ -876,9 +877,10 @@ skips over the five fields
 .code cs ,
 and 
 .code rflags .
-(There is another path back to user space, where these
-fields are restored from process's stack and not skipped.)
-Then,
+(As will see in Chapter \*[CH:TRAP], there is another path than
+.code sysexit
+to enter user space,
+where these fields are restored from process's stack and not skipped.) Next,
 .code sysexit
 switches to the stack of the user process
 by moving the value at the top of
@@ -968,8 +970,7 @@ and then sets
 to
 .code-index SYS_exec
 and executes
-.code int
-.code-index T_SYSCALL :
+.code-index syscall :
 it is asking the kernel to run the
 .code-index exec
 system call.
@@ -1056,7 +1057,7 @@ through the ret to
 then use gdb's
 .code finish
 to proceed to
-.code trapret ,
+.code sysexit ,
 then
 .code stepi
 until you get to
