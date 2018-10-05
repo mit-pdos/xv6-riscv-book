@@ -447,7 +447,7 @@ above clears interrupts
 .section "Code: C trap handler"
 .\"
 .PP
-We saw in the last section that each handler sets
+We saw that each trap handler sets
 up a trap frame and then calls the C function
 .code-index trap .
 .code Trap
@@ -459,19 +459,38 @@ If the trap is
 .code-index T_SYSCALL ,
 .code trap
 calls the system call handler
-.code-index syscall .
+.code-index syscall ,
+which we discuss below.
 We'll revisit the 
 .code-index proc->killed
 checks in Chapter \*[CH:SCHED].  \" XXX really?
 .PP
-After checking for a system call, trap looks for hardware interrupts
-(which we discuss below). In addition to the expected hardware
+After checking for a system call, trap looks for hardware interrupts.
+The timer interrupts through vector 32 (which xv6 chose to handle IRQ
+0), which xv6 setup in
+.code-index idtinit 
+.line main.c:/idtinit/ .
+.code Trap
+for a timer interrupt does just two things:
+increment the ticks variable 
+.line trap.c:/ticks!+!+/ , 
+and call
+.code-index wakeup . 
+The latter, as we will see in Chapter \*[CH:SCHED], may cause the
+interrupt to return in a different process.
+.ig
+Turns out our kernel had a subtle security bug in the way it handled traps... vb 0x1b:0x11, run movdsgs, step over breakpoints that aren't mov ax, ds, dump_cpu and single-step. dump_cpu after mov gs, then vb 0x1b:0x21 to break after sbrk returns, dump_cpu again.
+..
+.ig
+point out that we are trying to be manly with interrupts, by turning them on often in the kernel.  probably would be just fine to turn them on only when the kernel is idle.
+..
+.PP
+In addition to the expected hardware
 devices, a trap can be caused by a spurious interrupt, an unwanted
 hardware interrupt.
 .ig
 give a concrete example.
 ..
-.PP
 If the trap is not a system call and not a hardware device looking for
 attention,
 .code-index trap
@@ -489,9 +508,109 @@ If it was the kernel running, there must be a kernel bug:
 prints details about the surprise and then calls
 .code-index panic .
 .\"
+.section "Code: The first system call"
+.\"
+.PP
+Chapter \*[CH:FIRST] ended with 
+.code-index initcode.S
+invoking a system call.
+Let's look at that again
+.line initcode.S:/'SYS_exec'/ .
+The process pushed the arguments
+for an 
+.code-index exec
+call on the process's stack, and put the
+system call number in
+.register rax.
+The system call numbers match the entries in the syscalls array,
+a table of function pointers
+.line syscall.c:/'syscalls'/ .
+We need to arrange that the 
+.code int
+instruction switches the processor from user mode to kernel mode,
+that the kernel invokes the right kernel function (i.e.,
+.code sys_exec ),
+and that the kernel can retrieve the arguments for
+.code-index sys_exec .
+The next few subsections describe how xv6 arranges this for system
+calls, and then we will discover that we can reuse the same code for
+interrupts and exceptions.
+.\"
 .section "Code: System calls"
 .\"
 .PP
+X86 processors for 32 bit machines handled systems calls with the same mechanism
+for interrupts and exceptions, and operating systems reserved one entry in the IDT
+for system calls.  X86-64 processors have a special instruction for system
+calls (
+.code syscall ),
+which saves less state than interrupts and exceptions do, and give the operating
+system more flexibility on what to save and what not to save.  This allows
+operating systems to optimize code paths for specific systems calls.  For
+example, for systems calls that do little work (e.g., asking what the ID is of
+the current process), it is often not necessary to save and restore all the
+state that interrupts and exceptions do. Xv6, however, doesn't take advantage of
+this flexibility.  Instead, it slavishly emulates what interrupts and exceptions
+do, as we will describe next.
+.PP
+The
+.code syscall
+instruction itself does less work than an interrupt handler:
+.IP \[bu] 
+It saves
+.register eflags
+into
+.register r11
+and masks
+.register eflags
+using
+a value that kernel programs into a special memory location reserved for this
+purpose, namely
+.code MSR_SFMASK
+.line vm.c:/MSR_SFMASK/ .
+The processor clears in
+.register eflags
+every bit corresponding to a bit that is set in the MSR_SFMASK.
+.IP \[bu] 
+It loads
+.register rip
+with a value that the kernel programs into a special memory location reserved
+for this purpose, namely
+.code MSR_LSTAR
+.line vm.c:/MSR_LSTAR/ .
+Xv6 programs the address of
+.code sysentry
+into this location.
+.IP \[bu] 
+It loads
+.register cs
+and
+.register ss
+selectors with values from
+.code MSR_STAR
+.line vm.c:/MSR_STAR/ .
+xv6 programs
+.code SEG_KCODE
+into
+.code MSR_STAR ,
+which has the privilege level set to kernel mode.
+.PP
+Thus, after executing
+.code syscall ,
+xv6 starts running at
+.code sysentry
+.line trapasm.S:/^sysentry/
+in kernel mode with interrupts disabled.
+Note that the
+.code syscall
+instruction doesn't consult the IDT and does not save the user's stack pointer,
+unlike interrupts and exceptions. If an operating system changes the stack
+pointer, it is the responsibility of the operating system to
+save the value of the stack pointer before changing it.
+.PP
+XXX
+.PP
+.pointer
 For system calls,
 .code-index trap
 invokes
@@ -525,7 +644,7 @@ Thus, when
 .code exec
 returns, it will return the value
 that the system call handler returned
-.line "'syscall.c:/eax = syscalls/'" .
+.line "'syscall.c:/rax = syscalls/'" .
 System calls conventionally return negative numbers to indicate
 errors, positive numbers for success.
 If the system call number is invalid,
@@ -613,35 +732,6 @@ In chapter \*[CH:MEM],
 uses these functions to get at its arguments.
 
 
-.PP
-The timer interrupts through vector 32 (which xv6 chose to handle IRQ
-0), which xv6 setup in
-.code-index idtinit 
-.line main.c:/idtinit/ .
-The only difference between vector 32 and vector 64 (the one for
-system calls) is that vector 32 is an interrupt gate instead of a trap
-gate.  Interrupt gates clear
-.code IF ,
-so that the interrupted processor doesn't receive interrupts while it
-is handling the current interrupt.  From here on until
-.code-index trap , 
-interrupts follow
-the same code path as system calls and exceptions, building up a trap frame.
-.PP
-.code Trap
-for a timer interrupt does just two things:
-increment the ticks variable 
-.line trap.c:/ticks!+!+/ , 
-and call
-.code-index wakeup . 
-The latter, as we will see in Chapter \*[CH:SCHED], may cause the
-interrupt to return in a different process.
-.ig
-Turns out our kernel had a subtle security bug in the way it handled traps... vb 0x1b:0x11, run movdsgs, step over breakpoints that aren't mov ax, ds, dump_cpu and single-step. dump_cpu after mov gs, then vb 0x1b:0x21 to break after sbrk returns, dump_cpu again.
-..
-.ig
-point out that we are trying to be manly with interrupts, by turning them on often in the kernel.  probably would be just fine to turn them on only when the kernel is idle.
-..
 .\"
 .section "Drivers"
 .\"
@@ -983,34 +1073,6 @@ read-only copies can be mapped into a process's address space
 using the paging hardware, without any copying.
 
 
-.\"
-.section "Code: The first system call"
-.\"
-.PP
-Chapter \*[CH:FIRST] ended with 
-.code-index initcode.S
-invoking a system call.
-Let's look at that again
-.line initcode.S:/'T_SYSCALL'/ .
-The process pushed the arguments
-for an 
-.code-index exec
-call on the process's stack, and put the
-system call number in
-.register eax.
-The system call numbers match the entries in the syscalls array,
-a table of function pointers
-.line syscall.c:/'syscalls'/ .
-We need to arrange that the 
-.code int
-instruction switches the processor from user mode to kernel mode,
-that the kernel invokes the right kernel function (i.e.,
-.code sys_exec ),
-and that the kernel can retrieve the arguments for
-.code-index sys_exec .
-The next few subsections describe how xv6 arranges this for system
-calls, and then we will discover that we can reuse the same code for
-interrupts and exceptions.
 
 
 .\"
