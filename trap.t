@@ -53,49 +53,80 @@ executing. The kernel must be able to retrieve information about the
 event, e.g., system call arguments.  It must all be done securely; the system
 must maintain isolation of user processes and the kernel.
 .PP
-To achieve this goal the operating system must be aware of the details
-of how the hardware handles system calls, exceptions, and interrupts.
-In most processors these three events are handled by a single hardware
-mechanism.  For example, on the x86, a program invokes a system call
-by generating an
-interrupt using the 
-.code-index int
-instruction.   Similarly, exceptions generate an interrupt too.  Thus, if
-the operating system has a plan for interrupt handling, then the
-operating system can handle system calls and exceptions too.
-.PP
-The basic plan is as follows.  An interrupts stops the normal
-processor loop and starts executing a new sequence
-called an
-.italic-index "interrupt handler" .  
-Before starting the interrupt handler,
-the processor saves its registers, so that the operating system
-can restore them when it returns from the interrupt.
-A challenge in the transition to and from the interrupt handler is
-that the processor should switch from user mode to kernel mode, and
-back.
-.PP
 A word on terminology: Although the official x86 term is exception,
 xv6 uses the term
 .italic-index trap , 
 largely because it was the term
 used by the PDP11/40 and therefore is the conventional Unix term.
-Furthermore, this chapter uses the terms trap and interrupt interchangeably, but it
-is important to remember that traps are caused by the current process
-running on a processor (e.g., the process makes a system call and as a
-result generates a trap), and interrupts are caused by devices and may
-not be related to the currently running process.
-For example, a disk may generate an interrupt when
-it is done retrieving a block for one process, but
-at the time of the interrupt some other process may be running.
-This
-property of interrupts makes thinking about interrupts more difficult
-than thinking about traps, because interrupts happen
-concurrently with other activities. Both rely, however, on the same hardware
-mechanism to transfer control between user and kernel mode securely, which we
-will discuss next.
+Furthermore, this chapter uses the terms trap and interrupt interchangeably,
 .\"
-.section "X86 protection"
+.section "X86 Interrupts"
+.\"
+.PP
+Devices on the motherboard can generate interrupts, and xv6 must set up
+the hardware to handle these interrupts.
+Devices usually interrupt in order to tell the kernel that some hardware
+event has occured, such as I/O completion.
+Interrupts are usually optional in the sense that the kernel could
+instead periodically check (or "poll") the device hardware to check
+for new events.
+Interrupts are preferable to polling if the events are relatively
+rare, so that polling would waste CPU time.
+.PP
+Devices can generate interrupts
+at any time.  There is hardware on the motherboard to signal the CPU
+when a device needs attention (e.g., the user has typed a character on
+the keyboard). We must program the device to generate an interrupt, and
+arrange that a CPU receives the interrupt. 
+.PP
+Let's look at the timer device and timer interrupts.  We would like
+the timer hardware to generate an interrupt, say, 100 times per
+second so that the kernel can track the passage of time and so the
+kernel can time-slice among multiple running processes.  The choice of
+100 times per second allows for decent interactive performance while
+not swamping the processor with handling interrupts.  
+.PP
+Like the x86 processor itself, PC motherboards have evolved, and the
+way interrupts are provided has evolved too.  The early boards had a
+simple programmable interrupt controler (called the PIC).
+With the advent of multiprocessor PC boards, a new way of handling
+interrupts was needed, because each CPU needs an interrupt controller
+to handle interrupts sent to it, and there must be a method for
+routing interrupts to processors.  This way consists of two parts: a
+part that is in the I/O system (the IO APIC,
+.code ioapic.c), 
+and a part that is attached to each processor (the
+local APIC, 
+.code lapic.c).
+Xv6 is designed for a
+board with multiple processors: it ignores interrupts from the PIC, and
+configures the IOAPIC and local APIC.
+.PP
+The IO APIC has a table and the processor can program entries in the
+table through memory-mapped I/O.
+During initialization, xv6 programs to map interrupt 0 to IRQ 0, and
+so on, but disables them all.  Specific devices enable particular
+interrupts and say to which processor the interrupt should be routed.
+For example, xv6 routes keyboard interrupts to processor 0
+.line console.c:/^consoleinit/ .
+Xv6 routes disk interrupts to the highest numbered processor on the
+system, as we will see later in this chapter.
+.PP
+The timer chip is inside the LAPIC, so that each processor can receive
+timer interrupts independently. Xv6 sets it up in
+.code-index lapicinit
+.line lapic.c:/^lapicinit/ .
+The key line is the one that programs the timer
+.line lapic.c:/lapicw.TIMER/ .
+This line tells the LAPIC to periodically generate an interrupt at
+.code-index IRQ_TIMER,
+which is IRQ 0.
+Line
+.line lapic.c:/lapicw.TPR/
+enables interrupts on a CPU's LAPIC, which will cause it to deliver
+interrupts to the local processor.
+.\"
+.section "X86 protection and interrupt handling"
 .\"
 .PP
 The x86 has 4 protection levels, numbered 0 (most privilege) to 3
@@ -107,27 +138,39 @@ and
 respectively.  The current privilege level with which the x86 executes
 instructions is stored in
 .register cs
-register,
-in the field CPL.
+register, in the field CPL.  On an interrupt or exception, the processor may
+have to switch from user mode to kernel mode (e.g., when an interrupt arrives
+while user code is running on the processor).
 .PP
 On the x86, interrupt handlers are defined in the interrupt descriptor
 table (IDT). The IDT has 256 entries, each giving the
 .register cs
 and
-.register eip
+.register rip
 to be used when handling the corresponding interrupt.
 .ig
 pointer to the IDT table.
 ..
 .PP
-To make a system call on the x86, a program invokes the 
-.code int
+When a device raises an interrupt, the x86 allows it to specify
+a trap number
 .italic n
-instruction, where 
-.italic n 
-specifies the index into the IDT. The
-.code int
-instruction performs the following steps:
+to identify the source of the interrupt.  For example, as mentioned above, xv6
+programs the timer chip to interrupt with number
+.code IRQ_TIMER
+.line traps.h:/IRQ_TIMER/ ,
+which corresponds to trap T_IRQ0
+.line traps.h:/T_IRQ0/ .
+Some trap numbers are predefined by the x86.  For example, if software
+divides by zero, then the processor will use trap number
+.code-index T_DIVIDE
+.line traps.h:/T_DIVIDE/ 
+to handle that exception.
+The trap number is used as an index into the IDT.
+.PP
+On
+receive an interrupt or exception, the x86 performs
+the following steps:
 .IP \[bu] 
 Fetch the 
 .italic n 'th
@@ -137,29 +180,24 @@ where
 is the argument of
 .code int .
 .IP \[bu] 
-Check that CPL in 
-.register cs
-is <= DPL,
-where DPL is the privilege level in the descriptor.
-.IP \[bu] 
 Save
-.register esp
+.register rsp
 and
 .register ss
-in CPU-internal registers, but only if the target segment
-selector's PL < CPL.
+in CPU-internal registers.
 .IP \[bu] 
-Load
+Sets
 .register ss
-and
-.register esp
+to NULL and
+loads
+.register rsp
 from a task segment descriptor.
 .IP \[bu] 
-Push
+Push saved
 .register ss.
 .IP \[bu] 
-Push
-.register esp.
+Push saved
+.register rsp.
 .IP \[bu] 
 Push
 .register eflags.
@@ -168,7 +206,7 @@ Push
 .register cs.
 .IP \[bu] 
 Push
-.register eip.
+.register rip.
 .IP \[bu] 
 Clear the IF bit in
 .register eflags ,
@@ -177,51 +215,36 @@ but only on an interrupt.
 Set 
 .register cs
 and
-.register eip
-to the values in the descriptor.
-.PP
-The
-.code-index int
-instruction is a complex instruction, and one might wonder whether all
-these actions are necessary.  For example, the check CPL <= DPL allows the kernel to
-forbid 
-.code int
-calls to inappropriate IDT entries such as device interrupt routines.  For a user
-program to execute 
-.code int ,
-the IDT entry's DPL must be 3.
-If the user program doesn't have the appropriate privilege, then 
-.code int
-will result in
-.code int 
-13, which is a general protection fault.
-As another example, the
-.code int
-instruction cannot use the user stack to save values, because the process
-may not have a valid stack pointer;
-instead, the hardware uses the
-stack specified in the task segment, which is set by the kernel.
-.figure intkstack
+.register rip
+to the values in the IDT entry for
+.code n .
 .PP
 .figref intkstack 
-shows the stack after
-an 
-.code int
-instruction completes and there was a privilege-level change (the privilege
-level in the descriptor is lower than CPL).
-If the 
-.code int
-instruction didn't require a privilege-level change, the x86
-won't save
-.register ss
-and
-.register esp.
-After both cases, 
-.register eip
+shows the stack after the processor receives
+an interrupt or exception.
+For some traps (e.g., a page fault), the processor also pushes an
+error word. 
+.figure intkstack
+.PP
+Taking interrupt or exception
+is a complex step, and one might wonder whether all
+these actions are necessary.
+For example, is it necessary to change stacks?
+The kernel shouldn't use the stack of the user process, because it may not be valid.
+The user process may be malicious or
+contain an error that causes the user
+.register rsp 
+to contain an address that is not part of the process's user memory.
+Instead, the hardware uses the
+stack specified in the task segment, which is set by the kernel.
+.PP
+After receiving an interrupt or exception,
+the
+.register rip
 is pointing to the address specified in the descriptor table, and the
 instruction at that address is the next instruction to be executed and
 the first instruction of the handler for
-.code int
+trap number
 .italic n .
 It is job of the operating system to implement these handlers, and
 below we will see what xv6 does.
@@ -229,39 +252,13 @@ below we will see what xv6 does.
 An operating system can use the
 .code-index iret
 instruction to return from an
-.code-index int
-instruction. It pops the saved values during the 
+interrupt or exception. It pops the saved values during the 
 .code int
-instruction from the stack, and resumes execution at the saved 
-.register eip.
-.\"
-.section "Code: The first system call"
-.\"
+instruction from the stack, and resumes execution at the saved
+.register rip.
 .PP
-Chapter \*[CH:FIRST] ended with 
-.code-index initcode.S
-invoking a system call.
-Let's look at that again
-.line initcode.S:/'T_SYSCALL'/ .
-The process pushed the arguments
-for an 
-.code-index exec
-call on the process's stack, and put the
-system call number in
-.register eax.
-The system call numbers match the entries in the syscalls array,
-a table of function pointers
-.line syscall.c:/'syscalls'/ .
-We need to arrange that the 
-.code int
-instruction switches the processor from user mode to kernel mode,
-that the kernel invokes the right kernel function (i.e.,
-.code sys_exec ),
-and that the kernel can retrieve the arguments for
-.code-index sys_exec .
-The next few subsections describe how xv6 arranges this for system
-calls, and then we will discover that we can reuse the same code for
-interrupts and exceptions.
+Although the description above is x86 specific, every processor has
+a mechanism like this one to handle interrupts and exceptions.
 .\"
 .section "Code: Assembly trap handlers"
 .\"
@@ -296,71 +293,15 @@ does not provide the trap number to the interrupt handler.
 Using 256 different handlers is the only way to distinguish
 the 256 cases.
 .PP
-.code Tvinit
-handles
-.code-index T_SYSCALL ,
-the user system call trap,
-specially: it specifies that the gate is of type ``trap'' by passing a value of
-.code 1
-as second argument.
-Trap gates don't clear the 
-.code-index IF
-flag, allowing other interrupts during the system call handler.
-.PP
-The kernel also sets the system call gate privilege to
-.code-index DPL_USER ,
-which allows a user program to generate
-the trap with an explicit
-.code int
-instruction.
-xv6 doesn't allow processes to raise other interrupts (e.g., device
-interrupts) with
-.code int ;
-if they try, they will encounter
-a general protection exception, which
-goes to vector 13. 
-.PP
-When changing protection levels from user to kernel mode, the kernel
-shouldn't use the stack of the user process, because it may not be valid.
-The user process may be malicious or
-contain an error that causes the user
-.register esp 
-to contain an address that is not part of the process's user memory.
 Xv6 programs the x86 hardware to perform a stack switch on a trap by
 setting up a task segment descriptor through which the hardware loads a stack
 segment selector and a new value for
-.register esp.
+.register rsp.
 The function
 .code-index switchuvm
 .line vm.c:/^switchuvm/ 
 stores the address of the top of the kernel stack of the user
 process into the task segment descriptor.
-.PP
-When a trap occurs, the processor hardware does the following.
-If the processor was executing in user mode,
-it loads
-.register esp
-and
-.register ss
-from the task segment descriptor,
-pushes the old user
-.register ss
-and
-.register esp
-onto the new stack.
-If the processor was executing in kernel mode,
-none of the above happens.
-The processor then pushes the
-.register eflags,
-.register cs,
-and
-.register eip
-registers.  For some traps (e.g., a page fault), the processor also pushes an
-error word.  The processor then loads
-.register eip
-and
-.register cs
-from the relevant IDT entry.
 .PP
 xv6 uses a Perl script
 .line vectors.pl:1
@@ -374,12 +315,9 @@ jumps to
 .code Alltraps
 .line trapasm.S:/^alltraps/
 continues to save processor registers: it pushes
-.register ds,
-.register es,
-.register fs,
-.register gs,
-and the general-purpose registers
-.lines trapasm.S:/Build.trap.frame/,/pushal/ .
+.register r15
+through
+.register rax .
 The result of this effort is that the kernel stack now contains a
 .code "struct trapframe"
 .line x86.h:/trapframe/
@@ -387,15 +325,16 @@ containing the processor registers at the time of the trap (see
 .figref trapframe ).
 The processor pushes
 .register ss,
-.register esp,
+.register rsp,
 .register eflags,
 .register cs, 
 and
-.register eip.
+.register rip.
 The processor or the trap vector pushes an error number,
 and 
 .code-index alltraps 
 pushes the rest.
+.PP
 The trap frame contains all the information necessary
 to restore the user mode processor registers
 when the kernel returns to the current process,
@@ -405,75 +344,52 @@ the trap started.  Recall from Chapter \*[CH:MEM], that
 built a trapframe by hand to achieve this goal (see 
 .figref first:newkernelstack ).
 .PP
-In the case of the first system call, the saved 
-.register eip
-is the address of the instruction right after the 
-.code int
-instruction.
-.register cs 
-is the user code segment selector.
-.register eflags
-is the content of the
-.register eflags
-register at the point of executing the 
-.code int
-instruction.
-As part of saving the general-purpose registers,
-.code alltraps
-also saves 
-.register eax,
-which contains the system call number for the kernel
-to inspect later.
-.PP
 Now that the user mode processor registers are saved,
 .code-index alltraps
 can finishing setting up the processor to run kernel C code.
-The processor set the selectors
-.register cs
-and
-.register ss
-before entering the handler;
+It passes
+.register rsp
+as a first argument to the C function
+.code trap
+by moving it into
+.register rdi
+.line "'trapasm.S:/1:mov..%rsp/'" ,
+following the C calling convention.
+Thus,
+.register rdi ,
+the first argument,
+points at the trap frame
 .code alltraps
-sets
-.register ds
-and
-.register es
-.lines "'trapasm.S:/movw.*SEG_KDATA/,/%es/'" .
+just constructed.
+Then
+.code alltraps
+calls
+.code trap
+.line trapasm.S:/call.trap/ ,
+which we will discus below.
 .PP
-Once the segments are set properly,
-.code-index alltraps
-can call the C trap handler
-.code-index trap .
-It pushes
-.register esp,
-which points at the trap frame it just constructed,
-onto the stack as an argument to
-.code trap
-.line "'trapasm.S:/pushl.%esp/'" .
-Then it calls
-.code trap
-.line trapasm.S:/call.trap/ .
 After
 .code trap 
 returns,
-.code-index alltraps
-pops the argument off the stack by
-adding to the stack pointer
-.line trapasm.S:/addl/
-and then starts executing the code at
-label
-.code-index trapret .
-We traced through this code in Chapter \*[CH:MEM]
-when the first user process ran it to exit to user space.
-The same sequence happens here: popping through
-the trap frame restores the user mode registers and then
-.code-index iret
-jumps back into user space.
+.code-index trapret
+restores the user mode registers,
+popping values from the kernel stack.
+Then, it discards the trap number and
+the error code that trap vectors
+pushed.
+Finally, it returns to user
+space by executing
+.code-index iret .
+.code Iret pops the remaining values of the stack, loading the user stack
+and program counter into
+.register %rsp
+and
+.register %rip ,
+respectively.
 .PP
 The discussion so far has talked about traps occurring in user mode,
 but traps can also happen while the kernel is executing.
-In that case the hardware does not switch stacks or save
-the stack pointer or stack segment selector;
+In that case the hardware does not switch stacks;
 otherwise the same steps occur as in traps from user mode,
 and the same xv6 trap handling code executes.
 When 
@@ -481,6 +397,52 @@ When
 later restores a kernel mode 
 .register cs,
 the processor continues executing in kernel mode.
+.PP
+Xv6 calls
+.code switchgs
+on system calls when switching from user to kernel mode, as we will
+see below.  To make the interrupt handling and system call path
+similar,
+.code alltraps
+also calls
+.code swapgs
+when switching from user mode, but not when
+handling an interrupt in kernel mode (because it is already in kernel
+mode then).
+To determine whether the processor is in kernel mode,
+.code alltraps
+compares the kernel code segment selector with the one saved on the stack
+.line 'trapasm.S:/cmpw..KCSEG/' .
+If they are the same, then there is no need to call
+.code swapgs .
+Otherwise, it calls
+.code swapgs .
+.\"
+.section "Code: Enabling/disabling interrupts"
+.\"
+.PP
+A processor can control if it wants to receive interrupts through the
+.code-index IF
+flag in the
+.register eflags
+register.
+The instruction
+.code-index cli
+disables interrupts on the processor by clearing 
+.code IF , 
+and
+.code-index sti
+enables interrupts on a processor.  The bootloader disables interrupts during
+booting of the main cpu
+and xv6 disables interrupts when booting the other processors
+.line entryother.S:/cli/ .
+The scheduler on each processor enables interrupts
+.line proc.c:/sti/ .
+To control that certain code fragments are not interrupted, xv6
+disables interrupts during these code fragments.  For example,
+.code trapret
+above clears interrupts
+.line trapasm.S:/^..cli/ .
 .\"
 .section "Code: C trap handler"
 .\"
@@ -580,16 +542,16 @@ system call
 argument, as either an integer, pointer, a string, or a file descriptor.
 .code-index argint 
 uses the user-space 
-.register esp 
+.register rsp 
 register to locate the 
 .italic n'th 
 argument:
-.register esp 
+.register rsp 
 points at the return address for the system call stub.
 The arguments are right above it, at 
-.register esp+4.
+.register rsp+4.
 Then the nth argument is at 
-.register esp+4+4*n.  
+.register rsp+4+4*n.  
 .PP
 .code argint 
 calls 
@@ -649,97 +611,8 @@ and then call the real implementations.
 In chapter \*[CH:MEM],
 .code sys_exec
 uses these functions to get at its arguments.
-.\"
-.section "Code: Interrupts"
-.\"
-.PP
-Devices on the motherboard can generate interrupts, and xv6 must set up
-the hardware to handle these interrupts.
-Devices usually interrupt in order to tell the kernel that some hardware
-event has occured, such as I/O completion.
-Interrupts are usually optional in the sense that the kernel could
-instead periodically check (or "poll") the device hardware to check
-for new events.
-Interrupts are preferable to polling if the events are relatively
-rare, so that polling would waste CPU time.
-Interrupt handling shares some of the code already needed
-for system calls and exceptions.
-.PP
-Interrupts are similar to system calls, except devices generate them
-at any time.  There is hardware on the motherboard to signal the CPU
-when a device needs attention (e.g., the user has typed a character on
-the keyboard). We must program the device to generate an interrupt, and
-arrange that a CPU receives the interrupt. 
-.PP
-Let's look at the timer device and timer interrupts.  We would like
-the timer hardware to generate an interrupt, say, 100 times per
-second so that the kernel can track the passage of time and so the
-kernel can time-slice among multiple running processes.  The choice of
-100 times per second allows for decent interactive performance while
-not swamping the processor with handling interrupts.  
-.PP
-Like the x86 processor itself, PC motherboards have evolved, and the
-way interrupts are provided has evolved too.  The early boards had a
-simple programmable interrupt controler (called the PIC).
-With the advent of multiprocessor PC boards, a new way of handling
-interrupts was needed, because each CPU needs an interrupt controller
-to handle interrupts sent to it, and there must be a method for
-routing interrupts to processors.  This way consists of two parts: a
-part that is in the I/O system (the IO APIC,
-.code ioapic.c), 
-and a part that is attached to each processor (the
-local APIC, 
-.code lapic.c).
-Xv6 is designed for a
-board with multiple processors: it ignores interrupts from the PIC, and
-configures the IOAPIC and local APIC.
-.PP
-The IO APIC has a table and the processor can program entries in the
-table through memory-mapped I/O.
-During initialization, xv6 programs to map interrupt 0 to IRQ 0, and
-so on, but disables them all.  Specific devices enable particular
-interrupts and say to which processor the interrupt should be routed.
-For example, xv6 routes keyboard interrupts to processor 0
-.line console.c:/^consoleinit/ .
-Xv6 routes disk interrupts to the highest numbered processor on the
-system, as we will see below.
-.PP
-The timer chip is inside the LAPIC, so that each processor can receive
-timer interrupts independently. Xv6 sets it up in
-.code-index lapicinit
-.line lapic.c:/^lapicinit/ .
-The key line is the one that programs the timer
-.line lapic.c:/lapicw.TIMER/ .
-This line tells the LAPIC to periodically generate an interrupt at
-.code-index IRQ_TIMER,
-which is IRQ 0.
-Line
-.line lapic.c:/lapicw.TPR/
-enables interrupts on a CPU's LAPIC, which will cause it to deliver
-interrupts to the local processor.
-.PP
-A processor can control if it wants to receive interrupts through the
-.code-index IF
-flag in the
-.register eflags
-register.
-The instruction
-.code-index cli
-disables interrupts on the processor by clearing 
-.code IF , 
-and
-.code-index sti
-enables interrupts on a processor.  Xv6 disables interrupts during
-booting of the main cpu
-.line bootasm.S:/cli/
-and the other processors
-.line entryother.S:/cli/ .
-The scheduler on each processor enables interrupts
-.line proc.c:/sti/ .
-To control that certain code fragments are not interrupted, xv6
-disables interrupts during these code fragments (e.g., see
-.code-index switchuvm
-.line vm.c:/^switchuvm/ ).
+
+
 .PP
 The timer interrupts through vector 32 (which xv6 chose to handle IRQ
 0), which xv6 setup in
@@ -1108,6 +981,38 @@ in real-world operating systems,
 buffers typically match the hardware page size, so that
 read-only copies can be mapped into a process's address space
 using the paging hardware, without any copying.
+
+
+.\"
+.section "Code: The first system call"
+.\"
+.PP
+Chapter \*[CH:FIRST] ended with 
+.code-index initcode.S
+invoking a system call.
+Let's look at that again
+.line initcode.S:/'T_SYSCALL'/ .
+The process pushed the arguments
+for an 
+.code-index exec
+call on the process's stack, and put the
+system call number in
+.register eax.
+The system call numbers match the entries in the syscalls array,
+a table of function pointers
+.line syscall.c:/'syscalls'/ .
+We need to arrange that the 
+.code int
+instruction switches the processor from user mode to kernel mode,
+that the kernel invokes the right kernel function (i.e.,
+.code sys_exec ),
+and that the kernel can retrieve the arguments for
+.code-index sys_exec .
+The next few subsections describe how xv6 arranges this for system
+calls, and then we will discover that we can reuse the same code for
+interrupts and exceptions.
+
+
 .\"
 .section "Exercises"
 .\"
@@ -1116,8 +1021,8 @@ using the paging hardware, without any copying.
 .code syscall
 to catch the very
 first system call (e.g., br syscall). What values are on the stack at this
-point?  Explain the output of x/37x $esp at that breakpoint with each value
-labeled as to what it is (e.g., saved %ebp for trap, trapframe.eip, scratch
+point?  Explain the output of x/37x $rsp at that breakpoint with each value
+labeled as to what it is (e.g., saved %ebp for trap, trapframe.rip, scratch
 space, etc.).
 .PP
 2.  Add a new system call to get the current UTC time and return it to the user

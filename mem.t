@@ -988,4 +988,3 @@ and construct a user  program that exploits that the check is missing.
 mapped and so that the kernel runs with its own page table that doesn't include
 the user process.
 
-
