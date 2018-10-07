@@ -555,7 +555,8 @@ do, as we will describe next.
 .PP
 The
 .code syscall
-instruction itself does less work than an interrupt handler:
+instruction itself does less work than what the processor does on
+an interrupt:
 .IP \[bu] 
 It saves
 .register eflags
@@ -564,17 +565,21 @@ into
 and masks
 .register eflags
 using
-a value that kernel programs into a special memory location reserved for this
+a value that kernel programs into a special register reserved for this
 purpose, namely
 .code MSR_SFMASK
 .line vm.c:/MSR_SFMASK/ .
 The processor clears in
 .register eflags
 every bit corresponding to a bit that is set in the MSR_SFMASK.
-.IP \[bu] 
-It loads
+.IP \[bu]
+It saves
 .register rip
-with a value that the kernel programs into a special memory location reserved
+into
+.register rcx ,
+and loads
+.register rip
+with a value that the kernel programs into a special register reserved
 for this purpose, namely
 .code MSR_LSTAR
 .line vm.c:/MSR_LSTAR/ .
@@ -604,13 +609,139 @@ in kernel mode with interrupts disabled.
 Note that the
 .code syscall
 instruction doesn't consult the IDT and does not save the user's stack pointer,
-unlike interrupts and exceptions. If an operating system changes the stack
-pointer, it is the responsibility of the operating system to
+unlike interrupts and exceptions. If the kernel wants
+to use
+.register rsp ,
+it is the responsibility of the kernel to
 save the value of the stack pointer before changing it.
 .PP
-XXX
+.code
+Syscall allows entering into and returning from the kernel with low overhead. As
+a result, a system call that can be implemented with a few assembly instructions
+(e.g., return the PID of the current process) can run quickly.  The processor
+executes the few steps to transfer to the kernel (saving
+.register eflags
+and
+.register rip ,
+and loading them with new values), then it runs the instructions for the system
+call, and returns back to user space by calling
+.code sysret ,
+which copies
+.register rcx
+into
+.register rip
+and loads
+.register eflags
+from
+.register r11 .
 .PP
-.pointer
+Xv6 doesn't optimize for performance. It always runs C code for a system call
+and thus needs a stack to call into a C function.  The kernel
+cannot assume that the value that a user program stored in
+.register rsp
+is save to use; the value may be an invalid address (e.g., without a mapping
+in the page table).  Thus, it must save
+.register rsp
+and load it with the address of a kernel stack.
+Where can xv6 save
+.register rsp ?
+The scratch space must be per core, because each core may
+be executing a system call.
+.PP
+To quickly find a per-core area, the processor provides per core a pair of
+special registers
+.code-index MSR_GS_BASE
+and
+.code-index MSR_GS_KERNBASE .
+During initialization,
+each core stores a pointer to its
+.code-index "struct cpu"
+into both registers
+.line vm.c:/MSR_GS_KERNBASE/ .
+This struct
+.line proc.h:/^struct.cpu/
+records
+the process currently running
+on the processor (if any),
+the processor's unique hardware identifier
+.code apicid ), (
+and some other information.
+To refer to
+.code MSR_GS_BASE ,
+the kernel must use the code segment selector
+.register gs ,
+which xv6 programs to contain
+.code SEG_KDATA
+.line vm.c:/SEG_KDATA/ .
+With this setup a core can refer to
+the first entry of its
+.code "struct cpu"
+using
+.code %gs:0 .
+Because user code can also program
+.code MSR_GS_BASE ,
+the processor provides a special instruction
+.code swapgs ,
+which swaps the contents of
+.code MSR_GS_BASE
+and
+.code MSR_GS_KERNBASE ,
+causing the value of MSR_GS_KERNBASE to be
+loaded into
+.code MSR_GS_BASE .
+Since user code cannot program
+.code MSR_GS_KERNBASE ,
+.code swapgs
+will cause
+.code MSR_GS_BASE
+to have a valid pointer to this core's
+.code "struct cpu" .
+.PP
+Returning to
+.code sysentry
+.line trapasm.S:/^sysentry/ ,
+the first instruction
+.code sysentry
+executes is
+.code swapps ,
+and then saves
+.register rax
+(which contains the number of the system call)
+and
+.register rsp
+(which contains the user stack pointer)
+into the core's
+.code "struct cpu" .
+The
+.code "struct cpu"
+has reserved two fields for this purpose
+.line proc.h:/^struct.cpu/ .
+Next,
+.code sysentry
+loads the current process's kernel stack
+into
+.register rsp
+.lines trapasm.S:/movq...gs/,/movq...rax,..rsp/ .
+Then,
+.code sysentry
+restores
+.register rax ,
+and builds up the trapframe as if the processor had taken an interrupt or
+an exception (see 
+.figref trapframe ):
+it pushes a stack segment selector, the saved user stack pointer,
+the eflags in
+.register r11 ,
+etc.
+After this, the process's kernel stack looks identical to the kernel stack after
+an interrupt or exception, and
+.code sysentry
+calls
+.code trap .
+Making the system call path identical to the interrupt and exception path allows xv6
+to use the same C entry point for system calls, interrupts, and exceptions, at
+the cost of making system calls more expensive than strictly necessary.
+.PP
 For system calls,
 .code-index trap
 invokes
@@ -619,7 +750,7 @@ invokes
 .code Syscall 
 loads the system call number from the trap frame, which
 contains the saved
-.register eax,
+.register rax,
 and indexes into the system call tables.
 For the first system call, 
 .register eax
@@ -636,10 +767,17 @@ entry of the system call table, which corresponds to invoking
 .code Syscall
 records the return value of the system call function in
 .register eax.
-When the trap returns to user space, it will load the values
+When the system call returns to user space,
+.code sysexit
+.line trapasm.S:/^sysexit/
+will load the values
 from
 .code-index cp->tf
-into the machine registers.
+into the machine registers
+and return to user space
+using
+.code sysret .
+.PP
 Thus, when 
 .code exec
 returns, it will return the value
@@ -651,26 +789,61 @@ If the system call number is invalid,
 .code-index syscall
 prints an error and returns \-1.
 .PP
+.code sysexit
+disables interrupts
+while restoring machine registers and the user stack to
+ensure that an interrupt doesn't run on a user stack.  After
+.code "mov (%rsp),%rsp" ,
+the user stack is in
+.register rsp
+but the processor is still in kernel mode.
+Thus, if an interrupt arrives right after this
+.code mov
+instruction,
+the processor will not switch to a kernel stack (because it is still in kernel
+mode) and will attempt to the user stack, which may not be valid.
+By disabling interrupts,
+.code sysexit
+ensures that this situation can never happen.
+.\"
+.section "Code: System call arguments"
+.\"
+.PP
 Later chapters will examine the implementation of
 particular system calls.
 This chapter is concerned with the mechanisms for system calls.
 There is one bit of mechanism left: finding the system call arguments.
-The helper functions argint, argptr, argstr, and argfd retrieve the 
+The helper functions
+.code argint ,
+.code argaddr ,
+.code argptr ,
+.code argstr ,
+and
+.code argfd
+retrieve the 
 .italic n 'th 
 system call
 argument, as either an integer, pointer, a string, or a file descriptor.
-.code-index argint 
-uses the user-space 
-.register rsp 
-register to locate the 
+.code-index argint
+and
+.code-index argaddr
+use the function
+.code fetcharg
+to locate the
 .italic n'th 
-argument:
-.register rsp 
-points at the return address for the system call stub.
-The arguments are right above it, at 
-.register rsp+4.
-Then the nth argument is at 
-.register rsp+4+4*n.  
+argument. The C calling conventions specify that argument 0 is passed
+through
+.register rdi ,
+argument 1 through
+.register rsi ,
+argument 2 through
+.register rdx ,
+argument 3 through
+.register r10 ,
+argument 4 through
+.register r8 ,
+and argument 5 through
+.register r9.
 .PP
 .code argint 
 calls 
@@ -692,16 +865,16 @@ The kernel, however,
 can derefence any address that the user might have passed, so it must check explicitly that the address is below
 .code p->sz .
 .PP
+.code-index fetchaddr ,
+is like
+.code fetchint ,
+but retrieves 64-bit value instead of a 32-bit int.
+.PP
 .code-index argptr
 fetches the
 .italic n th 
 system call argument and checks that this argument is a valid
 user-space pointer.
-Note that two checks occur during a call to 
-.code argptr .
-First, the user stack pointer is checked during the fetching
-of the argument.
-Then the argument, itself a user pointer, is checked.
 .PP
 .code-index argstr 
 interprets the
@@ -723,6 +896,7 @@ file descriptor, and returns the corresponding
 The system call implementations (for example, sysproc.c and sysfile.c)
 are typically wrappers: they decode the arguments using 
 .code argint ,
+.code argaddr ,
 .code argptr , 
 and 
 .code argstr
@@ -1071,18 +1245,13 @@ in real-world operating systems,
 buffers typically match the hardware page size, so that
 read-only copies can be mapped into a process's address space
 using the paging hardware, without any copying.
-
-
-
-
 .\"
 .section "Exercises"
 .\"
 .PP
-1. Set a breakpoint at the first instruction of
-.code syscall
-to catch the very
-first system call (e.g., br syscall). What values are on the stack at this
+1. Set a breakpoint in
+.code trap
+to catch the first timer interrupt. What values are on the stack at this
 point?  Explain the output of x/37x $rsp at that breakpoint with each value
 labeled as to what it is (e.g., saved %ebp for trap, trapframe.rip, scratch
 space, etc.).
