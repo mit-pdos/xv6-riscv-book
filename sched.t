@@ -109,7 +109,8 @@ the process's kernel thread calls
 to save its own context and return to the scheduler context.
 Each context is represented by a
 .code struct
-.code context* ,
+.code context*
+.line proc.h:/^struct.context/ ,
 a pointer to a structure stored on the kernel stack involved.
 .code Swtch
 takes two arguments:
@@ -127,7 +128,7 @@ Then
 copies
 .code new
 to 
-.register esp,
+.register rsp,
 pops previously saved registers, and returns.
 .PP
 Let's follow a user process through
@@ -152,39 +153,26 @@ and switch to the scheduler context previously saved in
 .PP
 .code Swtch
 .line swtch.S:/swtch/
-starts by copying its arguments from the stack
-to the caller-saved registers
-.register eax
-and
-.register edx
-.lines swtch.S:/movl/,/movl/ ;
-.code-index swtch
-must do this before it
-changes the stack pointer
-and can no longer access the arguments
-via
-.register esp.
-Then 
-.code swtch
 pushes the register state, creating a context structure
 on the current stack.
 Only the callee-saved registers need to be saved;
-the convention on the x86 is that these are
-.register ebp,
-.register ebx,
-.register esi,
-.register edi,
+the convention on the x86-64 is that these are
+.register rbp ,
+.register rbx ,
+.register r11
+through
+.register r15 ,
 and
-.register esp.
+.register rsp .
 .code Swtch
-pushes the first four explicitly
-.lines swtch.S:/pushl..ebp/,/pushl..edi/ ;
+pushes the first 7 explicitly
+.lines swtch.S:/push..rbp/,/push..r15/ ;
 it saves the last implicitly as the
 .code struct
 .code context*
 written to
 .code *old 
-.line swtch.S:/movl..esp/ .
+.line swtch.S:/mov..rsp/ .
 There is one more important register:
 the program counter 
 .register eip .
@@ -197,7 +185,7 @@ Having saved the old context,
 is ready to restore the new one.
 It moves the pointer to the new context
 into the stack pointer
-.line swtch.S:/movl..edx/ .
+.line swtch.S:/mov..rsi/ .
 The new stack has the same form as the old one that
 .code-index swtch
 just left—the new stack
@@ -208,13 +196,15 @@ so
 .code swtch
 can invert the sequence to restore the new context.
 It pops the values for
-.register edi,
-.register esi,
-.register ebx,
+.register r15
+through
+.register r11,
 and
-.register ebp
+.register rbx ,
+and
+.register rbp ,
 and then returns
-.lines swtch.S:/popl/,/ret/ .
+.lines swtch.S:/pop/,/ret/ .
 Because 
 .code swtch
 has changed the stack pointer, the values restored
