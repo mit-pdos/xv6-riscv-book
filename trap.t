@@ -58,7 +58,18 @@ xv6 uses the term
 .italic-index trap , 
 largely because it was the term
 used by the PDP11/40 and therefore is the conventional Unix term.
-Furthermore, this chapter uses the terms trap and interrupt interchangeably,
+Furthermore, this chapter uses the terms trap and interrupt interchangeably, but it
+is important to remember that traps are caused by the current process
+running on a processor (e.g., the process makes a system call and as a
+result generates a trap), and interrupts are caused by devices and may
+not be related to the currently running process.
+For example, a disk may generate an interrupt when
+it is done retrieving a block for one process, but
+at the time of the interrupt some other process may be running.
+This
+property of interrupts makes thinking about interrupts more difficult
+than thinking about traps, because interrupts happen
+concurrently with other activities.
 .\"
 .section "X86 Interrupts"
 .\"
