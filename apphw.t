@@ -1,7 +1,4 @@
 .appendix APP:HW "PC hardware"
-.ig
-	there isn't really anything called "32-bit mode".
-..
 .PP
 This appendix describes personal computer (PC) hardware,
 the platform on which xv6 runs.
@@ -76,25 +73,35 @@ evolution because every PC processor starts simulating an Intel 8088, the CPU
 chip in the original IBM PC released in 1981.  However, for most of xv6 you will
 be concerned with the modern x86 instruction set.
 .PP
-The modern x86
-provides eight general purpose 32-bit registers—\c
-.register eax ,
-.register ebx ,
-.register ecx ,
-.register edx ,
-.register edi ,
-.register esi ,
-.register ebp ,
+The modern x86-64 was introduced by AMD and later was also adopted by Intel, and
+is a standard now. It provides sixteen general purpose 64-bit registers—\c
+.register r8
+through
+.register r15 ,
+.register rax ,
+.register rbx ,
+.register rcx ,
+.register rdx ,
+.register rdi ,
+.register rsi ,
+.register rbp ,
 and
-.register esp \c
+.register rsp \c
 —and a program counter
-.register eip
+.register rip
 (the
 .italic-index "instruction pointer" ).
+X86-64 added
+.register r8
+through
+.register r15
+to
+the 8 general-purpose registers
+of 32-bit x86.
 The common
-.register-font e
-prefix stands for extended, as these are 32-bit
-extensions of the 16-bit registers
+.register-font r
+prefix stands for register, to differentiate
+them from the 16-bit versions:
 .register ax ,
 .register bx ,
 .register cx ,
@@ -105,34 +112,9 @@ extensions of the 16-bit registers
 .register sp ,
 and
 .register ip .
-The two register sets are aliased so that,
-for example,
-.register ax
-is the bottom half of
-.register eax :
-writing to
-.register ax
-changes the value stored in
-.register eax
-and vice versa.
-The first four registers also have names for
-the bottom two 8-bit bytes:
-.register al
-and
-.register ah
-denote the low and high 8 bits of
-.register ax ;
-.register bl ,
-.register bh ,
-.register cl ,
-.register ch ,
-.register dl ,
-and
-.register dh
-continue the pattern.
 In addition to these registers,
 the x86 has eight 80-bit floating-point registers
-as well as a handful of special-purpose registers
+as well as quite a number of special-purpose registers
 like the 
 .italic-index "control registers"
 .register cr0 ,
@@ -146,7 +128,6 @@ the debug registers
 .register dr2 ,
 and
 .register dr3 ;
-the 
 .italic-index "segment registers"
 .register cs ,
 .register ds ,
@@ -160,7 +141,9 @@ pseudo-registers
 .register gdtr
 and 
 .register ldtr .
-The control registers and segment registers are important to any operating system.
+The control registers are important to any operating system.  Although x86-64
+discontinued the support of segments, the segment registers still shine through
+in a few places.
 The floating-point and debug registers are less interesting
 and not used by xv6.
 .PP
