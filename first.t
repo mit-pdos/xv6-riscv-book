@@ -632,7 +632,7 @@ user-space location zero rather than at a return from
 One way that control transfers from user software to the kernel
 is via system calls.  Whenever a process transfers control
 into the kernel for a system call
-the hardware and xv6 trap entry code save user registers on the
+the hardware and xv6 save user registers on the
 process's kernel stack.
 .code-index userinit
 writes values at the top of the new stack that
@@ -847,8 +847,8 @@ set to
 .code Sysexit
 .line trapasm.S:/^sysexit/ 
 uses pop instructions to restore registers from
-the trap frame
-.line x86.h:/^struct.trapframe/
+the syscall frame
+.line x86.h:/^struct.sysframe/
 just as 
 .code-index swtch
 did with the kernel context:
@@ -870,7 +870,7 @@ Next,
 .code sysexit
 switches to the stack of the user process
 by moving the value at the top of
-the stack, which is rsp of the trapframe, into
+the stack, which is rsp of the syscall frame, into
 .register rsp .
 As we will see below the register
 .register gs
