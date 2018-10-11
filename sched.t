@@ -480,6 +480,7 @@ for performance.
 .section "Code: mycpu and myproc"
 .\"
 .PP
+As we saw in Chapter \*[CH:TRAP],
 xv6 maintains a
 .code-index "struct cpu"
 for each processor, which records
@@ -489,23 +490,49 @@ the processor's unique hardware identifier
 .code apicid ), (
 and some other information.
 The function
-.code-index mycpu
-.line proc.c:/^mycpu/
+.code-index getmycpu
+.line proc.c:/^getmycpu/
 returns the current processor's
 .code "struct cpu" .
-.code mycpu
+.code getmycpu
 does this by reading the processor
 identifier from the local APIC hardware and looking through
 the array of
 .code "struct cpu"
 for an entry with that identifier.
-The return value of
+The function 
+.code seginit
+.line vm.c:/^seginit/
+programs the register
+.code MSR_GS_KERNBASE
+to contain a pointer to the core's
+.code "struct cpu" .
+The function
+.code-index "mycpu"
+.line proc.c:/^mycpu/
+returns that
+value using
+.register gs .
+Using
+.register gs
+avoids every call to
 .code mycpu
-is fragile: if the timer were to interrupt and cause
+having to loop
+through the array
+.code cpus ,
+as
+.code getmycpu
+does.
+.PP
+The return value of
+.code getmycpu
+and
+.code mycpu
+are fragile: if the timer were to interrupt and cause
 the thread to be moved to a different processor, the
 return value would no longer be correct.
 To avoid this problem, xv6 requires that callers of
-.code mycpu
+.code getmycpu
 disable interrupts, and only enable
 them after they finish using the returned
 .code "struct cpu" .

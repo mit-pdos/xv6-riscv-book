@@ -524,7 +524,7 @@ The system call numbers match the entries in the syscalls array,
 a table of function pointers
 .line syscall.c:/'syscalls'/ .
 We need to arrange that the 
-.code int
+.code syscall
 instruction switches the processor from user mode to kernel mode,
 that the kernel invokes the right kernel function (i.e.,
 .code sys_exec ),
@@ -644,11 +644,12 @@ Where can xv6 save
 The scratch space must be per core, because each core may
 be executing a system call.
 .PP
-To quickly find a per-core area, the processor provides per core a pair of
-special registers
+To quickly find a per-core area, the processor provides a pair of
+special registers (
 .code-index MSR_GS_BASE
 and
-.code-index MSR_GS_KERNBASE .
+.code-index MSR_GS_KERNBASE )
+per core.
 During initialization,
 each core stores a pointer to its
 .code-index "struct cpu"
@@ -742,12 +743,12 @@ Note that a system call saves less state than an interrupt;
 .code "struct sysframe"
 and
 .code "struct trapframe"
-are different).  For example, a system call doesn't save the caller-saved
+are different.  For example, a system call doesn't save the caller-saved
 registers: it is the job of the caller to save them, if it wants them to be
 saved.  Interrupts can force a user process to enter the kernel at anytime, and
 the process has no opportunity to save caller-saved registers or any registers
 for that matter.  Thus, the hardware and xv6 must save all of a user process's
-state so that it can be restored when returning to user space.
+state on an interrupt so that it can be restored when returning to user space.
 .PP
 .code-index Syscall
 .line syscall.c:/'^syscall'/ 
