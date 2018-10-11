@@ -350,10 +350,7 @@ The trap frame contains all the information necessary
 to restore the user mode processor registers
 when the kernel returns to the current process,
 so that the processor can continue exactly as it was when
-the trap started.  Recall from Chapter \*[CH:MEM], that 
-.code userinit
-built a trapframe by hand to achieve this goal (see 
-.figref first:newkernelstack ).
+the trap started.
 .PP
 Now that the user mode processor registers are saved,
 .code-index alltraps
@@ -391,11 +388,12 @@ pushed.
 Finally, it returns to user
 space by executing
 .code-index iret .
-.code Iret pops the remaining values of the stack, loading the user stack
+.code Iret
+pops the remaining values of the stack, loading the user stack
 and program counter into
-.register %rsp
+.register rsp
 and
-.register %rip ,
+.register rip ,
 respectively.
 .PP
 The discussion so far has talked about traps occurring in user mode,
@@ -466,17 +464,6 @@ up a trap frame and then calls the C function
 looks at the hardware trap number
 .code-index tf->trapno
 to decide why it has been called and what needs to be done.
-If the trap is
-.code-index T_SYSCALL ,
-.code trap
-calls the system call handler
-.code-index syscall ,
-which we discuss below.
-We'll revisit the 
-.code-index proc->killed
-checks in Chapter \*[CH:SCHED].  \" XXX really?
-.PP
-After checking for a system call, trap looks for hardware interrupts.
 The timer interrupts through vector 32 (which xv6 chose to handle IRQ
 0), which xv6 setup in
 .code-index idtinit 
@@ -550,7 +537,7 @@ interrupts and exceptions.
 .section "Code: System calls"
 .\"
 .PP
-X86 processors for 32 bit machines handled systems calls with the same mechanism
+X86 processors for 32-bit machines handled systems calls with the same mechanism
 for interrupts and exceptions, and operating systems reserved one entry in the IDT
 for system calls.  X86-64 processors have a special instruction for system
 calls (
@@ -559,10 +546,8 @@ which saves less state than interrupts and exceptions do, and give the operating
 system more flexibility on what to save and what not to save.  This allows
 operating systems to optimize code paths for specific systems calls.  For
 example, for systems calls that do little work (e.g., asking what the ID is of
-the current process), it is often not necessary to save and restore all the
-state that interrupts and exceptions do. Xv6, however, doesn't take advantage of
-this flexibility.  Instead, it slavishly emulates what interrupts and exceptions
-do, as we will describe next.
+the current process), it is unnecessary to save and restore all the
+state that interrupts and exceptions do. 
 .PP
 The
 .code syscall
@@ -653,7 +638,7 @@ cannot assume that the value that a user program stored in
 is save to use; the value may be an invalid address (e.g., without a mapping
 in the page table).  Thus, it must save
 .register rsp
-and load it with the address of a kernel stack.
+and load it with the address of the process's kernel stack.
 Where can xv6 save
 .register rsp ?
 The scratch space must be per core, because each core may
@@ -711,11 +696,11 @@ to have a valid pointer to this core's
 Returning to
 .code sysentry
 .line trapasm.S:/^sysentry/ ,
-the first instruction
+after 
 .code sysentry
-executes is
+executes
 .code swapps ,
-and then saves
+it saves
 .register rax
 (which contains the number of the system call)
 and
@@ -737,29 +722,36 @@ Then,
 .code sysentry
 restores
 .register rax ,
-and builds up the trapframe as if the processor had taken an interrupt or
-an exception (see 
-.figref trapframe ):
-it pushes a stack segment selector, the saved user stack pointer,
-the eflags in
-.register r11 ,
-etc.
-After this, the process's kernel stack looks identical to the kernel stack after
-an interrupt or exception, and
-.code sysentry
-calls
-.code trap .
-Making the system call path identical to the interrupt and exception path allows xv6
-to use the same C entry point for system calls, interrupts, and exceptions, at
-the cost of making system calls more expensive than strictly necessary.
+and builds up the syscall frame
+.line x86.h:/^struct.sysframe/ ,
+which we briefly saw in Chapter \*[CH:FIRST]. It pushes
+the registers that
+.code syscall
+used to store the process's instruction pointer and eflags,
+along with
+.register rax .
+Next, it saves callee-saved registers and the registers
+that are used to pass arguments.  It passes a pointer
+to the syscall frame to the C function
+.code syscall
+.line syscall.c:/^syscall/
+by storing the stack pointer into the register
+for the first argument.
 .PP
-For system calls,
-.code-index trap
-invokes
-.code-index syscall
-.line syscall.c:/'^syscall'/ .
-.code Syscall 
-loads the system call number from the trap frame, which
+Note that a system call saves less state than an interrupt;
+.code "struct sysframe"
+and
+.code "struct trapframe"
+are different).  For example, a system call doesn't save the caller-saved
+registers: it is the job of the caller to save them, if it wants them to be
+saved.  Interrupts can force a user process to enter the kernel at anytime, and
+the process has no opportunity to save caller-saved registers or any registers
+for that matter.  Thus, the hardware and xv6 must save all of a user process's
+state so that it can be restored when returning to user space.
+.PP
+.code-index Syscall
+.line syscall.c:/'^syscall'/ 
+loads the system call number from the syscall frame, which
 contains the saved
 .register rax,
 and indexes into the system call tables.
@@ -783,7 +775,7 @@ When the system call returns to user space,
 .line trapasm.S:/^sysexit/
 will load the values
 from
-.code-index cp->tf
+.code-index cp->sf
 into the machine registers
 and return to user space
 using

@@ -872,7 +872,8 @@ switches to the stack of the user process
 by moving the value at the top of
 the stack, which is rsp of the syscall frame, into
 .register rsp .
-As we will see below the register
+As we will see below in Chapter \*[CH:TRAP],
+the register
 .register gs
 has a special role and
 .code sysexit
