@@ -423,7 +423,7 @@ mode then).
 To determine whether the processor is in kernel mode,
 .code alltraps
 compares the kernel code segment selector with the one saved on the stack
-.line 'trapasm.S:/cmpw..KCSEG/' .
+.line 'trapasm.S:/cmpw..SEG_KCODE/' .
 If they are the same, then there is no need to call
 .code swapgs .
 Otherwise, it calls

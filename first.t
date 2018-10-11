@@ -171,7 +171,7 @@ instructions.  Processors provide a special instruction that switches the
 processor from user mode to kernel mode and enters the kernel at an entry point
 specified by the kernel.  (The x86
 processor provides the 
-.code int
+.code syscall
 instruction for this purpose.)  Once the processor has switched to kernel mode,
 the kernel can then validate the arguments of the system call, decide whether
 the application is allowed to perform the requested operation, and then deny it
@@ -629,8 +629,7 @@ the latter case the process will start executing at
 user-space location zero rather than at a return from
 .code fork .
 .PP
-As we will see in Chapter \*[CH:TRAP],
-one way that control transfers from user software to the kernel
+One way that control transfers from user software to the kernel
 is via system calls.  Whenever a process transfers control
 into the kernel for a system call
 the hardware and xv6 trap entry code save user registers on the
@@ -639,13 +638,14 @@ process's kernel stack.
 writes values at the top of the new stack that
 look just like those that would be there if the
 process had entered the kernel via a system call
-.lines proc.c:/tf..cs.=./,/tf..rcx.=./ ,
+.lines proc.c:/sf..r11.=./,/sf..rcx.=./ ,
 so that the ordinary code for returning from
 the kernel back to the process's user code will work.
 These values are a
-.code-index "struct trapframe"
-which stores the user registers.  Now the new process's kernel stack is
-completely prepared as shown in 
+.code-index "struct sysframe"
+.line x86.h:/^struct.sysframe/ ,
+which captures user registers that must be saved and restored.  Now the new process's
+kernel stack is completely prepared as shown in
 .figref newkernelstack .
 .PP
 The first process is going to execute a small program
@@ -692,34 +692,23 @@ and copies the binary to that page
 .PP
 Then 
 .code userinit
-sets up the trap frame
-.line x86.h:/^struct.trapframe/
+sets up the syscall frame
+.line x86.h:/^struct.sysframe/
 with the initial user mode state:
 the
-.register cs
-register contains a segment selector for the
-.code-index SEG_UCODE
-segment running at privilege level
-.code-index DPL_USER
-(i.e., user mode rather than kernel mode),
-and similarly
-.register ss
-uses
-.code-index SEG_UDATA
-with privilege
-.code-index DPL_USER .
-The
 .register r11's
 .code-index FL_IF
 bit is set to allow hardware interrupts;
 we will reexamine this in Chapter \*[CH:TRAP].
-.PP
 The stack pointer 
 .register rsp
 is set to the process's largest valid virtual address,
 .code p->sz .
-The instruction pointer is set to the entry point
-for the initcode, address 0.
+.register rcx
+is set to the entry point
+for the initcode, address 0, which
+will be loaded in the instruction pointer when
+entering user space.
 .PP
 The function
 .code-index userinit
@@ -854,6 +843,7 @@ with
 .register rsp
 set to
 .code p->tf .
+.PP
 .code Sysexit
 .line trapasm.S:/^sysexit/ 
 uses pop instructions to restore registers from
@@ -865,29 +855,24 @@ did with the kernel context:
 the
 .code-index pop 
 instructions restore
-.register rax
+.register rdi
 through
-.register r15 .
-The 
-.code-index add
-instruction
-skips over the five fields
-.code trapno ,
-.code errcode ,
-.code rip ,
-.code cs ,
-and 
-.code rflags .
-(As will see in Chapter \*[CH:TRAP], there is another path than
-.code sysexit
-to enter user space,
-where these fields are restored from process's stack and not skipped.) Next,
+.register r9 ,
+and
+.register r15
+through
+.register rbp ,
+and the registers
+.register rax ,
+.register r11 ,
+.register rcx .
+Next,
 .code sysexit
 switches to the stack of the user process
 by moving the value at the top of
 the stack, which is rsp of the trapframe, into
 .register rsp .
-As we will see later the register
+As we will see below the register
 .register gs
 has a special role and
 .code sysexit
@@ -896,18 +881,19 @@ saves it by calling
 Finally, the
 .code-index sysretq
 instruction loads
-.register rxc
+.register rcx
 into
 .register rip
 and
 .register r11
 into
 .register eflags .
-The contents of the trap frame
+The contents of the syscall frame
 have been transferred to the CPU state,
 so the processor continues at the
-.register rip
-specified in r11 in the trap frame.
+address specified in
+.register r11
+in the syscall frame.
 For
 .code-index initproc ,
 that means virtual address zero,
@@ -929,11 +915,15 @@ and set a flag
 .code-index PTE_U ) (
 that tells the paging hardware to allow user code to access that memory.
 The fact that
-.code-index userinit
-.line proc.c:/UCODE/
-set up the low bits of
+.code seginit
+.line vm.c:/^seginit/
+sets the low bits of
 .register cs
-to run the process's user code at CPL=3 means that the user code
+to run the process's user code at privilege level 3 (which is user mode)
+.line vm.c:/SEG_UCODE/ ,
+when
+.code sysretq
+runs, means that the user code
 can only use pages with
 .code PTE_U
 set, and cannot modify sensitive hardware registers such as
@@ -975,6 +965,7 @@ and executes
 it is asking the kernel to run the
 .code-index exec
 system call.
+.PP
 If all goes well,
 .code exec
 never returns: it starts running the program 
