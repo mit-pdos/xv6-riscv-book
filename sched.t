@@ -110,7 +110,7 @@ to save its own context and return to the scheduler context.
 Each context is represented by a
 .code struct
 .code context*
-.line proc.h:/^struct.context/ ,
+.line kernel/proc.h:/^struct.context/ ,
 a pointer to a structure stored on the kernel stack involved.
 .code Swtch
 takes two arguments:
@@ -149,10 +149,10 @@ to save the current context in
 .code proc->context
 and switch to the scheduler context previously saved in 
 .code-index cpu->scheduler
-.line proc.c:/swtch..p/ .
+.line kernel/proc.c:/swtch..p/ .
 .PP
 .code Swtch
-.line swtch.S:/swtch/
+.line kernel/swtch.S:/swtch/
 pushes the register state, creating a context structure
 on the current stack.
 Only the callee-saved registers need to be saved;
@@ -166,13 +166,13 @@ and
 .register rsp .
 .code Swtch
 pushes the first 7 explicitly
-.lines swtch.S:/push..rbp/,/push..r15/ ;
+.lines kernel/swtch.S:/push..rbp/,/push..r15/ ;
 it saves the last implicitly as the
 .code struct
 .code context*
 written to
 .code *old 
-.line swtch.S:/mov..rsp/ .
+.line kernel/swtch.S:/mov..rsp/ .
 There is one more important register:
 the program counter 
 .register eip .
@@ -185,7 +185,7 @@ Having saved the old context,
 is ready to restore the new one.
 It moves the pointer to the new context
 into the stack pointer
-.line swtch.S:/mov..rsi/ .
+.line kernel/swtch.S:/mov..rsi/ .
 The new stack has the same form as the old one that
 .code-index swtch
 just left—the new stack
@@ -204,7 +204,7 @@ and
 and
 .register rbp ,
 and then returns
-.lines swtch.S:/pop/,/ret/ .
+.lines kernel/swtch.S:/pop/,/ret/ .
 Because 
 .code swtch
 has changed the stack pointer, the values restored
@@ -222,7 +222,7 @@ That context had been saved by
 .code scheduler 's
 call to
 .code swtch
-.line 'proc.c:/swtch.&.c/' .
+.line 'kernel/proc.c:/swtch.&.c/' .
 When the
 .code-index swtch
 we have been tracing returns,
@@ -252,7 +252,7 @@ update its own state
 and then call
 .code-index sched .
 .code Yield
-.line proc.c:/^yield/
+.line kernel/proc.c:/^yield/
 follows this convention, as do
 .code-index sleep
 and
@@ -260,7 +260,7 @@ and
 which we will examine later.
 .code Sched
 double-checks those conditions
-.lines "'proc.c:/if..holding/,/running/'"
+.lines "'kernel/proc.c:/if..holding/,/running/'"
 and then an implication of those conditions:
 since a lock is held, the CPU should be
 running with interrupts disabled.
@@ -278,7 +278,7 @@ as though
 .code-index scheduler 's
 .code swtch
 had returned
-.line 'proc.c:/swtch.&.c/' .
+.line 'kernel/proc.c:/swtch.&.c/' .
 The scheduler continues the 
 .code for
 loop, finds a process to run, 
@@ -325,10 +325,10 @@ and always switches to the same location in the scheduler, which
 .code sched . 
 Thus, if one were to print out the line numbers where xv6 switches
 threads, one would observe the following simple pattern:
-.line 'proc.c:/swtch.&.c/' ,
-.line proc.c:/swtch..p/ ,
-.line 'proc.c:/swtch.&.c/' ,
-.line proc.c:/swtch..p/ ,
+.line 'kernel/proc.c:/swtch.&.c/' ,
+.line kernel/proc.c:/swtch..p/ ,
+.line 'kernel/proc.c:/swtch.&.c/' ,
+.line kernel/proc.c:/swtch..p/ ,
 and so on.  The procedures in which this stylized switching between
 two threads happens are sometimes referred to as 
 .italic-index coroutines ; 
@@ -345,7 +345,7 @@ does not end up in
 We saw this case in Chapter \*[CH:MEM]: when a
 new process is first scheduled, it begins at
 .code-index forkret
-.line proc.c:/^forkret/ .
+.line kernel/proc.c:/^forkret/ .
 .code Forkret
 exists to release the 
 .code-index ptable.lock ;
@@ -353,7 +353,7 @@ otherwise, the new process could start at
 .code trapret .
 .PP
 .code Scheduler
-.line proc.c:/^scheduler/ 
+.line kernel/proc.c:/^scheduler/ 
 runs a simple loop:
 find a process to run, run it until it yields, repeat.
 .code-index scheduler
@@ -397,7 +397,7 @@ marks the process as
 and then calls
 .code-index swtch
 to start running it
-.lines proc.c:/Switch.to/,/swtch/ .
+.lines kernel/proc.c:/Switch.to/,/swtch/ .
 .PP
 One way to think about the structure of the scheduling code is
 that it arranges to enforce a set of invariants about each process,
@@ -491,7 +491,7 @@ the processor's unique hardware identifier
 and some other information.
 The function
 .code-index getmycpu
-.line proc.c:/^getmycpu/
+.line kernel/proc.c:/^getmycpu/
 returns the current processor's
 .code "struct cpu" .
 .code getmycpu
@@ -502,14 +502,14 @@ the array of
 for an entry with that identifier.
 The function 
 .code seginit
-.line vm.c:/^seginit/
+.line kernel/vm.c:/^seginit/
 programs the register
 .code MSR_GS_KERNBASE
 to contain a pointer to the core's
 .code "struct cpu" .
 The function
 .code-index "mycpu"
-.line proc.c:/^mycpu/
+.line kernel/proc.c:/^mycpu/
 returns that
 value using
 .register gs .
@@ -539,7 +539,7 @@ them after they finish using the returned
 .PP
 The function
 .code-index myproc
-.line proc.c:/^myproc/
+.line kernel/proc.c:/^myproc/
 returns the
 .code "struct proc"
 pointer
@@ -888,10 +888,10 @@ the value from a previous
 .PP
 Let's look at the implementation of
 .code-index sleep
-.line proc.c:/^sleep/
+.line kernel/proc.c:/^sleep/
 and
 .code-index wakeup
-.line proc.c:/^wakeup/ .
+.line kernel/proc.c:/^wakeup/ .
 The basic idea is to have
 .code sleep
 mark the current process as
@@ -912,19 +912,19 @@ Xv6 often uses the address
 of a kernel data structure involved in the waiting.
 .PP
 .code Sleep
-.line proc.c:/^sleep/
+.line kernel/proc.c:/^sleep/
 begins with a few sanity checks:
 there must be a current process
-.line proc.c:/p.==.0/
+.line kernel/proc.c:/p.==.0/
 and
 .code sleep
 must have been passed a lock
-.lines "'proc.c:/lk == 0/,/sleep.without/'" .
+.lines "'kernel/proc.c:/lk == 0/,/sleep.without/'" .
 Then 
 .code sleep
 acquires 
 .code-index ptable.lock
-.line proc.c:/sleeplock1/ .
+.line kernel/proc.c:/sleeplock1/ .
 Now the process going to sleep holds both
 .code ptable.lock
 and
@@ -974,10 +974,10 @@ In this case,
 considers the acquire and release
 to cancel each other out
 and skips them entirely
-.line proc.c:/sleeplock0/ .
+.line kernel/proc.c:/sleeplock0/ .
 For example,
 .code wait
-.line 'proc.c:/^wakeup!(/'
+.line 'kernel/proc.c:/^wakeup!(/'
 calls
 .code sleep
 with 
@@ -993,12 +993,12 @@ the sleep channel,
 changing the process state,
 and calling
 .code sched
-.line proc.c:/chan.=.chan/,/sched/ .
+.line kernel/proc.c:/chan.=.chan/,/sched/ .
 .PP
 At some point later, a process will call
 .code wakeup(chan) .
 .code Wakeup
-.line 'proc.c:/^wakeup!(/'
+.line 'kernel/proc.c:/^wakeup!(/'
 acquires
 .code-index ptable.lock
 and calls
@@ -1024,7 +1024,7 @@ holds the
 .code ptable.lock ;
 we will see an example of this later.
 .code Wakeup1
-.line proc.c:/^wakeup1/
+.line kernel/proc.c:/^wakeup1/
 loops over the process table.
 When it finds a process in state
 .code-index SLEEPING
@@ -1183,12 +1183,12 @@ and
 happen simultaneously on two different CPUs.
 .PP
 .code Pipewrite
-.line pipe.c:/^pipewrite/
+.line kernel/pipe.c:/^pipewrite/
 begins by acquiring the pipe's lock, which
 protects the counts, the data, and their
 associated invariants.
 .code Piperead
-.line pipe.c:/^piperead/
+.line kernel/pipe.c:/^piperead/
 then tries to acquire the lock too, but cannot.
 It spins in
 .code acquire
@@ -1204,10 +1204,10 @@ loops over the bytes being written—\c
 \&...,
 .code addr[n-1] —\c
 adding each to the pipe in turn
-.line "'pipe.c:/nwrite!+!+/'" .
+.line "'kernel/pipe.c:/nwrite!+!+/'" .
 During this loop, it could happen that
 the buffer fills
-.line pipe.c:/pipewrite-full/ .
+.line kernel/pipe.c:/pipewrite-full/ .
 In this case, 
 .code pipewrite
 calls
@@ -1234,17 +1234,17 @@ it finds that
 .code p->nread
 .code !=
 .code p->nwrite
-.line pipe.c:/pipe-empty/
+.line kernel/pipe.c:/pipe-empty/
 .code pipewrite "" (
 went to sleep because
 .code p->nwrite
 .code ==
 .code p->nread+PIPESIZE
-.line pipe.c:/pipewrite-full/ )
+.line kernel/pipe.c:/pipewrite-full/ )
 so it falls through to the 
 .code for
 loop, copies data out of the pipe
-.line pipe.c:/piperead-copy/,/^..}/ ,
+.line kernel/pipe.c:/piperead-copy/,/^..}/ ,
 and increments 
 .code nread
 by the number of bytes copied.
@@ -1252,7 +1252,7 @@ That many bytes are now available for writing, so
 .code piperead
 calls
 .code wakeup
-.line pipe.c:/piperead-wakeup/
+.line kernel/pipe.c:/piperead-wakeup/
 to wake any sleeping writers
 before it returns to its caller.
 .code Wakeup
@@ -1327,7 +1327,7 @@ but that none have exited,
 it calls
 .code sleep
 to wait for one of them to exit
-.line proc.c:/wait-sleep/
+.line kernel/proc.c:/wait-sleep/
 and scans again.
 Here,
 the lock being released in 
@@ -1342,7 +1342,7 @@ acquires
 and then wakes up any process sleeping on a wait
 channel equal to the current process's parent
 .code proc
-.line 'proc.c:/wakeup1.curproc->parent/' ;
+.line 'kernel/proc.c:/wakeup1.curproc->parent/' ;
 if there is such a process, it will be the parent in
 .code wait .
 This may look premature, since 
@@ -1369,13 +1369,13 @@ the exiting process until after
 .code exit
 has set its state to
 .code ZOMBIE
-.line proc.c:/state.=.ZOMBIE/ .
+.line kernel/proc.c:/state.=.ZOMBIE/ .
 Before exit yields the processor,
 it reparents all of
 the exiting process's children,
 passing them to the
 .code initproc
-.lines proc.c:/Pass.abandoned/,/wakeup1/+2 .
+.lines kernel/proc.c:/Pass.abandoned/,/wakeup1/+2 .
 Finally,
 .code exit
 calls
@@ -1395,7 +1395,7 @@ and finds the exited child with
 .code state
 .code ==
 .code ZOMBIE .
-.line proc.c:/state.==.ZOMBIE/ .
+.line kernel/proc.c:/state.==.ZOMBIE/ .
 It records the child's
 .code pid
 and then cleans up the 
@@ -1403,7 +1403,7 @@ and then cleans up the
 .code proc ,
 freeing the memory associated
 with the process
-.line proc.c:/pid.=.p..pid/,/killed.=.0/ .
+.line kernel/proc.c:/pid.=.p..pid/,/killed.=.0/ .
 .PP
 The child process could have done most
 of the cleanup during
@@ -1432,7 +1432,7 @@ While
 .code exit 
 allows a process to terminate itself,
 .code kill
-.line proc.c:/^kill/ 
+.line kernel/proc.c:/^kill/ 
 lets one process request that another be terminated.
 It would be too complex for
 .code kill
@@ -1478,7 +1478,7 @@ also test
 in the loop, and abandon the current activity if it is set.
 This is only done when such abandonment would be correct.
 For example, the pipe read and write code
-.line pipe.c:/myproc..-\>killed/ 
+.line kernel/pipe.c:/myproc..-\>killed/ 
 returns if the killed flag is set; eventually the
 code will return back to trap, which will again
 check the flag and exit.
@@ -1669,7 +1669,7 @@ doesn't type any input).
 1. Sleep has to check
 .code "lk != &ptable.lock"
 to avoid a deadlock
-.lines proc.c:/sleeplock0/,/^..}/ .
+.lines kernel/proc.c:/sleeplock0/,/^..}/ .
 Suppose the special case were eliminated by
 replacing
 .P1

@@ -89,8 +89,8 @@ page; if clear, only the kernel is allowed to use the page.
 .figref x86_pagetable
 shows how it all works.
 The flags and all other page hardware related structures are defined in
-.file "mmu.h"
-.sheet mmu.h .
+.file "kernel/mmu.h"
+.sheet kernel/mmu.h .
 .PP
 A few notes about terms.
 Physical memory refers to storage cells in DRAM.
@@ -112,7 +112,7 @@ However,
 .code main
 immediately changes to a new page table by calling
 .code-index kvmalloc
-.line vm.c:/^kvmalloc/ ,
+.line kernel/vm.c:/^kvmalloc/ ,
 because kernel has a more elaborate plan for describing
 process address spaces.
 .PP
@@ -126,8 +126,8 @@ zero and can grow up to
 .address KERNBASE ,
 allowing a process to address in principle terabytes of memory.
 The file
-.file "memlayout.h"
-.sheet memlayout.h
+.file "kernel/memlayout.h"
+.sheet kernel/memlayout.h
 declares the constants for xv6's memory layout,
 and macros to convert virtual to physical addresses.
 .PP
@@ -206,20 +206,20 @@ process.
 .code-index main
 calls
 .code-index kvmalloc
-.line vm.c:/^kvmalloc/
+.line kernel/vm.c:/^kvmalloc/
 to create and switch to a page table with the mappings above
 .code KERNBASE
 required for the kernel to run.
 Most of the work happens in
 .code-index setupkvm
-.line vm.c:/^setupkvm/ .
+.line kernel/vm.c:/^setupkvm/ .
 It first allocates a page of memory to hold the page directory.
 Then it calls
 .code-index mappages
 to install the translations that the kernel needs,
 which are described in the
 .code-index kmap
-.line vm.c:/^}.kmap/
+.line kernel/vm.c:/^}.kmap/
 array.
 The translations include the kernel's
 instructions and data, physical memory up to
@@ -230,7 +230,7 @@ does not install any mappings for the user memory;
 this will happen later.
 .PP
 .code-index mappages
-.line vm.c:/^mappages/
+.line kernel/vm.c:/^mappages/
 installs mappings into a page table
 for a range of virtual addresses to
 a corresponding range of physical addresses.
@@ -249,10 +249,10 @@ and/or
 and
 .code PTE_P
 to mark the PTE as valid
-.line vm.c:/perm...PTE_P/ .
+.line kernel/vm.c:/perm...PTE_P/ .
 .PP
 .code-index walkpgdir
-.line vm.c:/^walkpgdir/
+.line kernel/vm.c:/^walkpgdir/
 mimics the actions of the x86 paging hardware as it
 looks up the PTE for a virtual address (see
 .figref x86_pagetable ).
@@ -260,7 +260,7 @@ looks up the PTE for a virtual address (see
 traverses the 4-level page table down 9 bits at the time.
 It uses the level's 9 bits of the virtual address to find
 the page directory entry
-.line vm.c:/pde.=..pgdir/ .
+.line kernel/vm.c:/pde.=..pgdir/ .
 If the page directory entry isn't present, then
 the required page directory page hasn't yet been allocated;
 if the
@@ -270,7 +270,7 @@ argument is set,
 allocates it and puts its physical address in the page directory.
 Finally it uses level 0's 9 bits of the virtual address
 to find the address of the PTE in the page table page
-.line vm.c:/return..pgdir/ .
+.line kernel/vm.c:/return..pgdir/ .
 .\"
 .section "Physical memory allocation"
 .\"
@@ -308,7 +308,7 @@ of physical memory pages that are available
 for allocation.
 Each free page's list element is a
 .code-index "struct run"
-.line kalloc.c:/^struct.run/ .
+.line kernel/kalloc.c:/^struct.run/ .
 Where does the allocator get the memory
 to hold that data structure?
 It store each free page's
@@ -317,7 +317,7 @@ structure in the free page itself,
 since there's nothing else stored there.
 The free list is
 protected by a spin lock
-.line 'kalloc.c:/^struct.{/,/}/' .
+.line 'kernel/kalloc.c:/^struct.{/,/}/' .
 The list and the lock are wrapped in a struct
 to make clear that the lock protects the fields
 in the struct.
@@ -335,7 +335,7 @@ calls
 and
 .code-index kinit2
 to initialize the allocator
-.line kalloc.c:/^kinit1/ .
+.line kernel/kalloc.c:/^kinit1/ .
 The reason for having two calls is that for much of
 .code main
 one cannot use locks or
@@ -404,7 +404,7 @@ change the type of the memory.
 .PP
 The function
 .code kfree
-.line kalloc.c:/^kfree/
+.line kernel/kalloc.c:/^kfree/
 begins by setting every byte in the
 memory being freed to the value 1.
 This will cause code that uses memory after freeing it
@@ -467,7 +467,7 @@ grow beyond one page.
 is the system call for a process to shrink or grow its memory. The system
 call is implemented by the function
 .code growproc
-.line proc.c:/^growproc/ .
+.line kernel/proc.c:/^growproc/ .
 If
 .code n
 is postive,
@@ -512,23 +512,23 @@ is the system call that creates the user part of an address space.  It
 initializes the user part of an address space from a file stored in the file
 system.
 .code Exec
-.line exec.c:/^exec/
+.line kernel/exec.c:/^exec/
 opens the named binary
 .code path
 using
 .code-index namei
-.line exec.c:/namei/ ,
+.line kernel/exec.c:/namei/ ,
 which is explained in Chapter \*[CH:FS].
 Then, it reads the ELF header. Xv6 applications are described in the widely-used
 .italic-index "ELF format" ,
 defined in
-.file elf.h .
+.file kernel/elf.h .
 An ELF binary consists of an ELF header,
 .code-index "struct elfhdr"
-.line elf.h:/^struct.elfhdr/ ,
+.line kernel/elf.h:/^struct.elfhdr/ ,
 followed by a sequence of program section headers,
 .code "struct proghdr"
-.line elf.h:/^struct.proghdr/ .
+.line kernel/elf.h:/^struct.proghdr/ .
 Each
 .code proghdr
 describes a section of the application that must be loaded into memory;
@@ -545,7 +545,7 @@ An ELF binary starts with the four-byte ``magic number''
 .code 'F' ,
 or
 .code-index ELF_MAGIC
-.line elf.h:/ELF_MAGIC/ .
+.line kernel/elf.h:/ELF_MAGIC/ .
 If the ELF header has the right magic number,
 .code exec
 assumes that the binary is well-formed.
@@ -553,19 +553,19 @@ assumes that the binary is well-formed.
 .code Exec
 allocates a new page table with no user mappings with
 .code-index setupkvm
-.line exec.c:/setupkvm/ ,
+.line kernel/exec.c:/setupkvm/ ,
 allocates memory for each ELF segment with
 .code-index allocuvm
-.line exec.c:/allocuvm/ ,
+.line kernel/exec.c:/allocuvm/ ,
 and loads each segment into memory with
 .code-index loaduvm
-.line exec.c:/loaduvm/ .
+.line kernel/exec.c:/loaduvm/ .
 .code allocuvm
 checks that the virtual addresses requested
 is below
 .address KERNBASE .
 .code-index loaduvm
-.line vm.c:/^loaduvm/
+.line kernel/vm.c:/^loaduvm/
 uses
 .code-index walkpgdir
 to find the physical address of the allocated memory at which to write
@@ -637,7 +637,7 @@ to deal with arguments that are too large;
 in that situation,
 the
 .code-index copyout
-.line vm.c:/^copyout/
+.line kernel/vm.c:/^copyout/
 function that
 .code exec
 uses to copy arguments to the stack will notice that
@@ -663,9 +663,9 @@ happen during the creation of the image.
 Once the image is complete,
 .code exec
 can install the new image
-.line exec.c:/switchuvm/
+.line kernel/exec.c:/switchuvm/
 and free the old one
-.line exec.c:/freevm/ .
+.line kernel/exec.c:/freevm/ .
 Finally,
 .code exec
 returns 0.

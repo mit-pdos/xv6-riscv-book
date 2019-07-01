@@ -98,7 +98,7 @@ shells to choose from, each with its own user interface
 and scripting features.
 The xv6 shell is a simple implementation of the essence of
 the Unix Bourne shell.  Its implementation can be found at line
-.line sh.c:1 .
+.line user/sh.c:1 .
 .\"
 .\"	Processes and memory
 .\"
@@ -226,7 +226,7 @@ conventionally the name of the program.
 The xv6 shell uses the above calls to run programs on behalf of
 users. The main structure of the shell is simple; see
 .code main 
-.line sh.c:/main/ .
+.line user/sh.c:/main/ .
 The main loop reads a line of input from the user with
 .code-index getcmd .
 Then it calls 
@@ -243,12 +243,12 @@ would have been called with
 .code "echo hello" '' ``
 as the argument.
 .code runcmd 
-.line sh.c:/runcmd/
+.line user/sh.c:/runcmd/
 runs the actual command. For
 .code "echo hello" '', ``
 it would call
 .code exec 
-.line sh.c:/exec.ecmd/ .
+.line user/sh.c:/exec.ecmd/ .
 If
 .code exec
 succeeds then the child will execute instructions from
@@ -263,7 +263,7 @@ which will cause the parent to return from
 .code wait
 in 
 .code main
-.line sh.c:/main/ .
+.line user/sh.c:/main/ .
 You might wonder why
 .code-index fork
 and
@@ -320,7 +320,7 @@ writes error messages to file descriptor 2 (standard error).
 As we will see, the shell exploits the convention to implement I/O redirection
 and pipelines. The shell ensures that it always has three file descriptors
 open
-.line sh.c:/open..console/ ,
+.line user/sh.c:/open..console/ ,
 which are by default file descriptors for the console.
 .PP
 The
@@ -463,7 +463,7 @@ then executes with file descriptor 0 (standard input) referring to
 .code input.txt .
 .PP
 The code for I/O redirection in the xv6 shell works in exactly this way
-.line sh.c:/case.REDIR/ .
+.line user/sh.c:/case.REDIR/ .
 Recall that at this point in the code the shell has already forked the
 child shell and that 
 .code runcmd 
@@ -659,7 +659,7 @@ would never see end-of-file.
 The xv6 shell implements pipelines such as
 .code "grep fork sh.c | wc -l"
 in a manner similar to the above code
-.line sh.c:/case.PIPE/ .
+.line user/sh.c:/case.PIPE/ .
 The child process creates a pipe to connect the left end of the pipeline
 with the right end. Then it calls
 .code fork
@@ -880,7 +880,7 @@ the shell (and built the shell into the kernel).
 One exception is
 .code cd ,
 which is built into the shell
-.line sh.c:/if.buf.0..==..c./ .
+.line user/sh.c:/if.buf.0..==..c./ .
 .code cd
 must change the current working directory of the
 shell itself.  If

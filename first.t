@@ -293,7 +293,7 @@ which is the start of the last terabyte of a 64-bit address space.
 The xv6 kernel maintains many pieces of state for each process,
 which it gathers into a
 .code-index "struct proc"
-.line proc.h:/^struct.proc/ .
+.line kernel/proc.h:/^struct.proc/ .
 A process's most important pieces of kernel state are its 
 page table, its kernel stack, and its run state.
 We'll use the notation
@@ -361,7 +361,7 @@ When a PC powers on, it initializes itself and then loads a
 from disk into memory and executes it. A widely-used boot loader
 is GRUB and it loads the xv6 kernel from disk and executes it starting at
 .code-index start
-.line entry.S:/^start/ .
+.line kernel/entry.S:/^start/ .
 Xv6 starts with the x86 processor running in 32-bit mode (i.e., with 32-bit wide
 addresses) and the x86 paging hardware is not enabled when the kernel starts;
 virtual addresses map directly to physical addresses.
@@ -385,12 +385,12 @@ contains I/O devices.
 To allow the rest of the kernel to run,
 entry calls a procedure
 .code initpagetables
-.line 'entry.S:/^initpagetables/' 
+.line 'kernel/entry.S:/^initpagetables/' 
 to set up a page table that maps virtual addresses starting at
 .address 0xFFFFFF0000000000
 (called
 .code-index KERNBASE 
-.line memlayout.h:/define.KERNBASE/ )
+.line kernel/memlayout.h:/define.KERNBASE/ )
 to physical addresses starting at
 .address 0x0
 (see
@@ -400,10 +400,10 @@ range is a common use of page tables, and we will see more examples like this
 one.
 .PP
 The entry page table is defined starting at line
-.line 'entry.S:/^pml4/' .
+.line 'kernel/entry.S:/^pml4/' .
 We look at the details of page tables in Chapter  \*[CH:MEM],
 but the short story is
-.line entry.S:/initpagetables/ )
+.line kernel/entry.S:/initpagetables/ )
 sets up entry 0 to map virtual addresses
 .code 0:0x40000000 
 to physical addresses
@@ -427,7 +427,7 @@ This mapping restricts the kernel instructions and data to 1 Gbytes.
 .PP
 The function
 .code init32e
-.line entry.S:/init32e/
+.line kernel/entry.S:/init32e/
 loads the physical address of
 .code-index pml4
 into control register
@@ -447,7 +447,7 @@ The symbol
 refers to an address in high memory,
 and the macro
 .code-index V2P_WO
-.line 'memlayout.h:/V2P_WO/' 
+.line 'kernel/memlayout.h:/V2P_WO/' 
 subtracts
 .code KERNBASE
 in order to find the physical address.
@@ -466,7 +466,7 @@ If xv6 had omitted entry 0 from
 the computer would have crashed when trying to execute
 the instruction after the one that enabled paging.
 Using a trampoline
-.line 'entry.S:/^tramp64/' ,
+.line 'kernel/entry.S:/^tramp64/' ,
 xv6 changes from running at low addresses to running at high addresses.
 It jumps to
 .code tramp64
@@ -492,7 +492,7 @@ do so, xv6 must setup a stack because C calling conventions require a stack.
 entry
 has reserved memory for a stack with the symbol
 .code stack
-.line 'entry.S:/stack/' .
+.line 'kernel/entry.S:/stack/' .
 Since all symbols have high addresses,
 .code stack
 will still be valid even when the
@@ -507,7 +507,7 @@ and
 before page tables were setup.
 To correct this,
 .code start64
-.line entry.S:/^start64/
+.line kernel/entry.S:/^start64/
 loads the virtual address of stack
 into
 .code %rsp .
@@ -517,7 +517,7 @@ Then, it calls the C function
 cannot return, since the there's no return PC on the stack.
 Now the kernel is running in high addresses in the function
 .code-index main 
-.line main.c:/^main/ .
+.line kernel/main.c:/^main/ .
 .\"
 .section "Code: creating the first process"
 .\"
@@ -527,17 +527,17 @@ creates user-level processes and ensures that they are strongly isolated.
 .PP
 After
 .code main
-.line main.c:/^main/  
+.line kernel/main.c:/^main/  
 initializes several devices and subsystems, 
 it creates the first process by calling 
 .code userinit
-.line proc.c:/^userinit/  .
+.line kernel/proc.c:/^userinit/  .
 .code Userinit 's
 first action is to call
 .code-index allocproc .
 The job of
 .code allocproc
-.line proc.c:/^allocproc/
+.line kernel/proc.c:/^allocproc/
 is to allocate a slot
 (a
 .code struct
@@ -554,7 +554,7 @@ scans the
 .code proc
 table for a slot with state
 .code UNUSED
-.lines proc.c:/for.p.=.ptable.proc/,/goto.found/ .
+.lines kernel/proc.c:/for.p.=.ptable.proc/,/goto.found/ .
 When it finds an unused slot, 
 .code allocproc
 sets the state to
@@ -562,7 +562,7 @@ sets the state to
 to mark it as used and
 gives the process a unique
 .code-index pid
-.lines proc.c:/EMBRYO/,/nextpid/ .
+.lines kernel/proc.c:/EMBRYO/,/nextpid/ .
 Next, it tries to allocate a kernel stack for the
 process's kernel thread.  If the memory allocation fails, 
 .code allocproc
@@ -591,7 +591,7 @@ values that will cause the new process's kernel thread to first execute in
 .code-index forkret
 and then in
 .code-index sysexit
-.lines proc.c:/uint64.sysexit/,/uint64.forkret/ .
+.lines kernel/proc.c:/uint64.sysexit/,/uint64.forkret/ .
 The kernel thread will start executing
 with register contents copied from
 .code-index p->context .
@@ -602,11 +602,11 @@ to
 will cause the kernel thread to execute at
 the start of 
 .code-index forkret 
-.line proc.c:/^forkret/ .
+.line kernel/proc.c:/^forkret/ .
 This function 
 will return to whatever address is at the bottom of the stack.
 The context switch code
-.line swtch.S:/^swtch/
+.line kernel/swtch.S:/^swtch/
 sets the stack pointer to point just beyond the end of
 .code p->context .
 .code allocproc
@@ -621,7 +621,7 @@ will return.
 restores user registers
 from values stored at the top of the kernel stack and jumps
 into the process
-.line trapasm.S:/^sysexit/ .
+.line kernel/trapasm.S:/^sysexit/ .
 This setup is the same for ordinary
 .code fork
 and for creating the first process, though in
@@ -638,19 +638,19 @@ process's kernel stack.
 writes values at the top of the new stack that
 look just like those that would be there if the
 process had entered the kernel via a system call
-.lines proc.c:/sf..r11.=./,/sf..rcx.=./ ,
+.lines kernel/proc.c:/sf..r11.=./,/sf..rcx.=./ ,
 so that the ordinary code for returning from
 the kernel back to the process's user code will work.
 These values are a
 .code-index "struct sysframe"
-.line x86.h:/^struct.sysframe/ ,
+.line kernel/x86.h:/^struct.sysframe/ ,
 which captures user registers that must be saved and restored.  Now the new process's
 kernel stack is completely prepared as shown in
 .figref newkernelstack .
 .PP
 The first process is going to execute a small program
 .code-index initcode.S ; (
-.line initcode.S:1 ).
+.line user/initcode.S:1 ).
 The process needs physical memory in which to store this
 program, the program needs to be copied to that memory,
 and the process needs a page table that maps user-space addresses to
@@ -659,7 +659,7 @@ that memory.
 .code-index userinit
 calls 
 .code-index setupkvm
-.line vm.c:/^setupkvm/
+.line kernel/vm.c:/^setupkvm/
 to create a page table for the process with (at first) mappings
 only for memory that the kernel uses.
 We will study  this function in detail in Chapter \*[CH:MEM], but
@@ -688,12 +688,12 @@ by calling
 which allocates one page of physical memory,
 maps virtual address zero to that memory,
 and copies the binary to that page
-.line vm.c:/^inituvm/ .
+.line kernel/vm.c:/^inituvm/ .
 .PP
 Then 
 .code userinit
 sets up the syscall frame
-.line x86.h:/^struct.sysframe/
+.line kernel/x86.h:/^struct.sysframe/
 with the initial user mode state:
 the
 .register r11's
@@ -743,9 +743,9 @@ calls
 calls
 .code-index scheduler
 to start running processes
-.line main.c:/scheduler/ .
+.line kernel/main.c:/scheduler/ .
 .code Scheduler
-.line proc.c:/^scheduler/
+.line kernel/proc.c:/^scheduler/
 looks for a process with
 .code p->state
 set to
@@ -758,7 +758,7 @@ to the process it found and calls
 .code-index switchuvm
 to tell the hardware to start using the target
 process's page table
-.line vm.c:/lcr3.*V2P.p..pgdir/ .
+.line kernel/vm.c:/lcr3.*V2P.p..pgdir/ .
 Changing page tables while executing in the kernel
 works because 
 .code-index setupkvm
@@ -779,7 +779,7 @@ to
 .code RUNNING
 and calls
 .code-index swtch
-.line swtch.S:/^swtch/ 
+.line kernel/swtch.S:/^swtch/ 
 to perform a context switch to the target process's kernel thread.
 .code swtch 
 first saves the current registers.
@@ -803,7 +803,7 @@ in more detail in Chapter \*[CH:SCHED].
 The final
 .code-index ret
 instruction 
-.line swtch.S:/ret$/
+.line kernel/swtch.S:/ret$/
 pops the target process's
 .register rip
 from the stack, finishing the context switch.
@@ -822,7 +822,7 @@ starts executing
 .code-index forkret .
 On the first invocation (that is this one),
 .code-index forkret
-.line proc.c:/^forkret/
+.line kernel/proc.c:/^forkret/
 runs initialization functions that cannot be run from 
 .code-index main 
 because they must be run in the context of a regular process with its own
@@ -845,10 +845,10 @@ set to
 .code p->tf .
 .PP
 .code Sysexit
-.line trapasm.S:/^sysexit/ 
+.line kernel/trapasm.S:/^sysexit/ 
 uses pop instructions to restore registers from
 the syscall frame
-.line x86.h:/^struct.sysframe/
+.line kernel/x86.h:/^struct.sysframe/
 just as 
 .code-index swtch
 did with the kernel context:
@@ -917,11 +917,11 @@ and set a flag
 that tells the paging hardware to allow user code to access that memory.
 The fact that
 .code seginit
-.line vm.c:/^seginit/
+.line kernel/vm.c:/^seginit/
 sets the low bits of
 .register cs
 to run the process's user code at privilege level 3 (which is user mode)
-.line vm.c:/SEG_UCODE/ ,
+.line kernel/vm.c:/SEG_UCODE/ ,
 when
 .code sysretq
 runs, means that the user code
@@ -950,7 +950,7 @@ current process with a new program, but it leaves the
 file descriptors, process id, and parent process unchanged.
 .PP
 .code Initcode.S
-.line initcode.S:/^start/
+.line user/initcode.S:/^start/
 begins by pushing three values
 on the stack—\c
 .code $argv ,
@@ -975,7 +975,7 @@ named by
 which is a pointer to
 the NUL-terminated string
 .code "/init"
-.line initcode.S:/init.0/,/init.0/ .
+.line user/initcode.S:/init.0/,/init.0/ .
 The other argument is the
 .code argv
 array of command-line arguments; the zero at the
@@ -988,7 +988,7 @@ loops calling the
 .code-index exit
 system call, which definitely
 should not return
-.line initcode.S:/for.*exit/,/jmp.exit/ .
+.line user/initcode.S:/for.*exit/,/jmp.exit/ .
 .PP
 This code manually crafts the first system call to look like
 an ordinary system call, which we will see in Chapter \*[CH:TRAP].  As
@@ -1006,12 +1006,12 @@ with the
 binary, loaded out of the file system.
 Now 
 .code-index initcode
-.line initcode.S:1
+.line user/initcode.S:1
 is done, and the process will run
 .code-index /init
 instead.
 .code Init
-.line init.c:/^main/
+.line user/init.c:/^main/
 creates a new console device file
 if needed
 and then opens it as file descriptors 0, 1, and 2.
