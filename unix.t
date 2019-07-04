@@ -268,10 +268,15 @@ You might wonder why
 .code-index fork
 and
 .code-index exec
-are not combined in a single call; we
-will
-see later that separate calls for creating a process
-and loading a program is a clever design.
+are not combined in a single call; we will see later that separate
+calls for creating a process and loading a program has some clever
+usages in the shell for I/O redirection. To avoid the wastefulness of
+a combined call (i.e., creating a duplicate process and then
+immediately replacing it), many modern operating systems also support
+a call that creates an empty process and then loads the program into
+it (e.g.,
+.code clone
+in Linux).
 .PP
 Xv6 allocates most user-space memory
 implicitly:
@@ -802,7 +807,7 @@ defined in
 .code stat.h
 as:
 .P1
-.so ../xv6/stat.h
+.so ../xv6-riscv/kernel/stat.h
 .P2
 .PP
 A file's name is distinct from the file itself;
