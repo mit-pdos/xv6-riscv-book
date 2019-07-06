@@ -264,19 +264,18 @@ which will cause the parent to return from
 in 
 .code main
 .line user/sh.c:/main/ .
+.PP
 You might wonder why
 .code-index fork
 and
 .code-index exec
 are not combined in a single call; we will see later that separate
 calls for creating a process and loading a program has some clever
-usages in the shell for I/O redirection. To avoid the wastefulness of
-a combined call (i.e., creating a duplicate process and then
-immediately replacing it), many modern operating systems also support
-a call that creates an empty process and then loads the program into
-it (e.g.,
-.code clone
-in Linux).
+usages in the shell for I/O redirection.  To avoid the wastefulness of
+creating a duplicate process and then immediately replacing it,
+operating kernels optimize the implementation of
+.code fork
+for this use case by using virtual-memory techniques such as copy-on-write.
 .PP
 Xv6 allocates most user-space memory
 implicitly:

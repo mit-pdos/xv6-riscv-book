@@ -1030,8 +1030,18 @@ although some OS functions run as user-level servers (e.g., the windowing
 system).  Kernels such as L4, Minix, QNX are organized as a microkernel with
 servers, and have seen wide deployment in embedded settings.
 .PP
-Most operating systems have adopted the process
-concept, and most processes look similar to xv6's.
+Most operating systems have adopted the process concept, and most
+processes look similar to xv6's.  Modern operating systems, however,
+support several threads within a process, to allow a single process to
+exploit multicore processors.  Supporting multiple threads in a
+process involves quite a bit of machinery that xv6 doesn't have,
+including potential interface changes (e.g., Linux's
+.code clone ,
+a variant of
+.code fork ),
+to control which parts of
+a process threads share.
+.PP
 A real operating system would find free
 .code proc
 structures with an explicit free list
@@ -1039,7 +1049,6 @@ in constant time instead of the linear-time search in
 .code allocproc ;
 xv6 uses the linear scan
 (the first of many) for simplicity.
-.PP
 .\"
 .section "Exercises"
 .\"
