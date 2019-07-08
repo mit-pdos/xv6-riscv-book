@@ -1662,6 +1662,13 @@ until the condition it is waiting for occurs. This may be quite a bit later
 (e.g., when the IDE driver returns a disk block that the victim is waiting for) or never
 (e.g., if the victim is waiting from input from the console, but the user
 doesn't type any input).
+.PP
+A real operating system would find free
+.code proc
+structures with an explicit free list
+in constant time instead of the linear-time search in
+.code allocproc ;
+xv6 uses the linear scan for simplicity.
 .\"
 .section "Exercises"
 .\"
