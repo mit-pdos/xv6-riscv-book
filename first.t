@@ -432,7 +432,7 @@ to supervisor mode.
 Before jumping into supervisor mode,
 .code mstart
 performs one more task: it programs the clock
-chip to generate interrupts and arrange
+chip to generate interrupts and arranges
 that on a clock interrupt the program
 counter will be set to
 .code machinevec
