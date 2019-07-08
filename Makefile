@@ -7,7 +7,6 @@ CONTENTS_INDEXED=\
 	sched\
 	fs\
 	sum\
-	apphw\
 
 CONTENTS=\
 	$(CONTENTS_INDEXED)\

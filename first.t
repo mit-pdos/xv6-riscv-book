@@ -52,13 +52,15 @@ avoids special-casing the first process, and instead reuses code that xv6 must
 provide for standard operation.  Subsequent chapters will explore each
 abstraction in more detail.
 .PP
-Xv6 runs on Intel x86-64 (``x86'') processors on a PC platform, and much
-of its low-level functionality (for example, its process implementation) is
-x86-specific.  The ``-64'' refers to the 64-bit version of the x86.
-Xv6 uses LP64 C, which means C long (L) and pointers (P) are 64 bits, but C int is 32-bit.
-This book assumes the reader has done a bit of machine-level
-programming on some architecture, and will introduce x86-specific ideas as they
-come up. Appendix \*[APP:HW] briefly outlines the PC platform.
+Xv6 runs on a RISC-V development board, and much of its low-level
+functionality (for example, its process implementation) is specific to
+RISC-V.  RISC-V is a 64-bit processor, and Xv6 is written in "LP64" C,
+which means long (L) and pointers (P) in the C programming language
+are 64 bits, but int is 32-bit.  This book assumes the reader has done
+a bit of machine-level programming on some architecture, and will
+introduce RISC-V-specific ideas as they come up.  A useful reference
+for RISC-V is "The RISC-V Reader: An Open Architecture Atlas" by David
+Patterson and Andrew Waterman.
 .\"
 .section "Abstracting physical resources"
 .\"
@@ -115,7 +117,7 @@ also provides
 users with the convenience of a file system to store executable program images.  
 .PP 
 Many forms of interaction among Unix processes occur via file descriptors.
-Not only do file descriptors abstract away many details (e.g. 
+Not only do file descriptors abstract away many details (e.g.,
 where data in a pipe or file is stored), they also are defined in a
 way that simplifies interaction.
 For example, if one application in a pipeline fails, the kernel
@@ -141,15 +143,24 @@ read) the operating system's data structures and instructions and that
 applications cannot access other process's memory.
 .PP
 Processors provide hardware support for strong isolation.   For
-example, the x86 processor, like many other processors, has two modes in which
-the processor can execute instructions: 
-.italic-index "kernel mode"
-and
+example, a RISC-V processor, has three modes in which
+the processor can execute instructions:
+.italic-index "machine mode" ,
+.italic-index "kernel mode" 
+(called
+.italic-index "supervisor mode"
+in RISC-V terminology), and
 .italic-index "user mode" .
+Instructions executing in machine mode have full privilege and a
+processor starts in machine mode.  Machine mode is mostly intended for
+configuring a computer.  Xv6 executes a few lines of machine mode and
+then jumps into kernel mode.
+.PP
 In kernel mode the processor is allowed to execute 
 .italic-index "privileged instructions" .
-For example, reading and writing the disk (or any other I/O device) involves
-privileged instructions.  If an application in user mode attempts to execute
+For example, enabling and disabling interrupts,  reading and writing
+the register that holds the address of a page table, etc.
+If an application in user mode attempts to execute
 a privileged instruction, then the processor doesn't execute the instruction, but switches
 to kernel mode so that the software in kernel mode can clean up the application,
 because it did something it shouldn't be doing. 
@@ -165,13 +176,14 @@ The software running in kernel space (or in kernel mode) is called
 the
 . italic-index "kernel"  .
 .PP
-An application that wants to read or write a file on disk must transition to the
-kernel to do so, because the application itself can not execute I/O
-instructions.  Processors provide a special instruction that switches the
+An application that wants to invoke a kernel function (e.g., the
+.code read
+system call in xv6) must to
+transition to the kernel.  Processors provide a special instruction that switches the
 processor from user mode to kernel mode and enters the kernel at an entry point
-specified by the kernel.  (The x86
+specified by the kernel.  (The RISC-V
 processor provides the 
-.code syscall
+.code ecall
 instruction for this purpose.)  Once the processor has switched to kernel mode,
 the kernel can then validate the arguments of the system call, decide whether
 the application is allowed to perform the requested operation, and then deny it
@@ -260,10 +272,10 @@ A process also provides the program with what appears to be its own
 CPU to execute the program's instructions.
 .PP
 Xv6 uses page tables (which are implemented by hardware) to give each process
-its own address space. The x86 page table
+its own address space. The RISC-V page table
 translates (or ``maps'') a
 .italic-index "virtual address"
-(the address that an x86 instruction manipulates) to a
+(the address that an RISC-V instruction manipulates) to a
 .italic-index "physical address"
 (an address that the processor chip sends to main memory).
 .figure as
@@ -277,18 +289,11 @@ starting at virtual address zero. Instructions come first,
 followed by global variables, then the stack,
 and finally a ``heap'' area (for malloc)
 that the process can expand as needed.
-.PP
-Each process's address space maps the kernel's instructions
-and data as well as the user program's memory.
-When a process invokes a system call, the system call
-executes in the kernel mappings of the process's address space.
-This arrangement exists so that the kernel's system call
-code can directly refer to user memory.
-In order to leave plenty of room for user memory,
-xv6's address spaces map the kernel at high addresses,
-starting at
-.address 0xFFFFFF0000100000 ,
-which is the start of the last terabyte of a 64-bit address space.
+Xv6 runs on a RISC-V processor with 39 bits of virtual addresses,
+so the maximum address is 2^39-1 = 0x3fffffffff.
+At the top of the address space xv6 reserves some
+.italic-index "trampoline"
+memory to switch to the kernel, as we will explain later.
 .PP
 The xv6 kernel maintains many pieces of state for each process,
 which it gathers into a
@@ -347,176 +352,107 @@ when executing that process.
 A process's page table also serves as the record of the
 addresses of the physical pages allocated to store the process's memory.
 .\"
-.section "Code: the first address space"
+.section "Code: entering kernel mode"
 .\"
-To make the xv6 organization more concrete, we'll look how the kernel creates the
-first address space (for itself), how the kernel creates and starts the first
-process, and how that process performs the first system call.  By tracing these
-operations we see in detail how xv6 provides strong isolation for processes.
-The first step in providing strong isolation is setting up the kernel to run in
-its own address space.
+To make the xv6 organization more concrete, we'll look how the kernel
+starts, how the kernel creates and starts the first process, and how
+that process performs the first system call.  By tracing these
+operations we see in detail how xv6 provides strong isolation for
+processes.  The first step in providing strong isolation is entering
+the kernel.
 .PP
-When a PC powers on, it initializes itself and then loads a
-.italic-index "boot loader"
-from disk into memory and executes it. A widely-used boot loader
-is GRUB and it loads the xv6 kernel from disk and executes it starting at
+When a RISC-V development board powers on, it initializes itself and
+runs a program boot loader which is stored in read-only memory.
+The boot loader loads the xv6 kernel into memory.  Then, in machine
+mode, the processor executes xv6 starting at
 .code-index start
-.line kernel/entry.S:/^start/ .
-Xv6 starts with the x86 processor running in 32-bit mode (i.e., with 32-bit wide
-addresses) and the x86 paging hardware is not enabled when the kernel starts;
+.line kernel/entry.S:/^_entry/ .
+Xv6 starts with the RISC-V paging hardware disabled:
 virtual addresses map directly to physical addresses.
 .PP
-The boot loader loads the xv6 kernel into memory at physical address
-.address 0x100000 .
-The reason it doesn't load the kernel at
-.address 0xFFFFFF0000100000 ,
-where the kernel expects to find its instructions and data,
-is that there may not be any physical memory at such
-a high address on a small machine.
+The loader loads the xv6 kernel into memory at physical address
+.address 0x80000000 .
 The reason it places the kernel at
-.address 0x100000
+.address 0x80000000
 rather than
 .address 0x0
 is because the address range
-.address 0xa0000:0x100000
+.address 0x0:0x80000000
 contains I/O devices.
-.figure astmp
 .PP
-To allow the rest of the kernel to run,
-entry calls a procedure
-.code initpagetables
-.line 'kernel/entry.S:/^initpagetables/' 
-to set up a page table that maps virtual addresses starting at
-.address 0xFFFFFF0000000000
-(called
-.code-index KERNBASE 
-.line kernel/memlayout.h:/define.KERNBASE/ )
-to physical addresses starting at
-.address 0x0
-(see
-.figref astmp ).
-Setting up two ranges of virtual addresses that map to the same physical memory
-range is a common use of page tables, and we will see more examples like this
-one.
+The instructions at
+.code _entry
+set up a stack so that xv6 can run C code.
+xv6 declares space for an initial stack,
+.code stack0 ,
+in the file
+.code start.c
+.line kernel/start.c:/stack0/ .
+The code at
+.code _entry
+loads the stack pointer register
+.register sp
+with the address
+.code stack0
++ 4096, the top of the stack, because the stack
+on RISC-V grows down.
+Now we have a stack,
+.code _entry
+calls into C code at
+.code mstart
+.line kernel/start.c:/^mstart/ .
 .PP
-The entry page table is defined starting at line
-.line 'kernel/entry.S:/^pml4/' .
-We look at the details of page tables in Chapter  \*[CH:MEM],
-but the short story is
-.line kernel/entry.S:/initpagetables/ )
-sets up entry 0 to map virtual addresses
-.code 0:0x40000000 
-to physical addresses
-.code 0:0x40000000 .
-This mapping is required as long as
-.code-index entry
-is executing at low addresses, but
-will eventually be removed.
-.PP
-Entry 511
-maps virtual addresses
-.code KERNBASE:KERNBASE+0x40000000 
-to physical addresses
-.address 0:0x40000000 .
-This entry will be used by the kernel after
-.code entry
-has finished; it maps the high virtual addresses at which
-the kernel expects to find its instructions and data
-to the low physical addresses where the boot loader loaded them.
-This mapping restricts the kernel instructions and data to 1 Gbytes.
 .PP
 The function
-.code init32e
-.line kernel/entry.S:/init32e/
-loads the physical address of
-.code-index pml4
-into control register
-.register cr3.
-The value in
-.register cr3
-must be a physical address.
-It wouldn't make sense for
-.register cr3
-to hold the virtual address of
-.code entrypgdir ,
-because the paging hardware 
-doesn't know how to translate virtual addresses yet; it
-doesn't have a page table yet.
-The symbol
-.code pml4
-refers to an address in high memory,
-and the macro
-.code-index V2P_WO
-.line 'kernel/memlayout.h:/V2P_WO/' 
-subtracts
-.code KERNBASE
-in order to find the physical address.
-To enable the paging hardware, xv6 sets the flag
-.code-index CR0_PG
-in the control register
-.register cr0.
+.code mstart
+prepares for running in kernel mode.
+To enter kernel mode, the RISC-V processor
+provides the instruction
+.code mret .
+This instruction assumes that the processor
+entered machine mode from supervisor mode.
+.code mstart
+sets up the processor to pretend
+that machine mode was entered
+from supervisor mode:
+it sets the previous privilege mode to
+supervisor in the register
+.register mstatus ,
+it sets the return address to
+.code main
+by writing
+.code main 's
+address into
+the register
+.register mepc ,
+disables virtual memory in supervisor mode
+by writing
+.code 0
+into the page-table register
+.register satp ,
+and delegates all interrupts and exceptions
+to supervisor mode.
 .PP
-The processor is still executing instructions at
-low addresses after paging is enabled, which works
-since
-.code pml4
-maps low addresses.
-If xv6 had omitted entry 0 from
-.code pml4 ,
-the computer would have crashed when trying to execute
-the instruction after the one that enabled paging.
-Using a trampoline
-.line 'kernel/entry.S:/^tramp64/' ,
-xv6 changes from running at low addresses to running at high addresses.
-It jumps to
-.code tramp64
-using
-.code ljmp ,
-to switch the processor from 32-bit mode to 64-bit mode (i.e., 64-bit wide
-addresses).
-.code tramp64
-then uses an indirect jump
-to jump to
-.code start64 .
-All symbols have high addresses, including
-.code start64 .
-The indirect jump is needed because the assembler would
-otherwise generate a PC-relative direct jump, which would execute
-the low-memory version of 
-.code-index start64 .
-.PP
-.code Start64
-transfers to the kernel's C code.  To
-do so, xv6 must setup a stack because C calling conventions require a stack.
-.code
-entry
-has reserved memory for a stack with the symbol
-.code stack
-.line 'kernel/entry.S:/stack/' .
-Since all symbols have high addresses,
-.code stack
-will still be valid even when the
-low mappings are removed.  But, the current
-value in
-.code %rsp
-is a low address,
-because xv6 was using the stack to call the functions
-.code initpagetables
-and
-.code init32e ,
-before page tables were setup.
-To correct this,
-.code start64
-.line kernel/entry.S:/^start64/
-loads the virtual address of stack
-into
-.code %rsp .
-Then, it calls the C function
-.code-index main .
-.code Main
-cannot return, since the there's no return PC on the stack.
-Now the kernel is running in high addresses in the function
-.code-index main 
+Before jumping into supervisor mode,
+.code mstart
+performs one more task: it programs the clock
+chip to generate interrupts and arrange
+that on a clock interrupt the program
+counter will be set to
+.code machinevec
+.line kernel/kernelvec.S:/^machinevec/
+by setting the register
+.register mtvec
+to the address of
+.code machinevec .
+With this bookkeeping out of the way,
+.code mstart
+"returns" to supervisor
+mode by calling
+.code mret .
+This causes the program counter to change
+to
+.code main
 .line kernel/main.c:/^main/ .
 .\"
 .section "Code: creating the first process"
