@@ -10,87 +10,89 @@ talk a little about initial page table conditions:
 ..
 .chapter CH:MEM "Page tables"
 .PP
-Page tables are the mechanism through which the operating system controls what
-memory addresses mean.  They allow xv6 to multiplex the address spaces of
-different processes onto a single physical memory, and to protect the memories
-of different processes.  The level of indirection provided by page tables allows
-many neat tricks.  xv6 uses page
-tables primarily to
-multiplex address spaces and to protect memory.  It also uses a few
-simple page-table tricks: mapping the same memory (the kernel) in several address spaces,
-mapping the same memory more than once in one address space
-(each user page is also mapped into the kernel's physical view of memory),
-and guarding a user stack with
-an unmapped page.  The rest of this chapter explains the page tables that the x86
-hardware provides and how xv6 uses them.  Compared to a real-world operating
-system, xv6's design is restrictive, but it does illustrate the key ideas.
+Page tables are the mechanism through which the operating system
+provides each process with its own private memory.  Page tables
+determinate what memory addresses mean.  They allow xv6 to multiplex
+the address spaces of different processes onto a single physical
+memory, and to protect the memories of different processes.  The level
+of indirection provided by page tables also allows many neat tricks.
+.PP
+xv6 uses page tables primarily to multiplex address spaces and to
+protect memory.  It also uses a few simple page-table tricks: mapping
+the same memory (a trampoline page) in several address spaces, and
+guarding a user stack with an unmapped page.  The rest of this chapter
+explains the page tables that the RISC-V hardware provides and how xv6
+uses them.  Compared to a real-world operating system, xv6's design is
+restrictive, but it does illustrate the key ideas.
 .\"
 .section "Paging hardware"
 .\"
 As a reminder,
-x86 instructions (both user and kernel) manipulate virtual addresses.
+RISC-V instructions (both user and kernel) manipulate virtual addresses.
 The machine's RAM, or physical memory, is indexed with physical
 addresses.
-The x86 page table hardware connects these two kinds of addresses,
+The RISC-V page table hardware connects these two kinds of addresses,
 by mapping each virtual address to a physical address.
 .PP
-An x86 page table is logically an array of 2^52
-(4,503,599,627,370,495)
+xv6 runs on Sv39 RISC-V processor with has 39-bit virtual addresses;
+the top of 25 bits of a 64-bit virtual address are unused.  In this
+configuration, a RISC-V page table is logically an array of 2^27
+(134,217,728)
 .italic-index "page table entries (PTEs)".
 Each PTE contains a
-52-bit physical page number (PPN) and some flags. The paging
-hardware translates a virtual address by using its top 52 bits
-to index into the page table to find a PTE, and replacing
-the address's top 52 bits with the PPN in the PTE.  The paging hardware
+44-bit physical page number (PPN) and some flags. The paging
+hardware translates a virtual address by using the top 27 bits
+of the 39 bits to index into the page table to find a PTE, and
+making a 56-bit physical address by setting
+the address's top 44 bits with the PPN in the PTE.  The paging hardware
 copies the low 12 bits unchanged from the virtual to the
 translated physical address.  Thus a page table gives
 the operating system control over virtual-to-physical address translations
 at the granularity of aligned chunks of 4096 (2^12) bytes.
 Such a chunk is called a
 .italic-index page .
-.figure x86_pagetable
+.figure riscv_pagetable
 .PP
 As shown in
-.figref x86_pagetable ,
-the actual translation happens in four steps.
-A page table is stored in physical memory as a four-level tree.
-The root of the tree is a 4096-byte
-.italic-index "page directory"
-that contains 512 PTE-like references to page directories at level 1.  The
-paging hardware uses the L3 9 bits of a virtual address to select a page
-directory entry at the top level (level 3), then the L2 9 bits to select a
-page directory entry at level 2, and so on.
-At level 0, each page is an
-.italic-index "page table page" ,
-an array of 512 64-bit PTEs.  If any of the page directory entries or the PTE is
-not present, the paging hardware raises a fault.  This four-level structure
-allows a page table to omit entire page table pages in the common case in which
-large ranges of virtual addresses have no mappings.
+.figref riscv_pagetable ,
+the actual translation happens in three steps.  A page table is stored
+in physical memory as a three-level tree.  The root of the tree is a
+4096-byte page that contains 512 PTEs, which contains the physical
+addresses for pages for the next level in the tree.  Each one of those
+pages contains 512 PTEs for the final level in the tree.  The paging
+hardware uses the top 9 bits of the 27 bits to select a PTE in the
+root page, the middle 9 bits to select a PTE in next level of the
+tree, and the bottom 9 bits to select the final PTE.
 .PP
-The top 14 EXT bits of virtual address are not used for translation; in the
-future, x86-64 can use those bits to define more levels of translation.
-Similarly, the physical page number also has a number of EXT bits reserved for
-future growth.  Now it is common that physical page numbers are 28-bits wide
-(i.e., 24 unused bits), limiting physical memory to 2^40 (28+12) bytes (i.e., 1
-terabyte of physical memory).
+If any of the PTE is not present, the paging hardware raises a fault.
+This three-level structure allows a page table to omit entire page
+table pages in the common case in which large ranges of virtual
+addresses have no mappings.
+.PP
+In Sv39 RISC-V processors, the top 25 bits of virtual address are not
+used for translation; in the future, RISC-V can use those bits to
+define more levels of translation.  Similarly, the physical address
+has room for growth; in Sv39 it is 56 bits, but could grow to 64 bits.
 .PP
 Each PTE contains flag bits that tell the paging hardware
 how the associated virtual address is allowed to be used.
-.code-index PTE_P
+.code-index PTE_V
 indicates whether the PTE is present: if it is
 not set, a reference to the page causes a fault (i.e. is not allowed).
+.code-index PTE_R
+controls whether instructions are allowed to issue
+reads to the page.
 .code-index PTE_W
 controls whether instructions are allowed to issue
-writes to the page; if not set, only reads and
-instruction fetches are allowed.
-.code-index PTE_U
-controls whether user programs are allowed to use the
-page; if clear, only the kernel is allowed to use the page.
-.figref x86_pagetable
+writes to the page.
+.code-index PTE_X
+controls whether the processor may interpret the content
+of the page as instruction and execute them.
+.figref riscv_pagetable
 shows how it all works.
 The flags and all other page hardware related structures are defined in
-.file "kernel/mmu.h"
-.sheet kernel/mmu.h .
+.file "kernel/riscv.h"
+.sheet kernel/riscv.h .
 .PP
 A few notes about terms.
 Physical memory refers to storage cells in DRAM.
@@ -253,9 +255,9 @@ to mark the PTE as valid
 .PP
 .code-index walkpgdir
 .line kernel/vm.c:/^walkpgdir/
-mimics the actions of the x86 paging hardware as it
+mimics the actions of the RISC-V paging hardware as it
 looks up the PTE for a virtual address (see
-.figref x86_pagetable ).
+.figref riscv_pagetable ).
 .code walkpgdir
 traverses the 4-level page table down 9 bits at the time.
 It uses the level's 9 bits of the virtual address to find
@@ -348,7 +350,7 @@ enables locking and arranges for more memory to be allocatable.
 .code main
 ought to determine how much physical
 memory is available, but this
-turns out to be difficult on the x86.
+turns out to be difficult on the RISC-V.
 Instead it assumes that the machine has
 224 megabytes
 .code PHYSTOP ) (
@@ -488,7 +490,7 @@ statements, which is what
 and
 .code deallocuvm
 do.
-The x86 hardware caches page table entries in a
+The RISC-V hardware caches page table entries in a
 .italic-index "Translation Look-aside Buffer (TLB)" ,
 and when xv6 changes the page tables, it must invalidate the cached entries.  If
 it didn't invalidate the cached entries, then at some point later the TLB might
@@ -866,7 +868,10 @@ use of paging than xv6; for example, xv6 lacks demand
 paging from disk, copy-on-write fork, shared memory,
 lazily-allocated pages,
 and automatically extending stacks.
+.PP
 XXXX
+The RISC-V support physical memory protection, but xv6 doesn't use it.
+
 The x86 supports address translation using segmentation (see Appendix \*[APP:BOOT]),
 but xv6 uses segments only for the common trick of
 implementing per-cpu variables such as
