@@ -145,15 +145,13 @@ The kernel uses an identity mapping for most virtual addresses.  For,
 example, the kernel itself is located at
 .code KERNBASE
 in the virtual address space and in physical memory.  Same for all
-devices.  The one exception is the trampoline page, which is mapped at
-the top of virtual address space; user page tables have this same
-mapping.  The physical memory holding the trampoline page is part of
-the kernel and is located in physical memory between
-.address KERNBASE
-and
-.address PHYSTOP .
-In chapter \*[CH:TRAP], we will discuss the role of the trampoline
-page.
+devices.  The one exception is the page holding trampoline code, which
+is mapped at the top of virtual address space; user page tables have
+this same mapping.  In chapter \*[CH:TRAP], we will discuss the role
+of the trampoline page, but we see here an interesting use case of
+page tables; a physical page (holding the trampoline code) is
+mapped twice in the virtual address space of the kernel: once at top
+of the virtual address space and once in the kernel text.
 .PP
 The kernel maps the pages for the trampoline and the kernel text with
 the permissions
@@ -181,9 +179,10 @@ zero and can grow up to
 allowing a process to address in principle 256 Gigabyte of memory.
 .PP
 When a process asks xv6 for more memory,
-xv6 first finds free physical pages in the area above
-.address PHYSTOP
-in physical memory.
+xv6 first finds free physical pages in the area
+labeled "Free memory", the area above the end of the data segment
+of the kernel and below
+.address PHYSTOP .
 It then adds PTEs to the process's page table that point
 to the new physical pages.
 xv6 sets the
@@ -199,40 +198,32 @@ xv6 leaves
 .code PTE_V
 clear in unused PTEs.
 .PP
-Different processes' page tables translate user addresses to different
+We see here a few nice examples of use of page tables.  First,
+different processes' page tables translate user addresses to different
 pages of physical memory, so that each process has private user
-memory.  Each process sees its memory as having contiguous virtual
-addresses starting at zero, while the process's physical memory can be
-non-contiguous.
+memory.  Second, each process sees its memory as having contiguous
+virtual addresses starting at zero, while the process's physical
+memory can be non-contiguous.  Third, the kernel maps the page with
+trampoline code also at the top of address space of user processes,
+thus a single page of physical memory shows up in all address spaces.
 .\"
 .section "Code: creating an address space"
 .\"
 .PP
 .code-index main
 calls
-.code-index kvmalloc
-.line kernel/vm.c:/^kvmalloc/
-to create and switch to a page table with the mappings above
-.code KERNBASE
-required for the kernel to run.
-Most of the work happens in
-.code-index setupkvm
-.line kernel/vm.c:/^setupkvm/ .
-It first allocates a page of memory to hold the page directory.
+.code-index kvminit
+.line kernel/vm.c:/^kvminit/
+to create the kernel page table.
+.code Kvminit
+first allocates a page of memory to hold the page directory.
 Then it calls
 .code-index mappages
-to install the translations that the kernel needs,
-which are described in the
-.code-index kmap
-.line kernel/vm.c:/^}.kmap/
-array.
+to install the translations that the kernel needs.
 The translations include the kernel's
 instructions and data, physical memory up to
 .code-index PHYSTOP ,
-and memory ranges which are actually I/O devices.
-.code setupkvm
-does not install any mappings for the user memory;
-this will happen later.
+and memory ranges which are actually devices.
 .PP
 .code-index mappages
 .line kernel/vm.c:/^mappages/
@@ -244,38 +235,51 @@ at page intervals.
 For each virtual address to be mapped,
 .code mappages
 calls
-.code-index walkpgdir
+.code-index walk
 to find the address of the PTE for that address.
 It then initializes the PTE to hold the relevant physical page
-number, the desired permissions (
+number, the desired permissions (e.g.,
 .code PTE_W
+.code PTE_X ,
 and/or
-.code PTE_U ),
+.code PTE_R ),
 and
-.code PTE_P
+.code PTE_V
 to mark the PTE as valid
-.line kernel/vm.c:/perm...PTE_P/ .
+.line kernel/vm.c:/perm...PTE_V/ .
 .PP
-.code-index walkpgdir
-.line kernel/vm.c:/^walkpgdir/
+.code-index walk
+.line kernel/vm.c:/^walk/
 mimics the actions of the RISC-V paging hardware as it
 looks up the PTE for a virtual address (see
 .figref riscv_pagetable ).
-.code walkpgdir
-traverses the 4-level page table down 9 bits at the time.
+.code walk
+traverses the 3-level page table down 9 bits at the time.
 It uses the level's 9 bits of the virtual address to find
-the page directory entry
-.line kernel/vm.c:/pde.=..pgdir/ .
-If the page directory entry isn't present, then
-the required page directory page hasn't yet been allocated;
+the PTE
+.line kernel/vm.c:/pte.=..pagetable/ .
+If the PTE isn't valid, then
+the required page hasn't yet been allocated;
 if the
 .code alloc
 argument is set,
-.code walkpgdir
-allocates it and puts its physical address in the page directory.
-Finally it uses level 0's 9 bits of the virtual address
-to find the address of the PTE in the page table page
-.line kernel/vm.c:/return..pgdir/ .
+.code walk
+allocates it and puts its physical address in the PTE.
+It returns the PTE in lowest layer in the tree
+.line kernel/vm.c:/return..pagetable/ .
+.PP
+.code-index main
+calls
+.code-index kvminithart
+.line kernel/vm.c:/^kvminithart/
+to install the kernel page table.
+It writes the physical address of the root page
+into the register
+.register satp.
+After this the processor will translate addresses using the kernel
+page table.  Since the kernel uses an identity mapping, the now
+virtual address of the next instruction will map to the right physical
+memory address.
 .\"
 .section "Physical memory allocation"
 .\"
@@ -293,16 +297,6 @@ at a time. It keeps track of which pages are free by threading a
 linked list through the pages themselves. Allocation consists of
 removing a page from the linked list; freeing consists of adding the
 freed page to the list.
-.PP
-There is a bootstrap problem: all of physical memory must be mapped in
-order for the allocator to initialize the free list, but creating a
-page table with those mappings involves allocating page-table pages.
-xv6 solves this problem by using a separate page allocator during
-entry, which allocates memory just after the end of the kernel's data
-segment. This allocator does not support freeing and is limited by the
-4 MB mapping in the
-.code entrypgdir ,
-but that is sufficient to allocate the first kernel page table.
 .\"
 .section "Code: Physical memory allocator"
 .\"
@@ -336,35 +330,23 @@ locking in detail.
 The function
 .code-index main
 calls
-.code-index kinit1
-and
-.code-index kinit2
+.code-index kinit
 to initialize the allocator
-.line kernel/kalloc.c:/^kinit1/ .
-The reason for having two calls is that for much of
-.code main
-one cannot use locks or
-memory above 4 megabytes. The call to
-.code kinit1
-sets up for lock-less allocation in the first 4 megabytes,
-and the call to
-.code kinit2
+.line kernel/kalloc.c:/^kinit/ .
+.code kinit
 enables locking and arranges for more memory to be allocatable.
 .code main
 ought to determine how much physical
-memory is available, but this
-turns out to be difficult on the RISC-V.
-Instead it assumes that the machine has
+memory is available by parsing configuration information.
+Instead xv6 assumes that the machine has
 224 megabytes
 .code PHYSTOP ) (
 of physical memory, and uses all the memory between the end of the kernel
 and
 .code-index PHYSTOP
 as the initial pool of free memory.
-.code kinit1
-and
-.code kinit2
-call
+.code kinit
+calls
 .code-index freerange
 to add memory to the free list via per-page calls to
 .code-index kfree .
@@ -379,20 +361,6 @@ these calls to
 .code kfree
 give it some to manage.
 .PP
-The allocator refers to physical pages by their virtual
-addresses as mapped in high memory, not by their physical
-addresses, which is why the calls to
-.code kinit1
-and
-.code kinit2
-in
-.code main.c
-use the
-.code P2V
-macro
-to translate
-a physical address
-to a virtual address.
 The allocator sometimes treats addresses as integers
 in order to perform arithmetic on them (e.g.,
 traversing all pages in
