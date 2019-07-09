@@ -114,43 +114,6 @@ paging hardware translates to physical addresses, and then
 sends to the DRAM hardware to read or write storage.
 At this level of discussion there is no such thing as virtual memory,
 only virtual addresses.
-.\"
-.section "Process address space"
-.\"
-.PP
-Each process has a separate page table, and when xv6 switches between
-processes, xv6 updates
-.register satp .
-As shown in
-.figref first:as ,
-a process's user memory starts at virtual address
-zero and can grow up to
-.address MAXVA
-.line kernel/riscv.h:/MAXVA/ ,
-allowing a process to address in principle 256 Gigabyte of memory.
-.PP
-When a process asks xv6 for more memory,
-xv6 first finds free physical pages to provide the storage,
-and then adds PTEs to the process's page table that point
-to the new physical pages.
-xv6 sets the
-.code PTE_W ,
-.code PTE_X ,
-.code PTE_R ,
-.code PTE_U ,
-and
-.code PTE_V
-flags in these PTEs.
-Most processes do not use the entire user address space;
-xv6 leaves
-.code PTE_V
-clear in unused PTEs.
-.PP
-Different processes' page tables translate user addresses to different
-pages of physical memory, so that each process has private user
-memory.  Each process sees its memory as having contiguous virtual
-addresses starting at zero, while the process's physical memory can be
-non-contiguous.
 .figure xv6_layout
 .\"
 .section "Kernel address space"
@@ -203,6 +166,44 @@ The kernel maps the other pages with the permissions
 and
 .code PTE_W ,
 so that it read and write the memory in those pages.
+.\"
+.section "Process address space"
+.\"
+.PP
+Each process has a separate page table, and when xv6 switches between
+processes, xv6 also changes page tables.
+As shown in
+.figref first:as ,
+a process's user memory starts at virtual address
+zero and can grow up to
+.address MAXVA
+.line kernel/riscv.h:/MAXVA/ ,
+allowing a process to address in principle 256 Gigabyte of memory.
+.PP
+When a process asks xv6 for more memory,
+xv6 first finds free physical pages in the area above
+.address PHYSTOP
+in physical memory.
+It then adds PTEs to the process's page table that point
+to the new physical pages.
+xv6 sets the
+.code PTE_W ,
+.code PTE_X ,
+.code PTE_R ,
+.code PTE_U ,
+and
+.code PTE_V
+flags in these PTEs.
+Most processes do not use the entire user address space;
+xv6 leaves
+.code PTE_V
+clear in unused PTEs.
+.PP
+Different processes' page tables translate user addresses to different
+pages of physical memory, so that each process has private user
+memory.  Each process sees its memory as having contiguous virtual
+addresses starting at zero, while the process's physical memory can be
+non-contiguous.
 .\"
 .section "Code: creating an address space"
 .\"
