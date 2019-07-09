@@ -56,7 +56,8 @@ Such a chunk is called a
 As shown in
 .figref riscv_pagetable ,
 the actual translation happens in three steps.  A page table is stored
-in physical memory as a three-level tree.  The root of the tree is a
+in physical memory as a three-level tree.
+The root of the tree is a
 4096-byte page that contains 512 PTEs, which contains the physical
 addresses for pages for the next level in the tree.  Each one of those
 pages contains 512 PTEs for the final level in the tree.  The paging
@@ -64,7 +65,7 @@ hardware uses the top 9 bits of the 27 bits to select a PTE in the
 root page, the middle 9 bits to select a PTE in next level of the
 tree, and the bottom 9 bits to select the final PTE.
 .PP
-If any of the PTE is not present, the paging hardware raises a fault.
+If any of the PTEs is not present, the paging hardware raises a fault.
 This three-level structure allows a page table to omit entire page
 table pages in the common case in which large ranges of virtual
 addresses have no mappings.
@@ -94,6 +95,17 @@ The flags and all other page hardware related structures are defined in
 .file "kernel/riscv.h"
 .sheet kernel/riscv.h .
 .PP
+To tell the hardware to use a page table, the kernel must
+write the physical address of the root page into the register
+.register satp .
+Each processor has its own
+.register satp .
+A processor will translate all addresses in subsequent instructions
+using its page table.
+Each processor has its own page-table register so that one processor
+can run one process concurrently with another processor running
+another process, with their memories isolated from each other.
+.PP
 A few notes about terms.
 Physical memory refers to storage cells in DRAM.
 A byte of physical memory has an address, called a physical address.
@@ -102,105 +114,95 @@ paging hardware translates to physical addresses, and then
 sends to the DRAM hardware to read or write storage.
 At this level of discussion there is no such thing as virtual memory,
 only virtual addresses.
-.figure xv6_layout
 .\"
 .section "Process address space"
 .\"
 .PP
-The page table created by
-.code entry
-has enough mappings to allow the kernel's C code to start running.
-However,
-.code main
-immediately changes to a new page table by calling
-.code-index kvmalloc
-.line kernel/vm.c:/^kvmalloc/ ,
-because kernel has a more elaborate plan for describing
-process address spaces.
-.PP
-Each process has a separate page table, and xv6 tells
-the page table hardware to switch
-page tables when xv6 switches between processes.
+Each process has a separate page table, and when xv6 switches between
+processes, xv6 updates
+.register satp .
 As shown in
-.figref xv6_layout ,
+.figref first:as ,
 a process's user memory starts at virtual address
 zero and can grow up to
-.address KERNBASE ,
-allowing a process to address in principle terabytes of memory.
-The file
-.file "kernel/memlayout.h"
-.sheet kernel/memlayout.h
-declares the constants for xv6's memory layout,
-and macros to convert virtual to physical addresses.
+.address MAXVA
+.line kernel/riscv.h:/MAXVA/ ,
+allowing a process to address in principle 256 Gigabyte of memory.
 .PP
 When a process asks xv6 for more memory,
 xv6 first finds free physical pages to provide the storage,
 and then adds PTEs to the process's page table that point
 to the new physical pages.
 xv6 sets the
-.code PTE_U ,
 .code PTE_W ,
+.code PTE_X ,
+.code PTE_R ,
+.code PTE_U ,
 and
-.code PTE_P
+.code PTE_V
 flags in these PTEs.
 Most processes do not use the entire user address space;
 xv6 leaves
-.code PTE_P
+.code PTE_V
 clear in unused PTEs.
-Different processes' page tables translate user addresses
-to different pages of physical memory, so that each process has
-private user memory.
 .PP
-Xv6 includes all mappings needed for the kernel to run in every
-process's page table; these mappings all appear above
-.address KERNBASE .
-It maps virtual addresses
-.address KERNBASE:KERNBASE+PHYSTOP
-to
-.address 0:PHYSTOP .
-One reason for this mapping is so that the kernel can use its
-own instructions and data.
-Another reason is that the kernel sometimes needs to be able
-to write a given page of physical memory, for example
-when creating page table pages; having every physical
-page appear at a predictable virtual address makes this convenient.
+Different processes' page tables translate user addresses to different
+pages of physical memory, so that each process has private user
+memory.  Each process sees its memory as having contiguous virtual
+addresses starting at zero, while the process's physical memory can be
+non-contiguous.
+.figure xv6_layout
+.\"
+.section "Kernel address space"
+.\"
+The kernel has its own page table.  When a process enters kernel
+space, xv6 switches to the kernel page table, and when the kernel
+returns to user space, it switches to the page table of the user
+process.  The memory of the kernel is private.
 .PP
-Some devices that use memory-mapped I/O appear at physical
-addresses starting at
-.address 0xFE000000
-through
-.address 0xFFFFFFFF
-(4 Gbyte),
-so xv6 page tables including a direct mapping for them.
-Xv6 doesn't map any physical addresses above
-.address 0xFFFFFFFF .
-Thus,
-.address PHYSTOP
-must be smaller than 4 gigabytes - 16 megabytes (for the device memory).
+.figref xv6_layout
+shows the layout of the kernel address space, and the mapping from
+virtual addresses to physical addresses.  The file
+.file "kernel/memlayout.h"
+.sheet kernel/memlayout.h
+declares the constants for xv6's kernel memory layout.
 .PP
-Xv6 does not set the
-.code-index PTE_U
-flag in the PTEs above
-.address KERNBASE ,
-so only the kernel can use them.
+The RISC-V development board has a number of
+.italic-index "memory-mapped"
+devices that sit below
+.address 0x80000000
+in physical memory. The particular addresses are chosen by the board's
+manufacturer.  The kernel can interact with devices by reading/writing
+memory locations, and the board routes those reads and writes to the
+appropriate devices. For example, as we saw in Chapter \*[CH:FIRST], the kernel
+programmed the CLINT to generate clock interrupts.  We will
+see later how xv6 interacts with the other devices.
 .PP
-Having every process's page table contain mappings for
-both user memory and the entire kernel is convenient
-when switching from user code to kernel code during
-system calls and interrupts: such switches do not
-require page table switches.
-For the most part the kernel does not have its own page
-table; it is almost always borrowing some process's page table.
+The kernel uses an identity mapping for most virtual addresses.  For,
+example, the kernel itself is located at
+.code KERNBASE
+in the virtual address space and in physical memory.  Same for all
+devices.  The one exception is the trampoline page, which is mapped at
+the top of virtual address space; user page tables have this same
+mapping.  The physical memory holding the trampoline page is part of
+the kernel and is located in physical memory between
+.address KERNBASE
+and
+.address PHYSTOP .
+In chapter \*[CH:TRAP], we will discuss the role of the trampoline
+page.
 .PP
-To review, xv6 ensures that each process can use only its own memory.  And, each
-process sees its memory as having contiguous virtual addresses starting at zero,
-while the process's physical memory can be non-contiguous.  xv6 implements the
-first by setting the
-.code-index PTE_U
-bit only on PTEs of virtual addresses that refer to the process's own memory.  It
-implements the second using the ability of page tables to translate successive
-virtual addresses to whatever physical pages happen to be allocated to the
-process.
+The kernel maps the pages for the trampoline and the kernel text with
+the permissions
+.code PTE_R
+and
+.code PTE_X .
+The kernel reads and executes instructions from these pages.
+The kernel maps the other pages with the permissions
+.code PTE_R
+and
+.code PTE_W ,
+so that it read and write the memory in those pages.
 .\"
 .section "Code: creating an address space"
 .\"
