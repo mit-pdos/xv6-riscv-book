@@ -174,7 +174,7 @@ is said to be running in
 .italic-index "kernel space"  .
 The software running in kernel space (or in kernel mode) is called
 the
-. italic-index "kernel"  .
+.italic-index "kernel" .
 .PP
 An application that wants to invoke a kernel function (e.g., the
 .code read
