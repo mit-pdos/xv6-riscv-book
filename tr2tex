@@ -1,0 +1,271 @@
+#!/bin/env python3
+
+import os
+import re
+import sys
+
+def end(l):
+   p = re.compile(r'\s+([\.,])')
+   l = p.sub(r'\1', l)
+   p = re.compile(r'\s+\)([\.,]*) \(\n')
+   m = p.search(l)
+   if m != None:
+      l = p.sub(r'', l)
+      if len(m.groups()) > 0:
+         l = "(" + l + ")%s\n" % m.groups()[0]
+      else:
+         l = "(" + l + ")\n"
+   p = re.compile(r"\s+''([\.,]*) ``\n")
+   m = p.search(l)
+   if m != None:
+      l = p.sub(r'', l)
+      if len(m.groups()) > 0:
+         l = "``" + l + "''%s\n" % m.groups()[0]
+      else:
+         l = "``" + l + "''\n"
+   return l
+
+def ig2dotdot():
+   line = f.readline()
+   while line:
+      if line.startswith('..'):
+         return
+      print("%", line, end="")
+      line = f.readline()
+
+def chapter(l):
+   p = re.compile(r'.chapter ([:\w]+) "(.+)"')
+   l = p.sub(r'\\chapter{\2}\n\\label{\1}', l)
+   print(l, end="")
+
+def chapter1(l):
+   p = re.compile(r'.chapterlike "(.+)"')
+   l = p.sub(r'\\chapter*{\1}\n', l)
+   print(l, end="")
+
+def index(l):
+   p = re.compile(r'.index ([-\w]+)')
+   l = p.sub(r'\\index{\1}', l)
+   p = re.compile(r'.index "(.*)"')
+   l = p.sub(r'\\index{\1}', l)
+   l = end(l)
+   print(l, end="")
+
+def defindex(l):
+   p = re.compile(r'.italic-index ([-\w]+)')
+   l = p.sub(r'\\textit{\1}\\index{\1}', l)
+   p = re.compile(r'.italic-index "(.*)"')
+   l = p.sub(r'\\textit{\1}\\index{\1}', l)
+   l = end(l)
+   print(l, end="")
+
+codep = r'([\/\.\->_\w\&<\(\)]+)'
+
+def code(l):
+   p = re.compile(r'.code "(.*)"')
+   l = p.sub(r'\\lstinline{\1}', l)
+   p = re.compile(r'.code ' + codep)
+   l = p.sub(r'\\lstinline{\1}', l)
+   l = end(l)
+   print(l, end="")
+
+def codeindex(l):
+   p = re.compile(r'.code-index ' + codep)
+   l = p.sub(r'\\lstinline{\1}\\index{\1}', l)
+   p = re.compile(r'.code-index "(.*)"\n')
+   l = p.sub(r'\\lstinline{\1}\\index{\1}', l)
+   l = end(l)
+   print(l, end="")
+
+def section(l):
+   p = re.compile(r'.section "(.+)"')
+   l = p.sub(r'\\section{\1}', l)
+   print(l, end="")
+
+def figref(l):
+   p = re.compile(r'.figref ([:\w]+)')
+   m = p.search(l)
+   if p != None:
+      n = m.groups()[0].split(':')
+      if len(n) > 1:
+         n = n[1]
+      else:
+         n = n[0]
+      l = p.sub(r'Figure~\\ref{fig:%s}' % n, l)
+      l = end(l)
+   print(l, end="")
+
+def caption(fname):
+   with open(fname) as f:  
+      line = f.readline()
+      while line:
+         if not line.startswith("."):
+            return line.rstrip('\n')
+         line = f.readline()
+
+def istable(fname):
+   with open(fname) as f:  
+      line = f.readline()
+      while line:
+         if line.startswith(".TS"):
+            return True
+         line = f.readline()
+      return False
+
+def table(fname):
+   print(r'\begin{tabular}{ll}')
+   with open(fname) as f:  
+      line = f.readline()  # F1
+      line = f.readline()  # .TS
+      line = f.readline()  # center
+      line = f.readline()  # lb lb
+      line = f.readline()  # l l.
+      line = f.readline()  # heading
+      p = re.compile(r'([\w\ ]+)\t+([\w]+)\n')
+      line = p.sub(r'{\\bf \1} & {\\bf \2} \\\\', line)
+      print(line)
+      print("\midrule")
+      # table
+      line = f.readline()
+      while line:
+         if line.startswith(".TE"):
+            break
+         p = re.compile(r'([\(\)\w]+)\t+(.+)\n')
+         line = p.sub(r'\1 & \2 \\\\', line)
+         print(line)
+         line = f.readline()
+   print("\end{tabular}")
+
+def listing(l):
+   line = f.readline()  # P1
+   print(r'\begin{lstlisting}[]')
+   line = f.readline()
+   while line:
+      if line.startswith(".P2"):
+         break
+      print(line, end="")
+      line = f.readline()
+   print("\end{lstlisting}");
+    
+def figure(l):
+   p = re.compile(r'.figure (.+)\n')
+   l = p.sub(r'\1', l)
+   name = "fig/%s.t" % l
+   print("")
+   print(r'\begin{figure}[t]')
+   print("\center")
+   if istable(name):
+      table(name)
+   else:
+      print("\includegraphics[scale=0.5]{fig/%s.eps}" % l)
+      print("\caption{%s}" % caption(name))
+   print("\label{fig:%s}" % l)
+   print("\end{figure}")
+
+def italic(l):
+   p = re.compile(r'.italic ([\w]+)')
+   l = p.sub(r'\\textit{\1}', l)
+   print(l, end="")
+
+def address(l):
+   p = re.compile(r'.address (\w+)')
+   l = p.sub(r'\\texttt{\1}', l)
+   l = end(l)
+   print(l, end="")
+
+def register(l):
+   p = re.compile(r'.register (\w+)')
+   l = p.sub(r'\\texttt{\%\1}', l)
+   l = end(l)
+   print(l, end="")
+
+def lineref(l):
+   p = re.compile(r'.line (.*):\/(.*)/')
+   l = p.sub(r'\\lineref{\1:/\2/}', l)
+   p = re.compile(r'.line (.*):(\d+)')
+   l = p.sub(r'\\lineref{\1:\2}', l)
+   l = end(l)
+   print(l, end="")
+
+def linerefs(l):
+   p = re.compile(r'.lines (.*):\/(.*)/,\/(.*)/')
+   l = p.sub(r'\\linerefs{\1:\/\2\/,\/\3\/}', l)
+   l = end(l)
+   print(l, end="")
+
+def doref(l):
+   # replace references in a line
+   p = re.compile(r' \\\*\[([\w:]*)\]')
+   l = p.sub(r'~\\ref{\1}', l)
+   return l
+
+def doquote(l):
+   # replace references in a line
+   p = re.compile(r'"([\w]+)"')
+   l = p.sub(r"``\1''", l)
+   return l
+
+def docarrot(l):
+   p = re.compile(r'(\d+)\^(\d+)([\d+\-]*)')
+   l = p.sub(r'$\1^\2\3$', l)
+   return l
+
+def dourl(l):
+   p = re.compile(r'https://([\w\.\/]+)')
+   l = p.sub(r'\\url{https://\1}', l)
+   return l
+
+def tr2tex(l):
+   if l.startswith(". "):
+      l = "." + l[2:]
+      
+   if l.startswith(".ig"):
+      ig2dotdot()
+   elif l.startswith(".chapter "):
+      chapter(l)
+   elif l.startswith(".chapterlike"):
+      chapter1(l)
+   elif l.startswith(".PP"):
+      print("")
+   elif l.startswith(".code "):
+      code(l)
+   elif l.startswith(".italic-index"):
+      defindex(l)
+   elif l.startswith(".index"):
+      index(l)
+   elif l.startswith(".code-index"):
+      codeindex(l)
+   elif l.startswith(".section"):
+      section(l)
+   elif l.startswith(r'.\"'):
+      print("")
+   elif l.startswith(r'.figref'):
+      figref(l)
+   elif l.startswith(r'.figure '):
+      figure(l)
+   elif l.startswith(r'.italic'):
+      italic(l)
+   elif l.startswith(r'.address '):
+      address(l)
+   elif l.startswith(r'.register '):
+      register(l)
+   elif l.startswith(r'.line '):
+      lineref(l)
+   elif l.startswith(r'.lines '):
+      linerefs(l)
+   elif l.startswith(r'.P1'):
+      listing(l)
+   elif l.startswith(r"."):
+      print("TODO", l)
+   else:
+      l = docarrot(l)
+      l = doref(l)
+      l = doquote(l)
+      l = dourl(l)
+      print(l, end="")
+   
+with open(sys.argv[1]) as f:  
+   line = f.readline()
+   while line:
+       tr2tex(line)
+       line = f.readline()

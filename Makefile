@@ -33,9 +33,16 @@ SCRIPTS=\
 	runfig\
 	ditspaces\
 
+SRCPATH=../xv6-riscv/fmt/
+
 PS=$(patsubst %,%.ps,$(ORDER))
 PDF=$(patsubst %,%.pdf,$(ORDER))
 DIT=$(patsubst %,%.dit,$(ORDER))
+
+TEX=\
+	acks.tex\
+	unix.tex\
+	first.tex\
 
 export UCB = /usr/local/ucb
 
@@ -57,8 +64,16 @@ book.ps: $(DIT)
 %.pdf: %.ps
 	ps2pdf $*.ps $*.pdf
 
+%.tex: %.t tr2tex lineref
+	./tr2tex $< > latex.out/$@.tmp
+	./lineref latex.out/$@.tmp $(SRCPATH) > latex.out/$@
+
+tbook.pdf: book.tex $(TEX)
+	latexrun --bibtex-args=-min-crossrefs=100 book.tex
+
 clean:
 	rm -f $(PS) $(PDF) $(DIT) z.*
+	latexrun --clean-all
 
 xv6-code.pdf: ../xv6-riscv/xv6.pdf
 	cp $^ $@

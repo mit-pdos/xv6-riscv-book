@@ -59,8 +59,8 @@ which means long (L) and pointers (P) in the C programming language
 are 64 bits, but int is 32-bit.  This book assumes the reader has done
 a bit of machine-level programming on some architecture, and will
 introduce RISC-V-specific ideas as they come up.  A useful reference
-for RISC-V is "The RISC-V Reader: An Open Architecture Atlas" by David
-Patterson and Andrew Waterman.
+for RISC-V is ''The RISC-V Reader: An Open Architecture Atlas''~\cite{riscv}.
+
 .\"
 .section "Abstracting physical resources"
 .\"

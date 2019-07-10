@@ -1,0 +1,50 @@
+#!/bin/env python3
+
+import os
+import re
+import sys
+
+path = sys.argv[2]
+
+def line2num(line):
+   n = line.split(' ')
+   return n[0]
+   
+def lookup_regex(fname, pat):
+   p = re.compile(pat)
+   with open(path+'/'+fname) as f:  
+      line = f.readline()
+      while line:
+         m = p.search(line[5:])
+         if m != None:
+            return line2num(line)
+         line = f.readline()
+   print("error: couldn't find pat in %s" % fname)
+
+def lookup_line(fname, n):
+   with open(path+'/'+fname) as f:
+      lines = f.readlines()
+      return line2num(lines[int(n)])
+
+def lineref(l):
+   p = re.compile(r'\\lineref{(.*):\/(.*)\/}')
+   m = p.search(l)
+   if m != None:
+      n = lookup_regex(m.groups()[0], m.groups()[1])
+      l = p.sub(r'\\lineref{%s}' % n, l)
+      print(l, end="")
+      return
+   p = re.compile(r'\\lineref\{(.*):(\d+)\}')
+   m = p.search(l)
+   if m != None:
+      n = lookup_line(m.groups()[0], m.groups()[1])
+      l = p.sub(r'\\lineref{%s}' % n, l)
+      print(l, end="")
+      return
+   print(l, end="")
+
+with open(sys.argv[1]) as f:  
+   line = f.readline()
+   while line:
+       lineref(line)
+       line = f.readline()

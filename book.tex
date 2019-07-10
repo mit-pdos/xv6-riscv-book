@@ -1,0 +1,60 @@
+\documentclass[12pt]{book}
+\usepackage[T1]{fontenc}
+\usepackage{times}
+\usepackage{listings}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{url}
+\usepackage{imakeidx}
+\usepackage{booktabs}
+\usepackage{url}
+
+% One space after periods
+\frenchspacing
+
+%% % Clicking hyperref links moves viewer to the wrong page unless the usepackage
+%% % for hyperref is one of the last ones???
+%% % Put hyperref in final mode; otherwise hyperlinks are disabled
+%% \usepackage[pdfauthor={Rus Cox, Frans Kaashoek, Robbert Morris},
+%%             pdftitle={xv6: a simple, Unix-like teaching operating system},
+%%             breaklinks,hidelinks,final,
+%%             bookmarksdepth=3,linktoc=all]{hyperref}
+%% \usepackage[nameinlink]{cleveref} % After hyperref, listings
+
+\lstset{language=C,basicstyle=\small\ttfamily}
+\lstset{morecomment=[is]{[[[}{]]]}}
+
+\newcommand{\lineref}[1]{{\small (#1)}}
+\newcommand{\linerefs}[1]{{\small (#1)}}
+
+\title{\textbf{xv6: a simple, Unix-like teaching operating system}}
+\author{Rus Cox \and Frans Kaashoek \and Robbert Morris}
+
+\makeindex
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+
+\input{latex.out/acks}
+\input{latex.out/unix}
+\input{latex.out/first}
+
+{
+% The following prevents latex from splitting a bibliography entry with a page
+% break
+\interlinepenalty=10000
+% Since we're using natbib in numbers mode, we don't need plainnat,
+% which exists to feed authors and years back in to natbib.  As a
+% result, it complains about entries without years, which we don't
+% care about.
+%\bibliographystyle{plainnat}
+\bibliographystyle{plain}
+\bibliography{book}
+}
+
+\printindex
+
+\end{document}
