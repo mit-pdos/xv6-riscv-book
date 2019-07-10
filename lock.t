@@ -56,31 +56,35 @@ Concurrency makes reasoning about correctness difficult.
 .\"
 .PP
 As an example of why we need locks,
-consider several processors sharing a memory allocator
-such as xv6's
-.code kalloc.c .
-The allocator maintains a linked list of free
-blocks of memory, and allocation and freeing correspond
-to popping and pushing from this list.
-The free list is shared among all processors,
-so there may be concurrent pushes and pops.
+consider a linked list accessible from any
+CPU on a multiprocessor.
+The list supports push and pop operations, which
+may be called concurrently.
+Xv6's
+.code kalloc.c 
+memory allocator works in much this way;
+.code kalloc()
+pops a page of memory from a list of free pages,
+and
+.code kfree()
+pushes a page onto the free list.
 .PP
 If there were no
-concurrent requests, you might implement the 
+concurrent requests, you might implement a list
 .code push
 operation as follows:
 .P1
-    1	struct list {
+    1	struct element {
     2	  int data;
-    3	  struct list *next;
+    3	  struct element *next;
     4	};
     5	
-    6	struct list *list = 0;
+    6	struct element *list = 0;
     7	
     8	void
     9	push(int data)
    10	{
-   11	  struct list *l;
+   11	  struct element *l;
    12	
    13	  l = malloc(sizeof *l);
    14	  l->data = data;
@@ -95,11 +99,11 @@ copy executes concurrently.
 If two CPUs execute
 .code push
 at the same time,
-it could happen that both execute line 15
+both might execute line 15
 before either executes 16 (see 
 .figref race ).
-If this happens, there will now be two
-list nodes with
+There would then be two
+list elements with
 .code next
 set to the former value of
 .code list .
@@ -107,7 +111,7 @@ When the two assignments to
 .code list
 happen at line 16,
 the second one will overwrite the first;
-the node involved in the first assignment
+the element involved in the first assignment
 will be lost.
 .PP
 The lost update at line 16 is an example of a
@@ -130,20 +134,20 @@ to make the race disappear.
 The usual way to avoid races is to use a lock.
 Locks ensure
 .italic-index "mutual exclusion" ,
-so that only one CPU can execute 
-.code push
-at a time; this makes the scenario above
-impossible.
+so that only one CPU at a time can execute 
+the sensitive lines of
+.code push ;
+this makes the scenario above impossible.
 The correctly locked version of the above code
 adds just a few lines (not numbered):
 .P1
-    6	struct list *list = 0;
+    6	struct element *list = 0;
      	struct lock listlock;
     7	
     8	void
     9	push(int data)
    10	{
-   11	  struct list *l;
+   11	  struct element *l;
    12	  l = malloc(sizeof *l);
    13	  l->data = data;
    14	
@@ -174,10 +178,10 @@ the invariants but must reestablish them before
 finishing.
 For example, in the linked list case, the invariant is that
 .code list
-points at the first node in the list
-and that each node's
+points at the first element in the list
+and that each element's
 .code next
-field points at the next node.
+field points at the next element.
 The implementation of
 .code push
 violates this invariant temporarily: in line 15,
@@ -200,8 +204,8 @@ data structure's invariants do not hold.
 You can think of locks as
 .italic-index serializing
 concurrent critical sections so that they run one at a time,
-and thus preserve invariants (assuming they are correct
-in isolation).
+and thus preserve invariants (assuming the critical sections
+are correct in isolation).
 You can also think of critical sections as being
 atomic with respect to each other,
 so that a critical section that obtains the lock
@@ -209,14 +213,14 @@ later sees only the complete set of
 changes from earlier critical sections, and never sees
 partially-completed updates.
 .PP
-Note that it would also be correct to move up
+Note that it would be correct to move
 .code acquire
-to earlier in
+earlier in
 .code push.
 For example, it is fine to move the call to
 .code acquire
 up to before line 12.
-This may reduce paralellism because then the calls
+This may reduce parallelism because then the calls
 to
 .code malloc
 are also serialized.
@@ -243,7 +247,7 @@ Logically, xv6 should acquire a lock by executing code like
    22	acquire(struct spinlock *lk)
    23	{
    24	  for(;;) {
-   25	    if(!lk->locked) {
+   25	    if(lk->locked == 0) {
    26	      lk->locked = 1;
    27	      break;
    28	    }
@@ -258,80 +262,81 @@ reach line 25, see that
 is zero, and then both grab the lock by executing line 26.
 At this point, two different CPUs hold the lock,
 which violates the mutual exclusion property.
-Rather than helping us avoid race conditions,
-this implementation of
-.code-index acquire 
-has its own race condition.
-The problem here is that lines 25 and 26 executed
-as separate actions.  In order for the routine above
-to be correct, lines 25 and 26 must execute in one
+What we need is a way to
+make lines 25 and 26 execute as an
 .italic-index "atomic"
 (i.e., indivisible) step.
 .PP
-To execute those two lines atomically, 
-xv6 relies on a special x86 instruction,
-.code-index xchg
-.line x86.h:/^xchg/ .
-In one atomic operation,
-.code xchg
-swaps a word in memory with the contents of a register.
-The function
+Because locks are widely used,
+multi-core processors usually provide an instruction that
+can be used to implement an atomic version of
+lines 25 and 26.
+On the RISC-V this instruction is
+.code "amoswap register, address" .
+.code amoswap
+reads the value at the memory address,
+writes the contents of the register to that address,
+and puts the value it read into the register.
+That is, it swaps the contents of the register and the memory address.
+It performs this sequence atomically, using special
+hardware to prevent any
+other CPU from using the memory address between the read and the write.
+.PP
+Xv6's 
 .code-index acquire
 .line spinlock.c:/^acquire/
-repeats this
-.code xchg
-instruction in a loop;
-each iteration atomically reads
-.code lk->locked
-and sets it to 1
-.line spinlock.c:/xchg..lk/ .
-If the lock is already held,
-.code lk->locked
-will already be 1, so the
-.code xchg
-returns 1 and the loop continues.
-If the
-.code xchg
-returns 0, however,
+uses the portable C library call 
+.code "__sync_lock_test_and_set" ,
+which boils down to the
+.code amoswap
+instruction;
+the return value is the old (swapped) contents of
+.code lk->locked .
+The
 .code acquire
-has successfully acquired the lock—\c
-.code locked
-was 0 and is now 1—\c
-so the loop can stop.
+function wraps the swap in a loop, retrying (spinning) until it has
+acquired the lock.
+Each iteration swaps one into
+.code lk->locked 
+and checks the previous value;
+if the previous value is zero, then we've acquired the
+lock, and the swap will have set 
+.code lk->locked
+to one.
+If the previous value is one, then some other CPU
+holds the lock, and the fact that we swapped one into
+.code lk->locked
+didn't change its value.
+.PP
 Once the lock is acquired,
 .code acquire
-records, for debugging, the CPU and stack trace
+records, for debugging, the CPU 
 that acquired the lock.
-If a process forgets to release a lock, this information
-can help to identify the culprit.
-These debugging fields are protected by the lock
-and must only be edited while holding the lock.
+The
+.code lk->cpu
+field is protected by the lock
+and must only be changed while holding the lock.
 .PP
 The function
 .code-index release
 .line spinlock.c:/^release/
 is the opposite of 
 .code acquire :
-it clears the debugging fields
+it clears the 
+.code lk->cpu
+field
 and then releases the lock.
-The function uses an assembly instruction to clear
-.code locked ,
-because clearing this field should be atomic so that the
-.code xchg
-instruction won't see a subset of the 4 bytes
-that hold
-.code locked
-updated.
-The x86 guarantees that a 32-bit
-.code movl
-updates all 4 bytes atomically.  Xv6 cannot use a regular C assignment, because
-the C language specification does not specify that a single assignment is
-atomic.
-.PP
-Xv6's implementation of spin-locks is x86-specific, and xv6 is thus not directly
-portable to other processors.  To allow for portable implementations of
-spin-locks, the C language supports a library of atomic instructions; a portable
-operating system would use those instructions.
+Conceptually, the release just requires assigning zero to
+.code lk->locked .
+The C standard doesn't guarantee that assignments
+appear atomically to other CPUs (or to interrupts), so 
+.code release
+uses the C library function
+.code "__sync_lock_release"
+that performs an atomic assignment.
+This function also boils down to a RISC-V
+.code amoswap
+instruction.
 .\"
 .section "Code: Using locks"
 .\"
@@ -793,5 +798,3 @@ thread library so that a user process can have more than 1 thread and arrange
 that these threads can run in parallel on different processors.  Come up with a
 design that correctly handles a thread making a blocking system call and
 changing its shared address space.
-
-
