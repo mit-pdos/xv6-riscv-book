@@ -16,13 +16,17 @@ to yield incorrect results or a broken data structure.
 Even on a uniprocessor, an interrupt routine that uses
 the same data as some interruptible code could damage
 the data if the interrupt occurs at just the wrong time.
+The word 
+.italic-index "concurrency"
+refers to situations in which
+multiple instruction streams are interleaved,
+due to multiprocessor parallelism, interrupts,
+or thread switching.
 .PP
-Any code that accesses shared data concurrently
-must have a strategy for maintaining correctness
-despite concurrency.
-The concurrency may arise from accesses by multiple cores,
-or by multiple threads,
-or by interrupt code.
+In any situation where a shared data item may be
+accessed concurrently, there must be a
+.italic-index "concurrency control"
+strategy to maintain correctness.
 xv6 uses a handful of simple concurrency control
 strategies; much more sophistication is possible.
 This chapter focuses on one of the strategies used extensively
@@ -30,36 +34,41 @@ in xv6 and many other systems: the
 .italic-index lock .
 .PP
 A lock provides mutual exclusion, ensuring that only one CPU at a time can hold
-the lock. If a lock is associated with each shared data item,
-and the code always holds the associated lock when using a given
-item,
-then we can be sure that the item is used from only one CPU at a time.
+the lock. If the programmer associates a lock with each shared data item,
+and the code always holds the associated lock when using an item,
+then the item will be used by only one CPU at a time.
 In this situation, we say that the lock protects the data item.
 .PP
 The rest of this chapter explains why xv6 needs locks, how xv6 implements them, and how
 it uses them.  A key observation will be that if you look at some code in
-xv6, you must ask yourself if another processor (or interrupt) could change
+xv6, you must ask yourself if concurrent code could change
 the intended behavior of the code by modifying data (or hardware resources)
 it depends on.
-You must keep in mind that a
-single C statement can be several machine instructions and thus another processor or an interrupt may
-muck around in the middle of a C statement.  You cannot assume that lines of code
+You must keep in mind that the compiler may turn a
+single C statement into several machine instructions,
+and that those instructions may execute in a way that is
+interleaved with instructions executing on other CPUs.
+That is, you cannot assume that lines of C code
 on the page are executed atomically.
-Concurrency makes reasoning about 
-correctness much more difficult.
+Concurrency makes reasoning about correctness difficult.
 .\"
 .section "Race conditions"
 .\"
 .PP
-As an example of why we need locks, consider several processors sharing a single disk, such
-as the IDE disk in xv6.  The disk driver maintains a linked list of
-the outstanding disk requests 
-.line ide.c:/idequeue/
-and processors may add new
-requests to the list concurrently
-.line ide.c:/^iderw/ .
+As an example of why we need locks,
+consider several processors sharing a memory allocator
+such as xv6's
+.code kalloc.c .
+The allocator maintains a linked list of free
+blocks of memory, and allocation and freeing correspond
+to popping and pushing from this list.
+The free list is shared among all processors,
+so there may be concurrent pushes and pops.
+.PP
 If there were no
-concurrent requests, you might implement the linked list as follows:
+concurrent requests, you might implement the 
+.code push
+operation as follows:
 .P1
     1	struct list {
     2	  int data;
@@ -69,7 +78,7 @@ concurrent requests, you might implement the linked list as follows:
     6	struct list *list = 0;
     7	
     8	void
-    9	insert(int data)
+    9	push(int data)
    10	{
    11	  struct list *l;
    12	
@@ -84,7 +93,7 @@ This implementation is correct if executed in isolation.
 However, the code is not correct if more than one
 copy executes concurrently.
 If two CPUs execute
-.code insert
+.code push
 at the same time,
 it could happen that both execute line 15
 before either executes 16 (see 
@@ -114,7 +123,7 @@ how their memory operations are ordered by the memory system,
 which can make race-induced errors difficult to reproduce
 and debug.
 For example, adding print statements while debugging
-.code insert
+.code push
 might change the timing of the execution enough
 to make the race disappear.
 .PP
@@ -122,7 +131,7 @@ The usual way to avoid races is to use a lock.
 Locks ensure
 .italic-index "mutual exclusion" ,
 so that only one CPU can execute 
-.code insert
+.code push
 at a time; this makes the scenario above
 impossible.
 The correctly locked version of the above code
@@ -132,7 +141,7 @@ adds just a few lines (not numbered):
      	struct lock listlock;
     7	
     8	void
-    9	insert(int data)
+    9	push(int data)
    10	{
    11	  struct list *l;
    12	  l = malloc(sizeof *l);
@@ -170,7 +179,7 @@ and that each node's
 .code next
 field points at the next node.
 The implementation of
-.code insert
+.code push
 violates this invariant temporarily: in line 15,
 .code l
 points
@@ -203,7 +212,7 @@ partially-completed updates.
 Note that it would also be correct to move up
 .code acquire
 to earlier in
-.code insert.
+.code push.
 For example, it is fine to move the call to
 .code acquire
 up to before line 12.
@@ -439,7 +448,7 @@ and
 .code ptable.lock .
 To avoid deadlock, file system code always acquires locks in the order 
 mentioned in the previous sentence.
-.section "Interrupt handlers"
+.section "Locks and interrupt handlers"
 .\"
 Xv6 uses spin-locks in many situations to protect data that is used by
 both interrupt handlers and threads.
@@ -543,19 +552,26 @@ in which the code appears in the program.  Many
 compilers and processors, however, execute code out of order
 to achieve
 higher performance.  If an instruction takes many cycles to complete,
-a processor may want to issue the instruction early so that it can
+a processor may issue the instruction early so that it can
 overlap with other instructions and avoid processor stalls. For
 example, a processor may notice that in a serial sequence of
-instructions A and B are not dependent on each other and start
-instruction B before A so that it will be completed when the processor
-completes A.
-A compiler may perform a similar re-ordering by emitting instruction
-B before instruction A in the executable file.
-Concurrency, however, may expose this reordering to
-software, which can lead to incorrect behavior.
+instructions A and B are not dependent on each other.
+The processor may start instruction B first, either because its
+inputs are ready before A's inputs, or in order to overlap
+execution of A and B.
+A compiler may perform a similar re-ordering by emitting instructions
+for one statement before the instructions for a statement that precedes it
+in the source.
+.PP
+Compilers and processors follow certain rules when they re-order to
+ensure that they don't change the results of correctly-written
+serial code.
+However, the rules do allow changing the results of concurrent code,
+and can easily lead to incorrect behavior on multiprocessors
+or if there are interrupts.
 .PP
 For example, in this code for
-.code insert ,
+.code push ,
 it would be a disaster if the compiler or processor caused the effects
 of line 4 (or 2 or 5) to be visible to other cores after the effects
 of line 6:
@@ -650,8 +666,12 @@ sleep-locks cannot be used inside spin-lock critical
 sections (though spin-locks can be used inside sleep-lock
 critical sections).
 .PP
-Xv6 uses spin-locks in most situations, since they have low overhead.
-It uses sleep-locks only in the file system, where it is convenient to
+Spin-locks have low overhead, but they waste CPU time if they
+are held for long periods when other CPUs are waiting
+for them.
+Thus they are best suited for short critical sections.
+Xv6 uses sleep-locks in the file system,
+where it is convenient to
 be able to hold locks across lengthy disk operations.
 .\"
 .section "Limitations of locks"
