@@ -60,13 +60,13 @@ consider a linked list accessible from any
 CPU on a multiprocessor.
 The list supports push and pop operations, which
 may be called concurrently.
-Xv6's
-.code kalloc.c 
-memory allocator works in much this way;
+Xv6's memory allocator works in much this way;
 .code kalloc()
+.line kalloc.c:/^kalloc/
 pops a page of memory from a list of free pages,
 and
 .code kfree()
+.line kalloc.c:/^kfree/
 pushes a page onto the free list.
 .PP
 If there were no
@@ -268,7 +268,7 @@ make lines 25 and 26 execute as an
 (i.e., indivisible) step.
 .PP
 Because locks are widely used,
-multi-core processors usually provide an instruction that
+multi-core processors usually provide instructions that
 can be used to implement an atomic version of
 lines 25 and 26.
 On the RISC-V this instruction is
@@ -328,8 +328,11 @@ field
 and then releases the lock.
 Conceptually, the release just requires assigning zero to
 .code lk->locked .
-The C standard doesn't guarantee that assignments
-appear atomically to other CPUs (or to interrupts), so 
+The C standard allows compilers to implement assignment
+with multiple store instructions,
+so a C assignment might be non-atomic with respect
+to concurrent code.
+Instead,
 .code release
 uses the C library function
 .code "__sync_lock_release"
@@ -340,35 +343,25 @@ instruction.
 .\"
 .section "Code: Using locks"
 .\"
-Xv6 uses locks in many places to avoid race conditions.  A simple
-example is in the IDE driver
-.sheet ide.c .
-As mentioned in the beginning of the chapter,
-.code-index iderw 
-.line ide.c:/^iderw/ 
-has a queue of disk requests
-and processors may add new
-requests to the list concurrently
-.line ide.c:/DOC:insert-queue/ .
-To protect this list and other invariants in the driver,
-.code iderw
-acquires the
-.code-index idelock 
-.line ide.c:/DOC:acquire-lock/
-and 
-releases it at the end of the function.
-.PP
-Exercise 1 explores how to trigger the IDE driver
-race condition that we saw at the
-beginning of the chapter by moving the 
-.code acquire
-to after the queue manipulation.
-It is worthwhile to try the exercise because it will make clear that it is not
-that easy to trigger the race, suggesting that it is difficult to find
-race-conditions bugs.  It is not unlikely that xv6 has some races.
+Xv6 uses locks in many places to avoid race conditions.
+To see a simple example much like
+.code push
+above,
+look at
+.code kalloc
+.line kalloc.c:/^kalloc/
+and
+.code free
+.line kalloc.c:/^free/ .
+Try Exercises 1 and 2 to see what happens if those
+functions omit the locks.
+You'll likely find that it's difficult to trigger incorrect
+behavior, suggesting that it's hard to ensure that code
+is free from locking errors and races.
+It is not unlikely that xv6 has some races.
 .PP
 A hard part about using locks is deciding how many locks
-to use and which data and invariants each lock protects.
+to use and which data and invariants each lock should protect.
 There are a few basic principles.
 First, any time a variable can be written by one CPU
 at the same time that another CPU can read or write it,
@@ -395,19 +388,28 @@ computation, it would be more efficient to use a larger set of more
 fine-grained locks, so that the kernel could execute on multiple CPUs
 simultaneously.
 .PP
-Ultimately, the choice of lock granularity is an exercise in parallel
-programming.  Xv6 uses a few coarse data-structure specific locks (see
-.figref locktable ).
-For
-example, xv6 has a lock that protects the whole process table and its
-invariants, which are described in Chapter \*[CH:SCHED].  A more
-fine-grained approach would be to have a lock per entry in the process
-table so that threads working on different entries in the process
-table can proceed in parallel.  However, it complicates operations
-that have invariants over the whole process table, since they might
-have to acquire several locks. Subsequent chapters will discuss
-how each part of xv6 deals with concurrency, illustrating
-how to use locks.
+As an example of relatively coarse-grained locking, xv6's
+.code kalloc.c
+allocator has a single free list protected by a single
+lock. If concurrent allocation were a performance bottleneck,
+it might be helpful to have multiple free lists, each with
+its own lock, to allow truly parallel allocation.
+As an example of relatively fine-grained locking, xv6
+has a separate lock for each file, so that processes that
+manipulate different files can often proceed without waiting
+for each others' locks. On the other hand, this locking
+scheme could be made even more fine-grained, if one wanted
+to have good performance for processes that simultaneously
+write different areas of the same file.
+Ultimately lock granularity decisions need to be driven
+by performance measurements as well as complexity considerations.
+.PP
+As subsequent chapters explain each part of xv6, they
+will mention many examples of xv6's use of locks
+to deal with concurrency.
+As a preview,
+.figref locktable
+lists all of the locks in xv6.
 .figure locktable
 .\"
 .section "Deadlock and lock ordering"
@@ -777,23 +779,51 @@ additional complexity of lock-free programming.
 .section "Exercises"
 .\"
 .PP
-1. Move the
+1. Comment out the calls to
 .code acquire
+and
+.code release
 in
-.code iderw
-to before sleep.  Is there a race? Why don't you
-observe it when booting xv6 and run stressfs?  Increase critical section with a
-dummy loop; what do you see now?  explain.
+.code kalloc
+.line kalloc.c:/^kalloc/ .
+This seems like it should cause problems for
+kernel code that calls
+.code kalloc ;
+what symptoms do you expect to see?
+When you run xv6, do you see these symptoms?
+How about when running
+.code usertests ?
+If you don't see a problem, why not?
+See if you can provoke a problem by inserting
+dummy loops into the critical section of
+.code kalloc .
 .PP
-2. Remove the xchg in
-.code acquire .
-Explain what happens when you run xv6?
+2. Suppose that you instead commented out the
+locking in
+.code kfree 
+(after restoring locking in
+.code kalloc ).
+What might now go wrong? Is lack of locks in
+.code kfree
+less harmful than in
+.code kalloc ?
 .PP
-3. Write a parallel program using POSIX threads, which is supported on most
+3. If two CPUs call
+.code kalloc
+at the same time, one will have to wait for the other,
+which is bad for performance.
+Modify 
+.code kalloc.c
+to have more parallelism, so that simultaneous
+calls to
+.code kalloc
+from different CPUs can proceed without waiting for each other.
+.PP
+4. Write a parallel program using POSIX threads, which is supported on most
 operating systems. For example, implement a parallel hash table and measure if
 the number of puts/gets scales with increasing number of cores.
 .PP
-4. Implement a subset of Pthreads in xv6.  That is, implement a user-level
+5. Implement a subset of Pthreads in xv6.  That is, implement a user-level
 thread library so that a user process can have more than 1 thread and arrange
 that these threads can run in parallel on different processors.  Come up with a
 design that correctly handles a thread making a blocking system call and
