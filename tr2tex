@@ -137,7 +137,6 @@ def table(fname):
    print("\end{tabular}")
 
 def listing(l):
-   line = f.readline()  # P1
    print(r'\begin{lstlisting}[]')
    line = f.readline()
    while line:
