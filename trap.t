@@ -461,7 +461,10 @@ We saw that each trap handler sets
 up a trap frame and then calls the C function
 .code-index trap .
 .code Trap
-.line 'trap.c:/^trap/'
+XXX FIXME
+.ig
+.line 'trap.c:/^trap!(/'
+..
 looks at the hardware trap number
 .code-index tf->trapno
 to decide why it has been called and what needs to be done.

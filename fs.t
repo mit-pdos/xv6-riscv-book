@@ -1057,7 +1057,10 @@ live in the file system; we will return to this case in the file descriptor laye
 .PP
 The function
 .code-index stati
-.line kernel/fs.c:/^stati/
+XXX FIXME
+.ig
+.line kernel/fs.c:/^stati!(/
+..
 copies inode metadata into the 
 .code stat
 structure, which is exposed to user programs
@@ -1179,7 +1182,10 @@ to do the real work.
 starts by deciding where the path evaluation begins.
 If the path begins with a slash, evaluation begins at the root;
 otherwise, the current directory
-.line kernel/fs.c:/..if.!*path.==..../,/idup/ .
+XXX FIXME
+.ig
+.line kernel/fs.c:/..if.!*path.==....!)/,/idup/ .
+..
 Then it uses
 .code-index skipelem
 to consider each element of the path in turn
@@ -1395,7 +1401,7 @@ and then advance it
 Pipes have no concept of offset.
 Recall that the inode functions require the caller
 to handle locking
-XXX fix me
+XXX FIXME
 .ig
 .lines "'kernel/file.c:/stati/-1,/iunlock/' 'kernel/file.c:/readi/-1,/iunlock/' 'kernel/file.c:/writei!(f/-1,/iunlock/'" .
 ..
@@ -1409,8 +1415,12 @@ cannot overwrite each other's data, though their writes may end up interlaced.
 .section "Code: System calls"
 .PP
 With the functions that the lower layers provide the implementation of most
-system calls is trivial (see
-.code kernel/sysfile.c  ). 
+system calls is trivial
+XXX FIXME
+.ig
+(see
+.file kernel/sysfile.c  ).
+..
 There are a few calls that
 deserve a closer look.
 .PP
@@ -1516,7 +1526,7 @@ so
 does too
 .line "kernel/sysfile.c:/^......return.ip/" .
 Otherwise, it is an error
-XXX fix me
+XXX FIXME
 .ig
 .lines kernel/sysfile.c:/^......return.ip/+1,/return.0/ .
 ..

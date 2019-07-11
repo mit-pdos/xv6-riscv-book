@@ -975,7 +975,10 @@ and skips them entirely
 .line kernel/proc.c:/sleeplock0/ .
 For example,
 .code wait
-.line kernel/proc.c:/^wakeup/
+XXX FIXME
+.ig
+.line kernel/proc.c:/^wakeup!(/
+..
 calls
 .code sleep
 with 
@@ -996,7 +999,10 @@ and calling
 At some point later, a process will call
 .code wakeup(chan) .
 .code Wakeup
-.line 'kernel/proc.c:/^wakeup/'
+XXX FIXME
+.ig
+.line 'kernel/proc.c:/^wakeup!(/'
+..
 acquires
 .code-index ptable.lock
 and calls
