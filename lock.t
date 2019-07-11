@@ -560,8 +560,9 @@ releasing the lock
 .section "Instruction and memory ordering"
 .\"
 .PP
-This chapter has assumed that code executes in the order
-in which the code appears in the program.  Many
+It is natural to think of programs executing in the order
+in which source code statements appear.
+Many
 compilers and processors, however, execute code out of order
 to achieve
 higher performance.  If an instruction takes many cycles to complete,
@@ -576,18 +577,20 @@ A compiler may perform a similar re-ordering by emitting instructions
 for one statement before the instructions for a statement that precedes it
 in the source.
 .PP
-Compilers and processors follow certain rules when they re-order to
+Compilers and processors follow rules when they re-order to
 ensure that they don't change the results of correctly-written
 serial code.
-However, the rules do allow changing the results of concurrent code,
-and can easily lead to incorrect behavior on multiprocessors
-or if there are interrupts.
+However, the rules do allow re-ordering that
+changes the results of concurrent code,
+and can easily lead to incorrect behavior on multiprocessors.
 .PP
 For example, in this code for
 .code push ,
-it would be a disaster if the compiler or processor caused the effects
-of line 4 (or 2 or 5) to be visible to other cores after the effects
-of line 6:
+it would be a disaster if the compiler or processor moved the
+store corresponding to
+line 4 to a point after the
+.code release
+on line 6:
 .P1
     1	  l = malloc(sizeof *l);
     2	  l->data = data;
@@ -596,25 +599,21 @@ of line 6:
     5	  list = l;
     6	  release(&listlock);
 .P2
-If the hardware or compiler would re-order, for example, the effects of line 4 to
-be visible after line 6, then another processor can acquire
-.code listlock
-and observe that
-.code list
-points to
-.code l ,
-but it won't observe that
-.code l->next
-is set to the remainder of the list and won't be able to read the rest of the list.
+If such a re-ordering occurred, there would be a window during
+which another processor could acquire the lock,
+observe the updated
+.code list ,
+but see an uninitialized
+.code list->next .
 .PP
 To tell the hardware and compiler not to perform such re-orderings,
 xv6 uses
-.code __sync_synchronize() ,
+.code __sync_synchronize() 
 in both
 .code acquire
 and
 .code release .
-.code _sync_synchronize()
+.code __sync_synchronize()
 is a memory barrier:
 it tells the compiler and CPU to not reorder loads or stores across the
 barrier.
@@ -622,11 +621,8 @@ Xv6 worries about ordering only in
 .code acquire
 and
 .code release ,
-because concurrent access to data structures other than the lock structure is
-performed between 
-.code acquire
-and
-.code release .
+because it uses locks to guard all accesses to shared data (other than locks
+themselves).
 .\"
 .section "Sleep locks"
 .\"
