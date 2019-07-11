@@ -11,18 +11,14 @@
 \usepackage{url}
 \usepackage{etoolbox}  % for showidx
 
+\usepackage{hyperref}  % should be last
+
 % One space after periods
 \frenchspacing
 
-%% % Clicking hyperref links moves viewer to the wrong page unless the usepackage
-%% % for hyperref is one of the last ones???
-%% % Put hyperref in final mode; otherwise hyperlinks are disabled
-%% \usepackage[pdfauthor={Rus Cox, Frans Kaashoek, Robbert Morris},
-%%             pdftitle={xv6: a simple, Unix-like teaching operating system},
-%%             breaklinks,hidelinks,final,
-%%             bookmarksdepth=3,linktoc=all]{hyperref}
-%% \usepackage[nameinlink]{cleveref} % After hyperref, listings
-
+\hypersetup{pdfauthor={Rus Cox, Frans Kaashoek, Robbert Morris},
+            pdftitle={xv6: a simple, Unix-like teaching operating system},}
+  
 \lstset{language=C,basicstyle=\small\ttfamily}
 \lstset{morecomment=[is]{[[[}{]]]}}
 

@@ -83,7 +83,8 @@ book1.pdf: book1.tex $(TEX)
 
 clean:
 	rm -f $(PS) $(PDF) $(DIT) z.*
-	rm -f book1.aux book1.idx book1.ilg book1.ind book1.log book1.toc book1.bbl book1.blg
+	rm -f book1.aux book1.idx book1.ilg book1.ind book1.log\
+	 	book1.toc book1.bbl book1.blg book1.out
 	rm -rf latex.out
 
 xv6-code.pdf: ../xv6-riscv/xv6.pdf
