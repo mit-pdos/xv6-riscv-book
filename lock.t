@@ -343,35 +343,25 @@ instruction.
 .\"
 .section "Code: Using locks"
 .\"
-Xv6 uses locks in many places to avoid race conditions.  A simple
-example is in the IDE driver
-.sheet ide.c .
-As mentioned in the beginning of the chapter,
-.code-index iderw 
-.line ide.c:/^iderw/ 
-has a queue of disk requests
-and processors may add new
-requests to the list concurrently
-.line ide.c:/DOC:insert-queue/ .
-To protect this list and other invariants in the driver,
-.code iderw
-acquires the
-.code-index idelock 
-.line ide.c:/DOC:acquire-lock/
-and 
-releases it at the end of the function.
-.PP
-Exercise 1 explores how to trigger the IDE driver
-race condition that we saw at the
-beginning of the chapter by moving the 
-.code acquire
-to after the queue manipulation.
-It is worthwhile to try the exercise because it will make clear that it is not
-that easy to trigger the race, suggesting that it is difficult to find
-race-conditions bugs.  It is not unlikely that xv6 has some races.
+Xv6 uses locks in many places to avoid race conditions.
+To see a simple example much like
+.code push
+above,
+look at
+.code kalloc
+.line kalloc.c:/^kalloc/
+and
+.code free
+.line kalloc.c:/^free/ .
+Try Exercises 1 and 2 to see what happens if those
+functions omit the locks.
+You'll likely find that it's difficult to trigger incorrect
+behavior, suggesting that it's hard to ensure that code
+is free from locking errors and races.
+It is not unlikely that xv6 has some races.
 .PP
 A hard part about using locks is deciding how many locks
-to use and which data and invariants each lock protects.
+to use and which data and invariants each lock should protect.
 There are a few basic principles.
 First, any time a variable can be written by one CPU
 at the same time that another CPU can read or write it,
@@ -398,19 +388,28 @@ computation, it would be more efficient to use a larger set of more
 fine-grained locks, so that the kernel could execute on multiple CPUs
 simultaneously.
 .PP
-Ultimately, the choice of lock granularity is an exercise in parallel
-programming.  Xv6 uses a few coarse data-structure specific locks (see
-.figref locktable ).
-For
-example, xv6 has a lock that protects the whole process table and its
-invariants, which are described in Chapter \*[CH:SCHED].  A more
-fine-grained approach would be to have a lock per entry in the process
-table so that threads working on different entries in the process
-table can proceed in parallel.  However, it complicates operations
-that have invariants over the whole process table, since they might
-have to acquire several locks. Subsequent chapters will discuss
-how each part of xv6 deals with concurrency, illustrating
-how to use locks.
+As an example of relatively coarse-grained locking, xv6's
+.code kalloc.c
+allocator has a single free list protected by a single
+lock. If concurrent allocation were a performance bottleneck,
+it might be helpful to have multiple free lists, each with
+its own lock, to allow truly parallel allocation.
+As an example of relatively fine-grained locking, xv6
+has a separate lock for each file, so that processes that
+manipulate different files can often proceed without waiting
+for each others' locks. On the other hand, this locking
+scheme could be made even more fine-grained, if one wanted
+to have good performance for processes that simultaneously
+write different areas of the same file.
+Ultimately lock granularity decisions need to be driven
+by performance measurements as well as complexity considerations.
+.PP
+As subsequent chapters explain each part of xv6, they
+will mention many examples of xv6's use of locks
+to deal with concurrency.
+As a preview,
+.figref locktable
+lists all of the locks in xv6.
 .figure locktable
 .\"
 .section "Deadlock and lock ordering"
