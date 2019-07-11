@@ -60,13 +60,13 @@ consider a linked list accessible from any
 CPU on a multiprocessor.
 The list supports push and pop operations, which
 may be called concurrently.
-Xv6's
-.code kalloc.c 
-memory allocator works in much this way;
+Xv6's memory allocator works in much this way;
 .code kalloc()
+.line kalloc.c:/^kalloc/
 pops a page of memory from a list of free pages,
 and
 .code kfree()
+.line kalloc.c:/^kfree/
 pushes a page onto the free list.
 .PP
 If there were no
@@ -268,7 +268,7 @@ make lines 25 and 26 execute as an
 (i.e., indivisible) step.
 .PP
 Because locks are widely used,
-multi-core processors usually provide an instruction that
+multi-core processors usually provide instructions that
 can be used to implement an atomic version of
 lines 25 and 26.
 On the RISC-V this instruction is
@@ -328,8 +328,11 @@ field
 and then releases the lock.
 Conceptually, the release just requires assigning zero to
 .code lk->locked .
-The C standard doesn't guarantee that assignments
-appear atomically to other CPUs (or to interrupts), so 
+The C standard allows compilers to implement assignment
+with multiple store instructions,
+so a C assignment might be non-atomic with respect
+to concurrent code.
+Instead,
 .code release
 uses the C library function
 .code "__sync_lock_release"
@@ -777,23 +780,41 @@ additional complexity of lock-free programming.
 .section "Exercises"
 .\"
 .PP
-1. Move the
+1. Comment out the calls to
 .code acquire
+and
+.code release
 in
-.code iderw
-to before sleep.  Is there a race? Why don't you
-observe it when booting xv6 and run stressfs?  Increase critical section with a
-dummy loop; what do you see now?  explain.
+.code kalloc
+.line kalloc.c:/^kalloc/ .
+What might now go wrong?
+Do you see evidence of a race when you run your modified xv6?
+How about when running
+.code usertests ?
+If you don't see a problem, why not?
+See if you can provoke a problem by inserting
+dummy loops into the critical section.
 .PP
-2. Remove the xchg in
-.code acquire .
-Explain what happens when you run xv6?
+2. Suppose that you instead commented out the
+locking in
+.code kfree 
+(after restoring locking in
+.code kalloc ).
+What might now go wrong? Is lack of locks in
+.code kfree
+less harmful than in
+.code kalloc ?
 .PP
-3. Write a parallel program using POSIX threads, which is supported on most
+3. Remove the xchg in
+.code acquire 
+.line spinlock.c:/^acquire/ .
+Explain what happens when you then run xv6.
+.PP
+4. Write a parallel program using POSIX threads, which is supported on most
 operating systems. For example, implement a parallel hash table and measure if
 the number of puts/gets scales with increasing number of cores.
 .PP
-4. Implement a subset of Pthreads in xv6.  That is, implement a user-level
+5. Implement a subset of Pthreads in xv6.  That is, implement a user-level
 thread library so that a user process can have more than 1 thread and arrange
 that these threads can run in parallel on different processors.  Come up with a
 design that correctly handles a thread making a blocking system call and
