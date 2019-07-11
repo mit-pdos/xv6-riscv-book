@@ -6,3 +6,11 @@ z.*
 contents1.t
 index1.t
 latex.out/
+*.aux
+*.idx
+*.ilg
+*.ind
+*.log
+*.toc
+*.bbl
+*.blg

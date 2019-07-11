@@ -71,9 +71,9 @@ def code(l):
 
 def codeindex(l):
    p = re.compile(r'.code-index ' + codep)
-   l = p.sub(r'\\lstinline{\1}\\index{\1}', l)
+   l = p.sub(r'\\lstinline{\1}\\index{\1@\\lstinline{\1}}', l)
    p = re.compile(r'.code-index "(.*)"\n')
-   l = p.sub(r'\\lstinline{\1}\\index{\1}', l)
+   l = p.sub(r'\\lstinline{\1}\\index{\1@\\lstinline{\1}}', l)
    l = end(l)
    print(l, end="")
 

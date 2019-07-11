@@ -71,15 +71,20 @@ book.ps: $(DIT)
 	ps2pdf $*.ps $*.pdf
 
 %.tex: %.t tr2tex lineref
+	mkdir -p latex.out
 	./tr2tex $< > latex.out/$@.tmp
 	./lineref latex.out/$@.tmp $(SRCPATH) > latex.out/$@
 
 book1.pdf: book1.tex $(TEX)
-	latexrun --bibtex-args=-min-crossrefs=100 book1.tex
+	pdflatex book1.tex
+	bibtex book1
+	pdflatex book1.tex
+	pdflatex book1.tex
 
 clean:
 	rm -f $(PS) $(PDF) $(DIT) z.*
-	latexrun --clean-all
+	rm -f book1.aux book1.idx book1.ilg book1.ind book1.log book1.toc book1.bbl book1.blg
+	rm -rf latex.out
 
 xv6-code.pdf: ../xv6-riscv/xv6.pdf
 	cp $^ $@
