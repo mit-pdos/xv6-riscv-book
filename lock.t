@@ -201,15 +201,14 @@ can operate on the data structure in the critical section, so that
 no CPU will execute a data structure operation when the 
 data structure's invariants do not hold.
 .PP
-You can think of locks as
+You can think of a lock as
 .italic-index serializing
 concurrent critical sections so that they run one at a time,
 and thus preserve invariants (assuming the critical sections
 are correct in isolation).
-You can also think of critical sections as being
+You can also think of critical sections guarded by the same lock as being
 atomic with respect to each other,
-so that a critical section that obtains the lock
-later sees only the complete set of
+so that each sees only the complete set of
 changes from earlier critical sections, and never sees
 partially-completed updates.
 .PP
@@ -405,7 +404,7 @@ Ultimately lock granularity decisions need to be driven
 by performance measurements as well as complexity considerations.
 .PP
 As subsequent chapters explain each part of xv6, they
-will mention many examples of xv6's use of locks
+will mention examples of xv6's use of locks
 to deal with concurrency.
 As a preview,
 .figref locktable
@@ -415,12 +414,10 @@ lists all of the locks in xv6.
 .section "Deadlock and lock ordering"
 .\"
 If a code path through the kernel must hold several locks at the same time, it is
-important that all code paths acquire the locks in the same order.  If
+important that all code paths acquire those locks in the same order.  If
 they don't, there is a risk of deadlock.  Let's say two code paths in
 xv6 need locks A and B, but code path 1 acquires locks in the order A
-then B, and the other path acquires them in the order B then A. This
-situation can result in a deadlock if two threads execute the
-code paths concurrently.
+then B, and the other path acquires them in the order B then A.
 Suppose thread T1 executes code path 1 and acquires lock A,
 and thread T2 executes code path 2 and acquires lock B.
 Next T1 will try to acquire lock B, and T2 will try to acquire lock A.
@@ -433,19 +430,32 @@ means that locks are effectively part of each function's specification:
 callers must invoke functions in a way that causes locks to be acquired
 in the agreed-on order.
 .PP
-Xv6 has many lock-order chains of length two involving the
-.code ptable.lock ,
+Xv6 has many lock-order chains of length two involving
+per-process locks
+(the lock in each
+.code "struct proc" )
 due to the way that
 .code sleep
-works as discussed in Chapter
-\*[CH:SCHED].
+works (see Chapter
+\*[CH:SCHED]).
 For example,
-.code-index ideintr
-holds the ide lock while calling 
+.code consoleintr
+.line console.c.c:/^consoleintr/
+is the interrupt routine which handles typed characters.
+When a newline arrives, any process that is waiting for
+console input should be woken up.
+To do this,
+.code consoleintr
+holds
+.code cons.lock
+while calling 
 .code-index wakeup ,
-which acquires the 
-.code-index ptable 
-lock.
+which acquires 
+the waiting process's lock in order to wake it up.
+In consequence, the global deadlock-avoiding
+lock order includes the rule that
+.code cons.lock
+must be acquired before any process lock.
 The file system code contains xv6's longest lock chains.
 For example, creating a file requires simultaneously
 holding a lock on the directory, a lock on the new file's inode,
@@ -457,13 +467,13 @@ To avoid deadlock, file system code always acquires locks in the order
 mentioned in the previous sentence.
 .section "Locks and interrupt handlers"
 .\"
-Xv6 uses spin-locks in many situations to protect data that is used by
-both interrupt handlers and threads.
-For example,
-a timer interrupt might
-.line trap.c:/T_IRQ0...IRQ_TIMER/
-increment
+Some xv6 spin-locks protect data that is used by
+both threads and interrupt handlers.
+For example, the
+.code clockintr
+timer interrupt handler might increment
 .code-index ticks 
+.line trap.c:/^clockintr/
 at about the same time that a kernel
 thread reads
 .code ticks 
@@ -474,34 +484,32 @@ The lock
 .code-index tickslock
 serializes the two accesses.
 .PP
-Interrupts can cause concurrency even on a single processor:
-if interrupts are enabled, kernel code can be stopped
-at any moment to run an interrupt handler instead.
+The interaction of spin-locks and interrupts raises a potential danger.
 Suppose
-.code-index iderw
-held the
-.code-index idelock
-and then got interrupted to run
-.code-index ideintr .
-.code Ideintr
-would try to lock
-.code idelock ,
+.code-index sys_sleep
+holds
+.code-index tickslock ,
+and its CPU is interrupted by a timer interrupt.
+.code clockintr
+would try to acquire
+.code tickslock ,
 see it was held, and wait for it to be released.
 In this situation,
-.code idelock
-will never be released—only
-.code iderw
-can release it, and
-.code iderw
+.code tickslock
+will never be released: only
+.code sys_sleep
+can release it, but
+.code sys_sleep
 will not continue running until
-.code ideintr
-returns—so the processor, and eventually the whole system, will deadlock.
+.code clockintr
+returns.
+So the processor will deadlock, and any code
+that needs either lock will also freeze.
 .PP
 To avoid this situation, if a spin-lock is used by an interrupt handler,
 a processor must never hold that lock with interrupts enabled.
-Xv6 is more conservative: when a processor enters a spin-lock
-critical section, xv6 always ensures interrupts are disabled on
-that processor.
+Xv6 is more conservative: when a processor acquires any
+lock, xv6 always disables interrupts on that processor.
 Interrupts may still occur on other processors, so 
 an interrupt's
 .code acquire
@@ -511,51 +519,50 @@ xv6 re-enables interrupts when a processor holds no spin-locks; it must
 do a little book-keeping to cope with nested critical sections.
 .code acquire
 calls
-.code-index pushcli
-.line spinlock.c:/^pushcli/
+.code-index push_off
+.line spinlock.c:/^push_off/
 and
 .code release
 calls
-.code-index popcli
-.line spinlock.c:/^popcli/
+.code-index pop_off
+.line spinlock.c:/^pop_off/
 to track the nesting level of locks on the current processor.
 When that count reaches zero,
-.code popcli 
+.code pop_off 
 restores the interrupt enable state that existed 
 at the start of the outermost critical section.
 The
-.code cli
+.code intr_off
 and
-.code sti
-functions execute the x86 interrupt disable and enable
-instructions, respectively.
+.code intr_on
+functions execute RISC-V instructions to disable and enable
+interrupts, respectively.
 .PP
 It is important that
 .code-index acquire
 call
-.code pushcli
-before the 
-.code-index xchg
-that might acquire the lock
-.line spinlock.c:/while.xchg/ .
+.code push_off
+strictly before setting
+.code lk->locked
+.line spinlock.c:/sync_lock_test_and_set/ .
 If the two were reversed, there would be
-a few instruction cycles when the lock
+a brief window when the lock
 was held with interrupts enabled, and
 an unfortunately timed interrupt would deadlock the system.
 Similarly, it is important that
 .code-index release
 call
-.code-index popcli
-only after the
-.code-index xchg
-that releases the lock
-.line spinlock.c:/xchg.*0/ .
+.code-index pop_off
+only after 
+releasing the lock
+.line spinlock.c:/sync_lock_release/ .
 .\"
 .section "Instruction and memory ordering"
 .\"
 .PP
-This chapter has assumed that code executes in the order
-in which the code appears in the program.  Many
+It is natural to think of programs executing in the order
+in which source code statements appear.
+Many
 compilers and processors, however, execute code out of order
 to achieve
 higher performance.  If an instruction takes many cycles to complete,
@@ -570,18 +577,20 @@ A compiler may perform a similar re-ordering by emitting instructions
 for one statement before the instructions for a statement that precedes it
 in the source.
 .PP
-Compilers and processors follow certain rules when they re-order to
+Compilers and processors follow rules when they re-order to
 ensure that they don't change the results of correctly-written
 serial code.
-However, the rules do allow changing the results of concurrent code,
-and can easily lead to incorrect behavior on multiprocessors
-or if there are interrupts.
+However, the rules do allow re-ordering that
+changes the results of concurrent code,
+and can easily lead to incorrect behavior on multiprocessors.
 .PP
 For example, in this code for
 .code push ,
-it would be a disaster if the compiler or processor caused the effects
-of line 4 (or 2 or 5) to be visible to other cores after the effects
-of line 6:
+it would be a disaster if the compiler or processor moved the
+store corresponding to
+line 4 to a point after the
+.code release
+on line 6:
 .P1
     1	  l = malloc(sizeof *l);
     2	  l->data = data;
@@ -590,25 +599,21 @@ of line 6:
     5	  list = l;
     6	  release(&listlock);
 .P2
-If the hardware or compiler would re-order, for example, the effects of line 4 to
-be visible after line 6, then another processor can acquire
-.code listlock
-and observe that
-.code list
-points to
-.code l ,
-but it won't observe that
-.code l->next
-is set to the remainder of the list and won't be able to read the rest of the list.
+If such a re-ordering occurred, there would be a window during
+which another processor could acquire the lock,
+observe the updated
+.code list ,
+but see an uninitialized
+.code list->next .
 .PP
 To tell the hardware and compiler not to perform such re-orderings,
 xv6 uses
-.code __sync_synchronize() ,
+.code __sync_synchronize() 
 in both
 .code acquire
 and
 .code release .
-.code _sync_synchronize()
+.code __sync_synchronize()
 is a memory barrier:
 it tells the compiler and CPU to not reorder loads or stores across the
 barrier.
@@ -616,11 +621,8 @@ Xv6 worries about ordering only in
 .code acquire
 and
 .code release ,
-because concurrent access to data structures other than the lock structure is
-performed between 
-.code acquire
-and
-.code release .
+because it uses locks to guard all accesses to shared data (other than locks
+themselves).
 .\"
 .section "Sleep locks"
 .\"
@@ -676,68 +678,17 @@ critical sections).
 Spin-locks have low overhead, but they waste CPU time if they
 are held for long periods when other CPUs are waiting
 for them.
-Thus they are best suited for short critical sections.
+Thus they are best suited to short critical sections.
 Xv6 uses sleep-locks in the file system,
 where it is convenient to
 be able to hold locks across lengthy disk operations.
 .\"
-.section "Limitations of locks"
-.\"
-.PP
-Locks often solve concurrency problems cleanly,
-but there are times when they are awkward. Subsequent chapters will
-point out such situations in xv6; this section outlines some
-of the problems that come up.
-.PP
-Sometimes a function uses data which must be guarded by a lock,
-but the function is called both from code that already holds
-the lock and from code that wouldn't otherwise need the lock.
-One way to deal with this is to have two variants of the function,
-one that acquires the lock, and the other that expects the
-caller to already hold the lock; see
-.code wakeup1
-for an example
-.line proc.c:/^wakeup1/ .
-Another approach is for the function to require callers
-to hold the lock whether the caller needs it or not,
-as with 
-.code sched
-.line proc.c:/^sched/ .
-Kernel developers need to be aware of such requirements.
-.PP
-It might seem that one could simplify situations where both
-caller and callee need a lock by allowing 
-.italic-index "recursive locks" ,
-so that if a function holds a lock,
-any function it calls is allowed to re-acquire the lock.
-However, the programmer would then need to reason about
-all combinations of caller and callee, because it
-will no longer be the case that the data structure's
-invariants always hold after an acquire.
-Whether recursive locks are better than xv6's use of conventions about
-functions that require a lock to be held is not clear.
-The larger lesson is that 
-(as with global lock ordering to avoid deadlock) lock requirements 
-sometimes can't be private, but intrude themselves on
-the interfaces of functions and modules.
-.PP
-A situation in which locks are insufficient is when one thread needs
-to wait for another thread's update to a data structure, for example
-when a pipe's reader waits for some other thread to write the pipe. The waiting
-thread cannot hold the lock on the data, since that
-would prevent the update it is waiting for. Instead, xv6 provides
-a separate mechanism that jointly manages the lock and
-event wait; see the description of
-.code sleep
-and
-.code wakeup
-in Chapter \*[CH:SCHED].
-.\"
 .section "Real world"
 .\"
-Concurrency primitives and parallel programming are active areas of research,
-because programming with locks is still challenging.  It is best to use locks as the
-base for higher-level constructs like synchronized queues, although xv6 does not
+Programming with locks remains challenging despite years of research
+into concurrency primitives and parallelism.
+It is often best to conceal locks within 
+higher-level constructs like synchronized queues, although xv6 does not
 do this.  If you program with locks, it is wise to use a tool that attempts to
 identify race conditions, because it is easy to miss an invariant that requires
 a lock.
@@ -748,7 +699,7 @@ Pthreads has support for user-level locks, barriers, etc.  Supporting Pthreads r
 support from the operating system. For example, it should be the case that if
 one pthread blocks in a system call, another pthread of the same process should
 be able to run on that processor.  As another example, if a pthread changes its
-process's address space (e.g., grow or shrink it), the kernel must arrange that
+process's address space (e.g., maps or unmaps memory), the kernel must arrange that
 other processors that run threads of the same process update their hardware page
 tables to reflect the change in the address space.  On the x86, this involves
 shooting down the
