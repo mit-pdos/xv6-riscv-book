@@ -8,11 +8,12 @@ bcache.lock	Protects allocation of block buffer cache entries
 cons.lock	Serializes access to console hardware, avoids intermixed output
 ftable.lock	Serializes allocation of a struct file in file table
 icache.lock	Protects allocation of inode cache entries
-idelock	Serializes access to disk hardware and disk queue
+vdisk_lock	Serializes access to disk hardware and queue of DMA descriptors
 kmem.lock	Serializes allocation of memory
 log.lock	Serializes operations on the transaction log
 pipe's p->lock	Serializes operations on each pipe
-ptable.lock	Serializes context switching, and operations on proc->state and proctable
+pid_lock	Serializes increments of next_pid
+proc's p->lock	Serializes changes to process's state
 tickslock	Serializes operations on the ticks counter
 inode's ip->lock	Serializes operations on each inode and its content
 buf's b->lock	Serializes operations on each block buffer

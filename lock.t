@@ -201,15 +201,14 @@ can operate on the data structure in the critical section, so that
 no CPU will execute a data structure operation when the 
 data structure's invariants do not hold.
 .PP
-You can think of locks as
+You can think of a lock as
 .italic-index serializing
 concurrent critical sections so that they run one at a time,
 and thus preserve invariants (assuming the critical sections
 are correct in isolation).
-You can also think of critical sections as being
+You can also think of critical sections guarded by the same lock as being
 atomic with respect to each other,
-so that a critical section that obtains the lock
-later sees only the complete set of
+so that each sees only the complete set of
 changes from earlier critical sections, and never sees
 partially-completed updates.
 .PP
@@ -405,7 +404,7 @@ Ultimately lock granularity decisions need to be driven
 by performance measurements as well as complexity considerations.
 .PP
 As subsequent chapters explain each part of xv6, they
-will mention many examples of xv6's use of locks
+will mention examples of xv6's use of locks
 to deal with concurrency.
 As a preview,
 .figref locktable
@@ -415,12 +414,10 @@ lists all of the locks in xv6.
 .section "Deadlock and lock ordering"
 .\"
 If a code path through the kernel must hold several locks at the same time, it is
-important that all code paths acquire the locks in the same order.  If
+important that all code paths acquire those locks in the same order.  If
 they don't, there is a risk of deadlock.  Let's say two code paths in
 xv6 need locks A and B, but code path 1 acquires locks in the order A
-then B, and the other path acquires them in the order B then A. This
-situation can result in a deadlock if two threads execute the
-code paths concurrently.
+then B, and the other path acquires them in the order B then A.
 Suppose thread T1 executes code path 1 and acquires lock A,
 and thread T2 executes code path 2 and acquires lock B.
 Next T1 will try to acquire lock B, and T2 will try to acquire lock A.
@@ -433,8 +430,10 @@ means that locks are effectively part of each function's specification:
 callers must invoke functions in a way that causes locks to be acquired
 in the agreed-on order.
 .PP
-Xv6 has many lock-order chains of length two involving the
-.code ptable.lock ,
+Xv6 has many lock-order chains of length two involving
+per-process locks
+(the lock in each
+.code "struct proc" )
 due to the way that
 .code sleep
 works as discussed in Chapter
