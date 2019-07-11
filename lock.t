@@ -678,68 +678,17 @@ critical sections).
 Spin-locks have low overhead, but they waste CPU time if they
 are held for long periods when other CPUs are waiting
 for them.
-Thus they are best suited for short critical sections.
+Thus they are best suited to short critical sections.
 Xv6 uses sleep-locks in the file system,
 where it is convenient to
 be able to hold locks across lengthy disk operations.
 .\"
-.section "Limitations of locks"
-.\"
-.PP
-Locks often solve concurrency problems cleanly,
-but there are times when they are awkward. Subsequent chapters will
-point out such situations in xv6; this section outlines some
-of the problems that come up.
-.PP
-Sometimes a function uses data which must be guarded by a lock,
-but the function is called both from code that already holds
-the lock and from code that wouldn't otherwise need the lock.
-One way to deal with this is to have two variants of the function,
-one that acquires the lock, and the other that expects the
-caller to already hold the lock; see
-.code wakeup1
-for an example
-.line proc.c:/^wakeup1/ .
-Another approach is for the function to require callers
-to hold the lock whether the caller needs it or not,
-as with 
-.code sched
-.line proc.c:/^sched/ .
-Kernel developers need to be aware of such requirements.
-.PP
-It might seem that one could simplify situations where both
-caller and callee need a lock by allowing 
-.italic-index "recursive locks" ,
-so that if a function holds a lock,
-any function it calls is allowed to re-acquire the lock.
-However, the programmer would then need to reason about
-all combinations of caller and callee, because it
-will no longer be the case that the data structure's
-invariants always hold after an acquire.
-Whether recursive locks are better than xv6's use of conventions about
-functions that require a lock to be held is not clear.
-The larger lesson is that 
-(as with global lock ordering to avoid deadlock) lock requirements 
-sometimes can't be private, but intrude themselves on
-the interfaces of functions and modules.
-.PP
-A situation in which locks are insufficient is when one thread needs
-to wait for another thread's update to a data structure, for example
-when a pipe's reader waits for some other thread to write the pipe. The waiting
-thread cannot hold the lock on the data, since that
-would prevent the update it is waiting for. Instead, xv6 provides
-a separate mechanism that jointly manages the lock and
-event wait; see the description of
-.code sleep
-and
-.code wakeup
-in Chapter \*[CH:SCHED].
-.\"
 .section "Real world"
 .\"
-Concurrency primitives and parallel programming are active areas of research,
-because programming with locks is still challenging.  It is best to use locks as the
-base for higher-level constructs like synchronized queues, although xv6 does not
+Programming with locks remains challenging despite years of research
+into concurrency primitives and parallelism.
+It is often best to conceal locks within 
+higher-level constructs like synchronized queues, although xv6 does not
 do this.  If you program with locks, it is wise to use a tool that attempts to
 identify race conditions, because it is easy to miss an invariant that requires
 a lock.
@@ -750,7 +699,7 @@ Pthreads has support for user-level locks, barriers, etc.  Supporting Pthreads r
 support from the operating system. For example, it should be the case that if
 one pthread blocks in a system call, another pthread of the same process should
 be able to run on that processor.  As another example, if a pthread changes its
-process's address space (e.g., grow or shrink it), the kernel must arrange that
+process's address space (e.g., maps or unmaps memory), the kernel must arrange that
 other processors that run threads of the same process update their hardware page
 tables to reflect the change in the address space.  On the x86, this involves
 shooting down the
