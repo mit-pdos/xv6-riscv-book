@@ -59,7 +59,7 @@ def defindex(l):
    l = end(l)
    print(l, end="")
 
-codep = r'([\/\.\->_\w\&<\(\)]+)'
+codep = r'([\/\.\->_\w\&<\(\)\#\[\]]+)'
 
 def code(l):
    p = re.compile(r'.code "(.*)"')
@@ -189,7 +189,13 @@ def lineref(l):
 
 def linerefs(l):
    p = re.compile(r'.lines (.*):\/(.*)/,\/(.*)/')
-   l = p.sub(r'\\linerefs{\1:\/\2\/,\/\3\/}', l)
+   l = p.sub(r'\\linerefs{\1:/\2/,/\3/}', l)
+   l = end(l)
+   print(l, end="")
+
+def indent(l):
+   p = re.compile(r'.IP (.*)\n')
+   l = p.sub(r'\\paragraph{\\textbullet}', l)
    l = end(l)
    print(l, end="")
 
@@ -255,6 +261,8 @@ def tr2tex(l):
       linerefs(l)
    elif l.startswith(r'.P1'):
       listing(l)
+   elif l.startswith(r'.IP'):
+      indent(l)
    elif l.startswith(r"."):
       print("TODO", l)
    else:

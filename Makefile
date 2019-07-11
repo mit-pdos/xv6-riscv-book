@@ -43,6 +43,12 @@ TEX=\
 	acks.tex\
 	unix.tex\
 	first.tex\
+	mem.tex\
+	trap.tex\
+	lock.tex\
+	sched.tex\
+	fs.tex\
+	sum.tex\
 
 export UCB = /usr/local/ucb
 
@@ -68,8 +74,8 @@ book.ps: $(DIT)
 	./tr2tex $< > latex.out/$@.tmp
 	./lineref latex.out/$@.tmp $(SRCPATH) > latex.out/$@
 
-tbook.pdf: book.tex $(TEX)
-	latexrun --bibtex-args=-min-crossrefs=100 book.tex
+book1.pdf: book1.tex $(TEX)
+	latexrun --bibtex-args=-min-crossrefs=100 book1.tex
 
 clean:
 	rm -f $(PS) $(PDF) $(DIT) z.*

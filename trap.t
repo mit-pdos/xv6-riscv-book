@@ -170,7 +170,8 @@ to identify the source of the interrupt.  For example, as mentioned above, xv6
 programs the timer chip to interrupt with number
 .code IRQ_TIMER
 .line traps.h:/IRQ_TIMER/ ,
-which corresponds to trap T_IRQ0
+which corresponds to trap
+.code T_IRQ0
 .line traps.h:/T_IRQ0/ .
 Some trap numbers are predefined by the x86.  For example, if software
 divides by zero, then the processor will use trap number
@@ -460,7 +461,7 @@ We saw that each trap handler sets
 up a trap frame and then calls the C function
 .code-index trap .
 .code Trap
-.line 'trap.c:/^trap!(/'
+.line 'trap.c:/^trap/'
 looks at the hardware trap number
 .code-index tf->trapno
 to decide why it has been called and what needs to be done.
@@ -471,7 +472,7 @@ The timer interrupts through vector 32 (which xv6 chose to handle IRQ
 .code Trap
 for a timer interrupt does just two things:
 increment the ticks variable 
-.line trap.c:/ticks!+!+/ , 
+.line trap.c:/ticks\+\+/ , 
 and call
 .code-index wakeup . 
 The latter, as we will see in Chapter \*[CH:SCHED], may cause the
@@ -567,7 +568,8 @@ purpose, namely
 .line vm.c:/MSR_SFMASK/ .
 The processor clears in
 .register eflags
-every bit corresponding to a bit that is set in the MSR_SFMASK.
+every bit corresponding to a bit that is set in the
+.code MSR_SFMASK.
 .IP \[bu]
 It saves
 .register rip
@@ -683,8 +685,9 @@ which swaps the contents of
 .code MSR_GS_BASE
 and
 .code MSR_GS_KERNBASE ,
-causing the value of MSR_GS_KERNBASE to be
-loaded into
+causing the value of
+.code MSR_GS_KERNBASE
+to be loaded into
 .code MSR_GS_BASE .
 Since user code cannot program
 .code MSR_GS_KERNBASE ,
@@ -1256,9 +1259,12 @@ using the paging hardware, without any copying.
 1. Set a breakpoint in
 .code trap
 to catch the first timer interrupt. What values are on the stack at this
-point?  Explain the output of x/37x $rsp at that breakpoint with each value
-labeled as to what it is (e.g., saved %ebp for trap, trapframe.rip, scratch
-space, etc.).
+point?  Explain the output of x/37x
+.register rsp
+at that breakpoint with each value
+labeled as to what it is (e.g., saved
+.register ebp
+for trap, trapframe.rip, scratch space, etc.).
 .PP
 2.  Add a new system call to get the current UTC time and return it to the user
 program. You may want to use the helper function,

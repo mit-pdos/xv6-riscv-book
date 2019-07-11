@@ -687,7 +687,6 @@ We can change the queue implementation to use
 .code sleep
 and
 .code wakeup :
-\X'P1 again'
 .P1
   201	void*
   202	send(struct q *q, void *p)
@@ -826,7 +825,6 @@ Once the receiver is awake again
 .code-index sleep
 reacquires the lock before returning.
 Our new correct scheme is useable as follows:
-\X'P1 coming up'
 .P1
   400	struct q {
   401	  struct spinlock lock;
@@ -977,7 +975,7 @@ and skips them entirely
 .line kernel/proc.c:/sleeplock0/ .
 For example,
 .code wait
-.line 'kernel/proc.c:/^wakeup!(/'
+.line kernel/proc.c:/^wakeup/
 calls
 .code sleep
 with 
@@ -998,7 +996,7 @@ and calling
 At some point later, a process will call
 .code wakeup(chan) .
 .code Wakeup
-.line 'kernel/proc.c:/^wakeup!(/'
+.line 'kernel/proc.c:/^wakeup/'
 acquires
 .code-index ptable.lock
 and calls
@@ -1198,11 +1196,11 @@ While
 .code piperead
 waits,
 .code pipewrite
-loops over the bytes being written—\c
+loops over the bytes being written
 .code addr[0] ,
 .code addr[1] ,
 \&...,
-.code addr[n-1] —\c
+.code addr[n-1]
 adding each to the pipe in turn
 .line "'kernel/pipe.c:/nwrite!+!+/'" .
 During this loop, it could happen that

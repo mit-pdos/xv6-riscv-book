@@ -236,7 +236,7 @@ Xv6 has two types of locks: spin-locks and sleep-locks.
 We'll start with spin-locks.
 Xv6 represents a spin-lock as a
 .code-index "struct spinlock"
-.line spinlock.h:/struct.spinlock/ .
+.line kernel/spinlock.h:/struct.spinlock/ .
 The important field in the structure is
 .code locked ,
 a word that is zero when the lock is available
@@ -284,7 +284,7 @@ other CPU from using the memory address between the read and the write.
 .PP
 Xv6's 
 .code-index acquire
-.line spinlock.c:/^acquire/
+.line kernel/spinlock.c:/^acquire/
 uses the portable C library call 
 .code "__sync_lock_test_and_set" ,
 which boils down to the
@@ -319,7 +319,7 @@ and must only be changed while holding the lock.
 .PP
 The function
 .code-index release
-.line spinlock.c:/^release/
+.line kernel/spinlock.c:/^release/
 is the opposite of 
 .code acquire :
 it clears the 
