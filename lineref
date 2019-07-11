@@ -4,49 +4,43 @@ import os
 import re
 import sys
 
+if len(sys.argv) < 2:
+   print("error: too few arguments", file=sys.stderr)
+         
 path = sys.argv[2]
 
-def line2num(line):
-   n = line.split(' ')
-   return n[0]
-   
 def lookup_regex(fname, pat):
    p = re.compile(pat)
+   cnt = 1
    try:
       with open(path+'/'+fname) as f:  
          line = f.readline()
          while line:
-            m = p.search(line[5:])
+            m = p.search(line)
             if m != None:
-               return line2num(line)
+               return str(cnt)
+            cnt += 1
             line = f.readline()
          print("error: cannot find pat in %s" % fname, file=sys.stderr)
    except IOError:
       print("error: cannot open %s" % fname, file=sys.stderr)
       return "0"
    
-def lookup_line(fname, n):
-   try:
-      with open(path+'/'+fname) as f:
-         lines = f.readlines()
-         return line2num(lines[int(n)])
-   except IOError:
-      print("error: cannot open %s" % fname, file=sys.stderr)
-      return "0"
-
 def lineref(l):
    p = re.compile(r'\\lineref{(.*):\/(.*)\/}')
    m = p.search(l)
    if m != None:
-      n = lookup_regex(m.groups()[0], m.groups()[1])
-      l = p.sub(r'\\lineref{%s}' % n, l)
+      f = m.groups()[0]
+      n = lookup_regex(f, m.groups()[1])
+      l = p.sub(r'\\lineref{%s}{%s}' % (f,n), l)
       print(l, end="")
       return
    p = re.compile(r'\\lineref\{(.*):(\d+)\}')
    m = p.search(l)
    if m != None:
-      n = lookup_line(m.groups()[0], m.groups()[1])
-      l = p.sub(r'\\lineref{%s}' % n, l)
+      f = m.groups()[0]
+      n = m.groups()[1]
+      l = p.sub(r'\\lineref{%s}{%s}' % (f, n), l)
       print(l, end="")
       return
    p = re.compile(r'\\linerefs{(.*):(.*),(.*)}')

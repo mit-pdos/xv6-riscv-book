@@ -22,7 +22,8 @@
 \lstset{language=C,basicstyle=\small\ttfamily}
 \lstset{morecomment=[is]{[[[}{]]]}}
 
-\newcommand{\lineref}[1]{{\small (#1)}}
+\newcommand{\lineref}[2]{\href{https://github.com/kaashoek/xv6-risc-v/blob/riscv/#1\#L#2}{#1:#2}}
+
 \newcommand{\linerefs}[1]{{\small (#1)}}
 
 \title{\textbf{xv6: a simple, Unix-like teaching operating system}}
@@ -43,7 +44,7 @@
 \input{latex.out/trap}
 \input{latex.out/lock}
 \input{latex.out/sched}
-\input{latex.out/fs}
+%\input{latex.out/fs}
 \input{latex.out/sum}
 
 {

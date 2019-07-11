@@ -33,7 +33,7 @@ SCRIPTS=\
 	runfig\
 	ditspaces\
 
-SRCPATH=../xv6-riscv/fmt/
+SRCPATH=../xv6-riscv/
 
 PS=$(patsubst %,%.ps,$(ORDER))
 PDF=$(patsubst %,%.pdf,$(ORDER))

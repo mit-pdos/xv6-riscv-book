@@ -27,5 +27,3 @@ Szczurko, Warren Toomey, tyfkda, and Zou Chang Wei.
 
 If you spot errors or have suggestions for improvement, please send email to
 Frans Kaashoek and Robert Morris (kaashoek,rtm@csail.mit.edu).
-
-
