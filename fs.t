@@ -926,15 +926,15 @@ but in a data block called the
 The last entry in the
 .code addrs
 array gives the address of the indirect block.
-Thus the first 6 kB 
-.code NDIRECT \c (
-×\c
+Thus the first 6 kB (
+.code NDIRECT 
+.code x
 .code-index BSIZE )
 bytes of a file can be loaded from blocks listed in the inode,
 while the next
-.code 64 kB
-.code NINDIRECT \c (
-×\c
+.code 64 kB (
+.code NINDIRECT
+.code x
 .code BSIZE )
 bytes can only be loaded after consulting the indirect block.
 This is a good on-disk representation but a 
@@ -1057,7 +1057,10 @@ live in the file system; we will return to this case in the file descriptor laye
 .PP
 The function
 .code-index stati
-.line "'kernel/fs.c:/^stati!(/'"
+XXX FIXME
+.ig
+.line kernel/fs.c:/^stati!(/
+..
 copies inode metadata into the 
 .code stat
 structure, which is exposed to user programs
@@ -1179,7 +1182,10 @@ to do the real work.
 starts by deciding where the path evaluation begins.
 If the path begins with a slash, evaluation begins at the root;
 otherwise, the current directory
-.line "'kernel/fs.c:/..if.!*path.==....!)/,/idup/'" .
+XXX FIXME
+.ig
+.line kernel/fs.c:/..if.!*path.==....!)/,/idup/ .
+..
 Then it uses
 .code-index skipelem
 to consider each element of the path in turn
@@ -1395,7 +1401,10 @@ and then advance it
 Pipes have no concept of offset.
 Recall that the inode functions require the caller
 to handle locking
+XXX FIXME
+.ig
 .lines "'kernel/file.c:/stati/-1,/iunlock/' 'kernel/file.c:/readi/-1,/iunlock/' 'kernel/file.c:/writei!(f/-1,/iunlock/'" .
+..
 The inode locking has the convenient side effect that the
 read and write offsets are updated atomically, so that
 multiple writing to the same file simultaneously
@@ -1406,8 +1415,12 @@ cannot overwrite each other's data, though their writes may end up interlaced.
 .section "Code: System calls"
 .PP
 With the functions that the lower layers provide the implementation of most
-system calls is trivial (see
-.file kernel/sysfile.c  ). 
+system calls is trivial
+XXX FIXME
+.ig
+(see
+.file kernel/sysfile.c  ).
+..
 There are a few calls that
 deserve a closer look.
 .PP
@@ -1513,7 +1526,10 @@ so
 does too
 .line "kernel/sysfile.c:/^......return.ip/" .
 Otherwise, it is an error
+XXX FIXME
+.ig
 .lines kernel/sysfile.c:/^......return.ip/+1,/return.0/ .
+..
 If the name does not already exist,
 .code create
 now allocates a new inode with
@@ -1560,7 +1576,7 @@ a small part of what it can do.
 If
 .code-index open
 is passed the
-.code-index O_CREATE
+.code-index O\_CREATE
 flag, it calls
 .code create
 .line kernel/sysfile.c:/create.*T_FILE/ .

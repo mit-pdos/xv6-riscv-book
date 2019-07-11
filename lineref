@@ -12,19 +12,27 @@ def line2num(line):
    
 def lookup_regex(fname, pat):
    p = re.compile(pat)
-   with open(path+'/'+fname) as f:  
-      line = f.readline()
-      while line:
-         m = p.search(line[5:])
-         if m != None:
-            return line2num(line)
+   try:
+      with open(path+'/'+fname) as f:  
          line = f.readline()
-   print("error: couldn't find pat in %s" % fname)
-
+         while line:
+            m = p.search(line[5:])
+            if m != None:
+               return line2num(line)
+            line = f.readline()
+         print("error: cannot find pat in %s" % fname, file=sys.stderr)
+   except IOError:
+      print("error: cannot open %s" % fname, file=sys.stderr)
+      return "0"
+   
 def lookup_line(fname, n):
-   with open(path+'/'+fname) as f:
-      lines = f.readlines()
-      return line2num(lines[int(n)])
+   try:
+      with open(path+'/'+fname) as f:
+         lines = f.readlines()
+         return line2num(lines[int(n)])
+   except IOError:
+      print("error: cannot open %s" % fname, file=sys.stderr)
+      return "0"
 
 def lineref(l):
    p = re.compile(r'\\lineref{(.*):\/(.*)\/}')
@@ -39,6 +47,14 @@ def lineref(l):
    if m != None:
       n = lookup_line(m.groups()[0], m.groups()[1])
       l = p.sub(r'\\lineref{%s}' % n, l)
+      print(l, end="")
+      return
+   p = re.compile(r'\\linerefs{(.*):(.*),(.*)}')
+   m = p.search(l)
+   if m != None:
+      n = lookup_regex(m.groups()[0], m.groups()[1])
+      n1 = lookup_regex(m.groups()[0], m.groups()[2])
+      l = p.sub(r'\\linerefs{%s-%s}' % (n, n1), l)
       print(l, end="")
       return
    print(l, end="")
