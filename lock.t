@@ -787,13 +787,17 @@ and
 in
 .code kalloc
 .line kalloc.c:/^kalloc/ .
-What might now go wrong?
-Do you see evidence of a race when you run your modified xv6?
+This seems like it should cause problems for
+kernel code that calls
+.code kalloc ;
+what symptoms do you expect to see?
+When you run xv6, do you see these symptoms?
 How about when running
 .code usertests ?
 If you don't see a problem, why not?
 See if you can provoke a problem by inserting
-dummy loops into the critical section.
+dummy loops into the critical section of
+.code kalloc .
 .PP
 2. Suppose that you instead commented out the
 locking in
@@ -805,10 +809,16 @@ What might now go wrong? Is lack of locks in
 less harmful than in
 .code kalloc ?
 .PP
-3. Remove the xchg in
-.code acquire 
-.line spinlock.c:/^acquire/ .
-Explain what happens when you then run xv6.
+3. If two CPUs call
+.code kalloc
+at the same time, one will have to wait for the other,
+which is bad for performance.
+Modify 
+.code kalloc.c
+to have more parallelism, so that simultaneous
+calls to
+.code kalloc
+from different CPUs can proceed without waiting for each other.
 .PP
 4. Write a parallel program using POSIX threads, which is supported on most
 operating systems. For example, implement a parallel hash table and measure if
