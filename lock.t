@@ -436,15 +436,26 @@ per-process locks
 .code "struct proc" )
 due to the way that
 .code sleep
-works as discussed in Chapter
-\*[CH:SCHED].
+works (see Chapter
+\*[CH:SCHED]).
 For example,
-.code-index ideintr
-holds the ide lock while calling 
+.code consoleintr
+.line console.c.c:/^consoleintr/
+is the interrupt routine which handles typed characters.
+When a newline arrives, any process that is waiting for
+console input should be woken up.
+To do this,
+.code consoleintr
+holds
+.code cons.lock
+while calling 
 .code-index wakeup ,
-which acquires the 
-.code-index ptable 
-lock.
+which acquires 
+the waiting process's lock in order to wake it up.
+In consequence, the global deadlock-avoiding
+lock order includes the rule that
+.code cons.lock
+must be acquired before any process lock.
 The file system code contains xv6's longest lock chains.
 For example, creating a file requires simultaneously
 holding a lock on the directory, a lock on the new file's inode,
@@ -456,13 +467,13 @@ To avoid deadlock, file system code always acquires locks in the order
 mentioned in the previous sentence.
 .section "Locks and interrupt handlers"
 .\"
-Xv6 uses spin-locks in many situations to protect data that is used by
-both interrupt handlers and threads.
-For example,
-a timer interrupt might
-.line trap.c:/T_IRQ0...IRQ_TIMER/
-increment
+Some xv6 spin-locks protect data that is used by
+both threads and interrupt handlers.
+For example, the
+.code clockintr
+timer interrupt handler might increment
 .code-index ticks 
+.line trap.c:/^clockintr/
 at about the same time that a kernel
 thread reads
 .code ticks 
@@ -473,34 +484,32 @@ The lock
 .code-index tickslock
 serializes the two accesses.
 .PP
-Interrupts can cause concurrency even on a single processor:
-if interrupts are enabled, kernel code can be stopped
-at any moment to run an interrupt handler instead.
+The interaction of spin-locks and interrupts raises a potential danger.
 Suppose
-.code-index iderw
-held the
-.code-index idelock
-and then got interrupted to run
-.code-index ideintr .
-.code Ideintr
-would try to lock
-.code idelock ,
+.code-index sys_sleep
+holds
+.code-index tickslock ,
+and its CPU is interrupted by a timer interrupt.
+.code clockintr
+would try to acquire
+.code tickslock ,
 see it was held, and wait for it to be released.
 In this situation,
-.code idelock
-will never be released—only
-.code iderw
-can release it, and
-.code iderw
+.code tickslock
+will never be released: only
+.code sys_sleep
+can release it, but
+.code sys_sleep
 will not continue running until
-.code ideintr
-returns—so the processor, and eventually the whole system, will deadlock.
+.code clockintr
+returns.
+So the processor will deadlock, and any code
+that needs either lock will also freeze.
 .PP
 To avoid this situation, if a spin-lock is used by an interrupt handler,
 a processor must never hold that lock with interrupts enabled.
-Xv6 is more conservative: when a processor enters a spin-lock
-critical section, xv6 always ensures interrupts are disabled on
-that processor.
+Xv6 is more conservative: when a processor acquires any
+lock, xv6 always disables interrupts on that processor.
 Interrupts may still occur on other processors, so 
 an interrupt's
 .code acquire
@@ -510,45 +519,43 @@ xv6 re-enables interrupts when a processor holds no spin-locks; it must
 do a little book-keeping to cope with nested critical sections.
 .code acquire
 calls
-.code-index pushcli
-.line spinlock.c:/^pushcli/
+.code-index push_off
+.line spinlock.c:/^push_off/
 and
 .code release
 calls
-.code-index popcli
-.line spinlock.c:/^popcli/
+.code-index pop_off
+.line spinlock.c:/^pop_off/
 to track the nesting level of locks on the current processor.
 When that count reaches zero,
-.code popcli 
+.code pop_off 
 restores the interrupt enable state that existed 
 at the start of the outermost critical section.
 The
-.code cli
+.code intr_off
 and
-.code sti
-functions execute the x86 interrupt disable and enable
-instructions, respectively.
+.code intr_on
+functions execute RISC-V instructions to disable and enable
+interrupts, respectively.
 .PP
 It is important that
 .code-index acquire
 call
-.code pushcli
-before the 
-.code-index xchg
-that might acquire the lock
-.line spinlock.c:/while.xchg/ .
+.code push_off
+strictly before setting
+.code lk->locked
+.line spinlock.c:/sync_lock_test_and_set/ .
 If the two were reversed, there would be
-a few instruction cycles when the lock
+a brief window when the lock
 was held with interrupts enabled, and
 an unfortunately timed interrupt would deadlock the system.
 Similarly, it is important that
 .code-index release
 call
-.code-index popcli
-only after the
-.code-index xchg
-that releases the lock
-.line spinlock.c:/xchg.*0/ .
+.code-index pop_off
+only after 
+releasing the lock
+.line spinlock.c:/sync_lock_release/ .
 .\"
 .section "Instruction and memory ordering"
 .\"
