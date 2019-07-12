@@ -62,11 +62,11 @@ The list supports push and pop operations, which
 may be called concurrently.
 Xv6's memory allocator works in much this way;
 .code kalloc()
-.line kalloc.c:/^kalloc/
+.line kernel/kalloc.c:/^kalloc/
 pops a page of memory from a list of free pages,
 and
 .code kfree()
-.line kalloc.c:/^kfree/
+.line kernel/kalloc.c:/^kfree/
 pushes a page onto the free list.
 .PP
 If there were no
@@ -348,10 +348,10 @@ To see a simple example much like
 above,
 look at
 .code kalloc
-.line kalloc.c:/^kalloc/
+.line kernel/kalloc.c:/^kalloc/
 and
 .code free
-.line kalloc.c:/^free/ .
+.line kernel/kalloc.c:/^free/ .
 Try Exercises 1 and 2 to see what happens if those
 functions omit the locks.
 You'll likely find that it's difficult to trigger incorrect
@@ -440,7 +440,7 @@ works (see Chapter
 \*[CH:SCHED]).
 For example,
 .code consoleintr
-.line console.c.c:/^consoleintr/
+.line kernel/console.c:/^consoleintr/
 is the interrupt routine which handles typed characters.
 When a newline arrives, any process that is waiting for
 console input should be woken up.
@@ -473,13 +473,13 @@ For example, the
 .code clockintr
 timer interrupt handler might increment
 .code-index ticks 
-.line trap.c:/^clockintr/
+.line kernel/trap.c:/^clockintr/
 at about the same time that a kernel
 thread reads
 .code ticks 
 in
 .code-index sys_sleep
-.line sysproc.c:/ticks0.=.ticks/  .
+.line kernel/sysproc.c:/ticks0.=.ticks/  .
 The lock
 .code-index tickslock
 serializes the two accesses.
@@ -520,12 +520,12 @@ do a little book-keeping to cope with nested critical sections.
 .code acquire
 calls
 .code-index push_off
-.line spinlock.c:/^push_off/
+.line kernel/spinlock.c:/^push_off/
 and
 .code release
 calls
 .code-index pop_off
-.line spinlock.c:/^pop_off/
+.line kernel/spinlock.c:/^pop_off/
 to track the nesting level of locks on the current processor.
 When that count reaches zero,
 .code pop_off 
@@ -544,7 +544,7 @@ call
 .code push_off
 strictly before setting
 .code lk->locked
-.line spinlock.c:/sync_lock_test_and_set/ .
+.line kernel/spinlock.c:/sync_lock_test_and_set/ .
 If the two were reversed, there would be
 a brief window when the lock
 was held with interrupts enabled, and
@@ -555,7 +555,7 @@ call
 .code-index pop_off
 only after 
 releasing the lock
-.line spinlock.c:/sync_lock_release/ .
+.line kernel/spinlock.c:/sync_lock_release/ .
 .\"
 .section "Instruction and memory ordering"
 .\"
@@ -652,7 +652,7 @@ yields the processor while waiting, and does not disable
 interrupts.
 .PP
 .code acquiresleep
-.line sleeplock.c:/^acquiresleep/
+.line kernel/sleeplock.c:/^acquiresleep/
 uses techniques that will be explained in
 Chapter \*[CH:SCHED].
 At a high level, a sleep-lock has a
@@ -736,7 +736,7 @@ and
 .code release
 in
 .code kalloc
-.line kalloc.c:/^kalloc/ .
+.line kernel/kalloc.c:/^kalloc/ .
 This seems like it should cause problems for
 kernel code that calls
 .code kalloc ;
