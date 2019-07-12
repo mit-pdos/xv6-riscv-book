@@ -222,7 +222,7 @@ That context had been saved by
 .code scheduler 's
 call to
 .code swtch
-.line 'kernel/proc.c:/swtch.&.c/' .
+.line kernel/proc.c:/swtch.&.c/ .
 When the
 .code-index swtch
 we have been tracing returns,
@@ -260,7 +260,7 @@ and
 which we will examine later.
 .code Sched
 double-checks those conditions
-.lines "'kernel/proc.c:/if..holding/,/running/'"
+.lines kernel/proc.c:/if..holding/,/running/
 and then an implication of those conditions:
 since a lock is held, the CPU should be
 running with interrupts disabled.
@@ -278,7 +278,7 @@ as though
 .code-index scheduler 's
 .code swtch
 had returned
-.line 'kernel/proc.c:/swtch.&.c/' .
+.line kernel/proc.c:/swtch.&.c/ .
 The scheduler continues the 
 .code for
 loop, finds a process to run, 
@@ -325,9 +325,9 @@ and always switches to the same location in the scheduler, which
 .code sched . 
 Thus, if one were to print out the line numbers where xv6 switches
 threads, one would observe the following simple pattern:
-.line 'kernel/proc.c:/swtch.&.c/' ,
+.line kernel/proc.c:/swtch.&.c/ ,
 .line kernel/proc.c:/swtch..p/ ,
-.line 'kernel/proc.c:/swtch.&.c/' ,
+.line kernel/proc.c:/swtch.&.c/ ,
 .line kernel/proc.c:/swtch..p/ ,
 and so on.  The procedures in which this stylized switching between
 two threads happens are sometimes referred to as 
@@ -917,7 +917,7 @@ there must be a current process
 and
 .code sleep
 must have been passed a lock
-.lines "'kernel/proc.c:/lk == 0/,/sleep.without/'" .
+.lines kernel/proc.c:/lk == 0/,/sleep.without/ .
 Then 
 .code sleep
 acquires 
@@ -1196,7 +1196,7 @@ associated invariants.
 then tries to acquire the lock too, but cannot.
 It spins in
 .code acquire
-.line spinlock.c:/^acquire/
+.line kernel/spinlock.c:/^acquire/
 waiting for the lock.
 While
 .code piperead
@@ -1208,7 +1208,10 @@ loops over the bytes being written
 \&...,
 .code addr[n-1]
 adding each to the pipe in turn
-.line "'kernel/pipe.c:/nwrite!+!+/'" .
+FIXME
+.ig
+.line kernel/pipe.c:/nwrite!+!+/ .
+..
 During this loop, it could happen that
 the buffer fills
 .line kernel/pipe.c:/pipewrite-full/ .
@@ -1346,7 +1349,7 @@ acquires
 and then wakes up any process sleeping on a wait
 channel equal to the current process's parent
 .code proc
-.line 'kernel/proc.c:/wakeup1.curproc->parent/' ;
+.line kernel/proc.c:/wakeup1.curproc->parent/ ;
 if there is such a process, it will be the parent in
 .code wait .
 This may look premature, since 
