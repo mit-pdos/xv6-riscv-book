@@ -25,8 +25,7 @@
 \newcommand{\github}{https://github.com/kaashoek/xv6-risc-v/blob/riscv/}
 
 \newcommand{\lineref}[2]{\href{\github/#1\#L#2}{#1:#2}}
-
-\newcommand{\linerefs}[1]{{\small (#1)}}
+\newcommand{\linerefs}[3]{\href{\github/#1\#L#2}{#1:#2-#3}}
 
 \title{\textbf{xv6: a simple, Unix-like teaching operating system}}
 \author{Rus Cox \and Frans Kaashoek \and Robbert Morris}
@@ -39,15 +38,15 @@
 
 \tableofcontents
 
-\input{latex.out/acks}
-\input{latex.out/unix}
+%\input{latex.out/acks}
+%\input{latex.out/unix}
 \input{latex.out/first}
-\input{latex.out/mem}
-\input{latex.out/trap}
-\input{latex.out/lock}
-\input{latex.out/sched}
-%\input{latex.out/fs}
-\input{latex.out/sum}
+%\input{latex.out/mem}
+%\input{latex.out/trap}
+%\input{latex.out/lock}
+%\input{latex.out/sched}
+\input{latex.out/fs}
+%\input{latex.out/sum}
 
 {
 % The following prevents latex from splitting a bibliography entry with a page

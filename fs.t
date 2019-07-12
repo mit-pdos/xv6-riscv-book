@@ -276,7 +276,7 @@ it originated in Unix and is used in BSD, Linux, and Solaris too.)
 releases the sleep-lock and
 moves the buffer
 to the front of the linked list
-.lines 'kernel/bio.c:/b->next->prev.=.b->prev/,/bcache.head.next.=.b/' .
+.lines kernel/bio.c:/b->next->prev.=.b->prev/,/bcache.head.next.=.b/ .
 Moving the buffer causes the
 list to be ordered by how recently the buffers were used (meaning released):
 the first buffer in the list is the most recently used,
@@ -992,7 +992,10 @@ As
 .code bmap
 encounters zeros, it replaces them with the numbers of fresh blocks,
 allocated on demand.
+XXX FIXME
+.ig
 .line "'kernel/fs.c:/^....if..addr.=.*==.0/,/./' 'kernel/fs.c:/^....if..addr.*NDIRECT.*==.0/,/./'" .
+..
 .PP
 .code-index itrunc
 frees a file's blocks, resetting the inode's size to zero.

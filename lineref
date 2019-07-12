@@ -43,12 +43,13 @@ def lineref(l):
       l = p.sub(r'\\lineref{%s}{%s}' % (f, n), l)
       print(l, end="")
       return
-   p = re.compile(r'\\linerefs{(.*):(.*),(.*)}')
+   p = re.compile(r'\\linerefs{(.*):\/(.*)\/,\/(.*)\/}')
    m = p.search(l)
    if m != None:
-      n = lookup_regex(m.groups()[0], m.groups()[1])
-      n1 = lookup_regex(m.groups()[0], m.groups()[2])
-      l = p.sub(r'\\linerefs{%s-%s}' % (n, n1), l)
+      f = m.groups()[0]
+      n = lookup_regex(f, m.groups()[1])
+      n1 = lookup_regex(f, m.groups()[2])
+      l = p.sub(r'\\linerefs{%s}{%s}{%s}' % (f, n, n1), l)
       print(l, end="")
       return
    print(l, end="")
@@ -56,5 +57,5 @@ def lineref(l):
 with open(sys.argv[1]) as f:  
    line = f.readline()
    while line:
-       lineref(line)
-       line = f.readline()
+      lineref(line)
+      line = f.readline()
