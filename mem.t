@@ -453,7 +453,6 @@ is negative,
 unmaps one or more pages from the process's address space and frees the corresponding
 physical pages.
 To make these changes,
-.code
 xv6 modifies the process's page table.  The process's page table is stored in
 memory, and so the kernel can update the table with ordinary assignment
 statements, which is what
@@ -641,7 +640,7 @@ a crash to a malicious subversion of the kernel's isolation mechanisms
 (i.e., a security exploit).
 xv6 performs a number of checks to avoid these risks.
 For example
-.code "if(ph.vaddr + ph.memsz < ph.vaddr)" .
+.code "if(ph.vaddr + ph.memsz < ph.vaddr)"
 checks for whether the sum overflows a 64-bit integer.
 The danger is that a user could construct an ELF binary with a
 .code ph.vaddr
@@ -655,8 +654,7 @@ mode), the user could choose an address that corresponded to kernel
 memory and would thus copy data from the ELF binary into the kernel.
 In the RISC-V version of xv6 this cannot happen, because the kernel has
 its own separate page table;
-.code
-loadseg
+.code loadseg
 loads into the process's page table, not in the kernel's page table.
 .PP
 It is easy for a kernel developer to omit a crucial check, and
