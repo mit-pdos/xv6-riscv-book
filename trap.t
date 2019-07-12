@@ -119,21 +119,21 @@ During initialization, xv6 programs to map interrupt 0 to IRQ 0, and
 so on, but disables them all.  Specific devices enable particular
 interrupts and say to which processor the interrupt should be routed.
 For example, xv6 routes keyboard interrupts to processor 0
-.line console.c:/^consoleinit/ .
+.line kernel/console.c:/^consoleinit/ .
 Xv6 routes disk interrupts to the highest numbered processor on the
 system, as we will see later in this chapter.
 .PP
 The timer chip is inside the LAPIC, so that each processor can receive
 timer interrupts independently. Xv6 sets it up in
 .code-index lapicinit
-.line lapic.c:/^lapicinit/ .
+.line kernel/lapic.c:/^lapicinit/ .
 The key line is the one that programs the timer
-.line lapic.c:/lapicw.TIMER/ .
+.line kernel/lapic.c:/lapicw.TIMER/ .
 This line tells the LAPIC to periodically generate an interrupt at
 .code-index IRQ_TIMER,
 which is IRQ 0.
 Line
-.line lapic.c:/lapicw.TPR/
+.line kernel/lapic.c:/lapicw.TPR/
 enables interrupts on a CPU's LAPIC, which will cause it to deliver
 interrupts to the local processor.
 .\"
@@ -169,14 +169,14 @@ a trap number
 to identify the source of the interrupt.  For example, as mentioned above, xv6
 programs the timer chip to interrupt with number
 .code IRQ_TIMER
-.line traps.h:/IRQ_TIMER/ ,
+.line kernel/traps.h:/IRQ_TIMER/ ,
 which corresponds to trap
 .code T_IRQ0
-.line traps.h:/T_IRQ0/ .
+.line kernel/traps.h:/T_IRQ0/ .
 Some trap numbers are predefined by the x86.  For example, if software
 divides by zero, then the processor will use trap number
 .code-index T_DIVIDE
-.line traps.h:/T_DIVIDE/ 
+.line kernel/traps.h:/T_DIVIDE/ 
 to handle that exception.
 The trap number is used as an index into the IDT.
 .PP
@@ -290,7 +290,7 @@ pointer to the x86 exception table with vector numbers (DE, DB, ...)
 .PP
 .code Tvinit
 .index tvinit
-.line trap.c:/^tvinit/ ,
+.line kernel/trap.c:/^tvinit/ ,
 called from
 .code-index main ,
 sets up the 256 entries in the table
@@ -311,12 +311,12 @@ segment selector and a new value for
 .register rsp.
 The function
 .code-index switchuvm
-.line vm.c:/^switchuvm/ 
+.line kernel/vm.c:/^switchuvm/ 
 stores the address of the top of the kernel stack of the user
 process into the task segment descriptor.
 .PP
 xv6 uses a Perl script
-.line vectors.pl:1
+.line kernel/vectors.pl:1
 to generate the entry points that the IDT entries point to.
 Each entry pushes an error code
 if the processor didn't, pushes the interrupt number, and then
@@ -325,14 +325,14 @@ jumps to
 .figure trapframe
 .PP
 .code Alltraps
-.line trapasm.S:/^alltraps/
+.line kernel/trapasm.S:/^alltraps/
 continues to save processor registers: it pushes
 .register r15
 through
 .register rax .
 The result of this effort is that the kernel stack now contains a
 .code "struct trapframe"
-.line x86.h:/trapframe/
+.line kernel/x86.h:/trapframe/
 containing the processor registers at the time of the trap (see 
 .figref trapframe ).
 The processor pushes
@@ -362,7 +362,7 @@ as a first argument to the C function
 .code trap
 by moving it into
 .register rdi
-.line "'trapasm.S:/1:mov..%rsp/'" ,
+.line kernel/trapasm.S:/1:mov..%rsp/ ,
 following the C calling convention.
 Thus,
 .register rdi ,
@@ -374,7 +374,7 @@ Then
 .code alltraps
 calls
 .code trap
-.line trapasm.S:/call.trap/ ,
+.line kernel/trapasm.S:/call.trap/ ,
 which we will discus below.
 .PP
 After
@@ -422,7 +422,7 @@ mode then).
 To determine whether the processor is in kernel mode,
 .code alltraps
 compares the kernel code segment selector with the one saved on the stack
-.line 'trapasm.S:/cmpw..SEG_KCODE/' .
+.line kernel/trapasm.S:/cmpw..SEG_KCODE/ .
 If they are the same, then there is no need to call
 .code swapgs .
 Otherwise, it calls
@@ -445,14 +445,14 @@ and
 enables interrupts on a processor.  The bootloader disables interrupts during
 booting of the main cpu
 and xv6 disables interrupts when booting the other processors
-.line entryother.S:/cli/ .
+.line kernel/entryother.S:/cli/ .
 The scheduler on each processor enables interrupts
-.line proc.c:/sti/ .
+.line kernel/proc.c:/sti/ .
 To control that certain code fragments are not interrupted, xv6
 disables interrupts during these code fragments.  For example,
 .code trapret
 above clears interrupts
-.line trapasm.S:/^..cli/ .
+.line kernel/trapasm.S:/^..cli/ .
 .\"
 .section "Code: C trap handler"
 .\"
@@ -471,11 +471,11 @@ to decide why it has been called and what needs to be done.
 The timer interrupts through vector 32 (which xv6 chose to handle IRQ
 0), which xv6 setup in
 .code-index idtinit 
-.line main.c:/idtinit/ .
+.line kernel/main.c:/idtinit/ .
 .code Trap
 for a timer interrupt does just two things:
 increment the ticks variable 
-.line trap.c:/ticks\+\+/ , 
+.line kernel/trap.c:/ticks\+\+/ , 
 and call
 .code-index wakeup . 
 The latter, as we will see in Chapter \*[CH:SCHED], may cause the
@@ -517,7 +517,7 @@ Chapter \*[CH:FIRST] ended with
 .code-index initcode.S
 invoking a system call.
 Let's look at that again
-.line initcode.S:/'SYS_exec'/ .
+.line kernel/initcode.S:/'SYS_exec'/ .
 The process pushed the arguments
 for an 
 .code-index exec
@@ -526,7 +526,7 @@ system call number in
 .register rax.
 The system call numbers match the entries in the syscalls array,
 a table of function pointers
-.line syscall.c:/'syscalls'/ .
+.line kernel/syscall.c:/'syscalls'/ .
 We need to arrange that the 
 .code syscall
 instruction switches the processor from user mode to kernel mode,
@@ -568,7 +568,7 @@ using
 a value that kernel programs into a special register reserved for this
 purpose, namely
 .code MSR_SFMASK
-.line vm.c:/MSR_SFMASK/ .
+.line kernel/vm.c:/MSR_SFMASK/ .
 The processor clears in
 .register eflags
 every bit corresponding to a bit that is set in the
@@ -583,7 +583,7 @@ and loads
 with a value that the kernel programs into a special register reserved
 for this purpose, namely
 .code MSR_LSTAR
-.line vm.c:/MSR_LSTAR/ .
+.line kernel/vm.c:/MSR_LSTAR/ .
 Xv6 programs the address of
 .code sysentry
 into this location.
@@ -594,7 +594,7 @@ and
 .register ss
 selectors with values from
 .code MSR_STAR
-.line vm.c:/MSR_STAR/ .
+.line kernel/vm.c:/MSR_STAR/ .
 xv6 programs
 .code SEG_KCODE
 into
@@ -605,7 +605,7 @@ Thus, after executing
 .code syscall ,
 xv6 starts running at
 .code sysentry
-.line trapasm.S:/^sysentry/
+.line kernel/trapasm.S:/^sysentry/
 in kernel mode with interrupts disabled.
 Note that the
 .code syscall
@@ -659,9 +659,9 @@ During initialization,
 each core stores a pointer to its
 .code-index "struct cpu"
 into both registers
-.line vm.c:/MSR_GS_KERNBASE/ .
+.line kernel/vm.c:/MSR_GS_KERNBASE/ .
 This struct
-.line proc.h:/^struct.cpu/
+.line kernel/proc.h:/^struct.cpu/
 records
 the process currently running
 on the processor (if any),
@@ -674,7 +674,7 @@ the kernel must use the code segment selector
 .register gs ,
 which xv6 programs to contain
 .code SEG_KDATA
-.line vm.c:/SEG_KDATA/ .
+.line kernel/vm.c:/SEG_KDATA/ .
 With this setup a core can refer to
 the first entry of its
 .code "struct cpu"
@@ -702,7 +702,7 @@ to have a valid pointer to this core's
 .PP
 Returning to
 .code sysentry
-.line trapasm.S:/^sysentry/ ,
+.line kernel/trapasm.S:/^sysentry/ ,
 after 
 .code sysentry
 executes
@@ -718,19 +718,19 @@ into the core's
 The
 .code "struct cpu"
 has reserved two fields for this purpose
-.line proc.h:/^struct.cpu/ .
+.line kernel/proc.h:/^struct.cpu/ .
 Next,
 .code sysentry
 loads the current process's kernel stack
 into
 .register rsp
-.lines trapasm.S:/movq...gs/,/movq...rax,..rsp/ .
+.lines kernel/trapasm.S:/movq...gs/,/movq...rax,..rsp/ .
 Then,
 .code sysentry
 restores
 .register rax ,
 and builds up the syscall frame
-.line x86.h:/^struct.sysframe/ ,
+.line kernel/x86.h:/^struct.sysframe/ ,
 which we briefly saw in Chapter \*[CH:FIRST]. It pushes
 the registers that
 .code syscall
@@ -741,7 +741,7 @@ Next, it saves callee-saved registers and the registers
 that are used to pass arguments.  It passes a pointer
 to the syscall frame to the C function
 .code syscall
-.line syscall.c:/^syscall/
+.line kernel/syscall.c:/^syscall/
 by storing the stack pointer into the register
 for the first argument.
 .PP
@@ -757,7 +757,7 @@ for that matter.  Thus, the hardware and xv6 must save all of a user process's
 state on an interrupt so that it can be restored when returning to user space.
 .PP
 .code-index Syscall
-.line syscall.c:/'^syscall'/ 
+.line kernel/syscall.c:/'^syscall'/ 
 loads the system call number from the syscall frame, which
 contains the saved
 .register rax,
@@ -766,7 +766,7 @@ For the first system call,
 .register eax
 contains the value 
 .code-index SYS_exec
-.line syscall.h:/'SYS_exec'/ ,
+.line kernel/syscall.h:/'SYS_exec'/ ,
 and
 .code syscall
 will invoke the 
@@ -779,7 +779,7 @@ records the return value of the system call function in
 .register eax.
 When the system call returns to user space,
 .code sysexit
-.line trapasm.S:/^sysexit/
+.line kernel/trapasm.S:/^sysexit/
 will load the values
 from
 .code-index cp->sf
@@ -792,7 +792,7 @@ Thus, when
 .code exec
 returns, it will return the value
 that the system call handler returned
-.line "'syscall.c:/rax = syscalls/'" .
+.line kernel/syscall.c:/rax = syscalls/ .
 System calls conventionally return negative numbers to indicate
 errors, positive numbers for success.
 If the system call number is invalid,
@@ -895,7 +895,7 @@ the end of the user part of the address space.
 .PP
 Finally,
 .code-index argfd
-.line sysfile.c:/^argfd/
+.line kernel/sysfile.c:/^argfd/
 uses
 .code argint
 to retrieve a file descriptor number, checks if it is valid
@@ -944,7 +944,7 @@ sector size that a disk uses, but typically the block size is a multiple of the
 sector size.  Xv6's block size is identical to the disk's sector size.  To
 represent a block xv6 has a structure
 .code "struct buf"
-.line buf.h:/^struct.buf/ .
+.line kernel/buf.h:/^struct.buf/ .
 The
 data stored in this structure is often out of sync with the disk: it might have
 not yet been read in from disk (the disk is working on it but hasn't returned
@@ -965,9 +965,9 @@ particular piece of hardware.
 .PP
 Xv6 represent file system blocks using
 .code-index "struct buf"
-.line buf.h:/^struct.buf/ .
+.line kernel/buf.h:/^struct.buf/ .
 .code BSIZE
-.line fs.h:/BSIZE/
+.line kernel/fs.h:/BSIZE/
 is identical to the IDE's sector size and thus
 each buffer represents the contents of one sector on a particular
 disk device.  The
@@ -1002,17 +1002,17 @@ needs to be written out.
 .PP
 The kernel initializes the disk driver at boot time by calling
 .code-index ideinit
-.line ide.c:/^ideinit/
+.line kernel/ide.c:/^ideinit/
 from
 .code-index main
-.line main.c:/ideinit/ .
+.line kernel/main.c:/ideinit/ .
 .code Ideinit
 calls
 .code-index ioapicenable
 to enable the
 .code-index IDE_IRQ
 interrupt
-.line ide.c:/ioapicenable/ .
+.line kernel/ide.c:/ioapicenable/ .
 The call to
 .code ioapicenable
 enables the interrupt only on the last CPU
@@ -1024,13 +1024,13 @@ Next,
 probes the disk hardware.
 It begins by calling
 .code-index idewait
-.line ide.c:/idewait.0/
+.line kernel/ide.c:/idewait.0/
 to wait for the disk to
 be able to accept commands.
 A PC motherboard presents the status bits of the disk hardware on I/O port
 .address 0x1f7 .
 .code Idewait
-.line ide.c:/^idewait/
+.line kernel/ide.c:/^idewait/
 polls the status bits until the busy bit
 .code-index IDE_BSY ) (
 is clear and the ready bit
@@ -1050,7 +1050,7 @@ It writes to I/O port
 to select disk 1
 and then waits a while for the status bit to show
 that the disk is ready
-.lines ide.c:/Check.if.disk.1/,/^..}/ .
+.lines kernel/ide.c:/Check.if.disk.1/,/^..}/ .
 If not, 
 .code ideinit
 assumes the disk is absent.
@@ -1099,28 +1099,28 @@ the buffer at the front of the queue to the disk hardware;
 the others are simply waiting their turn.
 .PP
 .code Iderw
-.line ide.c:/^iderw/
+.line kernel/ide.c:/^iderw/
 adds the buffer
 .code b
 to the end of the queue
-.lines ide.c:/Append/,/pp.=.b/ .
+.lines kernel/ide.c:/Append/,/pp.=.b/ .
 If the buffer is at the front of the queue,
 .code-index iderw
 must send it to the disk hardware
 by calling
 .code-index idestart
-.line ide.c:/Start.disk/,/idestart/ ;
+.line kernel/ide.c:/Start.disk/,/idestart/ ;
 otherwise the buffer will be started once
 the buffers ahead of it are taken care of.
 .PP
 .code Idestart
-.line ide.c:/^idestart/
+.line kernel/ide.c:/^idestart/
 issues either a read or a write for the buffer's device and sector,
 according to the flags.
 If the operation is a write,
 .code idestart
 must supply the data now
-.line ide.c:/outsl/ .
+.line kernel/ide.c:/outsl/ .
 .code idestart
 moves the data to a buffer in the disk controller
 using the
@@ -1150,7 +1150,7 @@ Instead,
 yields the CPU for other processes by sleeping,
 waiting for the interrupt handler to 
 record in the buffer's flags that the operation is done
-.lines ide.c:/while.*VALID/,/sleep/ .
+.lines kernel/ide.c:/while.*VALID/,/sleep/ .
 While this process is sleeping,
 xv6 will schedule other processes to keep the CPU busy.
 .PP
@@ -1159,9 +1159,9 @@ Eventually, the disk will finish its operation and trigger an interrupt.
 will call
 .code-index ideintr
 to handle it
-.line trap.c:/ideintr/ .
+.line kernel/trap.c:/ideintr/ .
 .code Ideintr
-.line ide.c:/^ideintr/
+.line kernel/ide.c:/^ideintr/
 consults the first buffer in the queue to find
 out which operation was happening.
 If the buffer was being read and the disk controller has data waiting,
@@ -1169,7 +1169,7 @@ If the buffer was being read and the disk controller has data waiting,
 reads the data from a buffer in the disk controller
 into memory with
 .code-index insl
-.lines ide.c:/Read.data/,/insl/ .
+.lines kernel/ide.c:/Read.data/,/insl/ .
 Now the buffer is ready:
 .code ideintr
 sets 
@@ -1177,11 +1177,11 @@ sets
 clears
 .code-index B_DIRTY ,
 and wakes up any process sleeping on the buffer
-.lines ide.c:/Wake.process/,/wakeup/ .
+.lines kernel/ide.c:/Wake.process/,/wakeup/ .
 Finally,
 .code ideintr
 must pass the next waiting buffer to the disk
-.lines ide.c:/Start.disk/,/idestart/ .
+.lines kernel/ide.c:/Start.disk/,/idestart/ .
 .\"
 .section "Real world"
 .\"
