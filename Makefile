@@ -33,7 +33,7 @@ SCRIPTS=\
 	runfig\
 	ditspaces\
 
-SRCPATH=../xv6-riscv/
+SRC=xv6-riscv-src/
 
 PS=$(patsubst %,%.ps,$(ORDER))
 PDF=$(patsubst %,%.pdf,$(ORDER))
@@ -73,9 +73,15 @@ book.ps: $(DIT)
 %.tex: %.t tr2tex lineref
 	mkdir -p latex.out
 	./tr2tex $< > latex.out/$@.tmp
-	./lineref latex.out/$@.tmp $(SRCPATH) > latex.out/$@
+	./lineref latex.out/$@.tmp $(SRC) > latex.out/$@
 
-book1.pdf: book1.tex $(TEX)
+src:
+	if [ ! -d xv6-risc-v ]; then \
+		git clone git@github.com:kaashoek/xv6-risc-v.git $(SRC) ; \
+	fi; \
+	cd $(SRC) && git pull
+
+book1.pdf: book1.tex src $(TEX)
 	pdflatex book1.tex
 	bibtex book1
 	pdflatex book1.tex
@@ -86,6 +92,7 @@ clean:
 	rm -f book1.aux book1.idx book1.ilg book1.ind book1.log\
 	 	book1.toc book1.bbl book1.blg book1.out
 	rm -rf latex.out
+	rm -rf $(SRC)
 
 xv6-code.pdf: ../xv6-riscv/xv6.pdf
 	cp $^ $@
