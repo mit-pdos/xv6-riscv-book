@@ -6,7 +6,7 @@ import sys
 
 def end(l):
    # look for " .", etc.
-   p = re.compile(r'\s+([\.,:])')
+   p = re.compile(r'\s+([\.,:;])')
    l = p.sub(r'\1', l)
    # look for ) (
    p = re.compile(r'\s+\)([\.,]*) \(\n')
