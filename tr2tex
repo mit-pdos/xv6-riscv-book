@@ -49,6 +49,11 @@ def chapter1(l):
    l = p.sub(r'\\chapter*{\1}\n', l)
    print(l, end="")
 
+def comment(l):
+   p = re.compile(r'\.\\"(.*)')
+   l = p.sub(r'%% \1', l)
+   print(l, end="")
+   
 def index(l):
    p = re.compile(r'.index ([-\w]+)')
    l = p.sub(r'\\index{\1}', l)
@@ -282,7 +287,7 @@ def tr2tex(l):
    elif l.startswith(".section"):
       section(l)
    elif l.startswith(r'.\"'):
-      print("")
+      comment(l)
    elif l.startswith(r'.figref'):
       figref(l)
    elif l.startswith(r'.figure '):

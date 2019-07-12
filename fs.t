@@ -759,7 +759,10 @@ When it finds one, it claims it by writing the new
 to the disk and then returns an entry from the inode cache
 with the tail call to 
 .code-index iget
+FIXME
+.ig
 .line "'kernel/fs.c:/return.iget!(dev..inum!)/'" .
+..
 The correct operation of
 .code ialloc
 depends on the fact that only one process at a time
@@ -777,8 +780,8 @@ looks through the inode cache for an active entry
 .code >
 .code 0 )
 with the desired device and inode number.
-If it finds one, it returns a new reference to that inode.
-.lines 'kernel/fs.c:/^....if.ip->ref.>.0/,/^....}/' .
+If it finds one, it returns a new reference to that inode
+.lines kernel/fs.c:/^....if.ip->ref.>.0/,/^....}/ .
 As
 .code-index iget
 scans, it records the position of the first empty slot
@@ -806,7 +809,7 @@ to be woken up.
 .line kernel/fs.c:/^iput/
 releases a C pointer to an inode
 by decrementing the reference count
-.line 'kernel/fs.c:/^..ip->ref--/' .
+.line kernel/fs.c:/^..ip->ref--/ .
 If this is the last reference, the inode's
 slot in the inode cache is now free and can be re-used
 for a different inode.
@@ -823,7 +826,7 @@ calls
 to truncate the file to zero bytes, freeing the data blocks;
 sets the inode type to 0 (unallocated);
 and writes the inode to disk
-.line 'kernel/fs.c:/inode.has.no.links.and/' .
+.line kernel/fs.c:/inode.has.no.links.and/ .
 .PP
 The locking protocol in 
 .code-index iput
@@ -962,24 +965,24 @@ The function
 begins by picking off the easy case: the first 
 .code-index NDIRECT
 blocks are listed in the inode itself
-.lines 'kernel/fs.c:/^..if.bn.<.NDIRECT/,/^..}/' .
+.lines kernel/fs.c:/^..if.bn.<.NDIRECT/,/^..}/ .
 The next 
 .code-index NINDIRECT
 blocks are listed in the indirect block at
 .code ip->addrs[NDIRECT] .
 .code Bmap
 reads the indirect block
-.line 'kernel/fs.c:/bp.=.bread.ip->dev..addr/'
+.line kernel/fs.c:/bp.=.bread.ip->dev..addr/
 and then reads a block number from the right 
 position within the block
-.line 'kernel/fs.c:/a.=..uint!*.bp->data/' .
+.line kernel/fs.c:/a.=..uint!*.bp->data/ .
 If the block number exceeds
 .code NDIRECT+NINDIRECT ,
 .code bmap 
 panics; 
 .code writei
 contains the check that prevents this from happening
-.line 'kernel/fs.c:/off...n...MAXFILE.BSIZE/' .
+.line kernel/fs.c:/off...n...MAXFILE.BSIZE/ .
 .PP
 .code Bmap
 allocates blocks as needed.
@@ -1001,11 +1004,11 @@ frees a file's blocks, resetting the inode's size to zero.
 .code Itrunc
 .line kernel/fs.c:/^itrunc/
 starts by freeing the direct blocks
-.lines 'kernel/fs.c:/^..for.i.=.0.*NDIRECT/,/^..}/' ,
+.lines kernel/fs.c:/^..for.i.=.0.*NDIRECT/,/^..}/ ,
 then the ones listed in the indirect block
-.lines 'kernel/fs.c:/^....for.j.=.0.*NINDIRECT/,/^....}/' ,
+.lines kernel/fs.c:/^....for.j.=.0.*NINDIRECT/,/^....}/ ,
 and finally the indirect block itself
-.lines 'kernel/fs.c:/^....bfree.*NDIRECT/,/./' .
+.lines kernel/fs.c:/^....bfree.*NDIRECT/,/./ .
 .PP
 .code Bmap
 makes it easy for
@@ -1019,14 +1022,14 @@ starts by
 making sure that the offset and count are not 
 beyond the end of the file.
 Reads that start beyond the end of the file return an error
-.lines 'kernel/fs.c:/^..if.off.>.ip->size/,/./'
+.lines kernel/fs.c:/^..if.off.>.ip->size/,/./
 while reads that start at or cross the end of the file 
 return fewer bytes than requested
-.lines 'kernel/fs.c:/^..if.off.!+.n.>.ip->size/,/./' .
+.lines kernel/fs.c:/^..if.off.!+.n.>.ip->size/,/./ .
 The main loop processes each block of the file,
 copying data from the buffer into 
 .code dst
-.lines 'kernel/fs.c:/^..for.tot=0/,/^..}/' .
+.lines kernel/fs.c:/^..for.tot=0/,/^..}/ .
 .\" NOTE: It is very hard to write line references
 .\" for writei because so many of the lines are identical
 .\" to those in readi.  Luckily, identical lines probably
@@ -1038,13 +1041,13 @@ is identical to
 with three exceptions:
 writes that start at or cross the end of the file
 grow the file, up to the maximum file size
-.lines "'kernel/fs.c:/^..if.off.!+.n.>.MAXFILE/,/./'" ;
+.lines kernel/fs.c:/^..if.off.!+.n.>.MAXFILE/,/./ ;
 the loop copies data into the buffers instead of out
-.line 'kernel/fs.c:/memmove.bp->data/' ;
+.line kernel/fs.c:/memmove.bp->data/ ;
 and if the write has extended the file,
 .code-index writei
 must update its size
-.line "'kernel/fs.c:/^..if.n.>.0.*off.>.ip->size/,/^..}/'" .
+.line kernel/fs.c:/^..if.n.>.0.*off.>.ip->size/,/^..}/ .
 .PP
 Both
 .code-index readi
@@ -1080,7 +1083,7 @@ Its inode has type
 and its data is a sequence of directory entries.
 Each entry is a
 .code-index "struct dirent"
-.line fs.h:/^struct.dirent/ ,
+.line kernel/fs.h:/^struct.dirent/ ,
 which contains a name and an inode number.
 The name is at most
 .code-index DIRSIZ
@@ -1139,10 +1142,10 @@ directory
 If the name already exists,
 .code dirlink
 returns an error
-.lines 'kernel/fs.c:/Check.that.name.is.not.present/,/^..}/' .
+.lines kernel/fs.c:/Check.that.name.is.not.present/,/^..}/ .
 The main loop reads directory entries looking for an unallocated entry.
 When it finds one, it stops the loop early
-.lines 'kernel/fs.c:/^....if.de.inum.==.0/,/./' ,
+.lines kernel/fs.c:/^....if.de.inum.==.0/,/./ ,
 with 
 .code off
 set to the offset of the available entry.
@@ -1155,7 +1158,7 @@ Either way,
 then adds a new entry to the directory
 by writing at offset
 .code off
-.lines 'kernel/fs.c:/^..strncpy/,/panic/' .
+.lines kernel/fs.c:/^..strncpy/,/panic/ .
 .\"
 .\"
 .\"
@@ -1229,7 +1232,7 @@ Finally, the loop looks for the path element using
 .code-index dirlookup
 and prepares for the next iteration by setting
 .code "ip = next"
-.lines 'kernel/fs.c:/^....if..next.*dirlookup/,/^....ip.=.next/' .
+.lines kernel/fs.c:/^....if..next.*dirlookup/,/^....ip.=.next/ .
 When the loop runs out of path elements, it returns
 .code ip .
 .PP
@@ -1399,7 +1402,10 @@ and
 .code filewrite
 use the i/o offset as the offset for the operation
 and then advance it
-.lines "'kernel/file.c:/readi/,/./' 'kernel/file.c:/writei/,/./'" .
+FIXME
+.ig
+.lines kernel/file.c:/readi/,/./' 'kernel/file.c:/writei/,/./ .
+..
 Pipes have no concept of offset.
 Recall that the inode functions require the caller
 to handle locking
@@ -1455,7 +1461,10 @@ to find the parent directory and final path element of
 and creates a new directory entry pointing at
 .code old 's
 inode
+FIXME
+.ig
 .line "'kernel/sysfile.c:/!|!| dirlink/'" .
+..
 The new parent directory must exist and
 be on the same device as the existing inode:
 inode numbers only have a unique meaning on a single disk.
@@ -1499,7 +1508,7 @@ to get the inode of the parent directory.
 It then calls
 .code-index dirlookup
 to check whether the name already exists
-.line 'kernel/sysfile.c:/dirlookup.*[^=]=.0/' .
+.line kernel/sysfile.c:/dirlookup.*[^=]=.0/ .
 If the name does exist, 
 .code create 's
 behavior depends on which system call it is being used for:
@@ -1523,7 +1532,7 @@ treats that as a success,
 so
 .code create
 does too
-.line "kernel/sysfile.c:/^......return.ip/" .
+.line kernel/sysfile.c:/^......return.ip/ .
 Otherwise, it is an error
 XXX FIXME
 .ig
