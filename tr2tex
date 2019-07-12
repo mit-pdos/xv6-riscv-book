@@ -148,7 +148,7 @@ def table(fname):
    except IOError:
       print("error: couldn't open %s" % fname, file=sys.stderr)
 
-def file(l):
+def insert(l):
    l = l.rstrip('\n')
    fname = l.split(' ')[1]
    try: 
@@ -165,7 +165,7 @@ def listing(l):
    line = f.readline()
    while line:
       if line.startswith(".so"):
-         file(line)
+         insert(line)
       elif line.startswith(".P2"):
          break
       else:
@@ -229,6 +229,14 @@ def indent(l):
    l = end(l)
    print(l, end="")
 
+def file(l):
+   p = re.compile(r'.file ([-\w\/\.]+)')
+   l = p.sub(r'\\fileref{\1}', l)
+   p = re.compile(r'.file "(.*)"')
+   l = p.sub(r'\\fileref{\1}', l)
+   l = end(l)
+   print(l, end="")
+   
 def doref(l):
    # replace references in a line
    p = re.compile(r' \\\*\[([\w:]*)\]')
@@ -293,6 +301,10 @@ def tr2tex(l):
       listing(l)
    elif l.startswith(r'.IP'):
       indent(l)
+   elif l.startswith(r'.file'):
+      file(l)
+   elif l.startswith(r'.sheet'):
+      return
    elif l.startswith(r"."):
       print("TODO", l)
    else:

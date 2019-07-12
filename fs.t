@@ -1419,11 +1419,8 @@ cannot overwrite each other's data, though their writes may end up interlaced.
 .PP
 With the functions that the lower layers provide the implementation of most
 system calls is trivial
-XXX FIXME
-.ig
 (see
 .file kernel/sysfile.c  ).
-..
 There are a few calls that
 deserve a closer look.
 .PP
