@@ -113,28 +113,34 @@ def istable(fname):
       return False
 
 def table(fname):
-   print(r'\begin{tabular}{ll}')
-   with open(fname) as f:  
-      line = f.readline()  # F1
-      line = f.readline()  # .TS
-      line = f.readline()  # center
-      line = f.readline()  # lb lb
-      line = f.readline()  # l l.
-      line = f.readline()  # heading
-      p = re.compile(r'([\w\ ]+)\t+([\w]+)\n')
-      line = p.sub(r'{\\bf \1} & {\\bf \2} \\\\', line)
-      print(line)
-      print("\midrule")
-      # table
-      line = f.readline()
-      while line:
-         if line.startswith(".TE"):
-            break
-         p = re.compile(r'([\(\)\w]+)\t+(.+)\n')
-         line = p.sub(r'\1 & \2 \\\\', line)
+   try: 
+      with open(fname) as f:  
+         print(r'\begin{tabular}{ll}')
+         line = f.readline()  # F1
+         line = f.readline()  # .TS
+         line = f.readline()  # center
+         line = f.readline()  # lb lb
+         line = f.readline()  # l l.
+         line = f.readline()  # heading
+         p = re.compile(r'([\w\ ]+)\t+([\w]+)\n')
+         line = p.sub(r'{\\bf \1} & {\\bf \2} \\\\', line)
          print(line)
+         print("\midrule")
+         # table
          line = f.readline()
-   print("\end{tabular}")
+         while line:
+            if line.startswith(".TE"):
+               break
+            p = re.compile(r'([\(\)\w]+)\t+(.+)\n')
+            line = p.sub(r'\1 & \2 \\\\', line)
+            print(line)
+            line = f.readline()
+         line = f.readline() # F2
+         line = f.readline() # caption
+         print("\end{tabular}")
+         print("\caption{" + line.strip("\n") + "}")
+   except IOError:
+      print("error: couldn't open %s" % fname, file=sys.stderr)
 
 def listing(l):
    print(r'\begin{lstlisting}[]')
