@@ -5,8 +5,10 @@ import re
 import sys
 
 def end(l):
-   p = re.compile(r'\s+([\.,])')
+   # look for " .", etc.
+   p = re.compile(r'\s+([\.,:])')
    l = p.sub(r'\1', l)
+   # look for ) (
    p = re.compile(r'\s+\)([\.,]*) \(\n')
    m = p.search(l)
    if m != None:
@@ -15,6 +17,7 @@ def end(l):
          l = "(" + l + ")%s\n" % m.groups()[0]
       else:
          l = "(" + l + ")\n"
+   # look for ''  ``
    p = re.compile(r"\s+''([\.,]*) ``\n")
    m = p.search(l)
    if m != None:
@@ -23,6 +26,9 @@ def end(l):
          l = "``" + l + "''%s\n" % m.groups()[0]
       else:
          l = "``" + l + "''\n"
+   # check for " )"
+   p = re.compile(r'\s+([\)])')
+   l = p.sub(r'\1', l)
    return l
 
 def ig2dotdot():
@@ -59,7 +65,7 @@ def defindex(l):
    l = end(l)
    print(l, end="")
 
-codep = r'([\/\.\->_\w\&<\(\)\#\[\]]+)'
+codep = r'([\/\.\->_\w\&<\(\)\#\[\]\|=\*%\!]+)'
 
 def code(l):
    p = re.compile(r'.code "(.*)"')
@@ -142,13 +148,28 @@ def table(fname):
    except IOError:
       print("error: couldn't open %s" % fname, file=sys.stderr)
 
+def file(l):
+   l = l.rstrip('\n')
+   fname = l.split(' ')[1]
+   try: 
+      with open(fname) as f:
+         line = f.readline()
+         while line:
+            print(line, end="")
+            line = f.readline()
+   except IOError:
+      print("error: couldn't open %s" % fname, file=sys.stderr)
+
 def listing(l):
    print(r'\begin{lstlisting}[]')
    line = f.readline()
    while line:
-      if line.startswith(".P2"):
+      if line.startswith(".so"):
+         file(line)
+      elif line.startswith(".P2"):
          break
-      print(line, end="")
+      else:
+         print(line, end="")
       line = f.readline()
    print("\end{lstlisting}");
     
@@ -170,6 +191,10 @@ def figure(l):
 def italic(l):
    p = re.compile(r'.italic ([\w]+)')
    l = p.sub(r'\\textit{\1}', l)
+   p = re.compile(r'.italic "(.*)"')
+   l = p.sub(r'\\textit{\1}', l)
+
+   l = end(l)
    print(l, end="")
 
 def address(l):
