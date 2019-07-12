@@ -41,7 +41,7 @@ so the file system code must coordinate to maintain invariants.
 Accessing a disk is orders of magnitude slower than accessing
 memory, so the file system must maintain an in-memory cache of
 popular blocks.
-.LP
+.PP
 The rest of this chapter explains how xv6 addresses these challenges.
 .\"
 .\" -------------------------------------------
@@ -870,12 +870,11 @@ that appear to be read-only, may end up calling
 This, in turn, means that even read-only system calls
 must be wrapped in transactions if they use the file system.
 .PP
-.code
 There is a challenging interaction between
 .code iput()
 and crashes.
-.code
-iput() doesn't truncate a file immediately when the link count for the file
+.code iput()
+doesn't truncate a file immediately when the link count for the file
 drops to zero, because some process might still hold a reference to the inode in
 memory: a process might still be reading and writing to the file, because it
 successfully opened it. But, if a crash happens before the last process closes
