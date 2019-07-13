@@ -76,7 +76,7 @@ book.ps: $(DIT)
 	./lineref latex.out/$@.tmp $(SRC) > latex.out/$@
 
 src:
-	if [ ! -d xv6-risc-v ]; then \
+	if [ ! -d $(SRC) ]; then \
 		git clone git@github.com:kaashoek/xv6-risc-v.git $(SRC) ; \
 	fi; \
 	cd $(SRC) && git pull
