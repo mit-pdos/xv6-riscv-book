@@ -224,6 +224,7 @@ def lineref(l):
    print(l, end="")
 
 def linerefs(l):
+   l = l.replace('!', '\\')
    p = re.compile(r'.lines (.*):\/(.*)/,\/(.*)/')
    l = p.sub(r'\\linerefs{\1:/\2/,/\3/}', l)
    l = end(l)

@@ -759,10 +759,7 @@ When it finds one, it claims it by writing the new
 to the disk and then returns an entry from the inode cache
 with the tail call to 
 .code-index iget
-FIXME
-.ig
-.line "'kernel/fs.c:/return.iget!(dev..inum!)/'" .
-..
+.line kernel/fs.c:/return.iget!(dev..inum!)/ .
 The correct operation of
 .code ialloc
 depends on the fact that only one process at a time
@@ -1062,10 +1059,7 @@ live in the file system; we will return to this case in the file descriptor laye
 .PP
 The function
 .code-index stati
-XXX FIXME
-.ig
 .line kernel/fs.c:/^stati!(/
-..
 copies inode metadata into the 
 .code stat
 structure, which is exposed to user programs
@@ -1187,10 +1181,7 @@ to do the real work.
 starts by deciding where the path evaluation begins.
 If the path begins with a slash, evaluation begins at the root;
 otherwise, the current directory
-XXX FIXME
-.ig
-.line kernel/fs.c:/..if.!*path.==....!)/,/idup/ .
-..
+.lines kernel/fs.c:/..if.!*path.==....!)/,/idup/ .
 Then it uses
 .code-index skipelem
 to consider each element of the path in turn
@@ -1461,10 +1452,7 @@ to find the parent directory and final path element of
 and creates a new directory entry pointing at
 .code old 's
 inode
-FIXME
-.ig
-.line "'kernel/sysfile.c:/!|!| dirlink/'" .
-..
+.line kernel/sysfile.c:/!|!| dirlink/ .
 The new parent directory must exist and
 be on the same device as the existing inode:
 inode numbers only have a unique meaning on a single disk.
