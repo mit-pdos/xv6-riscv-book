@@ -21,7 +21,7 @@ def lookup_regex(fname, pat):
                return str(cnt)
             cnt += 1
             line = f.readline()
-         print("error: cannot find pat in %s" % fname, file=sys.stderr)
+         print("%s: cannot find pat %s" % (fname, p), file=sys.stderr)
    except IOError:
       print("error: cannot open %s" % fname, file=sys.stderr)
       return "0"
