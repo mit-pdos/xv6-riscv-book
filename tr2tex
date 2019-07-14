@@ -216,8 +216,8 @@ def register(l):
 
 def lineref(l):
    l = l.replace('!', '\\')
-   p = re.compile(r'.line (.*):\/(.*)/')
-   l = p.sub(r'\\lineref{\1:/\2/}', l)
+   p = re.compile(r'.line (.*):\/(.*)\/([+-]?\d+)?')
+   l = p.sub(r'\\lineref{\1:/\2/\3}', l)
    p = re.compile(r'.line (.*):(\d+)')
    l = p.sub(r'\\lineref{\1:\2}', l)
    l = end(l)
@@ -225,8 +225,8 @@ def lineref(l):
 
 def linerefs(l):
    l = l.replace('!', '\\')
-   p = re.compile(r'.lines (.*):\/(.*)/,\/(.*)/')
-   l = p.sub(r'\\linerefs{\1:/\2/,/\3/}', l)
+   p = re.compile(r'.lines (.*):\/(.*)\/([+-]?\d+)?,\/(.*)\/([+-]?\d+)?')
+   l = p.sub(r'\\linerefs{\1:/\2/\3,/\4/\5}', l)
    l = end(l)
    print(l, end="")
 

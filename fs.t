@@ -990,11 +990,9 @@ entry of zero indicates that no block is allocated.
 As
 .code bmap
 encounters zeros, it replaces them with the numbers of fresh blocks,
-allocated on demand.
-XXX FIXME
-.ig
-.line "'kernel/fs.c:/^....if..addr.=.*==.0/,/./' 'kernel/fs.c:/^....if..addr.*NDIRECT.*==.0/,/./'" .
-..
+allocated on demand
+.lines kernel/fs.c:/^....if..addr.=.*==.0/,/./
+.lines kernel/fs.c:/^....if..addr.*NDIRECT.*==.0/,/./ .
 .PP
 .code-index itrunc
 frees a file's blocks, resetting the inode's size to zero.
@@ -1393,17 +1391,14 @@ and
 .code filewrite
 use the i/o offset as the offset for the operation
 and then advance it
-FIXME
-.ig
-.lines kernel/file.c:/readi/,/./' 'kernel/file.c:/writei/,/./ .
-..
+.lines kernel/file.c:/readi/,/./
+.lines kernel/file.c:/writei/,/./ .
 Pipes have no concept of offset.
 Recall that the inode functions require the caller
 to handle locking
-XXX FIXME
-.ig
-.lines "'kernel/file.c:/stati/-1,/iunlock/' 'kernel/file.c:/readi/-1,/iunlock/' 'kernel/file.c:/writei!(f/-1,/iunlock/'" .
-..
+.lines kernel/file.c:/stati/-1,/iunlock/
+.lines kernel/file.c:/readi/-1,/iunlock/
+.lines kernel/file.c:/writei!(f/-1,/iunlock/ .
 The inode locking has the convenient side effect that the
 read and write offsets are updated atomically, so that
 multiple writing to the same file simultaneously
@@ -1522,10 +1517,7 @@ so
 does too
 .line kernel/sysfile.c:/^......return.ip/ .
 Otherwise, it is an error
-XXX FIXME
-.ig
 .lines kernel/sysfile.c:/^......return.ip/+1,/return.0/ .
-..
 If the name does not already exist,
 .code create
 now allocates a new inode with
