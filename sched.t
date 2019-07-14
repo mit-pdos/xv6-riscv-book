@@ -975,10 +975,7 @@ and skips them entirely
 .line kernel/proc.c:/sleeplock0/ .
 For example,
 .code wait
-XXX FIXME
-.ig
 .line kernel/proc.c:/^wakeup!(/
-..
 calls
 .code sleep
 with 
@@ -999,10 +996,7 @@ and calling
 At some point later, a process will call
 .code wakeup(chan) .
 .code Wakeup
-XXX FIXME
-.ig
 .line 'kernel/proc.c:/^wakeup!(/'
-..
 acquires
 .code-index ptable.lock
 and calls
@@ -1208,10 +1202,7 @@ loops over the bytes being written
 \&...,
 .code addr[n-1]
 adding each to the pipe in turn
-FIXME
-.ig
 .line kernel/pipe.c:/nwrite!+!+/ .
-..
 During this loop, it could happen that
 the buffer fills
 .line kernel/pipe.c:/pipewrite-full/ .
