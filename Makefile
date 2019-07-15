@@ -16,7 +16,7 @@ TEX=\
 all: book.pdf
 .PHONY: all
 
-$(T)/%.tex: lineref
+$(T)/%.tex: %.tex
 	mkdir -p latex.out
 	./lineref $(notdir $@) $(SRC) > $@
 
