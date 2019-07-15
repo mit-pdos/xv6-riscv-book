@@ -1,22 +1,21 @@
-.ig
-talk a little about initial page table conditions:
-    paging not on, but virtual mostly mapped direct to physical,
-    which is what things look like when we turn paging on as well
-    since paging is turned on after we create first process.
-  mention why still have SEG_UCODE/SEG_UDATA?
-  do we ever really say what the low two bits of %cs do?
-    in particular their interaction with PTE_U
-  sidebar about why it is extern char[]
-..
-.chapter CH:MEM "Page tables"
-.PP
+% talk a little about initial page table conditions:
+%     paging not on, but virtual mostly mapped direct to physical,
+%     which is what things look like when we turn paging on as well
+%     since paging is turned on after we create first process.
+%   mention why still have SEG_UCODE/SEG_UDATA?
+%   do we ever really say what the low two bits of %cs do?
+%     in particular their interaction with PTE_U
+%   sidebar about why it is extern char[]
+\chapter{Page tables}
+\label{CH:MEM}
+
 Page tables are the mechanism through which the operating system
 provides each process with its own private memory.  Page tables
 determinate what memory addresses mean.  They allow xv6 to multiplex
 the address spaces of different processes onto a single physical
 memory, and to protect the memories of different processes.  The level
 of indirection provided by page tables also allows many neat tricks.
-.PP
+
 xv6 uses page tables primarily to multiplex address spaces and to
 protect memory.  It also uses a few simple page-table tricks: mapping
 the same memory (a trampoline page) in several address spaces, and
@@ -24,21 +23,21 @@ guarding a user stack with an unmapped page.  The rest of this chapter
 explains the page tables that the RISC-V hardware provides and how xv6
 uses them.  Compared to a real-world operating system, xv6's design is
 restrictive, but it does illustrate the key ideas.
-.\"
-.section "Paging hardware"
-.\"
+%% 
+\section{Paging hardware}
+%% 
 As a reminder,
 RISC-V instructions (both user and kernel) manipulate virtual addresses.
 The machine's RAM, or physical memory, is indexed with physical
 addresses.
 The RISC-V page table hardware connects these two kinds of addresses,
 by mapping each virtual address to a physical address.
-.PP
+
 xv6 runs on Sv39 RISC-V processor with has 39-bit virtual addresses;
 the top of 25 bits of a 64-bit virtual address are unused.  In this
-configuration, a RISC-V page table is logically an array of 2^27
+configuration, a RISC-V page table is logically an array of $2^{27}$
 (134,217,728)
-.italic-index "page table entries (PTEs)".
+\textit{page table entries (PTEs)}\index{page table entries (PTEs)}.
 Each PTE contains a
 44-bit physical page number (PPN) and some flags. The paging
 hardware translates a virtual address by using the top 27 bits
@@ -48,13 +47,19 @@ the address's top 44 bits with the PPN in the PTE.  The paging hardware
 copies the low 12 bits unchanged from the virtual to the
 translated physical address.  Thus a page table gives
 the operating system control over virtual-to-physical address translations
-at the granularity of aligned chunks of 4096 (2^12) bytes.
+at the granularity of aligned chunks of 4096 ($2^{12}$) bytes.
 Such a chunk is called a
-.italic-index page .
-.figure riscv_pagetable
-.PP
+\textit{page}\index{page}.
+
+\begin{figure}[t]
+\center
+\includegraphics[scale=0.5]{fig/riscv_pagetable.eps}
+\caption{RISC-V page table hardware.}
+\label{fig:riscv_pagetable}
+\end{figure}
+
 As shown in
-.figref riscv_pagetable ,
+Figure~\ref{fig:riscv_pagetable},
 the actual translation happens in three steps.  A page table is stored
 in physical memory as a three-level tree.
 The root of the tree is a
@@ -64,48 +69,47 @@ pages contains 512 PTEs for the final level in the tree.  The paging
 hardware uses the top 9 bits of the 27 bits to select a PTE in the
 root page, the middle 9 bits to select a PTE in next level of the
 tree, and the bottom 9 bits to select the final PTE.
-.PP
+
 If any of the PTEs is not present, the paging hardware raises a fault.
 This three-level structure allows a page table to omit entire page
 table pages in the common case in which large ranges of virtual
 addresses have no mappings.
-.PP
+
 In Sv39 RISC-V processors, the top 25 bits of virtual address are not
 used for translation; in the future, RISC-V can use those bits to
 define more levels of translation.  Similarly, the physical address
 has room for growth; in Sv39 it is 56 bits, but could grow to 64 bits.
-.PP
+
 Each PTE contains flag bits that tell the paging hardware
 how the associated virtual address is allowed to be used.
-.code-index PTE_V
+\lstinline{PTE_V}\index{PTE_V@\lstinline{PTE_V}}
 indicates whether the PTE is present: if it is
 not set, a reference to the page causes a fault (i.e. is not allowed).
-.code-index PTE_R
+\lstinline{PTE_R}\index{PTE_R@\lstinline{PTE_R}}
 controls whether instructions are allowed to issue
 reads to the page.
-.code-index PTE_W
+\lstinline{PTE_W}\index{PTE_W@\lstinline{PTE_W}}
 controls whether instructions are allowed to issue
 writes to the page.
-.code-index PTE_X
+\lstinline{PTE_X}\index{PTE_X@\lstinline{PTE_X}}
 controls whether the processor may interpret the content
 of the page as instruction and execute them.
-.figref riscv_pagetable
+Figure~\ref{fig:riscv_pagetable}
 shows how it all works.
 The flags and all other page hardware related structures are defined in
-.file "kernel/riscv.h"
-.sheet kernel/riscv.h .
-.PP
+\fileref{kernel/riscv.h}
+
 To tell the hardware to use a page table, the kernel must
 write the physical address of the root page into the register
-.register satp .
+\texttt{\%satp}.
 Each processor has its own
-.register satp .
+\texttt{\%satp}.
 A processor will translate all addresses in subsequent instructions
 using its page table.
 Each processor has its own page-table register so that one processor
 can run one process concurrently with another processor running
 another process, with their memories isolated from each other.
-.PP
+
 A few notes about terms.
 Physical memory refers to storage cells in DRAM.
 A byte of physical memory has an address, called a physical address.
@@ -114,90 +118,95 @@ paging hardware translates to physical addresses, and then
 sends to the DRAM hardware to read or write storage.
 At this level of discussion there is no such thing as virtual memory,
 only virtual addresses.
-.figure xv6_layout
-.\"
-.section "Kernel address space"
-.\"
+
+\begin{figure}[t]
+\center
+\includegraphics[scale=0.5]{fig/xv6_layout.eps}
+\caption{Layout of the kernel address space.}
+\label{fig:xv6_layout}
+\end{figure}
+%% 
+\section{Kernel address space}
+%% 
 The kernel has its own page table.  When a process enters kernel
 space, xv6 switches to the kernel page table, and when the kernel
 returns to user space, it switches to the page table of the user
 process.  The memory of the kernel is private.
-.PP
-.figref xv6_layout
+
+Figure~\ref{fig:xv6_layout}
 shows the layout of the kernel address space, and the mapping from
 virtual addresses to physical addresses.  The file
-.file "kernel/memlayout.h"
-.sheet kernel/memlayout.h
+\fileref{kernel/memlayout.h}
 declares the constants for xv6's kernel memory layout.
-.PP
+
 The RISC-V development board has a number of
-.italic-index "memory-mapped"
+\textit{memory-mapped}\index{memory-mapped}
 devices that sit below
-.address 0x80000000
+\texttt{0x80000000}
 in physical memory. The particular addresses are chosen by the board's
 manufacturer.  The kernel can interact with devices by reading/writing
 memory locations, and the board routes those reads and writes to the
-appropriate devices. For example, as we saw in Chapter \*[CH:FIRST], the kernel
+appropriate devices. For example, as we saw in Chapter~\ref{CH:FIRST}, the kernel
 programmed the CLINT to generate clock interrupts.  We will
 see later how xv6 interacts with the other devices.
-.PP
+
 The kernel uses an identity mapping for most virtual addresses.  For,
 example, the kernel itself is located at
-.code KERNBASE
+\lstinline{KERNBASE}
 in the virtual address space and in physical memory.  Same for all
 devices.  The one exception is the page holding trampoline code, which
 is mapped at the top of virtual address space; user page tables have
-this same mapping.  In chapter \*[CH:TRAP], we will discuss the role
+this same mapping.  In chapter~\ref{CH:TRAP}, we will discuss the role
 of the trampoline page, but we see here an interesting use case of
 page tables; a physical page (holding the trampoline code) is
 mapped twice in the virtual address space of the kernel: once at top
 of the virtual address space and once in the kernel text.
-.PP
+
 The kernel maps the pages for the trampoline and the kernel text with
 the permissions
-.code PTE_R
+\lstinline{PTE_R}
 and
-.code PTE_X .
+\lstinline{PTE_X}.
 The kernel reads and executes instructions from these pages.
 The kernel maps the other pages with the permissions
-.code PTE_R
+\lstinline{PTE_R}
 and
-.code PTE_W ,
+\lstinline{PTE_W},
 so that it read and write the memory in those pages.
-.\"
-.section "Process address space"
-.\"
-.PP
+%% 
+\section{Process address space}
+%% 
+
 Each process has a separate page table, and when xv6 switches between
 processes, xv6 also changes page tables.
 As shown in
-.figref first:as ,
+Figure~\ref{fig:as},
 a process's user memory starts at virtual address
 zero and can grow up to
-.address MAXVA
-.line kernel/riscv.h:/MAXVA/ ,
+\texttt{MAXVA}
+\lineref{kernel/riscv.h:/MAXVA/},
 allowing a process to address in principle 256 Gigabyte of memory.
-.PP
+
 When a process asks xv6 for more memory,
 xv6 first finds free physical pages in the area
 labeled "Free memory", the area above the end of the data segment
 of the kernel and below
-.address PHYSTOP .
+\texttt{PHYSTOP}.
 It then adds PTEs to the process's page table that point
 to the new physical pages.
 xv6 sets the
-.code PTE_W ,
-.code PTE_X ,
-.code PTE_R ,
-.code PTE_U ,
+\lstinline{PTE_W},
+\lstinline{PTE_X},
+\lstinline{PTE_R},
+\lstinline{PTE_U},
 and
-.code PTE_V
+\lstinline{PTE_V}
 flags in these PTEs.
 Most processes do not use the entire user address space;
 xv6 leaves
-.code PTE_V
+\lstinline{PTE_V}
 clear in unused PTEs.
-.PP
+
 We see here a few nice examples of use of page tables.  First,
 different processes' page tables translate user addresses to different
 pages of physical memory, so that each process has private user
@@ -206,178 +215,178 @@ virtual addresses starting at zero, while the process's physical
 memory can be non-contiguous.  Third, the kernel maps the page with
 trampoline code also at the top of address space of user processes,
 thus a single page of physical memory shows up in all address spaces.
-.\"
-.section "Code: creating an address space"
-.\"
-.PP
-.code-index main
+%% 
+\section{Code: creating an address space}
+%% 
+
+\lstinline{main}\index{main@\lstinline{main}}
 calls
-.code-index kvminit
-.line kernel/vm.c:/^kvminit/
+\lstinline{kvminit}\index{kvminit@\lstinline{kvminit}}
+\lineref{kernel/vm.c:/^kvminit/}
 to create the kernel page table.
-.code Kvminit
+\lstinline{Kvminit}
 first allocates a page of memory to hold the page directory.
 Then it calls
-.code-index mappages
+\lstinline{mappages}\index{mappages@\lstinline{mappages}}
 to install the translations that the kernel needs.
 The translations include the kernel's
 instructions and data, physical memory up to
-.code-index PHYSTOP ,
+\lstinline{PHYSTOP}\index{PHYSTOP@\lstinline{PHYSTOP}},
 and memory ranges which are actually devices.
-.PP
-.code-index mappages
-.line kernel/vm.c:/^mappages/
+
+\lstinline{mappages}\index{mappages@\lstinline{mappages}}
+\lineref{kernel/vm.c:/^mappages/}
 installs mappings into a page table
 for a range of virtual addresses to
 a corresponding range of physical addresses.
 It does this separately for each virtual address in the range,
 at page intervals.
 For each virtual address to be mapped,
-.code mappages
+\lstinline{mappages}
 calls
-.code-index walk
+\lstinline{walk}\index{walk@\lstinline{walk}}
 to find the address of the PTE for that address.
 It then initializes the PTE to hold the relevant physical page
 number, the desired permissions (e.g.,
-.code PTE_W
-.code PTE_X ,
+\lstinline{PTE_W}
+\lstinline{PTE_X},
 and/or
-.code PTE_R ),
+\lstinline{PTE_R}),
 and
-.code PTE_V
+\lstinline{PTE_V}
 to mark the PTE as valid
-.line kernel/vm.c:/perm...PTE_V/ .
-.PP
-.code-index walk
-.line kernel/vm.c:/^walk/
+\lineref{kernel/vm.c:/perm...PTE_V/}.
+
+\lstinline{walk}\index{walk@\lstinline{walk}}
+\lineref{kernel/vm.c:/^walk/}
 mimics the actions of the RISC-V paging hardware as it
 looks up the PTE for a virtual address (see
-.figref riscv_pagetable ).
-.code walk
+Figure~\ref{fig:riscv_pagetable}).
+\lstinline{walk}
 traverses the 3-level page table down 9 bits at the time.
 It uses the level's 9 bits of the virtual address to find
 the PTE
-.line kernel/vm.c:/pte.=..pagetable/ .
+\lineref{kernel/vm.c:/pte.=..pagetable/}.
 If the PTE isn't valid, then
 the required page hasn't yet been allocated;
 if the
-.code alloc
+\lstinline{alloc}
 argument is set,
-.code walk
+\lstinline{walk}
 allocates it and puts its physical address in the PTE.
 It returns the PTE in lowest layer in the tree
-.line kernel/vm.c:/return..pagetable/ .
-.PP
-.code-index main
+\lineref{kernel/vm.c:/return..pagetable/}.
+
+\lstinline{main}\index{main@\lstinline{main}}
 calls
-.code-index kvminithart
-.line kernel/vm.c:/^kvminithart/
+\lstinline{kvminithart}\index{kvminithart@\lstinline{kvminithart}}
+\lineref{kernel/vm.c:/^kvminithart/}
 to install the kernel page table.
 It writes the physical address of the root page
 into the register
-.register satp.
+\texttt{\%satp}.
 After this the processor will translate addresses using the kernel
 page table.  Since the kernel uses an identity mapping, the now
 virtual address of the next instruction will map to the right physical
 memory address.
-.\"
-.section "Physical memory allocation"
-.\"
-.PP
+%% 
+\section{Physical memory allocation}
+%% 
+
 The kernel must allocate and free physical memory at run-time for
 page tables,
 process user memory,
 kernel stacks,
 and pipe buffers.
-.PP
+
 xv6 uses the physical memory between the end of the kernel and
-.code-index PHYSTOP
+\lstinline{PHYSTOP}\index{PHYSTOP@\lstinline{PHYSTOP}}
 for run-time allocation. It allocates and frees whole 4096-byte pages
 at a time. It keeps track of which pages are free by threading a
 linked list through the pages themselves. Allocation consists of
 removing a page from the linked list; freeing consists of adding the
 freed page to the list.
-.\"
-.section "Code: Physical memory allocator"
-.\"
-.PP
+%% 
+\section{Code: Physical memory allocator}
+%% 
+
 The allocator's data structure is a
-.italic "free list"
+\textit{free list}
 of physical memory pages that are available
 for allocation.
 Each free page's list element is a
-.code-index "struct run"
-.line kernel/kalloc.c:/^struct.run/ .
+\lstinline{struct run}\index{struct run@\lstinline{struct run}}
+\lineref{kernel/kalloc.c:/^struct.run/}.
 Where does the allocator get the memory
 to hold that data structure?
 It store each free page's
-.code run
+\lstinline{run}
 structure in the free page itself,
 since there's nothing else stored there.
 The free list is
 protected by a spin lock
-.lines kernel/kalloc.c:/^struct.{/,/}/ .
+\linerefs{kernel/kalloc.c:/^struct.{/,/}/}.
 The list and the lock are wrapped in a struct
 to make clear that the lock protects the fields
 in the struct.
 For now, ignore the lock and the calls to
-.code acquire
+\lstinline{acquire}
 and
-.code release ;
-Chapter \*[CH:LOCK] will examine
+\lstinline{release};
+Chapter~\ref{CH:LOCK} will examine
 locking in detail.
-.PP
+
 The function
-.code-index main
+\lstinline{main}\index{main@\lstinline{main}}
 calls
-.code-index kinit
+\lstinline{kinit}\index{kinit@\lstinline{kinit}}
 to initialize the allocator
-.line kernel/kalloc.c:/^kinit/ .
-.code kinit
+\lineref{kernel/kalloc.c:/^kinit/}.
+\lstinline{kinit}
 enables locking and arranges for more memory to be allocatable.
-.code main
+\lstinline{main}
 ought to determine how much physical
 memory is available by parsing configuration information.
 Instead xv6 assumes that the machine has
 224 megabytes
-.code PHYSTOP ) (
+(\lstinline{PHYSTOP})
 of physical memory, and uses all the memory between the end of the kernel
 and
-.code-index PHYSTOP
+\lstinline{PHYSTOP}\index{PHYSTOP@\lstinline{PHYSTOP}}
 as the initial pool of free memory.
-.code kinit
+\lstinline{kinit}
 calls
-.code-index freerange
+\lstinline{freerange}\index{freerange@\lstinline{freerange}}
 to add memory to the free list via per-page calls to
-.code-index kfree .
+\lstinline{kfree}\index{kfree@\lstinline{kfree}}.
 A PTE can only refer to a physical address that is aligned
 on a 4096-byte boundary (is a multiple of 4096), so
-.code freerange
+\lstinline{freerange}
 uses
-.code-index PGROUNDUP
+\lstinline{PGROUNDUP}\index{PGROUNDUP@\lstinline{PGROUNDUP}}
 to ensure that it frees only aligned physical addresses.
 The allocator starts with no memory;
 these calls to
-.code kfree
+\lstinline{kfree}
 give it some to manage.
-.PP
+
 The allocator sometimes treats addresses as integers
 in order to perform arithmetic on them (e.g.,
 traversing all pages in
-.code kinit ),
+\lstinline{kinit}),
 and sometimes uses addresses as pointers to read and
 write memory (e.g., manipulating the
-.code run
+\lstinline{run}
 structure stored in each page);
 this dual use of addresses is the main reason that the
 allocator code is full of C type casts.
-.index "type cast"
+\index{type cast}
 The other reason is that freeing and allocation inherently
 change the type of the memory.
-.PP
+
 The function
-.code kfree
-.line kernel/kalloc.c:/^kfree/
+\lstinline{kfree}
+\lineref{kernel/kalloc.c:/^kfree/}
 begins by setting every byte in the
 memory being freed to the value 1.
 This will cause code that uses memory after freeing it
@@ -385,47 +394,53 @@ This will cause code that uses memory after freeing it
 to read garbage instead of the old valid contents;
 hopefully that will cause such code to break faster.
 Then
-.code kfree
+\lstinline{kfree}
 casts
-.code v
+\lstinline{v}
 to a pointer to
-.code struct
-.code run ,
+\lstinline{struct}
+\lstinline{run},
 records the old start of the free list in
-.code r->next ,
+\lstinline{r->next},
 and sets the free list equal to
-.code r .
-.code-index kalloc
+\lstinline{r}.
+\lstinline{kalloc}\index{kalloc@\lstinline{kalloc}}
 removes and returns the first element in the free list.
-.\"
-.section "User part of an address space"
-.\"
-.figure processlayout
-.PP
-.figref processlayout
+%% 
+\section{User part of an address space}
+%% 
+
+\begin{figure}[t]
+\center
+\includegraphics[scale=0.5]{fig/processlayout.eps}
+\caption{Memory layout of a user process with its initial stack.}
+\label{fig:processlayout}
+\end{figure}
+
+Figure~\ref{fig:processlayout}
 shows the layout of the user memory of an executing process in xv6.
 Each user process starts at address 0. The bottom of the address space
 contains the text for the user program, its data, and its stack.
 The heap is above the stack so that the heap can expand when the process
 calls
-.code-index sbrk .
+\lstinline{sbrk}\index{sbrk@\lstinline{sbrk}}.
 Note that the text, data, and stack sections are layed out contiguously in the
 process's address space but xv6 is free to use non-contiguous physical pages for
 those sections. For example, when xv6 expands a process's heap, it can use any
 free physical page for the new virtual page and then program the page table
 hardware to map the virtual page to the allocated physical page.  This
 flexibility is a major advantage of using paging hardware.
-.PP
+
 The stack is a single page, and is
 shown with the initial contents as created by exec.
 Strings containing the command-line arguments, as well as an
 array of pointers to them, are at the very top of the stack.
 Just under that are values that allow a program
 to start at
-.code main
+\lstinline{main}
 as if the function call
-.code main(argc,
-.code argv)
+\lstinline{main(argc},
+\lstinline{argv)}
 had just started.
 To guard a stack growing off the stack page, xv6 places a guard page right below
 the stack.  The guard page is not mapped and so if the stack runs off the stack
@@ -433,115 +448,115 @@ page, the hardware will generate an exception because it cannot translate the
 faulting address.
 A real-world operating system might allocate more space for the stack so that it can
 grow beyond one page.
-.\"
-.section "Code: sbrk"
-.\"
-.code Sbrk
+%% 
+\section{Code: sbrk}
+%% 
+\lstinline{Sbrk}
 is the system call for a process to shrink or grow its memory. The system
 call is implemented by the function
-.code growproc
-.line kernel/proc.c:/^growproc/ .
+\lstinline{growproc}
+\lineref{kernel/proc.c:/^growproc/}.
 If
-.code n
+\lstinline{n}
 is postive,
-.code growproc
+\lstinline{growproc}
 allocates one or more physical pages and maps them at the top of the process's
 address space.  If
-.code n
+\lstinline{n}
 is negative,
-.code growproc
+\lstinline{growproc}
 unmaps one or more pages from the process's address space and frees the corresponding
 physical pages.
 To make these changes,
 xv6 modifies the process's page table.  The process's page table is stored in
 memory, and so the kernel can update the table with ordinary assignment
 statements, which is what
-.code allocuvm
+\lstinline{allocuvm}
 and
-.code deallocuvm
+\lstinline{deallocuvm}
 do.
-.PP
+
 The RISC-V hardware caches page table entries in a
-.italic-index "Translation Look-aside Buffer (TLB)" ,
+\textit{Translation Look-aside Buffer (TLB)}\index{Translation Look-aside Buffer (TLB)},
 and when xv6 changes the page tables, it must invalidate the cached entries.  If
 it didn't invalidate the cached entries, then at some point later the TLB might
 use an old mapping, pointing to a physical page that in the mean time has been
 allocated to another process, and as a result, a process might be able to
 scribble on some other process's memory.  Reloading the register
-.register satp
+\texttt{\%satp}
 will flush the TLB, and xv6 reloads this register
 when the kernel returns to user space to switch to the user process's
 page table.
-.\"
-.section "Code: exec"
-.\"
-.code Exec
+%% 
+\section{Code: exec}
+%% 
+\lstinline{Exec}
 is the system call that creates the user part of an address space.  It
 initializes the user part of an address space from a file stored in the file
 system.
-.code Exec
-.line kernel/exec.c:/^exec/
+\lstinline{Exec}
+\lineref{kernel/exec.c:/^exec/}
 opens the named binary
-.code path
+\lstinline{path}
 using
-.code-index namei
-.line kernel/exec.c:/namei/ ,
-which is explained in Chapter \*[CH:FS].
+\lstinline{namei}\index{namei@\lstinline{namei}}
+\lineref{kernel/exec.c:/namei/},
+which is explained in Chapter~\ref{CH:FS}.
 Then, it reads the ELF header. Xv6 applications are described in the widely-used
-.italic-index "ELF format" ,
+\textit{ELF format}\index{ELF format},
 defined in
-.file kernel/elf.h .
+\fileref{kernel/elf.h}.
 An ELF binary consists of an ELF header,
-.code-index "struct elfhdr"
-.line kernel/elf.h:/^struct.elfhdr/ ,
+\lstinline{struct elfhdr}\index{struct elfhdr@\lstinline{struct elfhdr}}
+\lineref{kernel/elf.h:/^struct.elfhdr/},
 followed by a sequence of program section headers,
-.code "struct proghdr"
-.line kernel/elf.h:/^struct.proghdr/ .
+\lstinline{struct proghdr}
+\lineref{kernel/elf.h:/^struct.proghdr/}.
 Each
-.code proghdr
+\lstinline{proghdr}
 describes a section of the application that must be loaded into memory;
 xv6 programs have only one program section header, but
 other systems might have separate sections
 for instructions and data.
-.PP
+
 The first step is a quick check that the file probably contains an
 ELF binary.
 An ELF binary starts with the four-byte ``magic number''
-.code 0x7F ,
-.code 'E' ,
-.code 'L' ,
-.code 'F' ,
+\lstinline{0x7F},
+.code 'E',
+.code 'L',
+.code 'F',
 or
-.code-index ELF_MAGIC
-.line kernel/elf.h:/ELF_MAGIC/ .
+\lstinline{ELF_MAGIC}\index{ELF_MAGIC@\lstinline{ELF_MAGIC}}
+\lineref{kernel/elf.h:/ELF_MAGIC/}.
 If the ELF header has the right magic number,
-.code exec
+\lstinline{exec}
 assumes that the binary is well-formed.
-.PP
-.code Exec
+
+\lstinline{Exec}
 allocates a new page table with no user mappings with
-.code-index proc_pagetable
-.line kernel/exec.c:/proc_pagetable/ ,
+\lstinline{proc_pagetable}\index{proc_pagetable@\lstinline{proc_pagetable}}
+\lineref{kernel/exec.c:/proc_pagetable/},
 allocates memory for each ELF segment with
-.code-index uvmalloc
-.line kernel/exec.c:/uvmalloc/ ,
+\lstinline{uvmalloc}\index{uvmalloc@\lstinline{uvmalloc}}
+\lineref{kernel/exec.c:/uvmalloc/},
 and loads each segment into memory with
-.code-index loadseg
-.line kernel/exec.c:/loadseg/ .
-.code loadseg
+\lstinline{loadseg}\index{loadseg@\lstinline{loadseg}}
+\lineref{kernel/exec.c:/loadseg/}.
+\lstinline{loadseg}
 uses
-.code-index walkaddr
+\lstinline{walkaddr}\index{walkaddr@\lstinline{walkaddr}}
 to find the physical address of the allocated memory at which to write
 each page of the ELF segment, and
-.code-index readi
+\lstinline{readi}\index{readi@\lstinline{readi}}
 to read from the file.
-.PP
+
 The program section header for
-.code-index /init ,
+\lstinline{/init}\index{/init@\lstinline{/init}},
 the first user program created with
-.code exec ,
+\lstinline{exec},
 looks like this:
-.P1
+\begin{lstlisting}[]
 # objdump -p _init
 user/_init:     file format elf64-littleriscv
 
@@ -550,103 +565,103 @@ Program Header:
          filesz 0x0000000000000840 memsz 0x0000000000000858 flags rwx
    STACK off    0x0000000000000000 vaddr 0x0000000000000000 paddr 0x0000000000000000 align 2**4
          filesz 0x0000000000000000 memsz 0x0000000000000000 flags rw-
-.P2
-.PP
+\end{lstlisting}
+
 The program section header's
-.code filesz
+\lstinline{filesz}
 may be less than the
-.code memsz ,
+\lstinline{memsz},
 indicating that the gap between them should be filled
 with zeroes (for C global variables) rather than read from the file.
 For
-.code /init ,
-.code filesz
+\lstinline{/init},
+\lstinline{filesz}
 is 2112 bytes and
-.code memsz
+\lstinline{memsz}
 is 2136 bytes,
 and thus
-.code-index uvmalloc
+\lstinline{uvmalloc}\index{uvmalloc@\lstinline{uvmalloc}}
 allocates enough physical memory to hold 2136 bytes, but reads only 2112 bytes
 from the file
-.code /init .
-.PP
+\lstinline{/init}.
+
 Now
-.code-index exec
+\lstinline{exec}\index{exec@\lstinline{exec}}
 allocates and initializes the user stack.
 It allocates just one stack page.
-.code Exec
+\lstinline{Exec}
 copies the argument strings to the top of the stack
 one at a time, recording the pointers to them in
-.code-index ustack .
+\lstinline{ustack}\index{ustack@\lstinline{ustack}}.
 It places a null pointer at the end of what will be the
-.code-index argv
+\lstinline{argv}\index{argv@\lstinline{argv}}
 list passed to
-.code main .
+\lstinline{main}.
 The first three entries in
-.code ustack
+\lstinline{ustack}
 are the fake return PC,
-.code-index argc ,
+\lstinline{argc}\index{argc@\lstinline{argc}},
 and
-.code argv
+\lstinline{argv}
 pointer.
-.PP
-.code Exec
+
+\lstinline{Exec}
 places an inaccessible page just below the stack page,
 so that programs that try to use more than one page will fault.
 This inaccessible page also allows
-.code exec
+\lstinline{exec}
 to deal with arguments that are too large;
 in that situation,
 the
-.code-index copyout
-.line kernel/vm.c:/^copyout/
+\lstinline{copyout}\index{copyout@\lstinline{copyout}}
+\lineref{kernel/vm.c:/^copyout/}
 function that
-.code exec
+\lstinline{exec}
 uses to copy arguments to the stack will notice that
 the destination page is not accessible, and will
 return \-1.
-.PP
+
 During the preparation of the new memory image,
 if
-.code exec
+\lstinline{exec}
 detects an error like an invalid program segment,
 it jumps to the label
-.code bad ,
+\lstinline{bad},
 frees the new image,
 and returns \-1.
-.code Exec
+\lstinline{Exec}
 must wait to free the old image until it
 is sure that the system call will succeed:
 if the old image is gone,
 the system call cannot return \-1 to it.
 The only error cases in
-.code exec
+\lstinline{exec}
 happen during the creation of the image.
 Once the image is complete,
-.code exec
+\lstinline{exec}
 can commit to the new page table
-.line kernel/exec.c:/pagetable.=.pagetable/
+\lineref{kernel/exec.c:/pagetable.=.pagetable/}
 and free the old one
-.line kernel/exec.c:/proc_freepagetable/ .
-.PP
-.code Exec
+\lineref{kernel/exec.c:/proc_freepagetable/}.
+
+\lstinline{Exec}
 loads bytes from the ELF file into memory at addresses specified by the ELF file.
 Users or processes can place whatever addresses they want into an ELF file.
 Thus
-.code exec
+\lstinline{exec}
 is risky, because the addresses in the ELF file may refer to the kernel, accidentally
 or on purpose. The consequences for an unwary kernel could range from
 a crash to a malicious subversion of the kernel's isolation mechanisms
 (i.e., a security exploit).
 xv6 performs a number of checks to avoid these risks.
 For example
-.code "if(ph.vaddr + ph.memsz < ph.vaddr)"
+\lstinline{if(ph.vaddr + ph.memsz < ph.vaddr)}
 checks for whether the sum overflows a 64-bit integer.
 The danger is that a user could construct an ELF binary with a
-.code ph.vaddr
+\lstinline{ph.vaddr}
 that points to a user-chosen address,
 and
-.code ph.memsz
+\lstinline{ph.memsz}
 large enough that the sum overflows to 0x1000, which will look like a
 valid value. In an older version of xv6 in which the user address
 space also contained the kernel (but not readable/writable in user
@@ -654,17 +669,17 @@ mode), the user could choose an address that corresponded to kernel
 memory and would thus copy data from the ELF binary into the kernel.
 In the RISC-V version of xv6 this cannot happen, because the kernel has
 its own separate page table;
-.code loadseg
+\lstinline{loadseg}
 loads into the process's page table, not in the kernel's page table.
-.PP
+
 It is easy for a kernel developer to omit a crucial check, and
 real-world kernels have a long history of missing checks whose absence
 can be exploited by user programs to obtain kernel privileges.  It is likely that xv6 doesn't do a complete job of validating
 user-level data supplied to the kernel, which a malicious user program might be able to exploit to circumvent xv6's isolation.
-.\"
-.section "Real world"
-.\"
-.PP
+%% 
+\section{Real world}
+%% 
+
 Like most operating systems, xv6 uses the paging hardware
 for memory protection and mapping.
 Most operating systems make far more sophisticated
@@ -672,9 +687,9 @@ use of paging than xv6; for example, xv6 lacks demand
 paging from disk, copy-on-write fork, shared memory,
 lazily-allocated pages,
 and automatically extending stacks.
-.PP
+
 The RISC-V support physical memory protection, but xv6 doesn't use it.
-.PP
+
 On machines with lots of memory
 it might make sense to use
 RISC-V's support for ``super pages.''
@@ -685,7 +700,7 @@ For example, if a program
 uses only 8 kilobytes of memory, giving it a 4 megabytes physical page is wasteful.
 Larger pages make sense on machines with lots of RAM,
 and may reduce overhead for page-table manipulation.
-.PP
+
 Memory allocation was a hot topic a long time ago, the basic problems being
 efficient use of limited memory and
 preparing for unknown future requests;
@@ -696,54 +711,54 @@ rather than (as in xv6) just 4096-byte blocks;
 a real kernel
 allocator would need to handle small allocations as well as large
 ones.
-.\"
-.section "Exercises"
-.\"
-.PP
+%% 
+\section{Exercises}
+%% 
+
 1. Parse RISC-V's device tree to find the amount of physical memory
 the computer has.
-.PP
+
 2. Write a user program that grows its address space with 1 byte by calling
-.code sbrk(1) .
+\lstinline{sbrk(1)}.
 Run the  program and investigate the page table for the program before the call
 to
-.code sbrk
+\lstinline{sbrk}
 and after the call to
-.code sbrk .
+\lstinline{sbrk}.
 How much space has the kernel allocated?  What does the
-.code pte
+\lstinline{pte}
 for the new memory contain?
-.PP
+
 3. Modify xv6 to use super pages for the kernel.
-.PP
+
 4. Modify xv6 so that when a user program dereferences a null pointer, it will
 receive a fault.  That is, modify xv6 so that virtual address 0 isn't mapped for
 user programs.
-.PP
+
 5. Unix implementations of
-.code exec
+\lstinline{exec}
 traditionally include special handling for shell scripts.
 If the file to execute begins with the text
-.code #! ,
+\lstinline{#!},
 then the first line is taken to be a program
 to run to interpret the file.
 For example, if
-.code exec
+\lstinline{exec}
 is called to run
-.code myprog
-.code arg1
+\lstinline{myprog}
+\lstinline{arg1}
 and
-.code myprog 's
+\lstinline{myprog} 's
 first line is
-.code #!/interp ,
+\lstinline{#!/interp},
 then
-.code exec
+\lstinline{exec}
 runs
-.code /interp
+\lstinline{/interp}
 with command line
-.code /interp
-.code myprog
-.code arg1 .
+\lstinline{/interp}
+\lstinline{myprog}
+\lstinline{arg1}.
 Implement support for this convention in xv6.
 
 

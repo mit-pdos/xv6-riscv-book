@@ -1,5 +1,6 @@
-.chapter CH:UNIX "Operating system interfaces"
-.PP
+\chapter{Operating system interfaces}
+\label{CH:UNIX}
+
 The job of an operating system is to share a computer among
 multiple programs and to provide a more useful set of services
 than the hardware alone supports.
@@ -11,9 +12,9 @@ It also shares the hardware among multiple programs so
 that they run (or appear to run) at the same time.
 Finally, operating systems provide controlled ways for programs
 to interact, so that they can share data or work together.
-.PP
+
 An operating system provides services to user programs through an interface.
-.index "interface design"
+\index{interface design}
 Designing a good interface turns out to be
 difficult.  On the one hand, we would like the interface to be
 simple and narrow because that makes it easier to get the
@@ -22,7 +23,7 @@ we may be tempted to offer many sophisticated features to applications.
 The trick in
 resolving this tension is to design interfaces that rely on a few
 mechanisms that can be combined to provide much generality.
-.PP
+
 This book uses a single operating system as a concrete example to
 illustrate operating system concepts.  That operating system,
 xv6, provides the basic interfaces introduced by Ken Thompson and
@@ -34,31 +35,31 @@ modern operating systems—BSD, Linux, Mac OS X, Solaris, and even, to a
 lesser extent, Microsoft Windows—have Unix-like interfaces.
 Understanding xv6 is a good start toward understanding any of these
 systems and many others.
-.PP
+
 As shown in 
-.figref os ,
+Figure~\ref{fig:os},
 xv6 takes the traditional form of a
-.italic-index kernel ,
+\textit{kernel}\index{kernel},
 a special program that provides
 services to running programs.
 Each running program, called a
-.italic-index process ,
+\textit{process}\index{process},
 has memory containing instructions, data, and a stack. The
 instructions implement the
 program's computation.  The data are the variables on which
 the computation acts. The stack organizes the program's procedure calls.
-.PP
+
 When a
 process needs to invoke a kernel service, it invokes a procedure call
 in the operating system interface.  Such a procedure is called a
-.italic-index "system call" .
+\textit{system call}\index{system call}.
 The system call enters the kernel;
 the kernel performs the service and returns.
 Thus a process alternates between executing in
-.italic-index "user space"
+\textit{user space}\index{user space}
 and
-.italic-index "kernel space" .
-.PP
+\textit{kernel space}\index{kernel space}.
+
 The kernel uses the CPU's hardware protection mechanisms to
 ensure that each process executing in user space can access only
 its own memory.
@@ -68,25 +69,31 @@ those privileges.
 When a user program invokes a system call, the hardware
 raises the privilege level and starts executing a pre-arranged
 function in the kernel.
-.figure os
-.PP
+
+\begin{figure}[t]
+\center
+\includegraphics[scale=0.5]{fig/os.eps}
+\caption{A kernel and two user processes.}
+\label{fig:os}
+\end{figure}
+
 The collection of system calls that a kernel provides
 is the interface that user programs see.
 The xv6 kernel provides a subset of the services and system calls
 that Unix kernels traditionally offer.  
-.figref api 
+Figure~\ref{fig:api} 
 lists all of xv6's system calls.
-.PP
+
 The rest of this chapter outlines xv6's services—\c
 processes, memory, file descriptors, pipes, and file system—\c
 and illustrates them with code snippets and discussions
 of how the 
-.italic-index "shell" , 
+\textit{shell}\index{shell}, 
 which is the primary user interface to 
 traditional Unix-like systems, uses them.
 The shell's use of system calls illustrates how carefully they
 have been designed.
-.PP
+
 The shell is an ordinary program that reads commands from the user
 and executes them.
 The fact that the shell is a user program, not part of the kernel, 
@@ -98,42 +105,71 @@ shells to choose from, each with its own user interface
 and scripting features.
 The xv6 shell is a simple implementation of the essence of
 the Unix Bourne shell.  Its implementation can be found at line
-.line user/sh.c:1 .
-.\"
-.\"	Processes and memory
-.\"
-.section "Processes and memory"
-.PP
+\lineref{user/sh.c:1}.
+%% 
+%% 	Processes and memory
+%% 
+\section{Processes and memory}
+
 An xv6 process consists of user-space memory (instructions, data, and stack)
 and per-process state private to the kernel.
 Xv6 can
-.italic-index time-share 
+\textit{time-share}\index{time-share} 
 processes: it transparently switches the available CPUs
 among the set of processes waiting to execute.
 When a process is not executing, xv6 saves its CPU registers,
 restoring them when it next runs the process.
 The kernel associates a process identifier, or
-.code-index pid ,
+\lstinline{pid}\index{pid@\lstinline{pid}},
 with each process.
-.figure api
-.PP
+
+\begin{figure}[t]
+\center
+\begin{tabular}{ll}
+{\bf System call} & {\bf Description} \\
+\midrule
+fork() & Create a process \\
+exit() & Terminate the current process \\
+wait() & Wait for a child process to exit \\
+kill(pid) & Terminate process pid \\
+getpid() & Return the current process's pid \\
+sleep(n) & Sleep for n clock ticks \\
+exec(filename, *argv) & Load a file and execute it \\
+sbrk(n) & Grow process's memory by n bytes \\
+open(filename, flags) & Open a file; the flags indicate read/write \\
+read(fd, buf, n) & Read n bytes from an open file into buf \\
+write(fd, buf, n) & Write n bytes to an open file \\
+close(fd) & Release open file fd \\
+dup(fd) & Duplicate fd \\
+pipe(p) & Create a pipe and return fd's in p \\
+chdir(dirname) & Change the current directory \\
+mkdir(dirname) & Create a new directory \\
+mknod(name, major, minor) & Create a device file \\
+fstat(fd) & Return info about an open file \\
+link(f1, f2) & Create another name (f2) for the file f1 \\
+unlink(filename) & Remove a file \\
+\end{tabular}
+\caption{Xv6 system calls}
+\label{fig:api}
+\end{figure}
+
 A process may create a new process using the
-.code-index fork
+\lstinline{fork}\index{fork@\lstinline{fork}}
 system call.
-.code Fork
+\lstinline{Fork}
 creates a new process, called the 
-.italic-index "child process" , 
+\textit{child process}\index{child process}, 
 with exactly the same memory contents
 as the calling process, called the 
-.italic-index "parent process" .
-.code Fork
+\textit{parent process}\index{parent process}.
+\lstinline{Fork}
 returns in both the parent and the child.
 In the parent,
-.code-index fork
+\lstinline{fork}\index{fork@\lstinline{fork}}
 returns the child's pid;
 in the child, it returns zero.
 For example, consider the following program fragment:
-.P1
+\begin{lstlisting}[]
 int pid = fork();
 if(pid > 0){
   printf("parent: child=%d\en", pid);
@@ -145,67 +181,67 @@ if(pid > 0){
 } else {
   printf("fork error\en");
 }
-.P2
+\end{lstlisting}
 The
-.code-index exit
+\lstinline{exit}\index{exit@\lstinline{exit}}
 system call causes the calling process to stop executing and
 to release resources such as memory and open files.
 The
-.code-index wait
+\lstinline{wait}\index{wait@\lstinline{wait}}
 system call returns the pid of an exited child of the
 current process; if none of the caller's children
 has exited,
-.code-index wait
+\lstinline{wait}\index{wait@\lstinline{wait}}
 waits for one to do so.
 In the example, the output lines
-.P1
+\begin{lstlisting}[]
 parent: child=1234
 child: exiting
-.P2
+\end{lstlisting}
 might come out in either order, depending on whether the
 parent or child gets to its
-.code-index printf
+\lstinline{printf}\index{printf@\lstinline{printf}}
 call first.
 After the child exits the parent's
-.code-index wait
+\lstinline{wait}\index{wait@\lstinline{wait}}
 returns, causing the parent to print
-.P1
+\begin{lstlisting}[]
 parent: child 1234 is done
-.P2
+\end{lstlisting}
 Although the child has the same memory contents as the parent initially, the
 parent and child are executing with different memory and different registers:
 changing a variable in one does not affect the other. For example, when the
 return value of
-.code wait
+\lstinline{wait}
 is stored into
-.code pid 
+\lstinline{pid} 
 in the parent process,
 it doesn't change the variable 
-.code pid
+\lstinline{pid}
 in the child.  The value of
-.code pid
+\lstinline{pid}
 in the child will still be zero.
-.PP
+
 The
-.code-index exec
+\lstinline{exec}\index{exec@\lstinline{exec}}
 system call
 replaces the calling process's memory with a new memory
 image loaded from a file stored in the file system.
 The file must have a particular format, which specifies which part of
 the file holds instructions, which part is data, at which instruction
 to start, etc. xv6
-uses the ELF format, which Chapter \*[CH:MEM] discusses in
+uses the ELF format, which Chapter~\ref{CH:MEM} discusses in
 more detail.
 When
-.code-index exec
+\lstinline{exec}\index{exec@\lstinline{exec}}
 succeeds, it does not return to the calling program;
 instead, the instructions loaded from the file start
 executing at the entry point declared in the ELF header.
-.code Exec
+\lstinline{Exec}
 takes two arguments: the name of the file containing the
 executable and an array of string arguments.
 For example:
-.P1
+\begin{lstlisting}[]
 char *argv[3];
 
 argv[0] = "echo";
@@ -213,97 +249,97 @@ argv[1] = "hello";
 argv[2] = 0;
 exec("/bin/echo", argv);
 printf("exec error\en");
-.P2
+\end{lstlisting}
 This fragment replaces the calling program with an instance
 of the program 
-.code /bin/echo
+\lstinline{/bin/echo}
 running with the argument list
-.code echo
-.code hello .
+\lstinline{echo}
+\lstinline{hello}.
 Most programs ignore the first argument, which is 
 conventionally the name of the program.
-.PP
+
 The xv6 shell uses the above calls to run programs on behalf of
 users. The main structure of the shell is simple; see
-.code main 
-.line user/sh.c:/main/ .
+\lstinline{main} 
+\lineref{user/sh.c:/main/}.
 The main loop reads a line of input from the user with
-.code-index getcmd .
+\lstinline{getcmd}\index{getcmd@\lstinline{getcmd}}.
 Then it calls 
-.code fork , 
+\lstinline{fork}, 
 which creates a copy of the shell process. The
 parent calls
-.code wait ,
+\lstinline{wait},
 while the child runs the command.  For example, if the user
 had typed
-.code "echo hello" '' ``
+``\lstinline{echo hello}''
 to the shell,
-.code runcmd
+\lstinline{runcmd}
 would have been called with
-.code "echo hello" '' ``
+``\lstinline{echo hello}''
 as the argument.
-.code runcmd 
-.line user/sh.c:/runcmd/
+\lstinline{runcmd} 
+\lineref{user/sh.c:/runcmd/}
 runs the actual command. For
-.code "echo hello" '', ``
+``\lstinline{echo hello}'',
 it would call
-.code exec 
-.line user/sh.c:/exec.ecmd/ .
+\lstinline{exec} 
+\lineref{user/sh.c:/exec.ecmd/}.
 If
-.code exec
+\lstinline{exec}
 succeeds then the child will execute instructions from
-.code echo
+\lstinline{echo}
 instead of
-.code runcmd .  
+\lstinline{runcmd}.  
 At some point
-.code echo
+\lstinline{echo}
 will call
-.code exit ,
+\lstinline{exit},
 which will cause the parent to return from
-.code wait
+\lstinline{wait}
 in 
-.code main
-.line user/sh.c:/main/ .
-.PP
+\lstinline{main}
+\lineref{user/sh.c:/main/}.
+
 You might wonder why
-.code-index fork
+\lstinline{fork}\index{fork@\lstinline{fork}}
 and
-.code-index exec
+\lstinline{exec}\index{exec@\lstinline{exec}}
 are not combined in a single call; we will see later that separate
 calls for creating a process and loading a program has some clever
 usages in the shell for I/O redirection.  To avoid the wastefulness of
 creating a duplicate process and then immediately replacing it,
 operating kernels optimize the implementation of
-.code fork
+\lstinline{fork}
 for this use case by using virtual-memory techniques such as copy-on-write.
-.PP
+
 Xv6 allocates most user-space memory
 implicitly:
-.code-index fork
+\lstinline{fork}\index{fork@\lstinline{fork}}
 allocates the memory required for the child's copy of the
 parent's memory, and 
-.code-index exec
+\lstinline{exec}\index{exec@\lstinline{exec}}
 allocates enough memory to hold the executable file.
 A process that needs more memory at run-time (perhaps for
-.code-index malloc )
+\lstinline{malloc}\index{malloc@\lstinline{malloc}})
 can call
-.code sbrk(n)
+\lstinline{sbrk(n)}
 to grow its data memory by
-.code n
+\lstinline{n}
 bytes;
-.code-index sbrk
+\lstinline{sbrk}\index{sbrk@\lstinline{sbrk}}
 returns the location of the new memory.
-.PP
+
 Xv6 does not provide a notion of users or of protecting
 one user from another; in Unix terms, all xv6 processes
 run as root.
-.\"
-.\"	I/O and File descriptors
-.\"
-.section "I/O and File descriptors"
-.PP
+%% 
+%% 	I/O and File descriptors
+%% 
+\section{I/O and File descriptors}
+
 A 
-.italic-index "file descriptor" 
+\textit{file descriptor}\index{file descriptor} 
 is a small integer representing a kernel-managed object
 that a process may read from or write to.
 A process may obtain a file descriptor by opening a file, directory,
@@ -313,7 +349,7 @@ For simplicity we'll often refer to the object a file descriptor
 refers to as a ``file'';
 the file descriptor interface abstracts away the differences between
 files, pipes, and devices, making them all look like streams of bytes.
-.PP
+
 Internally, the xv6 kernel uses the file descriptor
 as an index into a per-process table,
 so that every process has a private space of file descriptors
@@ -324,68 +360,68 @@ writes error messages to file descriptor 2 (standard error).
 As we will see, the shell exploits the convention to implement I/O redirection
 and pipelines. The shell ensures that it always has three file descriptors
 open
-.line user/sh.c:/open..console/ ,
+\lineref{user/sh.c:/open..console/},
 which are by default file descriptors for the console.
-.PP
+
 The
-.code read
+\lstinline{read}
 and
-.code write
+\lstinline{write}
 system calls read bytes from and write bytes to
 open files named by file descriptors.
 The call
-.code read(fd,
-.code buf,
-.code n)
+\lstinline{read(fd},
+\lstinline{buf},
+\lstinline{n)}
 reads at most
-.code n
+\lstinline{n}
 bytes from the file descriptor
-.code fd ,
+\lstinline{fd},
 copies them into
-.code buf ,
+\lstinline{buf},
 and returns the number of bytes read.
 Each file descriptor that refers to a file
 has an offset associated with it.
-.code Read
+\lstinline{Read}
 reads data from the current file offset and then advances
 that offset by the number of bytes read:
 a subsequent
-.code read
+\lstinline{read}
 will return the bytes following the ones returned by the first
-.code read .
+\lstinline{read}.
 When there are no more bytes to read,
-.code read
+\lstinline{read}
 returns zero to signal the end of the file.
-.PP
+
 The call
-.code write(fd,
-.code buf,
-.code n)
+\lstinline{write(fd},
+\lstinline{buf},
+\lstinline{n)}
 writes
-.code n
+\lstinline{n}
 bytes from
-.code buf
+\lstinline{buf}
 to the file descriptor
-.code fd
+\lstinline{fd}
 and returns the number of bytes written.
 Fewer than
-.code n
+\lstinline{n}
 bytes are written only when an error occurs.
 Like
-.code read ,
-.code write
+\lstinline{read},
+\lstinline{write}
 writes data at the current file offset and then advances
 that offset by the number of bytes written:
 each
-.code write
+\lstinline{write}
 picks up where the previous one left off.
-.PP
+
 The following program fragment (which forms the essence of
-.code cat )
+\lstinline{cat})
 copies data from its standard input
 to its standard output.  If an error occurs, it writes a message
 to the standard error.
-.P1
+\begin{lstlisting}[]
 char buf[512];
 int n;
 
@@ -402,50 +438,50 @@ for(;;){
     exit();
   }
 }
-.P2
+\end{lstlisting}
 The important thing to note in the code fragment is that
-.code cat
+\lstinline{cat}
 doesn't know whether it is reading from a file, console, or a pipe.
 Similarly 
-.code cat
+\lstinline{cat}
 doesn't know whether it is printing to a console, a file, or whatever.
 The use of file descriptors and the convention that file descriptor 0
 is input and file descriptor 1 is output allows a simple
 implementation
 of 
-.code cat .
-.PP
+\lstinline{cat}.
+
 The
-.code close
+\lstinline{close}
 system call
 releases a file descriptor, making it free for reuse by a future
-.code open ,
-.code pipe ,
+\lstinline{open},
+\lstinline{pipe},
 or
-.code dup
+\lstinline{dup}
 system call (see below).
 A newly allocated file descriptor 
 is always the lowest-numbered unused
 descriptor of the current process.
-.PP
+
 File descriptors and
-.code-index fork
+\lstinline{fork}\index{fork@\lstinline{fork}}
 interact to make I/O redirection easy to implement.
-.code Fork
+\lstinline{Fork}
 copies the parent's file descriptor table along with its memory,
 so that the child starts with exactly the same open files as the parent.
 The system call
-.code-index exec
+\lstinline{exec}\index{exec@\lstinline{exec}}
 replaces the calling process's memory but preserves its file table.
 This behavior allows the shell to
 implement I/O redirection by forking, reopening chosen file descriptors,
 and then execing the new program.
 Here is a simplified version of the code a shell runs for the
 command
-.code cat
-.code <
-.code input.txt :
-.P1
+\lstinline{cat}
+\lstinline{<}
+\lstinline{input.txt}:
+\begin{lstlisting}[]
 char *argv[2];
 
 argv[0] = "cat";
@@ -455,55 +491,55 @@ if(fork() == 0) {
   open("input.txt", O_RDONLY);
   exec("cat", argv);
 }
-.P2
+\end{lstlisting}
 After the child closes file descriptor 0,
-.code open
+\lstinline{open}
 is guaranteed to use that file descriptor
 for the newly opened
-.code input.txt :
+\lstinline{input.txt}:
 0 will be the smallest available file descriptor.
-.code Cat
+\lstinline{Cat}
 then executes with file descriptor 0 (standard input) referring to
-.code input.txt .
-.PP
+\lstinline{input.txt}.
+
 The code for I/O redirection in the xv6 shell works in exactly this way
-.line user/sh.c:/case.REDIR/ .
+\lineref{user/sh.c:/case.REDIR/}.
 Recall that at this point in the code the shell has already forked the
 child shell and that 
-.code runcmd 
+\lstinline{runcmd} 
 will call
-.code exec
+\lstinline{exec}
 to load the new program.  Now it should be clear why it is a good idea that
-.code fork
+\lstinline{fork}
 and 
-.code exec 
+\lstinline{exec} 
 are separate calls.  Because if they are separate, the shell can fork a child,
 use
-.code open ,
-.code close ,
-.code dup
+\lstinline{open},
+\lstinline{close},
+\lstinline{dup}
 in the child to change the standard input and output
 file descriptors, and then
-.code exec .
+\lstinline{exec}.
 No changes to the program being exec-ed
-.code ( cat
+\lstinline{(} cat
 in our example)
 are required.
 If
-.code fork
+\lstinline{fork}
 and
-.code exec
+\lstinline{exec}
 were combined into a single
 system call, some other (probably more complex) scheme would be required for the
 shell to redirect standard input and output, or the program itself would have to
 understand how to redirect I/O.
-.PP
+
 Although
-.code fork
+\lstinline{fork}
 copies the file descriptor table, each underlying file offset is shared
 between parent and child.
 Consider this example:
-.P1
+\begin{lstlisting}[]
 if(fork() == 0) {
   write(1, "hello ", 6);
   exit();
@@ -511,96 +547,96 @@ if(fork() == 0) {
   wait();
   write(1, "world\en", 6);
 }
-.P2
+\end{lstlisting}
 At the end of this fragment, the file attached to file descriptor 1
 will contain the data
-.code hello
-.code world .
+\lstinline{hello}
+\lstinline{world}.
 The
-.code write
+\lstinline{write}
 in the parent
 (which, thanks to
-.code wait ,
+\lstinline{wait},
 runs only after the child is done)
 picks up where the child's
-.code write
+\lstinline{write}
 left off.
 This behavior helps produce sequential output from sequences
 of shell commands, like
-.code (echo
-.code hello;
-.code echo
-.code world)
-.code >output.txt .
-.PP
+\lstinline{(echo}
+\lstinline{hello};
+\lstinline{echo}
+\lstinline{world)}
+\lstinline{>output.txt}.
+
 The
-.code dup
+\lstinline{dup}
 system call duplicates an existing file descriptor,
 returning a new one that refers to the same underlying I/O object.
 Both file descriptors share an offset, just as the file descriptors
 duplicated by
-.code fork
+\lstinline{fork}
 do.
 This is another way to write
-.code hello
-.code world
+\lstinline{hello}
+\lstinline{world}
 into a file:
-.P1
+\begin{lstlisting}[]
 fd = dup(1);
 write(1, "hello ", 6);
 write(fd, "world\en", 6);
-.P2
-.PP
+\end{lstlisting}
+
 Two file descriptors share an offset if they were derived from
 the same original file descriptor by a sequence of
-.code fork
+\lstinline{fork}
 and
-.code dup
+\lstinline{dup}
 calls.
 Otherwise file descriptors do not share offsets, even if they
 resulted from 
-.code open
+\lstinline{open}
 calls for the same file.  
-.code Dup 
+\lstinline{Dup} 
 allows shells to implement commands like this:
-.code ls
-.code existing-file
-.code non-existing-file
-.code >
-.code tmp1
-.code 2>&1 .
+\lstinline{ls}
+\lstinline{existing-file}
+\lstinline{non-existing-file}
+\lstinline{>}
+\lstinline{tmp1}
+\lstinline{2>&1}.
 The
-.code 2>&1
+\lstinline{2>&1}
 tells the shell to give the command a file descriptor 2 that
 is a duplicate of descriptor 1.
 Both the name of the existing file and the error message for the
 non-existing file will show up in the file
-.code tmp1.
+\lstinline{tmp1.}
 The xv6 shell doesn't support I/O redirection for the error file
 descriptor, but now you know how to implement it.
-.PP
+
 File descriptors are a powerful abstraction,
 because they hide the details of what they are connected to:
 a process writing to file descriptor 1 may be writing to a
 file, to a device like the console, or to a pipe.
-.\"
-.\"	Pipes
-.\"
-.section "Pipes"
-.PP
+%% 
+%% 	Pipes
+%% 
+\section{Pipes}
+
 A 
-.italic-index pipe 
+\textit{pipe}\index{pipe} 
 is a small kernel buffer exposed to processes as a pair of
 file descriptors, one for reading and one for writing.
 Writing data to one end of the pipe
 makes that data available for reading from the other end of the pipe.
 Pipes provide a way for processes to communicate.
-.PP
+
 The following example code runs the program
-.code wc
+\lstinline{wc}
 with standard input connected to
 the read end of a pipe.
-.P1
+\begin{lstlisting}[]
 int p[2];
 char *argv[2];
 
@@ -619,95 +655,95 @@ if(fork() == 0) {
   write(p[1], "hello world\en", 12);
   close(p[1]);
 }
-.P2
+\end{lstlisting}
 The program calls
-.code pipe ,
+\lstinline{pipe},
 which creates a new pipe and records the read and write
 file descriptors in the array
-.code p .
+\lstinline{p}.
 After
-.code fork ,
+\lstinline{fork},
 both parent and child have file descriptors referring to the pipe.
 The child dups the read end onto file descriptor 0,
 closes the file descriptors in
-.code p ,
+\lstinline{p},
 and execs
-.code wc .
+\lstinline{wc}.
 When 
-.code wc
+\lstinline{wc}
 reads from its standard input, it reads from the pipe.
 The parent closes the read side of the pipe,
 writes to the pipe,
 and then closes the write side.
-.PP
+
 If no data is available, a
-.code read
+\lstinline{read}
 on a pipe waits for either data to be written or all
 file descriptors referring to the write end to be closed;
 in the latter case,
-.code read
+\lstinline{read}
 will return 0, just as if the end of a data file had been reached.
 The fact that
-.code read
+\lstinline{read}
 blocks until it is impossible for new data to arrive
 is one reason that it's important for the child to
 close the write end of the pipe
 before executing
-.code wc
+\lstinline{wc}
 above: if one of
-.code wc 's
+\lstinline{wc} 's
 file descriptors referred to the write end of the pipe,
-.code wc
+\lstinline{wc}
 would never see end-of-file.
-.PP
+
 The xv6 shell implements pipelines such as
-.code "grep fork sh.c | wc -l"
+\lstinline{grep fork sh.c | wc -l}
 in a manner similar to the above code
-.line user/sh.c:/case.PIPE/ .
+\lineref{user/sh.c:/case.PIPE/}.
 The child process creates a pipe to connect the left end of the pipeline
 with the right end. Then it calls
-.code fork
+\lstinline{fork}
 and
-.code runcmd
+\lstinline{runcmd}
 for the left end of the pipeline
 and 
-.code fork
+\lstinline{fork}
 and
-.code runcmd
+\lstinline{runcmd}
 for the right end, and waits for both to finish.
 The right end of the pipeline may be a command that itself includes a
 pipe (e.g.,
-.code a
-.code |
-.code b
-.code |
-.code c) , 
+\lstinline{a}
+\lstinline{|}
+\lstinline{b}
+\lstinline{|}
+\lstinline{c)}, 
 which itself forks two new child processes (one for
-.code b
+\lstinline{b}
 and one for
-.code c ).
+\lstinline{c}).
 Thus, the shell may
 create a tree of processes.  The leaves of this tree are commands and
 the interior nodes are processes that wait until the left and right
 children complete.  In principle, you could have the interior nodes
 run the left end of a pipeline, but doing so correctly would complicate the
 implementation.
-.PP
+
 Pipes may seem no more powerful than temporary files:
 the pipeline
-.P1
+\begin{lstlisting}[]
 echo hello world | wc
-.P2
+\end{lstlisting}
 could be implemented without pipes as
-.P1
+\begin{lstlisting}[]
 echo hello world >/tmp/xyz; wc </tmp/xyz
-.P2
+\end{lstlisting}
 Pipes have at least four advantages over temporary files
 in this situation.
 First, pipes automatically clean themselves up;
 with the file redirection, a shell would have to
 be careful to remove
-.code /tmp/xyz
+\lstinline{/tmp/xyz}
 when done.
 Second, pipes can pass arbitrarily long streams of
 data, while file redirection requires enough free space
@@ -718,191 +754,201 @@ before the second starts.
 Fourth, if you are implementing inter-process communication,
 pipes' blocking reads and writes are more efficient
 than the non-blocking semantics of files.
-.\"
-.\"	File system
-.\"
-.section "File system"
-.PP
+%% 
+%% 	File system
+%% 
+\section{File system}
+
 The xv6 file system provides data files,
 which are uninterpreted byte arrays,
 and directories, which
 contain named references to data files and other directories.
 The directories form a tree, starting
 at a special directory called the 
-.italic-index root .
+\textit{root}\index{root}.
 A 
-.italic-index path 
+\textit{path}\index{path} 
 like
-.code /a/b/c
+\lstinline{/a/b/c}
 refers to the file or directory named
-.code c
+\lstinline{c}
 inside the directory named
-.code b
+\lstinline{b}
 inside the directory named
-.code a
+\lstinline{a}
 in the root directory
-.code / .
+\lstinline{/}.
 Paths that don't begin with
-.code /
+\lstinline{/}
 are evaluated relative to the calling process's
-.italic-index "current directory" ,
+\textit{current directory}\index{current directory},
 which can be changed with the
-.code chdir
+\lstinline{chdir}
 system call.
 Both these code fragments open the same file
 (assuming all the directories involved exist):
-.P1
+\begin{lstlisting}[]
 chdir("/a");
 chdir("b");
 open("c", O_RDONLY);
 
 open("/a/b/c", O_RDONLY);
-.P2
+\end{lstlisting}
 The first fragment changes the process's current directory to
-.code /a/b ;
+\lstinline{/a/b};
 the second neither refers to nor changes the process's current directory.
-.PP
-.PP
+
+
 There are multiple system calls to create a new file or directory:
-.code mkdir
+\lstinline{mkdir}
 creates a new directory,
-.code open
+\lstinline{open}
 with the
-.code O_CREATE
+\lstinline{O_CREATE}
 flag creates a new data file,
 and
-.code mknod
+\lstinline{mknod}
 creates a new device file.
 This example illustrates all three:
-.P1
+\begin{lstlisting}[]
 mkdir("/dir");
 fd = open("/dir/file", O_CREATE|O_WRONLY);
 close(fd);
 mknod("/console", 1, 1);
-.P2
-.code Mknod
+\end{lstlisting}
+\lstinline{Mknod}
 creates a file in the file system,
 but the file has no contents.
 Instead, the file's metadata marks it as a device file
 and records the major and minor device numbers
 (the two arguments to 
-.code mknod ),
+\lstinline{mknod}),
 which uniquely identify a kernel device.
 When a process later opens the file, the kernel
 diverts
-.code read
+\lstinline{read}
 and
-.code write
+\lstinline{write}
 system calls to the kernel device implementation
 instead of passing them to the file system.
-.PP
-.code fstat
+
+\lstinline{fstat}
 retrieves information about the object a file
 descriptor refers to.
 It fills in a
-.code struct
-.code stat ,
+\lstinline{struct}
+\lstinline{stat},
 defined in
-.code stat.h
+\lstinline{stat.h}
 as:
-.P1
-.so ../xv6-riscv/kernel/stat.h
-.P2
-.PP
+\begin{lstlisting}[]
+#define T_DIR     1   // Directory
+#define T_FILE    2   // File
+#define T_DEVICE  3   // Device
+
+struct stat {
+  int dev;     // File system's disk device
+  uint ino;    // Inode number
+  short type;  // Type of file
+  short nlink; // Number of links to file
+  uint64 size; // Size of file in bytes
+};
+\end{lstlisting}
+
 A file's name is distinct from the file itself;
 the same underlying file, called an 
-.italic-index inode , 
+\textit{inode}\index{inode}, 
 can have multiple names,
 called 
-.italic-index links .
+\textit{links}\index{links}.
 The
-.code link
+\lstinline{link}
 system call creates another file system name 
 referring to the same inode as an existing file.
 This fragment creates a new file named both
-.code a
+\lstinline{a}
 and
-.code b .
-.P1
+\lstinline{b}.
+\begin{lstlisting}[]
 open("a", O_CREATE|O_WRONLY);
 link("a", "b");
-.P2
+\end{lstlisting}
 Reading from or writing to
-.code a
+\lstinline{a}
 is the same as reading from or writing to
-.code b .
+\lstinline{b}.
 Each inode is identified by a unique
-.italic inode
-.italic number .
+\textit{inode}
+\textit{number}.
 After the code sequence above, it is possible
 to determine that
-.code a
+\lstinline{a}
 and
-.code b
+\lstinline{b}
 refer to the same underlying contents by inspecting the
 result of 
-.code fstat :
+\lstinline{fstat}:
 both will return the same inode number 
-.code ino ), (
+(\lstinline{ino}),
 and the
-.code nlink
+\lstinline{nlink}
 count will be set to 2.
-.PP
+
 The
-.code unlink
+\lstinline{unlink}
 system call removes a name from the file system.
 The file's inode and the disk space holding its content
 are only freed when the file's link count is zero and
 no file descriptors refer to it.
 Thus adding
-.P1
+\begin{lstlisting}[]
 unlink("a");
-.P2
+\end{lstlisting}
 to the last code sequence leaves the inode
 and file content accessible as
-.code b .
+\lstinline{b}.
 Furthermore,
-.P1
+\begin{lstlisting}[]
 fd = open("/tmp/xyz", O_CREATE|O_RDWR);
 unlink("/tmp/xyz");
-.P2
+\end{lstlisting}
 is an idiomatic way to create a temporary inode 
 that will be cleaned up when the process closes 
-.code fd
+\lstinline{fd}
 or exits.
-.PP
+
 Shell commands for file system operations are implemented
 as user-level programs such as
-.code mkdir ,
-.code ln ,
-.code rm ,
+\lstinline{mkdir},
+\lstinline{ln},
+\lstinline{rm},
 etc. This design allows anyone to extend the shell with new user commands by
 just adding a new user-level program.  In hindsight this plan seems obvious,
 but other systems designed at the time of Unix often built such commands into
 the shell (and built the shell into the kernel).
-.PP
+
 One exception is
-.code cd ,
+\lstinline{cd},
 which is built into the shell
-.line user/sh.c:/if.buf.0..==..c./ .
-.code cd
+\lineref{user/sh.c:/if.buf.0..==..c./}.
+\lstinline{cd}
 must change the current working directory of the
 shell itself.  If
-.code cd
+\lstinline{cd}
 were run as a regular command, then the shell would fork a child
 process, the child process would run
-.code cd ,
+\lstinline{cd},
 and
-.code cd
+\lstinline{cd}
 would change the 
-.italic child 's 
+\textit{child} 's 
 working directory.  The parent's (i.e.,
 the shell's) working directory would not change.
-.\"
-.\"	Real world
-.\"
-.section "Real world"
-.PP
+%% 
+%% 	Real world
+%% 
+\section{Real world}
+
 Unix's combination of the ``standard'' file
 descriptors, pipes, and convenient shell syntax for
 operations on them was a major advance in writing
@@ -912,13 +958,13 @@ responsible for much of Unix's power and popularity,
 and the shell was the first so-called ``scripting language.''
 The Unix system call interface persists today in systems like
 BSD, Linux, and Mac OS X.
-.PP
+
 The Unix system call interface has been standardized through the Portable
 Operating System Interface (POSIX) standard.
 Xv6 is
-.italic not
+\textit{not}
 POSIX compliant.  It misses system calls (including basic ones such as
-.code lseek ),
+\lstinline{lseek}),
 it implements systems calls only partially, etc.  Our main goals for xv6 are
 simplicity and clarity while providing a simple UNIX-like system-call interface.
 Several people have extended xv6 with a few more basic system calls and a simple
@@ -927,18 +973,18 @@ provide many more system calls, and many more kinds of kernel services, than
 xv6.  For example, they support networking, windowing systems, user-level threads,
 drivers for many devices, and so on.  Modern kernels evolve continuously and
 rapidly, and offer many features beyond POSIX.
-.PP
+
 For the most part, modern Unix-derived operating systems
 have not followed the early
 Unix model of exposing devices as special files, like the
-.code console
+\lstinline{console}
 device file discussed above.
 The authors of Unix went on to build Plan 9,
 which applied the ``resources are files''
 concept to modern facilities,
 representing networks, graphics, and other resources
 as files or file trees.
-.PP
+
 The file system abstraction has been a powerful
 idea.
 Even so, there are other models for operating system interfaces.
@@ -947,21 +993,19 @@ abstracted file storage in a way that made it look like memory,
 producing a very different flavor of interface.
 The complexity of the Multics design had a direct influence
 on the designers of Unix, who tried to build something simpler.
-.ig
-XXX can we cut this, since its point is the same as the next paragraph?
-An operating system interface that went out of fashion
-decades ago but has recently returned is the idea of a virtual machine monitor.
-Such systems provide a superficially different interface from xv6,
-but the basic concepts are still the same:
-a virtual machine, like a process, consists of some memory and
-one or more register sets;
-the virtual machine has access to one large file called
-a virtual disk instead of a file system;
-virtual machines send messages to each other
-and the outside world using virtual network devices
-instead of pipes or files.
-..
-.PP
+% XXX can we cut this, since its point is the same as the next paragraph?
+% An operating system interface that went out of fashion
+% decades ago but has recently returned is the idea of a virtual machine monitor.
+% Such systems provide a superficially different interface from xv6,
+% but the basic concepts are still the same:
+% a virtual machine, like a process, consists of some memory and
+% one or more register sets;
+% the virtual machine has access to one large file called
+% a virtual disk instead of a file system;
+% virtual machines send messages to each other
+% and the outside world using virtual network devices
+% instead of pipes or files.
+
 This book examines how xv6 implements its Unix-like interface,
 but the ideas and concepts apply to more than just Unix.
 Any operating system must multiplex processes onto

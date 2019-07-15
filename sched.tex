@@ -1,40 +1,39 @@
-.ig
-cox and mullender, semaphores.
+% cox and mullender, semaphores.
+% 
+% process has one thread with two stacks
+%  
+% pike et al, sleep and wakeup
+\chapter{Scheduling}
+\label{CH:SCHED}
 
-process has one thread with two stacks
- 
-pike et al, sleep and wakeup
-..
-.chapter CH:SCHED "Scheduling"
-.PP
 Any operating system is likely to run with more processes than the
 computer has processors, so a plan is needed to time-share the
 processors among the processes. Ideally the sharing would be transparent to user
 processes.  A common approach is to provide each process
 with the illusion that it has its own virtual processor by
-.italic-index multiplexing
+\textit{multiplexing}\index{multiplexing}
 the processes onto the hardware processors.
 This chapter explains how xv6 achieves this multiplexing.
-.\"
-.section "Multiplexing"
-.\"
-.PP
+%% 
+\section{Multiplexing}
+%% 
+
 Xv6 multiplexes by switching each processor from one process to
 another in two situations. First, xv6's
-.code sleep
+\lstinline{sleep}
 and
-.code wakeup
+\lstinline{wakeup}
 mechanism switches when a process waits
 for device or pipe I/O to complete, or waits for a child
 to exit, or waits in the
-.code sleep
+\lstinline{sleep}
 system call.
 Second, xv6 periodically forces a switch when a process
 is executing user instructions.
 This multiplexing creates the illusion that
 each process has its own CPU, just as xv6 uses the memory allocator and hardware
 page tables to create the illusion that each process has its own memory.
-.PP
+
 Implementing multiplexing poses a few challenges. First, how to switch from one
 process to another? 
 Although the idea of context switching
@@ -52,7 +51,7 @@ process's kernel state.
 Xv6 tries to solve these problems as
 simply as possible, but nevertheless the resulting code is
 tricky.
-.PP
+
 xv6 must provide
 ways for processes to coordinate among themselves. For example,
 a parent process may need to wait for one of its children to
@@ -66,12 +65,18 @@ process up. Care is needed to avoid races that result in
 the loss of event notifications.
 As an example of these problems and their solution, this
 chapter examines the implementation of pipes.
-.\"
-.section "Code: Context switching"
-.\"
-.figure switch
-.PP
-.figref switch 
+%% 
+\section{Code: Context switching}
+%% 
+
+\begin{figure}[t]
+\center
+\includegraphics[scale=0.5]{fig/switch.eps}
+\caption{Switching from one user process to another.  In this example, xv6 runs with one CPU (and thus one scheduler thread).}
+\label{fig:switch}
+\end{figure}
+
+Figure~\ref{fig:switch} 
 outlines the steps involved in switching from one
 user process to another:
 a user-kernel transition (system
@@ -83,491 +88,491 @@ The xv6 scheduler has its own thread (saved registers and stack) because
 it is sometimes not safe for it execute on
 any process's kernel stack;
 we'll see an example in
-.code exit .
+\lstinline{exit}.
 In this section we'll examine the mechanics of switching
 between a kernel thread and a scheduler thread.
-.PP
+
 Switching from one thread to another involves saving the old thread's
 CPU registers, and restoring the previously-saved registers of the
 new thread; the fact that
-.register esp
+\texttt{\%esp}
 and
-.register eip
+\texttt{\%eip}
 are saved and restored means that the CPU will switch stacks and
 switch what code it is executing.
-.PP
+
 The function
-.code-index swtch
+\lstinline{swtch}\index{swtch@\lstinline{swtch}}
 performs the saves and restores for a thread switch.
-.code swtch
+\lstinline{swtch}
 doesn't directly know about threads; it just saves and
 restores register sets, called 
-.italic-index "contexts" .
+\textit{contexts}\index{contexts}.
 When it is time for a process to give up the CPU,
 the process's kernel thread calls
-.code swtch
+\lstinline{swtch}
 to save its own context and return to the scheduler context.
 Each context is represented by a
-.code struct
-.code context*
-.line kernel/proc.h:/^struct.context/ ,
+\lstinline{struct}
+\lstinline{context*}
+\lineref{kernel/proc.h:/^struct.context/},
 a pointer to a structure stored on the kernel stack involved.
-.code Swtch
+\lstinline{Swtch}
 takes two arguments:
-.code-index "struct context"
-.code **old
+\lstinline{struct context}\index{struct context@\lstinline{struct context}}
+\lstinline{**old}
 and
-.code struct
-.code context
-.code *new .
+\lstinline{struct}
+\lstinline{context}
+\lstinline{*new}.
 It pushes the current registers onto the stack
 and saves the stack pointer in
-.code *old .
+\lstinline{*old}.
 Then
-.code swtch
+\lstinline{swtch}
 copies
-.code new
+\lstinline{new}
 to 
-.register rsp,
+\texttt{\%rsp},
 pops previously saved registers, and returns.
-.PP
+
 Let's follow a user process through
-.code swtch 
+\lstinline{swtch} 
 into the scheduler.
-We saw in Chapter \*[CH:TRAP]
+We saw in Chapter~\ref{CH:TRAP}
 that one possibility at the end of each interrupt
 is that 
-.code-index trap
+\lstinline{trap}\index{trap@\lstinline{trap}}
 calls 
-.code-index yield .
-.code Yield
+\lstinline{yield}\index{yield@\lstinline{yield}}.
+\lstinline{Yield}
 in turn calls
-.code-index sched ,
+\lstinline{sched}\index{sched@\lstinline{sched}},
 which calls
-.code-index swtch
+\lstinline{swtch}\index{swtch@\lstinline{swtch}}
 to save the current context in
-.code proc->context
+\lstinline{proc->context}
 and switch to the scheduler context previously saved in 
-.code-index cpu->scheduler
-.line kernel/proc.c:/swtch..p/ .
-.PP
-.code Swtch
-.line kernel/swtch.S:/swtch/
+\lstinline{cpu->scheduler}\index{cpu->scheduler@\lstinline{cpu->scheduler}}
+\lineref{kernel/proc.c:/swtch..p/}.
+
+\lstinline{Swtch}
+\lineref{kernel/swtch.S:/swtch/}
 pushes the register state, creating a context structure
 on the current stack.
 Only the callee-saved registers need to be saved;
 the convention on the x86-64 is that these are
-.register rbp ,
-.register rbx ,
-.register r11
+\texttt{\%rbp},
+\texttt{\%rbx},
+\texttt{\%r11}
 through
-.register r15 ,
+\texttt{\%r15},
 and
-.register rsp .
-.code Swtch
+\texttt{\%rsp}.
+\lstinline{Swtch}
 pushes the first 7 explicitly
-.lines kernel/swtch.S:/push..rbp/,/push..r15/ ;
+\linerefs{kernel/swtch.S:/push..rbp/,/push..r15/};
 it saves the last implicitly as the
-.code struct
-.code context*
+\lstinline{struct}
+\lstinline{context*}
 written to
-.code *old 
-.line kernel/swtch.S:/mov..rsp/ .
+\lstinline{*old} 
+\lineref{kernel/swtch.S:/mov..rsp/}.
 There is one more important register:
 the program counter 
-.register eip .
+\texttt{\%eip}.
 It has already been saved on the stack by the
-.code call
+\lstinline{call}
 instruction that invoked
-.code swtch .
+\lstinline{swtch}.
 Having saved the old context,
-.code swtch
+\lstinline{swtch}
 is ready to restore the new one.
 It moves the pointer to the new context
 into the stack pointer
-.line kernel/swtch.S:/mov..rsi/ .
+\lineref{kernel/swtch.S:/mov..rsi/}.
 The new stack has the same form as the old one that
-.code-index swtch
+\lstinline{swtch}\index{swtch@\lstinline{swtch}}
 just left—the new stack
-.italic was
+\textit{was}
 the old one in a previous call to
-.code swtch —\c
+\lstinline{swtch} —\c
 so 
-.code swtch
+\lstinline{swtch}
 can invert the sequence to restore the new context.
 It pops the values for
-.register r15
+\texttt{\%r15}
 through
-.register r11,
+\texttt{\%r11},
 and
-.register rbx ,
+\texttt{\%rbx},
 and
-.register rbp ,
+\texttt{\%rbp},
 and then returns
-.lines kernel/swtch.S:/pop/,/ret/ .
+\linerefs{kernel/swtch.S:/pop/,/ret/}.
 Because 
-.code swtch
+\lstinline{swtch}
 has changed the stack pointer, the values restored
 and the instruction address returned to
 are the ones from the new context.
-.PP
+
 In our example, 
-.code-index sched
+\lstinline{sched}\index{sched@\lstinline{sched}}
 called
-.code-index swtch
+\lstinline{swtch}\index{swtch@\lstinline{swtch}}
 to switch to
-.code-index cpu->scheduler ,
+\lstinline{cpu->scheduler}\index{cpu->scheduler@\lstinline{cpu->scheduler}},
 the per-CPU scheduler context.
 That context had been saved by 
-.code scheduler 's
+\lstinline{scheduler} 's
 call to
-.code swtch
-.line kernel/proc.c:/swtch.&.c/ .
+\lstinline{swtch}
+\lineref{kernel/proc.c:/swtch.&.c/}.
 When the
-.code-index swtch
+\lstinline{swtch}\index{swtch@\lstinline{swtch}}
 we have been tracing returns,
 it returns not to
-.code sched
+\lstinline{sched}
 but to 
-.code-index scheduler ,
+\lstinline{scheduler}\index{scheduler@\lstinline{scheduler}},
 and its stack pointer points at the current CPU's
 scheduler stack.
-.\"
-.section "Code: Scheduling"
-.\"
-.PP
+%% 
+\section{Code: Scheduling}
+%% 
+
 The last section looked at the low-level details of
-.code-index swtch ;
+\lstinline{swtch}\index{swtch@\lstinline{swtch}};
 now let's take 
-.code swtch
+\lstinline{swtch}
 as a given and examine 
 switching from a process through the scheduler to another process.
 A process
 that wants to give up the CPU must
 acquire the process table lock
-.code-index ptable.lock ,
+\lstinline{ptable.lock}\index{ptable.lock@\lstinline{ptable.lock}},
 release any other locks it is holding,
 update its own state
-.code proc->state ), (
+(\lstinline{proc->state}),
 and then call
-.code-index sched .
-.code Yield
-.line kernel/proc.c:/^yield/
+\lstinline{sched}\index{sched@\lstinline{sched}}.
+\lstinline{Yield}
+\lineref{kernel/proc.c:/^yield/}
 follows this convention, as do
-.code-index sleep
+\lstinline{sleep}\index{sleep@\lstinline{sleep}}
 and
-.code-index exit ,
+\lstinline{exit}\index{exit@\lstinline{exit}},
 which we will examine later.
-.code Sched
+\lstinline{Sched}
 double-checks those conditions
-.lines kernel/proc.c:/if..holding/,/running/
+\linerefs{kernel/proc.c:/if..holding/,/running/}
 and then an implication of those conditions:
 since a lock is held, the CPU should be
 running with interrupts disabled.
 Finally,
-.code-index sched
+\lstinline{sched}\index{sched@\lstinline{sched}}
 calls
-.code-index swtch
+\lstinline{swtch}\index{swtch@\lstinline{swtch}}
 to save the current context in 
-.code proc->context
+\lstinline{proc->context}
 and switch to the scheduler context in
-.code-index cpu->scheduler .
-.code Swtch
+\lstinline{cpu->scheduler}\index{cpu->scheduler@\lstinline{cpu->scheduler}}.
+\lstinline{Swtch}
 returns on the scheduler's stack
 as though
-.code-index scheduler 's
-.code swtch
+\lstinline{scheduler}\index{scheduler@\lstinline{scheduler}} 's
+\lstinline{swtch}
 had returned
-.line kernel/proc.c:/swtch.&.c/ .
+\lineref{kernel/proc.c:/swtch.&.c/}.
 The scheduler continues the 
-.code for
+\lstinline{for}
 loop, finds a process to run, 
 switches to it, and the cycle repeats.
-.PP
+
 We just saw that xv6 holds
-.code-index ptable.lock
+\lstinline{ptable.lock}\index{ptable.lock@\lstinline{ptable.lock}}
 across calls to
-.code swtch :
+\lstinline{swtch}:
 the caller of
-.code-index swtch
+\lstinline{swtch}\index{swtch@\lstinline{swtch}}
 must already hold the lock, and control of the lock passes to the
 switched-to code.  This convention is unusual with locks; usually
 the thread that acquires a lock is also responsible for
 releasing the lock, which makes it easier to reason about correctness.
 For context switching it is necessary to break this convention because
-.code-index ptable.lock
+\lstinline{ptable.lock}\index{ptable.lock@\lstinline{ptable.lock}}
 protects invariants on the process's
-.code state
+\lstinline{state}
 and
-.code context
+\lstinline{context}
 fields that are not true while executing in
-.code swtch .
+\lstinline{swtch}.
 One example of a problem that could arise if
-.code ptable.lock
+\lstinline{ptable.lock}
 were not held during
-.code-index swtch :
+\lstinline{swtch}\index{swtch@\lstinline{swtch}}:
 a different CPU might decide
 to run the process after 
-.code-index yield
+\lstinline{yield}\index{yield@\lstinline{yield}}
 had set its state to
-.code RUNNABLE ,
+\lstinline{RUNNABLE},
 but before 
-.code swtch
+\lstinline{swtch}
 caused it to stop using its own kernel stack.
 The result would be two CPUs running on the same stack,
 which cannot be right.
-.PP
+
 A kernel thread always gives up its
 processor in
-.code sched 
+\lstinline{sched} 
 and always switches to the same location in the scheduler, which
 (almost) always switches to some kernel thread that previously called
-.code sched . 
+\lstinline{sched}. 
 Thus, if one were to print out the line numbers where xv6 switches
 threads, one would observe the following simple pattern:
-.line kernel/proc.c:/swtch.&.c/ ,
-.line kernel/proc.c:/swtch..p/ ,
-.line kernel/proc.c:/swtch.&.c/ ,
-.line kernel/proc.c:/swtch..p/ ,
+\lineref{kernel/proc.c:/swtch.&.c/},
+\lineref{kernel/proc.c:/swtch..p/},
+\lineref{kernel/proc.c:/swtch.&.c/},
+\lineref{kernel/proc.c:/swtch..p/},
 and so on.  The procedures in which this stylized switching between
 two threads happens are sometimes referred to as 
-.italic-index coroutines ; 
+\textit{coroutines}\index{coroutines}; 
 in this example,
-.code-index sched
+\lstinline{sched}\index{sched@\lstinline{sched}}
 and
-.code-index scheduler
+\lstinline{scheduler}\index{scheduler@\lstinline{scheduler}}
 are co-routines of each other.
-.PP
+
 There is one case when the scheduler's call to
-.code-index swtch
+\lstinline{swtch}\index{swtch@\lstinline{swtch}}
 does not end up in
-.code-index sched .
-We saw this case in Chapter \*[CH:MEM]: when a
+\lstinline{sched}\index{sched@\lstinline{sched}}.
+We saw this case in Chapter~\ref{CH:MEM}: when a
 new process is first scheduled, it begins at
-.code-index forkret
-.line kernel/proc.c:/^forkret/ .
-.code Forkret
+\lstinline{forkret}\index{forkret@\lstinline{forkret}}
+\lineref{kernel/proc.c:/^forkret/}.
+\lstinline{Forkret}
 exists to release the 
-.code-index ptable.lock ;
+\lstinline{ptable.lock}\index{ptable.lock@\lstinline{ptable.lock}};
 otherwise, the new process could start at
-.code trapret .
-.PP
-.code Scheduler
-.line kernel/proc.c:/^scheduler/ 
+\lstinline{trapret}.
+
+\lstinline{Scheduler}
+\lineref{kernel/proc.c:/^scheduler/} 
 runs a simple loop:
 find a process to run, run it until it yields, repeat.
-.code-index scheduler
+\lstinline{scheduler}\index{scheduler@\lstinline{scheduler}}
 holds
-.code-index ptable.lock
+\lstinline{ptable.lock}\index{ptable.lock@\lstinline{ptable.lock}}
 for most of its actions,
 but releases the lock (and explicitly enables interrupts)
 once in each iteration of its outer loop.
 This is important for the special case in which this CPU
 is idle (can find no
-.code RUNNABLE
+\lstinline{RUNNABLE}
 process).
 If an idling scheduler looped with
 the lock continuously held, no other CPU that
 was running a process could ever perform a context
 switch or any process-related system call,
 and in particular could never mark a process as
-.code-index RUNNABLE
+\lstinline{RUNNABLE}\index{RUNNABLE@\lstinline{RUNNABLE}}
 so as to break the idling CPU out of its scheduling loop.
 The reason to enable interrupts periodically on an idling
 CPU is that there might be no
-.code RUNNABLE
+\lstinline{RUNNABLE}
 process because processes (e.g., the shell) are
 waiting for I/O;
 if the scheduler left interrupts disabled all the time,
 the I/O would never arrive.
-.PP
+
 The scheduler
 loops over the process table
 looking for a runnable process, one that has
-.code p->state 
-.code ==
-.code RUNNABLE .
+\lstinline{p->state} 
+\lstinline{==}
+\lstinline{RUNNABLE}.
 Once it finds a process, it sets the per-CPU current process
 variable
-.code proc ,
+\lstinline{proc},
 switches to the process's page table with
-.code-index switchuvm ,
+\lstinline{switchuvm}\index{switchuvm@\lstinline{switchuvm}},
 marks the process as
-.code RUNNING ,
+\lstinline{RUNNING},
 and then calls
-.code-index swtch
+\lstinline{swtch}\index{swtch@\lstinline{swtch}}
 to start running it
-.lines kernel/proc.c:/Switch.to/,/swtch/ .
-.PP
+\linerefs{kernel/proc.c:/Switch.to/,/swtch/}.
+
 One way to think about the structure of the scheduling code is
 that it arranges to enforce a set of invariants about each process,
 and holds
-.code-index ptable.lock
+\lstinline{ptable.lock}\index{ptable.lock@\lstinline{ptable.lock}}
 whenever those invariants are not true.
 One invariant is that if a process is
-.code RUNNING ,
+\lstinline{RUNNING},
 a timer interrupt's
-.code-index yield
+\lstinline{yield}\index{yield@\lstinline{yield}}
 must be able to switch away from the process;
 this means that the CPU registers must hold the process's register values
 (i.e. they aren't actually in a
-.code context ),
-.register cr3
+\lstinline{context}),
+\texttt{\%cr3}
 must refer to the process's pagetable,
-.register esp
+\texttt{\%esp}
 must refer to the process's kernel stack so that
-.code swtch
+\lstinline{swtch}
 can push registers correctly, and
-.code proc
+\lstinline{proc}
 must refer to the process's
-.code proc[]
+\lstinline{proc[]}
 slot.
 Another invariant is that if a process is
-.code-index RUNNABLE ,
+\lstinline{RUNNABLE}\index{RUNNABLE@\lstinline{RUNNABLE}},
 an idle CPU's
-.code-index scheduler
+\lstinline{scheduler}\index{scheduler@\lstinline{scheduler}}
 must be able to run it;
 this means that 
-.code-index p->context
+\lstinline{p->context}\index{p->context@\lstinline{p->context}}
 must hold the process's kernel thread variables,
 that no CPU is executing on the process's kernel stack,
 that no CPU's
-.register cr3
+\texttt{\%cr3}
 refers to the process's page table,
 and that no CPU's
-.code proc
+\lstinline{proc}
 refers to the process.
-.PP
+
 Maintaining the above invariants is the reason why xv6 acquires 
-.code-index ptable.lock
+\lstinline{ptable.lock}\index{ptable.lock@\lstinline{ptable.lock}}
 in one thread (often in
-.code yield)
+\lstinline{yield)}
 and releases the lock in a different thread
 (the scheduler thread or another next kernel thread).
 Once the code has started to modify a running process's state
 to make it
-.code RUNNABLE ,
+\lstinline{RUNNABLE},
 it must hold the lock until it has finished restoring
 the invariants: the earliest correct release point is after
-.code scheduler
+\lstinline{scheduler}
 stops using the process's page table and clears
-.code proc .
+\lstinline{proc}.
 Similarly, once 
-.code scheduler
+\lstinline{scheduler}
 starts to convert a runnable process to
-.code RUNNING ,
+\lstinline{RUNNING},
 the lock cannot be released until the kernel thread
 is completely running (after the
-.code swtch ,
+\lstinline{swtch},
 e.g. in
-.code yield ).
-.PP
-.code-index ptable.lock
+\lstinline{yield}).
+
+\lstinline{ptable.lock}\index{ptable.lock@\lstinline{ptable.lock}}
 protects other things as well:
 allocation of process IDs and free process table slots,
 the interplay between
-.code-index exit
+\lstinline{exit}\index{exit@\lstinline{exit}}
 and
-.code-index wait ,
+\lstinline{wait}\index{wait@\lstinline{wait}},
 the machinery to avoid lost wakeups (see next section),
 and probably other things too.
 It might be worth thinking about whether the 
 different functions of
-.code ptable.lock
+\lstinline{ptable.lock}
 could be split up, certainly for clarity and perhaps
 for performance.
-.\"
-.section "Code: mycpu and myproc"
-.\"
-.PP
-As we saw in Chapter \*[CH:TRAP],
+%% 
+\section{Code: mycpu and myproc}
+%% 
+
+As we saw in Chapter~\ref{CH:TRAP},
 xv6 maintains a
-.code-index "struct cpu"
+\lstinline{struct cpu}\index{struct cpu@\lstinline{struct cpu}}
 for each processor, which records
 the process currently running
 on the processor (if any),
 the processor's unique hardware identifier
-.code apicid ), (
+(\lstinline{apicid}),
 and some other information.
 The function
-.code-index getmycpu
-.line kernel/proc.c:/^getmycpu/
+\lstinline{getmycpu}\index{getmycpu@\lstinline{getmycpu}}
+\lineref{kernel/proc.c:/^getmycpu/}
 returns the current processor's
-.code "struct cpu" .
-.code getmycpu
+\lstinline{struct cpu}.
+\lstinline{getmycpu}
 does this by reading the processor
 identifier from the local APIC hardware and looking through
 the array of
-.code "struct cpu"
+\lstinline{struct cpu}
 for an entry with that identifier.
 The function 
-.code seginit
-.line kernel/vm.c:/^seginit/
+\lstinline{seginit}
+\lineref{kernel/vm.c:/^seginit/}
 programs the register
-.code MSR_GS_KERNBASE
+\lstinline{MSR_GS_KERNBASE}
 to contain a pointer to the core's
-.code "struct cpu" .
+\lstinline{struct cpu}.
 The function
-.code-index "mycpu"
-.line kernel/proc.c:/^mycpu/
+\lstinline{mycpu}\index{mycpu@\lstinline{mycpu}}
+\lineref{kernel/proc.c:/^mycpu/}
 returns that
 value using
-.register gs .
+\texttt{\%gs}.
 Using
-.register gs
+\texttt{\%gs}
 avoids every call to
-.code mycpu
+\lstinline{mycpu}
 having to loop
 through the array
-.code cpus ,
+\lstinline{cpus},
 as
-.code getmycpu
+\lstinline{getmycpu}
 does.
-.PP
+
 The return value of
-.code getmycpu
+\lstinline{getmycpu}
 and
-.code mycpu
+\lstinline{mycpu}
 are fragile: if the timer were to interrupt and cause
 the thread to be moved to a different processor, the
 return value would no longer be correct.
 To avoid this problem, xv6 requires that callers of
-.code getmycpu
+\lstinline{getmycpu}
 disable interrupts, and only enable
 them after they finish using the returned
-.code "struct cpu" .
-.PP
+\lstinline{struct cpu}.
+
 The function
-.code-index myproc
-.line kernel/proc.c:/^myproc/
+\lstinline{myproc}\index{myproc@\lstinline{myproc}}
+\lineref{kernel/proc.c:/^myproc/}
 returns the
-.code "struct proc"
+\lstinline{struct proc}
 pointer
 for the process that is running on the current processor.
-.code myproc
+\lstinline{myproc}
 disables interrupts, invokes
-.code mycpu ,
+\lstinline{mycpu},
 fetches the current process pointer
-.code "c->proc" ) (
+(\lstinline{c->proc})
 out of the
-.code "struct cpu" ,
+\lstinline{struct cpu},
 and then enables interrupts.
 If there is no process running, because the the caller is
 executing in
-.code scheduler ,
-.code myproc
+\lstinline{scheduler},
+\lstinline{myproc}
 returns zero.
 The return value of
-.code myproc
+\lstinline{myproc}
 is safe to use even if interrupts are enabled:
 if a timer interrupt moves the calling process to a
 different processor, its
-.code "struct proc"
+\lstinline{struct proc}
 pointer will stay the same.
-.\"
-.section "Sleep and wakeup"
-.\"
-.PP
+%% 
+\section{Sleep and wakeup}
+%% 
+
 Scheduling and locks help conceal the existence of one process
 from another,
 but so far we have no abstractions that help
@@ -576,17 +581,17 @@ Sleep and wakeup fill that void, allowing one process to
 sleep waiting for an event and another process to wake it up
 once the event has happened.
 Sleep and wakeup are often called 
-.italic-index "sequence coordination"
+\textit{sequence coordination}\index{sequence coordination}
 or 
-.italic-index "conditional synchronization"
+\textit{conditional synchronization}\index{conditional synchronization}
 mechanisms, and there are many other similar mechanisms
 in the operating systems literature.
-.PP
+
 To illustrate what we mean, let's consider a
 simple producer/consumer queue.
 This queue is similar to the one that feeds commands from processes
 to the IDE driver
-(see Chapter \*[CH:TRAP]), but abstracts away all
+(see Chapter~\ref{CH:TRAP}), but abstracts away all
 IDE-specific code.
 The queue allows one process to send a nonzero pointer
 to another process.
@@ -594,7 +599,7 @@ If there were only one sender and one receiver,
 and they executed on different CPUs,
 and the compiler didn't optimize too agressively,
 this implementation would be correct:
-.P1
+\begin{lstlisting}[]
   100	struct q {
   101	  void *ptr;
   102	};
@@ -617,77 +622,77 @@ this implementation would be correct:
   119	  q->ptr = 0;
   120	  return p;
   121	}
-.P2
-.code Send
+\end{lstlisting}
+\lstinline{Send}
 loops until the queue is empty
-.code ptr "" (
-.code ==
-.code 0)
+\lstinline{ptr} "" (
+\lstinline{==}
+\lstinline{0)}
 and then puts the pointer
-.code p
+\lstinline{p}
 in the queue.
-.code Recv
+\lstinline{Recv}
 loops until the queue is non-empty
 and takes the pointer out.
 When run in different processes,
-.code send
+\lstinline{send}
 and
-.code recv
+\lstinline{recv}
 both modify
-.code q->ptr ,
+\lstinline{q->ptr},
 but
-.code send
+\lstinline{send}
 only writes the pointer when it is zero
 and
-.code recv
+\lstinline{recv}
 only writes the pointer when it is nonzero,
 so no updates are lost.
-.PP
+
 The implementation above 
 is expensive.  If the sender sends
 rarely, the receiver will spend most
 of its time spinning in the 
-.code while
+\lstinline{while}
 loop hoping for a pointer.
 The receiver's CPU could find more productive work than
-.italic-index "busy waiting"
+\textit{busy waiting}\index{busy waiting}
 by repeatedly 
-.italic-index polling
-.code q->ptr .
+\textit{polling}\index{polling}
+\lstinline{q->ptr}.
 Avoiding busy waiting requires
 a way for the receiver to yield the CPU
 and resume only when 
-.code send
+\lstinline{send}
 delivers a pointer.
-.PP
+
 Let's imagine a pair of calls, 
-.code-index sleep
+\lstinline{sleep}\index{sleep@\lstinline{sleep}}
 and
-.code-index wakeup ,
+\lstinline{wakeup}\index{wakeup@\lstinline{wakeup}},
 that work as follows.
-.code Sleep(chan)
+\lstinline{Sleep(chan)}
 sleeps on the arbitrary value
-.code-index chan ,
+\lstinline{chan}\index{chan@\lstinline{chan}},
 called the 
-.italic-index "wait channel" .
-.code Sleep
+\textit{wait channel}\index{wait channel}.
+\lstinline{Sleep}
 puts the calling process to sleep, releasing the CPU
 for other work.
-.code Wakeup(chan)
+\lstinline{Wakeup(chan)}
 wakes all processes sleeping on
-.code chan
+\lstinline{chan}
 (if any), causing their
-.code sleep
+\lstinline{sleep}
 calls to return.
 If no processes are waiting on
-.code chan ,
-.code wakeup
+\lstinline{chan},
+\lstinline{wakeup}
 does nothing.
 We can change the queue implementation to use
-.code sleep
+\lstinline{sleep}
 and
-.code wakeup :
-.P1
+\lstinline{wakeup}:
+\begin{lstlisting}[]
   201	void*
   202	send(struct q *q, void *p)
   203	{
@@ -707,67 +712,73 @@ and
   217	  q->ptr = 0;
   218	  return p;
   219	}
-.P2
-.figure deadlock
-.PP
-.code Recv
+\end{lstlisting}
+
+\begin{figure}[t]
+\center
+\includegraphics[scale=0.5]{fig/deadlock.eps}
+\caption{Example lost wakeup problem}
+\label{fig:deadlock}
+\end{figure}
+
+\lstinline{Recv}
 now gives up the CPU instead of spinning, which is nice.
 However, it turns out not to be straightforward to design
-.code sleep
+\lstinline{sleep}
 and 
-.code wakeup
+\lstinline{wakeup}
 with this interface without suffering
 from what is known as the ``lost wake-up'' problem (see 
-.figref deadlock ).
+Figure~\ref{fig:deadlock}).
 Suppose that
-.code recv
+\lstinline{recv}
 finds that
-.code q->ptr
-.code ==
-.code 0 
+\lstinline{q->ptr}
+\lstinline{==}
+\lstinline{0} 
 on line 215.
 While
-.code recv
+\lstinline{recv}
 is between lines 215 and 216,
-.code send
+\lstinline{send}
 runs on another CPU:
 it changes
-.code q->ptr
+\lstinline{q->ptr}
 to be nonzero and calls
-.code wakeup ,
+\lstinline{wakeup},
 which finds no processes sleeping and thus does nothing.
 Now
-.code recv
+\lstinline{recv}
 continues executing at line 216:
 it calls
-.code sleep
+\lstinline{sleep}
 and goes to sleep.
 This causes a problem:
-.code recv
+\lstinline{recv}
 is asleep waiting for a pointer
 that has already arrived.
 The next
-.code send
+\lstinline{send}
 will wait for 
-.code recv
+\lstinline{recv}
 to consume the pointer in the queue,
 at which point the system will be 
-.italic-index "deadlocked" .
-.PP
+\textit{deadlocked}\index{deadlocked}.
+
 The root of this problem is that the
 invariant that
-.code recv
+\lstinline{recv}
 only sleeps when
-.code q->ptr
-.code ==
-.code 0
+\lstinline{q->ptr}
+\lstinline{==}
+\lstinline{0}
 is violated by 
-.code send
+\lstinline{send}
 running at just the wrong moment.
 One incorrect way of protecting the invariant would be to modify the code for
-.code recv
+\lstinline{recv}
 as follows:
-.P1
+\begin{lstlisting}[]
   300	struct q {
   301	  struct spinlock lock;
   302	  void *ptr;
@@ -796,36 +807,36 @@ as follows:
   325	  release(&q->lock);
   326	  return p;
   327	}
-.P2
+\end{lstlisting}
 One might hope that this version of
-.code recv
+\lstinline{recv}
 would avoid the lost wakeup because the lock prevents
-.code send
+\lstinline{send}
 from executing between lines 322 and 323.
 It does that, but it also deadlocks:
-.code recv
+\lstinline{recv}
 holds the lock while it sleeps,
 so the sender will block forever waiting for the lock.
-.PP
+
 We'll fix the preceding scheme by changing
-.code sleep 's
+\lstinline{sleep} 's
 interface:
 the caller must pass the lock to
-.code sleep
+\lstinline{sleep}
 so it can release the lock after
 the calling process is marked as asleep and waiting on the
 sleep channel.
 The lock will force a concurrent
-.code send
+\lstinline{send}
 to wait until the receiver has finished putting itself to sleep,
 so that the
-.code wakeup
+\lstinline{wakeup}
 will find the sleeping receiver and wake it up.
 Once the receiver is awake again
-.code-index sleep
+\lstinline{sleep}\index{sleep@\lstinline{sleep}}
 reacquires the lock before returning.
 Our new correct scheme is useable as follows:
-.P1
+\begin{lstlisting}[]
   400	struct q {
   401	  struct spinlock lock;
   402	  void *ptr;
@@ -854,241 +865,241 @@ Our new correct scheme is useable as follows:
   425	  release(&q->lock);
   426	  return p;
   427	}
-.P2
-.PP
+\end{lstlisting}
+
 The fact that
-.code recv
+\lstinline{recv}
 holds
-.code q->lock
+\lstinline{q->lock}
 prevents 
-.code send
+\lstinline{send}
 from trying to wake it up between 
-.code recv 's
+\lstinline{recv} 's
 check of
-.code q->ptr
+\lstinline{q->ptr}
 and its call to
-.code sleep .
+\lstinline{sleep}.
 We need
-.code sleep
+\lstinline{sleep}
 to atomically release
-.code q->lock
+\lstinline{q->lock}
 and put the receiving process to sleep.
-.PP
+
 A complete sender/receiver implementation would also sleep
 in
-.code send
+\lstinline{send}
 when waiting for a receiver to consume
 the value from a previous
-.code send .
-.\"
-.section "Code: Sleep and wakeup"
-.\"
-.PP
+\lstinline{send}.
+%% 
+\section{Code: Sleep and wakeup}
+%% 
+
 Let's look at the implementation of
-.code-index sleep
-.line kernel/proc.c:/^sleep/
+\lstinline{sleep}\index{sleep@\lstinline{sleep}}
+\lineref{kernel/proc.c:/^sleep/}
 and
-.code-index wakeup
-.line kernel/proc.c:/^wakeup/ .
+\lstinline{wakeup}\index{wakeup@\lstinline{wakeup}}
+\lineref{kernel/proc.c:/^wakeup/}.
 The basic idea is to have
-.code sleep
+\lstinline{sleep}
 mark the current process as
-.code-index SLEEPING
+\lstinline{SLEEPING}\index{SLEEPING@\lstinline{SLEEPING}}
 and then call
-.code-index sched
+\lstinline{sched}\index{sched@\lstinline{sched}}
 to release the processor;
-.code wakeup
+\lstinline{wakeup}
 looks for a process sleeping on the given wait channel
 and marks it as 
-.code-index RUNNABLE .
+\lstinline{RUNNABLE}\index{RUNNABLE@\lstinline{RUNNABLE}}.
 Callers of
-.code sleep
+\lstinline{sleep}
 and
-.code wakeup
+\lstinline{wakeup}
 can use any mutually convenient number as the channel.
 Xv6 often uses the address
 of a kernel data structure involved in the waiting.
-.PP
-.code Sleep
-.line kernel/proc.c:/^sleep/
+
+\lstinline{Sleep}
+\lineref{kernel/proc.c:/^sleep/}
 begins with a few sanity checks:
 there must be a current process
-.line kernel/proc.c:/p.==.0/
+\lineref{kernel/proc.c:/p.==.0/}
 and
-.code sleep
+\lstinline{sleep}
 must have been passed a lock
-.lines kernel/proc.c:/lk == 0/,/sleep.without/ .
+\linerefs{kernel/proc.c:/lk == 0/,/sleep.without/}.
 Then 
-.code sleep
+\lstinline{sleep}
 acquires 
-.code-index ptable.lock
-.line kernel/proc.c:/sleeplock1/ .
+\lstinline{ptable.lock}\index{ptable.lock@\lstinline{ptable.lock}}
+\lineref{kernel/proc.c:/sleeplock1/}.
 Now the process going to sleep holds both
-.code ptable.lock
+\lstinline{ptable.lock}
 and
-.code lk .
+\lstinline{lk}.
 Holding
-.code lk
+\lstinline{lk}
 was necessary in the caller (in the example,
-.code recv ):
+\lstinline{recv}):
 it
 ensured that no other process (in the example,
 one running
-.code send )
+\lstinline{send})
 could start a call to
-.code wakeup(chan) .
+\lstinline{wakeup(chan)}.
 Now that
-.code sleep
+\lstinline{sleep}
 holds
-.code ptable.lock ,
+\lstinline{ptable.lock},
 it is safe to release
-.code lk :
+\lstinline{lk}:
 some other process may start a call to
-.code wakeup(chan) ,
+\lstinline{wakeup(chan)},
 but
-.code-index wakeup
+\lstinline{wakeup}\index{wakeup@\lstinline{wakeup}}
 will not run until it can acquire
-.code-index ptable.lock ,
+\lstinline{ptable.lock}\index{ptable.lock@\lstinline{ptable.lock}},
 so it must wait until
-.code sleep
+\lstinline{sleep}
 has finished putting the process to sleep,
 keeping the
-.code wakeup
+\lstinline{wakeup}
 from missing the
-.code sleep .
-.PP
+\lstinline{sleep}.
+
 There is a minor complication: if 
-.code lk
+\lstinline{lk}
 is equal to
-.code &ptable.lock ,
+\lstinline{&ptable.lock},
 then
-.code sleep
+\lstinline{sleep}
 would deadlock trying to acquire it as
-.code &ptable.lock
+\lstinline{&ptable.lock}
 and then release it as
-.code lk .
+\lstinline{lk}.
 In this case,
-.code sleep
+\lstinline{sleep}
 considers the acquire and release
 to cancel each other out
 and skips them entirely
-.line kernel/proc.c:/sleeplock0/ .
+\lineref{kernel/proc.c:/sleeplock0/}.
 For example,
-.code wait
-.line kernel/proc.c:/^wakeup!(/
+\lstinline{wait}
+\lineref{kernel/proc.c:/^wakeup\(/}
 calls
-.code sleep
+\lstinline{sleep}
 with 
-.code &ptable.lock .
-.PP
+\lstinline{&ptable.lock}.
+
 Now that
-.code sleep
+\lstinline{sleep}
 holds
-.code ptable.lock
+\lstinline{ptable.lock}
 and no others,
 it can put the process to sleep by recording
 the sleep channel,
 changing the process state,
 and calling
-.code sched
-.line kernel/proc.c:/chan.=.chan/,/sched/ .
-.PP
+\lstinline{sched}
+\lineref{kernel/proc.c:/chan.=.chan/,/sched/}.
+
 At some point later, a process will call
-.code wakeup(chan) .
-.code Wakeup
-.line 'kernel/proc.c:/^wakeup!(/'
+\lstinline{wakeup(chan)}.
+\lstinline{Wakeup}
+\lineref{'kernel/proc.c:/^wakeup\(/}'
 acquires
-.code-index ptable.lock
+\lstinline{ptable.lock}\index{ptable.lock@\lstinline{ptable.lock}}
 and calls
-.code-index wakeup1 ,
+\lstinline{wakeup1}\index{wakeup1@\lstinline{wakeup1}},
 which does the real work.
 It is important that
-.code-index wakeup
+\lstinline{wakeup}\index{wakeup@\lstinline{wakeup}}
 hold the
-.code ptable.lock
+\lstinline{ptable.lock}
 both because it is manipulating process states
 and because, as we just saw,
-.code ptable.lock
+\lstinline{ptable.lock}
 makes sure that
-.code sleep
+\lstinline{sleep}
 and
-.code wakeup
+\lstinline{wakeup}
 do not miss each other.
-.code Wakeup1
+\lstinline{Wakeup1}
 is a separate function because
 sometimes the scheduler needs to
 execute a wakeup when it already
 holds the 
-.code ptable.lock ;
+\lstinline{ptable.lock};
 we will see an example of this later.
-.code Wakeup1
-.line kernel/proc.c:/^wakeup1/
+\lstinline{Wakeup1}
+\lineref{kernel/proc.c:/^wakeup1/}
 loops over the process table.
 When it finds a process in state
-.code-index SLEEPING
+\lstinline{SLEEPING}\index{SLEEPING@\lstinline{SLEEPING}}
 with a matching
-.code-index chan ,
+\lstinline{chan}\index{chan@\lstinline{chan}},
 it changes that process's state to
-.code-index RUNNABLE .
+\lstinline{RUNNABLE}\index{RUNNABLE@\lstinline{RUNNABLE}}.
 The next time the scheduler runs, it will
 see that the process is ready to be run.
-.PP
+
 Xv6 code always calls
-.code wakeup
+\lstinline{wakeup}
 while holding the lock that guards the sleep condition;
 in the example above that lock is
-.code q->lock .
+\lstinline{q->lock}.
 Strictly speaking it is sufficient if
-.code wakeup
+\lstinline{wakeup}
 always follows the
-.code acquire
+\lstinline{acquire}
 (that is, one could call
-.code wakeup
+\lstinline{wakeup}
 after the
-.code release ).
+\lstinline{release}).
 Why do the locking rules for 
-.code sleep
+\lstinline{sleep}
 and
-.code wakeup
+\lstinline{wakeup}
 ensure a sleeping process won't miss a wakeup it needs?
 The sleeping process holds either
 the lock on the condition or the
-.code ptable.lock 
+\lstinline{ptable.lock} 
 or both from a point before it checks the condition
 to a point after it is marked as sleeping.
 If a concurrent thread causes the condition to be true,
 that thread must either hold the lock on the condition before the
 sleeping thread acquired it, or after the sleeping
 thread released it in
-.code sleep .
+\lstinline{sleep}.
 If before, the sleeping thread must have seen the new condition
 value, and decided to sleep anyway, so it doesn't matter
 if it misses the wakeup.
 If after, then the earliest the waker could acquire the
 lock on the condition is after
-.code sleep
+\lstinline{sleep}
 acquires
-.code ptable.lock ,
+\lstinline{ptable.lock},
 so that
-.code wakeup 's
+\lstinline{wakeup} 's
 acquisition of
-.code ptable.lock
+\lstinline{ptable.lock}
 must wait until
-.code sleep
+\lstinline{sleep}
 has completely finished putting the sleeper to sleep.
 Then 
-.code wakeup
+\lstinline{wakeup}
 will see the sleeping process and wake it up
 (unless something else wakes it up first).
-.PP
+
 It is sometimes the case that multiple processes are sleeping
 on the same channel; for example, more than one process
 reading from a pipe.
 A single call to 
-.code wakeup
+\lstinline{wakeup}
 will wake them all up.
 One of them will run first and acquire the lock that
-.code sleep
+\lstinline{sleep}
 was called with, and (in the case of pipes) read whatever
 data is waiting in the pipe.
 The other processes will find that, despite being woken up,
@@ -1097,7 +1108,7 @@ From their point of view the wakeup was ``spurious,'' and
 they must sleep again.
 For this reason sleep is always called inside a loop that
 checks the condition.
-.PP
+
 No harm is done if two uses of sleep/wakeup accidentally
 choose the same channel: they will see spurious wakeups,
 but looping as described above will tolerate this problem.
@@ -1106,167 +1117,167 @@ lightweight (no need to create special data
 structures to act as sleep channels) and provides a layer
 of indirection (callers need not know which specific process
 they are interacting with).
-.\"
-.section "Code: Pipes"
-.\"
+%% 
+\section{Code: Pipes}
+%% 
 The simple queue we used earlier in this chapter
 was a toy, but xv6 contains two real queues
 that use
-.code sleep
+\lstinline{sleep}
 and
-.code wakeup
+\lstinline{wakeup}
 to synchronize readers and writers.
 One is in the IDE driver: a process adds a disk request to a queue and then
 calls
-.code sleep .
+\lstinline{sleep}.
 The IDE interrupt handler uses
-.code wakeup
+\lstinline{wakeup}
 to alert the process that its request has completed.
-.PP
+
 A more complex example is the implementation of pipes.
-We saw the interface for pipes in Chapter \*[CH:UNIX]:
+We saw the interface for pipes in Chapter~\ref{CH:UNIX}:
 bytes written to one end of a pipe are copied
 in an in-kernel buffer and then can be read out
 of the other end of the pipe.
 Future chapters will examine the file descriptor support
 surrounding pipes, but let's look now at the
 implementations of 
-.code-index pipewrite
+\lstinline{pipewrite}\index{pipewrite@\lstinline{pipewrite}}
 and
-.code-index piperead .
-.PP
+\lstinline{piperead}\index{piperead@\lstinline{piperead}}.
+
 Each pipe
 is represented by a 
-.code-index "struct pipe" ,
+\lstinline{struct pipe}\index{struct pipe@\lstinline{struct pipe}},
 which contains
 a 
-.code lock
+\lstinline{lock}
 and a 
-.code data
+\lstinline{data}
 buffer.
 The fields
-.code nread
+\lstinline{nread}
 and
-.code nwrite
+\lstinline{nwrite}
 count the number of bytes read from
 and written to the buffer.
 The buffer wraps around:
 the next byte written after
-.code buf[PIPESIZE-1]
+\lstinline{buf[PIPESIZE-1]}
 is 
-.code buf[0] .
+\lstinline{buf[0]}.
 The counts do not wrap.
 This convention lets the implementation
 distinguish a full buffer 
-.code nwrite "" (
-.code ==
-.code nread+PIPESIZE )
+\lstinline{nwrite} "" (
+\lstinline{==}
+\lstinline{nread}+PIPESIZE)
 from an empty buffer
-.code nwrite "" (
-.code ==
-.code nread ),
+\lstinline{nwrite} "" (
+\lstinline{==}
+\lstinline{nread}),
 but it means that indexing into the buffer
 must use
-.code buf[nread
-.code %
-.code PIPESIZE]
+\lstinline{buf[nread}
+\lstinline{%}
+\lstinline{PIPESIZE]}
 instead of just
-.code buf[nread] 
+\lstinline{buf[nread]} 
 (and similarly for
-.code nwrite ).
+\lstinline{nwrite}).
 Let's suppose that calls to
-.code piperead
+\lstinline{piperead}
 and
-.code pipewrite
+\lstinline{pipewrite}
 happen simultaneously on two different CPUs.
-.PP
-.code Pipewrite
-.line kernel/pipe.c:/^pipewrite/
+
+\lstinline{Pipewrite}
+\lineref{kernel/pipe.c:/^pipewrite/}
 begins by acquiring the pipe's lock, which
 protects the counts, the data, and their
 associated invariants.
-.code Piperead
-.line kernel/pipe.c:/^piperead/
+\lstinline{Piperead}
+\lineref{kernel/pipe.c:/^piperead/}
 then tries to acquire the lock too, but cannot.
 It spins in
-.code acquire
-.line kernel/spinlock.c:/^acquire/
+\lstinline{acquire}
+\lineref{kernel/spinlock.c:/^acquire/}
 waiting for the lock.
 While
-.code piperead
+\lstinline{piperead}
 waits,
-.code pipewrite
+\lstinline{pipewrite}
 loops over the bytes being written
-.code addr[0] ,
-.code addr[1] ,
+\lstinline{addr[0]},
+\lstinline{addr[1]},
 \&...,
-.code addr[n-1]
+\lstinline{addr[n-1]}
 adding each to the pipe in turn
-.line kernel/pipe.c:/nwrite!+!+/ .
+\lineref{kernel/pipe.c:/nwrite\+\+/}.
 During this loop, it could happen that
 the buffer fills
-.line kernel/pipe.c:/pipewrite-full/ .
+\lineref{kernel/pipe.c:/pipewrite-full/}.
 In this case, 
-.code pipewrite
+\lstinline{pipewrite}
 calls
-.code wakeup
+\lstinline{wakeup}
 to alert any sleeping readers to the fact
 that there is data waiting in the buffer
 and then sleeps on
-.code &p->nwrite
+\lstinline{&p->nwrite}
 to wait for a reader to take some bytes
 out of the buffer.
-.code Sleep
+\lstinline{Sleep}
 releases 
-.code p->lock
+\lstinline{p->lock}
 as part of putting
-.code pipewrite 's
+\lstinline{pipewrite} 's
 process to sleep.
-.PP
+
 Now that
-.code p->lock
+\lstinline{p->lock}
 is available,
-.code piperead
+\lstinline{piperead}
 manages to acquire it and enters its critical section:
 it finds that
-.code p->nread
-.code !=
-.code p->nwrite
-.line kernel/pipe.c:/pipe-empty/
-.code pipewrite "" (
+\lstinline{p->nread}
+\lstinline{!=}
+\lstinline{p->nwrite}
+\lineref{kernel/pipe.c:/pipe-empty/}
+\lstinline{pipewrite} "" (
 went to sleep because
-.code p->nwrite
-.code ==
-.code p->nread+PIPESIZE
-.line kernel/pipe.c:/pipewrite-full/ )
+\lstinline{p->nwrite}
+\lstinline{==}
+\lstinline{p->nread}+PIPESIZE
+\lineref{kernel/pipe.c:/pipewrite-full/})
 so it falls through to the 
-.code for
+\lstinline{for}
 loop, copies data out of the pipe
-.line kernel/pipe.c:/piperead-copy/,/^..}/ ,
+\lineref{kernel/pipe.c:/piperead-copy/,/^..}/},
 and increments 
-.code nread
+\lstinline{nread}
 by the number of bytes copied.
 That many bytes are now available for writing, so
-.code piperead
+\lstinline{piperead}
 calls
-.code wakeup
-.line kernel/pipe.c:/piperead-wakeup/
+\lstinline{wakeup}
+\lineref{kernel/pipe.c:/piperead-wakeup/}
 to wake any sleeping writers
 before it returns to its caller.
-.code Wakeup
+\lstinline{Wakeup}
 finds a process sleeping on
-.code &p->nwrite ,
+\lstinline{&p->nwrite},
 the process that was running
-.code pipewrite
+\lstinline{pipewrite}
 but stopped when the buffer filled.
 It marks that process as
-.code-index RUNNABLE .
-.PP
+\lstinline{RUNNABLE}\index{RUNNABLE@\lstinline{RUNNABLE}}.
+
 The pipe code uses separate sleep channels for reader and writer
 (
-.code p->nread
+\lstinline{p->nread}
 and
-.code p->nwrite );
+\lstinline{p->nwrite});
 this might make the system more efficient in the unlikely
 event that there are lots of
 readers and writers waiting for the same pipe.
@@ -1274,223 +1285,223 @@ The pipe code sleeps inside a loop checking the
 sleep condition; if there are multiple readers
 or writers, all but the first process to wake up
 will see the condition is still false and sleep again.
-.\"
-.section "Code: Wait, exit, and kill"
-.\"
-.code Sleep
+%% 
+\section{Code: Wait, exit, and kill}
+%% 
+\lstinline{Sleep}
 and
-.code wakeup
+\lstinline{wakeup}
 can be used for many kinds of waiting.
-An interesting example, seen in Chapter \*[CH:UNIX],
+An interesting example, seen in Chapter~\ref{CH:UNIX},
 is the
-.code-index wait
+\lstinline{wait}\index{wait@\lstinline{wait}}
 system call that a parent process uses to wait for a child to exit.
 When a child exits, it does not die immediately.
 Instead, it switches to the
-.code-index ZOMBIE
+\lstinline{ZOMBIE}\index{ZOMBIE@\lstinline{ZOMBIE}}
 process state until the parent calls
-.code wait
+\lstinline{wait}
 to learn of the exit.
 The parent is then responsible for freeing the
 memory associated with the process 
 and preparing the
-.code-index "struct proc"
+\lstinline{struct proc}\index{struct proc@\lstinline{struct proc}}
 for reuse.
 If the parent exits before the child, the 
-.code init
+\lstinline{init}
 process
 adopts the child and waits for it, so that
 every child has a parent to clean up after it.
-.PP
+
 An implementation challenge is
 the possibility of races between
 parent and child
-.code wait
+\lstinline{wait}
 and
-.code exit ,
+\lstinline{exit},
 as well as
-.code exit
+\lstinline{exit}
 and
-.code exit .
-.code Wait
+\lstinline{exit}.
+\lstinline{Wait}
 begins by
 acquiring 
-.code ptable.lock .
+\lstinline{ptable.lock}.
 Then it scans the process table
 looking for children.
 If 
-.code wait
+\lstinline{wait}
 finds that the current process has children
 but that none have exited,
 it calls
-.code sleep
+\lstinline{sleep}
 to wait for one of them to exit
-.line kernel/proc.c:/wait-sleep/
+\lineref{kernel/proc.c:/wait-sleep/}
 and scans again.
 Here,
 the lock being released in 
-.code sleep
+\lstinline{sleep}
 is
-.code ptable.lock ,
+\lstinline{ptable.lock},
 the special case we saw above.
-.PP
-.code Exit
+
+\lstinline{Exit}
 acquires
-.code ptable.lock
+\lstinline{ptable.lock}
 and then wakes up any process sleeping on a wait
 channel equal to the current process's parent
-.code proc
-.line kernel/proc.c:/wakeup1.curproc->parent/ ;
+\lstinline{proc}
+\lineref{kernel/proc.c:/wakeup1.curproc->parent/};
 if there is such a process, it will be the parent in
-.code wait .
+\lstinline{wait}.
 This may look premature, since 
-.code-index exit
+\lstinline{exit}\index{exit@\lstinline{exit}}
 has not marked the current process as a
-.code ZOMBIE
+\lstinline{ZOMBIE}
 yet, but it is safe:
 although
-.code wakeup
+\lstinline{wakeup}
 may cause the parent to run,
 the loop in
-.code wait
+\lstinline{wait}
 cannot run until
-.code exit
+\lstinline{exit}
 releases 
-.code ptable.lock
+\lstinline{ptable.lock}
 by calling
-.code sched
+\lstinline{sched}
 to enter the scheduler,
 so
-.code wait
+\lstinline{wait}
 can't look at
 the exiting process until after
-.code exit
+\lstinline{exit}
 has set its state to
-.code ZOMBIE
-.line kernel/proc.c:/state.=.ZOMBIE/ .
+\lstinline{ZOMBIE}
+\lineref{kernel/proc.c:/state.=.ZOMBIE/}.
 Before exit yields the processor,
 it reparents all of
 the exiting process's children,
 passing them to the
-.code initproc
-.lines kernel/proc.c:/Pass.abandoned/,/wakeup1/+2 .
+\lstinline{initproc}
+\linerefs{kernel/proc.c:/Pass.abandoned/,/wakeup1/+2}.
 Finally,
-.code exit
+\lstinline{exit}
 calls
-.code-index sched
+\lstinline{sched}\index{sched@\lstinline{sched}}
 to relinquish the CPU.
-.PP
+
 If the parent process was sleeping in
-.code wait ,
+\lstinline{wait},
 the scheduler will eventually run it.
 The call to
-.code sleep
+\lstinline{sleep}
 returns holding
-.code ptable.lock ;
-.code wait
+\lstinline{ptable.lock};
+\lstinline{wait}
 rescans the process table
 and finds the exited child with
-.code state
-.code ==
-.code ZOMBIE .
-.line kernel/proc.c:/state.==.ZOMBIE/ .
+\lstinline{state}
+\lstinline{==}
+\lstinline{ZOMBIE}.
+\lineref{kernel/proc.c:/state.==.ZOMBIE/}.
 It records the child's
-.code pid
+\lstinline{pid}
 and then cleans up the 
-.code struct 
-.code proc ,
+\lstinline{struct} 
+\lstinline{proc},
 freeing the memory associated
 with the process
-.line kernel/proc.c:/pid.=.p..pid/,/killed.=.0/ .
-.PP
+\lineref{kernel/proc.c:/pid.=.p..pid/,/killed.=.0/}.
+
 The child process could have done most
 of the cleanup during
-.code exit ,
+\lstinline{exit},
 but it is important that the parent 
 process be the one to free
-.code-index p->kstack 
+\lstinline{p->kstack}\index{p->kstack@\lstinline{p->kstack}} 
 and 
-.code-index p->pgdir :
+\lstinline{p->pgdir}\index{p->pgdir@\lstinline{p->pgdir}}:
 when the child runs
-.code exit ,
+\lstinline{exit},
 its stack sits in the memory allocated as
-.code p->kstack 
+\lstinline{p->kstack} 
 and it uses its own pagetable.
 They can only be freed after the child process has
 finished running for the last time by calling
-.code-index swtch
+\lstinline{swtch}\index{swtch@\lstinline{swtch}}
 (via
-.code sched ).
+\lstinline{sched}).
 This is one reason that the scheduler procedure runs on its
 own stack rather than on the stack of the thread
 that called
-.code sched .
-.PP
+\lstinline{sched}.
+
 While
-.code exit 
+\lstinline{exit} 
 allows a process to terminate itself,
-.code kill
-.line kernel/proc.c:/^kill/ 
+\lstinline{kill}
+\lineref{kernel/proc.c:/^kill/} 
 lets one process request that another be terminated.
 It would be too complex for
-.code kill
+\lstinline{kill}
 to directly destroy the victim process, since the victim
 might be executing on another CPU or sleeping
 while midway through updating kernel data structures.
 To address these challenges, 
-.code kill
+\lstinline{kill}
 does very little: it just sets the victim's
-.code p->killed
+\lstinline{p->killed}
 and, if it is sleeping, wakes it up.
 Eventually the victim will enter or leave the kernel,
 at which point code in
-.code trap
+\lstinline{trap}
 will call
-.code exit
+\lstinline{exit}
 if
-.code p->killed
+\lstinline{p->killed}
 is set.
 If the victim is running in user space, it will soon enter
 the kernel by making a system call or because the timer (or
 some other device) interrupts.
-.PP
+
 If the victim process is in
-.code sleep ,
+\lstinline{sleep},
 the call to
-.code wakeup
+\lstinline{wakeup}
 will cause the victim process to return from
-.code sleep .
+\lstinline{sleep}.
 This is potentially dangerous because 
 the condition being waiting for may not be true.
 However, xv6 calls to
-.code sleep
+\lstinline{sleep}
 are always wrapped in a
-.code while
+\lstinline{while}
 loop that re-tests the condition after
-.code sleep
+\lstinline{sleep}
 returns.
 Some calls to
-.code sleep
+\lstinline{sleep}
 also test
-.code p->killed
+\lstinline{p->killed}
 in the loop, and abandon the current activity if it is set.
 This is only done when such abandonment would be correct.
 For example, the pipe read and write code
-.line kernel/pipe.c:/myproc..-\>killed/ 
+\lineref{kernel/pipe.c:/myproc..-\>killed/} 
 returns if the killed flag is set; eventually the
 code will return back to trap, which will again
 check the flag and exit.
-.PP
+
 Some xv6 
-.code sleep
+\lstinline{sleep}
 loops do not check
-.code p->killed 
+\lstinline{p->killed} 
 because the code is in the middle of a multi-step
 system call that should be atomic.
 The IDE driver
-.line ide.c:/sleep.b/ 
+\lineref{ide.c:/sleep.b/} 
 is an example: it does not check
-.code p->killed
+\lstinline{p->killed}
 because a disk operation may be one of a set of
 writes that are all needed in order for the file system to
 be left in a correct state.
@@ -1498,13 +1509,13 @@ To avoid the complication of cleaning up after a partial operation, xv6 delays
 the killing of a process that is in the IDE driver until some point later when
 it is easy to kill the process (e.g., when the complete file system operation
 has completed and the process is about to return to user space).
-.\"
-.section "Real world"
-.\"
-.PP
+%% 
+\section{Real world}
+%% 
+
 The xv6 scheduler implements a simple scheduling policy, which runs each process
 in turn.  This policy is called
-.italic-index "round robin" .
+\textit{round robin}\index{round robin}.
 Real operating systems implement more sophisticated policies that, for example,
 allow processes to have priorities.  The idea is that a runnable high-priority process
 will be preferred by the scheduler over a runnable low-priority process.   These
@@ -1512,9 +1523,9 @@ policies can become complex quickly because there are often competing goals: for
 example, the operating might also want to guarantee fairness and
 high throughput.  In addition, complex policies may lead to unintended
 interactions such as
-.italic-index "priority inversion"
+\textit{priority inversion}\index{priority inversion}
 and 
-.italic-index "convoys" .
+\textit{convoys}\index{convoys}.
 Priority inversion can happen when a low-priority and high-priority process
 share a lock, which when acquired by the low-priority process can prevent the
 high-priority process from making progress.  A long convoy can form when many
@@ -1522,84 +1533,84 @@ high-priority processes are waiting for a low-priority process that acquires a
 shared lock; once a convoy has formed it can persist for long time.
 To avoid these kinds of problems additional mechanisms are necessary in
 sophisticated schedulers.
-.PP
-.code Sleep
+
+\lstinline{Sleep}
 and
-.code wakeup
+\lstinline{wakeup}
 are a simple and effective synchronization method,
 but there are many others.
 The first challenge in all of them is to
 avoid the ``lost wakeups'' problem we saw at the
 beginning of the chapter.
 The original Unix kernel's
-.code sleep
+\lstinline{sleep}
 simply disabled interrupts,
 which sufficed because Unix ran on a single-CPU system.
 Because xv6 runs on multiprocessors,
 it adds an explicit lock to
-.code sleep .
+\lstinline{sleep}.
 FreeBSD's
-.code msleep
+\lstinline{msleep}
 takes the same approach.
 Plan 9's 
-.code sleep
+\lstinline{sleep}
 uses a callback function that runs with the scheduling
 lock held just before going to sleep;
 the function serves as a last minute check
 of the sleep condition, to avoid lost wakeups.
 The Linux kernel's
-.code sleep
+\lstinline{sleep}
 uses an explicit process queue instead of
 a wait channel; the queue has its own internal lock.
-.PP
+
 Scanning the entire process list in
-.code wakeup
+\lstinline{wakeup}
 for processes with a matching
-.code chan
+\lstinline{chan}
 is inefficient.  A better solution is to
 replace the
-.code chan
+\lstinline{chan}
 in both
-.code sleep
+\lstinline{sleep}
 and
-.code wakeup
+\lstinline{wakeup}
 with a data structure that holds
 a list of processes sleeping on that structure.
 Plan 9's
-.code sleep
+\lstinline{sleep}
 and
-.code wakeup
+\lstinline{wakeup}
 call that structure a rendezvous point or
-.code Rendez .
+\lstinline{Rendez}.
 Many thread libraries refer to the same
 structure as a condition variable;
 in that context, the operations
-.code sleep
+\lstinline{sleep}
 and
-.code wakeup
+\lstinline{wakeup}
 are called
-.code wait
+\lstinline{wait}
 and
-.code signal .
+\lstinline{signal}.
 All of these mechanisms share the same
 flavor: the sleep condition is protected by
 some kind of lock dropped atomically during sleep.
-.PP
+
 The implementation of
-.code wakeup
+\lstinline{wakeup}
 wakes up all processes that are waiting on a particular channel, and it might be
 the case that many processes are waiting for that particular channel.   The
 operating system will schedule all these processes and they will race to check
 the sleep condition.  Processes that behave in this way are sometimes called a
-.italic-index "thundering herd" ,
+\textit{thundering herd}\index{thundering herd},
 and it is best avoided.
 Most condition variables have two primitives for
-.code wakeup :
-.code signal ,
+\lstinline{wakeup}:
+\lstinline{signal},
 which wakes up one process, and
-.code broadcast ,
+\lstinline{broadcast},
 which wakes up all processes waiting.
-.PP
+
 Semaphores are another common coordination
 mechanism.
 A semaphore is an integer value with two operations,
@@ -1618,149 +1629,141 @@ there is an explicit count of the number
 of wakeups that have occurred.
 The count also avoids the spurious wakeup
 and thundering herd problems.
-.PP
+
 Terminating processes and cleaning them up introduces much complexity in xv6.
 In most operating systems it is even more complex, because, for example, the
 victim process may be deep inside the kernel sleeping, and unwinding its
 stack requires much careful programming.  Many operating systems unwind the stack
 using explicit mechanisms for exception handling, such as
-.code longjmp .
+\lstinline{longjmp}.
 Furthermore, there are other events that can cause a sleeping process to be
 woken up, even though the event it is waiting for has not happened yet.  For
 example, when a Unix process is sleeping, another process may send a 
-.code-index signal
+\lstinline{signal}\index{signal@\lstinline{signal}}
 to it.  In this case, the
 process will return from the interrupted system call with the value -1 and with
 the error code set to EINTR. The application can check for these values and
 decide what to do.  Xv6 doesn't support signals and this complexity doesn't arise.
-.PP
+
 Xv6's support for
-.code kill
+\lstinline{kill}
 is not entirely satisfactory: there are sleep loops
 which probably should check for
-.code p->killed .
+\lstinline{p->killed}.
 A related problem is that, even for 
-.code sleep
+\lstinline{sleep}
 loops that check
-.code p->killed ,
+\lstinline{p->killed},
 there is a race between 
-.code sleep
+\lstinline{sleep}
 and
-.code kill ;
+\lstinline{kill};
 the latter may set
-.code p->killed
+\lstinline{p->killed}
 and try to wake up the victim just after the victim's loop
 checks
-.code p->killed
+\lstinline{p->killed}
 but before it calls
-.code sleep .
+\lstinline{sleep}.
 If this problem occurs, the victim won't notice the
-.code p->killed
+\lstinline{p->killed}
 until the condition it is waiting for occurs. This may be quite a bit later
 (e.g., when the IDE driver returns a disk block that the victim is waiting for) or never
 (e.g., if the victim is waiting from input from the console, but the user
 doesn't type any input).
-.PP
+
 A real operating system would find free
-.code proc
+\lstinline{proc}
 structures with an explicit free list
 in constant time instead of the linear-time search in
-.code allocproc ;
+\lstinline{allocproc};
 xv6 uses the linear scan for simplicity.
-.\"
-.section "Exercises"
-.\"
-.PP
+%% 
+\section{Exercises}
+%% 
+
 1. Sleep has to check
-.code "lk != &ptable.lock"
+\lstinline{lk != &ptable.lock}
 to avoid a deadlock
-.lines kernel/proc.c:/sleeplock0/,/^..}/ .
+\linerefs{kernel/proc.c:/sleeplock0/,/^..}/}.
 Suppose the special case were eliminated by
 replacing
-.P1
+\begin{lstlisting}[]
 if(lk != &ptable.lock){
   acquire(&ptable.lock);
   release(lk);
 }
-.P2
+\end{lstlisting}
 with
-.P1
+\begin{lstlisting}[]
 release(lk);
 acquire(&ptable.lock);
-.P2
+\end{lstlisting}
 Doing this would break
-.code sleep .
+\lstinline{sleep}.
 How?
-.PP
+
 2. Most process cleanup could be done by either
-.code exit
+\lstinline{exit}
 or
-.code wait ,
+\lstinline{wait},
 but we saw above that
-.code exit
+\lstinline{exit}
 must not free
-.code p->stack .
+\lstinline{p->stack}.
 It turns out that
-.code exit
+\lstinline{exit}
 must be the one to close the open files.
 Why?
 The answer involves pipes.
-.PP
+
 3. Implement semaphores in xv6.
 You can use mutexes but do not use sleep and wakeup.
 Replace the uses of sleep and wakeup in xv6
 with semaphores.  Judge the result.
-.PP
+
 4. Fix the race mentioned above between
-.code kill
+\lstinline{kill}
 and 
-.code sleep ,
+\lstinline{sleep},
 so that a
-.code kill
+\lstinline{kill}
 that occurs after the victim's sleep loop checks
-.code p->killed
+\lstinline{p->killed}
 but before it calls
-.code sleep
+\lstinline{sleep}
 results in the victim abandoning the current system call.
-.ig
-Answer: a solution is to to check in sleep if p->killed is set before setting
-the processes's state to sleep. 
-..
-.PP
+% Answer: a solution is to to check in sleep if p->killed is set before setting
+% the processes's state to sleep. 
+
 5. Design a plan so that every sleep loop checks 
-.code p->killed
+\lstinline{p->killed}
 so that, for example, a process that is in the IDE driver can return quickly from the while loop
 if another kills that process.
-.ig
-Answer: this is difficult.  Moderns Unixes do this with setjmp and longjmp and very carefully programming to clean any partial state that the interrupted systems call may have built up.
-..
-.PP
+% Answer: this is difficult.  Moderns Unixes do this with setjmp and longjmp and very carefully programming to clean any partial state that the interrupted systems call may have built up.
+
 6. Design a plan that uses only one context switch when switching from one user
 process to another.  This plan involves running the scheduler procedure on the
 kernel stack of the user process, instead of the dedicated scheduler stack.  The
 main challenge is to clean up a user process correctly.  Measure the performance
 benefit of avoiding one context switch.
-.ig
-Answer: maybe keep the current design but create a fast path for when there is
-a runnable user process available.
-..
-.PP
+% Answer: maybe keep the current design but create a fast path for when there is
+% a runnable user process available.
+
 7. Modify xv6 to turn off a processor when it is idle and just spinning in the
 loop in
-.code scheduler .
+\lstinline{scheduler}.
 (Hint: look at the x86
-.code HLT
+\lstinline{HLT}
 instruction.)
-.PP
+
 8. The lock
-.code p->lock
+\lstinline{p->lock}
 protects many invariants, and when looking at a particular piece of xv6 code that
 is protected by
-.code p->lock ,
+\lstinline{p->lock},
 it can be difficult to figure out which invariant is being enforced.  Design a
 plan that is more clean by perhaps splitting
-.code p->lock
+\lstinline{p->lock}
 in several locks.
-.ig
-Answer: don't know.
-..
+% Answer: don't know.

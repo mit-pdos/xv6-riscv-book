@@ -1,7 +1,6 @@
-.ig
-..
-.chapter CH:LOCK "Locking"
-.PP
+\chapter{Locking}
+\label{CH:LOCK}
+
 Xv6 runs on multiprocessors: computers with
 multiple CPUs executing independently.
 These multiple CPUs share physical RAM,
@@ -17,28 +16,28 @@ Even on a uniprocessor, an interrupt routine that uses
 the same data as some interruptible code could damage
 the data if the interrupt occurs at just the wrong time.
 The word 
-.italic-index "concurrency"
+\textit{concurrency}\index{concurrency}
 refers to situations in which
 multiple instruction streams are interleaved,
 due to multiprocessor parallelism, interrupts,
 or thread switching.
-.PP
+
 In any situation where a shared data item may be
 accessed concurrently, there must be a
-.italic-index "concurrency control"
+\textit{concurrency control}\index{concurrency control}
 strategy to maintain correctness.
 xv6 uses a handful of simple concurrency control
 strategies; much more sophistication is possible.
 This chapter focuses on one of the strategies used extensively
 in xv6 and many other systems: the 
-.italic-index lock .
-.PP
+\textit{lock}\index{lock}.
+
 A lock provides mutual exclusion, ensuring that only one CPU at a time can hold
 the lock. If the programmer associates a lock with each shared data item,
 and the code always holds the associated lock when using an item,
 then the item will be used by only one CPU at a time.
 In this situation, we say that the lock protects the data item.
-.PP
+
 The rest of this chapter explains why xv6 needs locks, how xv6 implements them, and how
 it uses them.  A key observation will be that if you look at some code in
 xv6, you must ask yourself if concurrent code could change
@@ -51,29 +50,29 @@ interleaved with instructions executing on other CPUs.
 That is, you cannot assume that lines of C code
 on the page are executed atomically.
 Concurrency makes reasoning about correctness difficult.
-.\"
-.section "Race conditions"
-.\"
-.PP
+%% 
+\section{Race conditions}
+%% 
+
 As an example of why we need locks,
 consider a linked list accessible from any
 CPU on a multiprocessor.
 The list supports push and pop operations, which
 may be called concurrently.
 Xv6's memory allocator works in much this way;
-.code kalloc()
-.line kernel/kalloc.c:/^kalloc/
+\lstinline{kalloc()}
+\lineref{kernel/kalloc.c:/^kalloc/}
 pops a page of memory from a list of free pages,
 and
-.code kfree()
-.line kernel/kalloc.c:/^kfree/
+\lstinline{kfree()}
+\lineref{kernel/kalloc.c:/^kfree/}
 pushes a page onto the free list.
-.PP
+
 If there were no
 concurrent requests, you might implement a list
-.code push
+\lstinline{push}
 operation as follows:
-.P1
+\begin{lstlisting}[]
     1	struct element {
     2	  int data;
     3	  struct element *next;
@@ -91,31 +90,37 @@ operation as follows:
    15	  l->next = list;
    16	  list = l;
    17	}
-.P2
-.figure race
+\end{lstlisting}
+
+\begin{figure}[t]
+\center
+\includegraphics[scale=0.5]{fig/race.eps}
+\caption{Example race}
+\label{fig:race}
+\end{figure}
 This implementation is correct if executed in isolation.
 However, the code is not correct if more than one
 copy executes concurrently.
 If two CPUs execute
-.code push
+\lstinline{push}
 at the same time,
 both might execute line 15
 before either executes 16 (see 
-.figref race ).
+Figure~\ref{fig:race}).
 There would then be two
 list elements with
-.code next
+\lstinline{next}
 set to the former value of
-.code list .
+\lstinline{list}.
 When the two assignments to
-.code list
+\lstinline{list}
 happen at line 16,
 the second one will overwrite the first;
 the element involved in the first assignment
 will be lost.
-.PP
+
 The lost update at line 16 is an example of a
-.italic-index "race condition" .
+\textit{race condition}\index{race condition}.
 A race condition is a situation in which a memory location is accessed
 concurrently, and at least one access is a write.
 A race is often a sign of a bug, either a lost update
@@ -127,20 +132,20 @@ how their memory operations are ordered by the memory system,
 which can make race-induced errors difficult to reproduce
 and debug.
 For example, adding print statements while debugging
-.code push
+\lstinline{push}
 might change the timing of the execution enough
 to make the race disappear.
-.PP
+
 The usual way to avoid races is to use a lock.
 Locks ensure
-.italic-index "mutual exclusion" ,
+\textit{mutual exclusion}\index{mutual exclusion},
 so that only one CPU at a time can execute 
 the sensitive lines of
-.code push ;
+\lstinline{push};
 this makes the scenario above impossible.
 The correctly locked version of the above code
 adds just a few lines (not numbered):
-.P1
+\begin{lstlisting}[]
     6	struct element *list = 0;
      	struct lock listlock;
     7	
@@ -156,16 +161,16 @@ adds just a few lines (not numbered):
    16	  list = l;
      	  release(&listlock);
    17	}
-.P2
+\end{lstlisting}
 The sequence of instructions between
-.code acquire
+\lstinline{acquire}
 and
-.code release
+\lstinline{release}
 is often called a
-.italic-index "critical section" ,
+\textit{critical section}\index{critical section},
 and the lock protects
-.code list .
-.PP
+\lstinline{list}.
+
 When we say that a lock protects data, we really mean
 that the lock protects some collection of invariants
 that apply to the data.
@@ -177,20 +182,20 @@ begins.  The operation may temporarily violate
 the invariants but must reestablish them before
 finishing.
 For example, in the linked list case, the invariant is that
-.code list
+\lstinline{list}
 points at the first element in the list
 and that each element's
-.code next
+\lstinline{next}
 field points at the next element.
 The implementation of
-.code push
+\lstinline{push}
 violates this invariant temporarily: in line 15,
-.code l
+\lstinline{l}
 points
 to the next list element, but
-.code list
+\lstinline{list}
 does not point at
-.code l
+\lstinline{l}
 yet (reestablished at line 16).
 The race condition we examined above
 happened because a second CPU executed
@@ -200,9 +205,9 @@ Proper use of a lock ensures that only one CPU at a time
 can operate on the data structure in the critical section, so that
 no CPU will execute a data structure operation when the 
 data structure's invariants do not hold.
-.PP
+
 You can think of a lock as
-.italic-index serializing
+\textit{serializing}\index{serializing}
 concurrent critical sections so that they run one at a time,
 and thus preserve invariants (assuming the critical sections
 are correct in isolation).
@@ -211,37 +216,37 @@ atomic with respect to each other,
 so that each sees only the complete set of
 changes from earlier critical sections, and never sees
 partially-completed updates.
-.PP
+
 Note that it would be correct to move
-.code acquire
+\lstinline{acquire}
 earlier in
-.code push.
+\lstinline{push.}
 For example, it is fine to move the call to
-.code acquire
+\lstinline{acquire}
 up to before line 12.
 This may reduce parallelism because then the calls
 to
-.code malloc
+\lstinline{malloc}
 are also serialized.
 The section "Using locks" below provides some guidelines for where to insert
-.code acquire
+\lstinline{acquire}
 and
-.code release
+\lstinline{release}
 invocations.
-.\"
-.section "Code: Locks"
-.\"
+%% 
+\section{Code: Locks}
+%% 
 Xv6 has two types of locks: spin-locks and sleep-locks.
 We'll start with spin-locks.
 Xv6 represents a spin-lock as a
-.code-index "struct spinlock"
-.line kernel/spinlock.h:/struct.spinlock/ .
+\lstinline{struct spinlock}\index{struct spinlock@\lstinline{struct spinlock}}
+\lineref{kernel/spinlock.h:/struct.spinlock/}.
 The important field in the structure is
-.code locked ,
+\lstinline{locked},
 a word that is zero when the lock is available
 and non-zero when it is held.
 Logically, xv6 should acquire a lock by executing code like
-.P1
+\begin{lstlisting}[]
    21	void
    22	acquire(struct spinlock *lk)
    23	{
@@ -252,27 +257,27 @@ Logically, xv6 should acquire a lock by executing code like
    28	    }
    29	  }
    30	}
-.P2
+\end{lstlisting}
 Unfortunately, this implementation does not
 guarantee mutual exclusion on a multiprocessor.
 It could happen that two CPUs simultaneously
 reach line 25, see that 
-.code lk->locked
+\lstinline{lk->locked}
 is zero, and then both grab the lock by executing line 26.
 At this point, two different CPUs hold the lock,
 which violates the mutual exclusion property.
 What we need is a way to
 make lines 25 and 26 execute as an
-.italic-index "atomic"
+\textit{atomic}\index{atomic}
 (i.e., indivisible) step.
-.PP
+
 Because locks are widely used,
 multi-core processors usually provide instructions that
 can be used to implement an atomic version of
 lines 25 and 26.
 On the RISC-V this instruction is
-.code "amoswap register, address" .
-.code amoswap
+\lstinline{amoswap register, address}.
+\lstinline{amoswap}
 reads the value at the memory address,
 writes the contents of the register to that address,
 and puts the value it read into the register.
@@ -280,85 +285,85 @@ That is, it swaps the contents of the register and the memory address.
 It performs this sequence atomically, using special
 hardware to prevent any
 other CPU from using the memory address between the read and the write.
-.PP
+
 Xv6's 
-.code-index acquire
-.line kernel/spinlock.c:/^acquire/
+\lstinline{acquire}\index{acquire@\lstinline{acquire}}
+\lineref{kernel/spinlock.c:/^acquire/}
 uses the portable C library call 
-.code "__sync_lock_test_and_set" ,
+\lstinline{__sync_lock_test_and_set},
 which boils down to the
-.code amoswap
+\lstinline{amoswap}
 instruction;
 the return value is the old (swapped) contents of
-.code lk->locked .
+\lstinline{lk->locked}.
 The
-.code acquire
+\lstinline{acquire}
 function wraps the swap in a loop, retrying (spinning) until it has
 acquired the lock.
 Each iteration swaps one into
-.code lk->locked 
+\lstinline{lk->locked} 
 and checks the previous value;
 if the previous value is zero, then we've acquired the
 lock, and the swap will have set 
-.code lk->locked
+\lstinline{lk->locked}
 to one.
 If the previous value is one, then some other CPU
 holds the lock, and the fact that we swapped one into
-.code lk->locked
+\lstinline{lk->locked}
 didn't change its value.
-.PP
+
 Once the lock is acquired,
-.code acquire
+\lstinline{acquire}
 records, for debugging, the CPU 
 that acquired the lock.
 The
-.code lk->cpu
+\lstinline{lk->cpu}
 field is protected by the lock
 and must only be changed while holding the lock.
-.PP
+
 The function
-.code-index release
-.line kernel/spinlock.c:/^release/
+\lstinline{release}\index{release@\lstinline{release}}
+\lineref{kernel/spinlock.c:/^release/}
 is the opposite of 
-.code acquire :
+\lstinline{acquire}:
 it clears the 
-.code lk->cpu
+\lstinline{lk->cpu}
 field
 and then releases the lock.
 Conceptually, the release just requires assigning zero to
-.code lk->locked .
+\lstinline{lk->locked}.
 The C standard allows compilers to implement assignment
 with multiple store instructions,
 so a C assignment might be non-atomic with respect
 to concurrent code.
 Instead,
-.code release
+\lstinline{release}
 uses the C library function
-.code "__sync_lock_release"
+\lstinline{__sync_lock_release}
 that performs an atomic assignment.
 This function also boils down to a RISC-V
-.code amoswap
+\lstinline{amoswap}
 instruction.
-.\"
-.section "Code: Using locks"
-.\"
+%% 
+\section{Code: Using locks}
+%% 
 Xv6 uses locks in many places to avoid race conditions.
 To see a simple example much like
-.code push
+\lstinline{push}
 above,
 look at
-.code kalloc
-.line kernel/kalloc.c:/^kalloc/
+\lstinline{kalloc}
+\lineref{kernel/kalloc.c:/^kalloc/}
 and
-.code free
-.line kernel/kalloc.c:/^free/ .
+\lstinline{free}
+\lineref{kernel/kalloc.c:/^free/}.
 Try Exercises 1 and 2 to see what happens if those
 functions omit the locks.
 You'll likely find that it's difficult to trigger incorrect
 behavior, suggesting that it's hard to ensure that code
 is free from locking errors and races.
 It is not unlikely that xv6 has some races.
-.PP
+
 A hard part about using locks is deciding how many locks
 to use and which data and invariants each lock should protect.
 There are a few basic principles.
@@ -370,7 +375,7 @@ Second, remember that locks protect invariants:
 if an invariant involves multiple memory locations,
 typically all of them need to be protected
 by a single lock to ensure the invariant is maintained.
-.PP
+
 The rules above say when locks are necessary but say nothing about when locks
 are unnecessary, and it is important for efficiency not to lock too much,
 because locks reduce parallelism.  If parallelism isn't important, then one
@@ -378,7 +383,7 @@ could arrange to have only a single thread and not worry about locks.  A simple
 kernel can do this on a multiprocessor by having a single lock that must be
 acquired on entering the kernel and released on exiting the kernel (though
 system calls such as pipe reads or
-.code wait
+\lstinline{wait}
 would pose a problem).  Many uniprocessor operating systems have been converted to
 run on multiprocessors using this approach, sometimes called a ``giant
 kernel lock,'' but the approach sacrifices parallelism: only one
@@ -386,9 +391,9 @@ CPU can execute in the kernel at a time.  If the kernel does any heavy
 computation, it would be more efficient to use a larger set of more
 fine-grained locks, so that the kernel could execute on multiple CPUs
 simultaneously.
-.PP
+
 As an example of relatively coarse-grained locking, xv6's
-.code kalloc.c
+\lstinline{kalloc.c}
 allocator has a single free list protected by a single
 lock. If concurrent allocation were a performance bottleneck,
 it might be helpful to have multiple free lists, each with
@@ -402,17 +407,39 @@ to have good performance for processes that simultaneously
 write different areas of the same file.
 Ultimately lock granularity decisions need to be driven
 by performance measurements as well as complexity considerations.
-.PP
+
 As subsequent chapters explain each part of xv6, they
 will mention examples of xv6's use of locks
 to deal with concurrency.
 As a preview,
-.figref locktable
+Figure~\ref{fig:locktable}
 lists all of the locks in xv6.
-.figure locktable
-.\"
-.section "Deadlock and lock ordering"
-.\"
+
+\begin{figure}[t]
+\center
+\begin{tabular}{ll}
+{\bf Lock} & {\bf Description} \\
+\midrule
+bcache.lock & Protects allocation of block buffer cache entries \\
+cons.lock & Serializes access to console hardware, avoids intermixed output \\
+ftable.lock & Serializes allocation of a struct file in file table \\
+icache.lock & Protects allocation of inode cache entries \\
+vdisk\_lock & Serializes access to disk hardware and queue of DMA descriptors \\
+kmem.lock & Serializes allocation of memory \\
+log.lock & Serializes operations on the transaction log \\
+pipe's p->lock & Serializes operations on each pipe \\
+pid\_lock & Serializes increments of next\_pid \\
+proc's p->lock & Serializes changes to process's state \\
+tickslock & Serializes operations on the ticks counter \\
+inode's ip->lock & Serializes operations on each inode and its content \\
+buf's b->lock & Serializes operations on each block buffer \\
+\end{tabular}
+\caption{Locks in xv6}
+\label{fig:locktable}
+\end{figure}
+%% 
+\section{Deadlock and lock ordering}
+%% 
 If a code path through the kernel must hold several locks at the same time, it is
 important that all code paths acquire those locks in the same order.  If
 they don't, there is a risk of deadlock.  Let's say two code paths in
@@ -429,137 +456,137 @@ locks in the same order. The need for a global lock acquisition order
 means that locks are effectively part of each function's specification: 
 callers must invoke functions in a way that causes locks to be acquired
 in the agreed-on order.
-.PP
+
 Xv6 has many lock-order chains of length two involving
 per-process locks
 (the lock in each
-.code "struct proc" )
+\lstinline{struct proc})
 due to the way that
-.code sleep
+\lstinline{sleep}
 works (see Chapter
 \*[CH:SCHED]).
 For example,
-.code consoleintr
-.line kernel/console.c:/^consoleintr/
+\lstinline{consoleintr}
+\lineref{kernel/console.c:/^consoleintr/}
 is the interrupt routine which handles typed characters.
 When a newline arrives, any process that is waiting for
 console input should be woken up.
 To do this,
-.code consoleintr
+\lstinline{consoleintr}
 holds
-.code cons.lock
+\lstinline{cons.lock}
 while calling 
-.code-index wakeup ,
+\lstinline{wakeup}\index{wakeup@\lstinline{wakeup}},
 which acquires 
 the waiting process's lock in order to wake it up.
 In consequence, the global deadlock-avoiding
 lock order includes the rule that
-.code cons.lock
+\lstinline{cons.lock}
 must be acquired before any process lock.
 The file system code contains xv6's longest lock chains.
 For example, creating a file requires simultaneously
 holding a lock on the directory, a lock on the new file's inode,
 a lock on a disk block buffer, 
-.code idelock ,
+\lstinline{idelock},
 and
-.code ptable.lock .
+\lstinline{ptable.lock}.
 To avoid deadlock, file system code always acquires locks in the order 
 mentioned in the previous sentence.
-.section "Locks and interrupt handlers"
-.\"
+\section{Locks and interrupt handlers}
+%% 
 Some xv6 spin-locks protect data that is used by
 both threads and interrupt handlers.
 For example, the
-.code clockintr
+\lstinline{clockintr}
 timer interrupt handler might increment
-.code-index ticks 
-.line kernel/trap.c:/^clockintr/
+\lstinline{ticks}\index{ticks@\lstinline{ticks}} 
+\lineref{kernel/trap.c:/^clockintr/}
 at about the same time that a kernel
 thread reads
-.code ticks 
+\lstinline{ticks} 
 in
-.code-index sys_sleep
-.line kernel/sysproc.c:/ticks0.=.ticks/  .
+\lstinline{sys_sleep}\index{sys_sleep@\lstinline{sys_sleep}}
+\lineref{kernel/sysproc.c:/ticks0.=.ticks/}.
 The lock
-.code-index tickslock
+\lstinline{tickslock}\index{tickslock@\lstinline{tickslock}}
 serializes the two accesses.
-.PP
+
 The interaction of spin-locks and interrupts raises a potential danger.
 Suppose
-.code-index sys_sleep
+\lstinline{sys_sleep}\index{sys_sleep@\lstinline{sys_sleep}}
 holds
-.code-index tickslock ,
+\lstinline{tickslock}\index{tickslock@\lstinline{tickslock}},
 and its CPU is interrupted by a timer interrupt.
-.code clockintr
+\lstinline{clockintr}
 would try to acquire
-.code tickslock ,
+\lstinline{tickslock},
 see it was held, and wait for it to be released.
 In this situation,
-.code tickslock
+\lstinline{tickslock}
 will never be released: only
-.code sys_sleep
+\lstinline{sys_sleep}
 can release it, but
-.code sys_sleep
+\lstinline{sys_sleep}
 will not continue running until
-.code clockintr
+\lstinline{clockintr}
 returns.
 So the processor will deadlock, and any code
 that needs either lock will also freeze.
-.PP
+
 To avoid this situation, if a spin-lock is used by an interrupt handler,
 a processor must never hold that lock with interrupts enabled.
 Xv6 is more conservative: when a processor acquires any
 lock, xv6 always disables interrupts on that processor.
 Interrupts may still occur on other processors, so 
 an interrupt's
-.code acquire
+\lstinline{acquire}
 can wait for a thread to release a spin-lock; just not on the same processor.
-.PP
+
 xv6 re-enables interrupts when a processor holds no spin-locks; it must
 do a little book-keeping to cope with nested critical sections.
-.code acquire
+\lstinline{acquire}
 calls
-.code-index push_off
-.line kernel/spinlock.c:/^push_off/
+\lstinline{push_off}\index{push_off@\lstinline{push_off}}
+\lineref{kernel/spinlock.c:/^push_off/}
 and
-.code release
+\lstinline{release}
 calls
-.code-index pop_off
-.line kernel/spinlock.c:/^pop_off/
+\lstinline{pop_off}\index{pop_off@\lstinline{pop_off}}
+\lineref{kernel/spinlock.c:/^pop_off/}
 to track the nesting level of locks on the current processor.
 When that count reaches zero,
-.code pop_off 
+\lstinline{pop_off} 
 restores the interrupt enable state that existed 
 at the start of the outermost critical section.
 The
-.code intr_off
+\lstinline{intr_off}
 and
-.code intr_on
+\lstinline{intr_on}
 functions execute RISC-V instructions to disable and enable
 interrupts, respectively.
-.PP
+
 It is important that
-.code-index acquire
+\lstinline{acquire}\index{acquire@\lstinline{acquire}}
 call
-.code push_off
+\lstinline{push_off}
 strictly before setting
-.code lk->locked
-.line kernel/spinlock.c:/sync_lock_test_and_set/ .
+\lstinline{lk->locked}
+\lineref{kernel/spinlock.c:/sync_lock_test_and_set/}.
 If the two were reversed, there would be
 a brief window when the lock
 was held with interrupts enabled, and
 an unfortunately timed interrupt would deadlock the system.
 Similarly, it is important that
-.code-index release
+\lstinline{release}\index{release@\lstinline{release}}
 call
-.code-index pop_off
+\lstinline{pop_off}\index{pop_off@\lstinline{pop_off}}
 only after 
 releasing the lock
-.line kernel/spinlock.c:/sync_lock_release/ .
-.\"
-.section "Instruction and memory ordering"
-.\"
-.PP
+\lineref{kernel/spinlock.c:/sync_lock_release/}.
+%% 
+\section{Instruction and memory ordering}
+%% 
+
 It is natural to think of programs executing in the order
 in which source code statements appear.
 Many
@@ -576,67 +603,67 @@ execution of A and B.
 A compiler may perform a similar re-ordering by emitting instructions
 for one statement before the instructions for a statement that precedes it
 in the source.
-.PP
+
 Compilers and processors follow rules when they re-order to
 ensure that they don't change the results of correctly-written
 serial code.
 However, the rules do allow re-ordering that
 changes the results of concurrent code,
 and can easily lead to incorrect behavior on multiprocessors.
-.PP
+
 For example, in this code for
-.code push ,
+\lstinline{push},
 it would be a disaster if the compiler or processor moved the
 store corresponding to
 line 4 to a point after the
-.code release
+\lstinline{release}
 on line 6:
-.P1
+\begin{lstlisting}[]
     1	  l = malloc(sizeof *l);
     2	  l->data = data;
     3	  acquire(&listlock);
     4	  l->next = list;
     5	  list = l;
     6	  release(&listlock);
-.P2
+\end{lstlisting}
 If such a re-ordering occurred, there would be a window during
 which another processor could acquire the lock,
 observe the updated
-.code list ,
+\lstinline{list},
 but see an uninitialized
-.code list->next .
-.PP
+\lstinline{list->next}.
+
 To tell the hardware and compiler not to perform such re-orderings,
 xv6 uses
-.code __sync_synchronize() 
+\lstinline{__sync_synchronize()} 
 in both
-.code acquire
+\lstinline{acquire}
 and
-.code release .
-.code __sync_synchronize()
+\lstinline{release}.
+\lstinline{__sync_synchronize()}
 is a memory barrier:
 it tells the compiler and CPU to not reorder loads or stores across the
 barrier.
 Xv6 worries about ordering only in
-.code acquire
+\lstinline{acquire}
 and
-.code release ,
+\lstinline{release},
 because it uses locks to guard all accesses to shared data (other than locks
 themselves).
-.\"
-.section "Sleep locks"
-.\"
-.PP
+%% 
+\section{Sleep locks}
+%% 
+
 Sometimes xv6 code needs to hold a lock for a long time. For example,
-the file system (Chapter \*[CH:FS]) keeps a file locked while reading
+the file system (Chapter~\ref{CH:FS}) keeps a file locked while reading
 and writing its content on the disk, and these disk operations can
 take tens of milliseconds. Efficiency demands that the processor be
 yielded while waiting so that other threads can make
 progress, and this in turn means that xv6 needs locks that 
 work well when held across context switches.
 Xv6 provides such locks in the form of
-.italic-index "sleep-locks" .
-.PP
+\textit{sleep-locks}\index{sleep-locks}.
+
 Xv6 sleep-locks support yielding the processor during their critical
 sections. This property poses a design challenge: if thread T1 holds
 lock L1 and has yielded the processor, and thread T2 wishes to acquire
@@ -647,34 +674,34 @@ spins with interrupts turned off, and that would prevent T1
 from running. To avoid this deadlock, the sleep-lock acquire
 routine
 (called
-.code acquiresleep )
+\lstinline{acquiresleep})
 yields the processor while waiting, and does not disable
 interrupts.
-.PP
-.code acquiresleep
-.line kernel/sleeplock.c:/^acquiresleep/
+
+\lstinline{acquiresleep}
+\lineref{kernel/sleeplock.c:/^acquiresleep/}
 uses techniques that will be explained in
-Chapter \*[CH:SCHED].
+Chapter~\ref{CH:SCHED}.
 At a high level, a sleep-lock has a
-.code locked
+\lstinline{locked}
 field that is protected by a spinlock, and 
-.code acquiresleep 's
+\lstinline{acquiresleep} 's
 call to
-.code sleep
+\lstinline{sleep}
 atomically yields the CPU and releases the spin-lock.
 The result is that other threads can execute while
-.code acquiresleep
+\lstinline{acquiresleep}
 waits.
-.PP
+
 Because sleep-locks leave interrupts enabled, they cannot be
 used in interrupt handlers.
 Because
-.code acquiresleep
+\lstinline{acquiresleep}
 may yield the processor,
 sleep-locks cannot be used inside spin-lock critical
 sections (though spin-locks can be used inside sleep-lock
 critical sections).
-.PP
+
 Spin-locks have low overhead, but they waste CPU time if they
 are held for long periods when other CPUs are waiting
 for them.
@@ -682,9 +709,9 @@ Thus they are best suited to short critical sections.
 Xv6 uses sleep-locks in the file system,
 where it is convenient to
 be able to hold locks across lengthy disk operations.
-.\"
-.section "Real world"
-.\"
+%% 
+\section{Real world}
+%% 
 Programming with locks remains challenging despite years of research
 into concurrency primitives and parallelism.
 It is often best to conceal locks within 
@@ -692,7 +719,7 @@ higher-level constructs like synchronized queues, although xv6 does not
 do this.  If you program with locks, it is wise to use a tool that attempts to
 identify race conditions, because it is easy to miss an invariant that requires
 a lock.
-.PP
+
 Most operating systems support POSIX threads (Pthreads), which allow a user
 process to have several threads running concurrently on different processors.
 Pthreads has support for user-level locks, barriers, etc.  Supporting Pthreads requires
@@ -703,12 +730,12 @@ process's address space (e.g., maps or unmaps memory), the kernel must arrange t
 other processors that run threads of the same process update their hardware page
 tables to reflect the change in the address space.  On the x86, this involves
 shooting down the
-.italic-index "Translation Look-aside Buffer (TLB)"
+\textit{Translation Look-aside Buffer (TLB)}\index{Translation Look-aside Buffer (TLB)}
 of other processors using inter-processor interrupts (IPIs).
-.PP
+
 It is possible to implement locks without atomic instructions, but it is
 expensive, and most operating systems use atomic instructions.
-.PP
+
 Locks can be expensive if many processors try to acquire the same lock
 at the same time.  If one processor has a lock
 cached in its local cache, and another processor must acquire the lock, then the
@@ -717,7 +744,7 @@ from the one processor's cache to the other processor's cache, and perhaps
 invalidate any other copies of the cache line.  Fetching a cache line from
 another processor's cache can be orders of magnitude more expensive than
 fetching a line from a local cache.
-.PP
+
 To avoid the expenses associated with locks, many operating systems use
 lock-free data structures and algorithms.  For example, it is possible to
 implement a linked list like the one in the beginning of the chapter that
@@ -726,54 +753,54 @@ item in a list.  Lock-free programming is more complicated, however, than
 programming locks; for example, one must worry about instruction and memory
 reordering.  Programming with locks is already hard, so xv6 avoids the
 additional complexity of lock-free programming.
-.\"
-.section "Exercises"
-.\"
-.PP
+%% 
+\section{Exercises}
+%% 
+
 1. Comment out the calls to
-.code acquire
+\lstinline{acquire}
 and
-.code release
+\lstinline{release}
 in
-.code kalloc
-.line kernel/kalloc.c:/^kalloc/ .
+\lstinline{kalloc}
+\lineref{kernel/kalloc.c:/^kalloc/}.
 This seems like it should cause problems for
 kernel code that calls
-.code kalloc ;
+\lstinline{kalloc};
 what symptoms do you expect to see?
 When you run xv6, do you see these symptoms?
 How about when running
-.code usertests ?
+\lstinline{usertests} ?
 If you don't see a problem, why not?
 See if you can provoke a problem by inserting
 dummy loops into the critical section of
-.code kalloc .
-.PP
+\lstinline{kalloc}.
+
 2. Suppose that you instead commented out the
 locking in
-.code kfree 
+\lstinline{kfree} 
 (after restoring locking in
-.code kalloc ).
+\lstinline{kalloc}).
 What might now go wrong? Is lack of locks in
-.code kfree
+\lstinline{kfree}
 less harmful than in
-.code kalloc ?
-.PP
+\lstinline{kalloc} ?
+
 3. If two CPUs call
-.code kalloc
+\lstinline{kalloc}
 at the same time, one will have to wait for the other,
 which is bad for performance.
 Modify 
-.code kalloc.c
+\lstinline{kalloc.c}
 to have more parallelism, so that simultaneous
 calls to
-.code kalloc
+\lstinline{kalloc}
 from different CPUs can proceed without waiting for each other.
-.PP
+
 4. Write a parallel program using POSIX threads, which is supported on most
 operating systems. For example, implement a parallel hash table and measure if
 the number of puts/gets scales with increasing number of cores.
-.PP
+
 5. Implement a subset of Pthreads in xv6.  That is, implement a user-level
 thread library so that a user process can have more than 1 thread and arrange
 that these threads can run in parallel on different processors.  Come up with a

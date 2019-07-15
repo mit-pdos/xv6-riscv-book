@@ -1,66 +1,61 @@
-.chapter CH:FS "File system"
-.ig
-        is it process or kernel thread?
+\chapter{File system}
+\label{CH:FS}
+%         is it process or kernel thread?
+% 
+%         the logging text (and some of the buffer text) assumes the reader
+%         knows a fair amount about how inodes and directories work,
+%         but they are introduced later.
+% 
+% 	have to decide on processor vs CPU, i/o vs I/O.
+% 	
+% 	be sure to say buffer, not block 
+% 
+% 	Mount
 
-        the logging text (and some of the buffer text) assumes the reader
-        knows a fair amount about how inodes and directories work,
-        but they are introduced later.
-
-	have to decide on processor vs CPU, i/o vs I/O.
-	
-	be sure to say buffer, not block 
-
-	Mount
-..  
-.PP
 The purpose of a file system is to organize and store data. File systems
 typically support sharing of data among users and applications, as well as
-.italic-index persistence
+\textit{persistence}\index{persistence}
 so that data is still available after a reboot.
-.PP
+
 The xv6 file system provides Unix-like files, directories, and pathnames
-(see Chapter \*[CH:UNIX]), and stores its data on an IDE disk for
-persistence (see Chapter \*[CH:TRAP]). The file system addresses
+(see Chapter~\ref{CH:UNIX}), and stores its data on an IDE disk for
+persistence (see Chapter~\ref{CH:TRAP}). The file system addresses
 several challenges:
-.IP \[bu]  
-The file system needs on-disk data structures to represent the tree
+\paragraph{\textbullet}The file system needs on-disk data structures to represent the tree
 of named directories and files, to record the identities of the
 blocks that hold each file's content, and to record which areas
 of the disk are free.
-.IP \[bu] 
-The file system must support
-.italic-index "crash recovery" .
+\paragraph{\textbullet}The file system must support
+\textit{crash recovery}\index{crash recovery}.
 That is, if a crash (e.g., power failure) occurs, the file system must
 still work correctly after a restart. The risk is that a crash might
 interrupt a sequence of updates and leave inconsistent on-disk data
 structures (e.g., a block that is both used in a file and marked free).
-.IP \[bu]  
-Different processes may operate on the file system at the same time,
+\paragraph{\textbullet}Different processes may operate on the file system at the same time,
 so the file system code must coordinate to maintain invariants.
-.IP \[bu]  
-Accessing a disk is orders of magnitude slower than accessing
+\paragraph{\textbullet}Accessing a disk is orders of magnitude slower than accessing
 memory, so the file system must maintain an in-memory cache of
 popular blocks.
-.PP
+
 The rest of this chapter explains how xv6 addresses these challenges.
-.\"
-.\" -------------------------------------------
-.\"
-.section "Overview"
-.PP
+%% 
+%%  -------------------------------------------
+%% 
+\section{Overview}
+
 The xv6 file system implementation is
 organized in seven layers, shown in 
-.figref fslayer .
+Figure~\ref{fig:fslayer}.
 The disk layer reads and writes blocks on an IDE hard drive.
 The buffer cache layer caches disk blocks and synchronizes access to them,
 making sure that only one kernel process at a time can modify the
 data stored in any particular block.  The logging layer allows higher
 layers to wrap updates to several blocks in a
-.italic-index transaction ,
+\textit{transaction}\index{transaction},
 and ensures that the blocks are updated atomically in the
 face of crashes (i.e., all of them are updated or none).
 The inode layer provides individual files, each represented as an
-.italic-index inode
+\textit{inode}\index{inode}
 with a unique i-number
 and some blocks holding the file's data.  The directory
 layer implements each directory as a special kind of
@@ -68,21 +63,27 @@ inode whose content is a sequence of directory entries, each of which contains a
 file's name and i-number.
 The pathname layer provides
 hierarchical path names like
-.code /usr/rtm/xv6/fs.c ,
+\lstinline{/usr/rtm/xv6/fs.c},
 and resolves them with recursive lookup.
 The file descriptor layer abstracts many Unix resources (e.g., pipes, devices,
 files, etc.) using the file system interface, simplifying the lives of
 application programmers.
-.figure fslayer
-.PP
+
+\begin{figure}[t]
+\center
+\includegraphics[scale=0.5]{fig/fslayer.eps}
+\caption{Layers of the xv6 file system.}
+\label{fig:fslayer}
+\end{figure}
+
 The file system must have a plan for where it stores inodes and
 content blocks on the disk.
 To do so, xv6 divides the disk into several
 sections, as shown in 
-.figref fslayout .
+Figure~\ref{fig:fslayout}.
 The file system does not use
 block 0 (it holds the boot sector).  Block 1 is called the 
-.italic-index "superblock" ; 
+\textit{superblock}\index{superblock}; 
 it contains metadata about the file system (the file system size in blocks, the
 number of data blocks, the number of inodes, and the number of blocks in the
 log).  Blocks starting at 2 hold the log.  After the log are the inodes, with multiple inodes per block.  After
@@ -90,43 +91,43 @@ those come bitmap blocks tracking which data blocks are in use.
 The remaining blocks are data blocks; each is either marked
 free in the bitmap block, or holds content for a file or directory.
 The superblock is filled in by a separate program, called
-.code-index mfks ,
+\lstinline{mfks}\index{mfks@\lstinline{mfks}},
 which builds an initial file system.
-.PP
+
 The rest of this chapter discusses each layer, starting with the
 buffer cache.
 Look out for situations where well-chosen abstractions at lower layers
 ease the design of higher ones.
-.\"
-.\" -------------------------------------------
-.\"
-.section "Buffer cache layer"
-.PP
+%% 
+%%  -------------------------------------------
+%% 
+\section{Buffer cache layer}
+
 The buffer cache has two jobs: (1) synchronize access to disk blocks to ensure
 that only one copy of a block is in memory and that only one kernel thread at a time
 uses that copy; (2) cache popular blocks so that they don't need to be re-read from
 the slow disk. The code is in
-.code bio.c .
-.PP
+\lstinline{bio.c}.
+
 The main interface exported by the buffer cache consists of
-.code-index bread
+\lstinline{bread}\index{bread@\lstinline{bread}}
 and
-.code-index bwrite ;
+\lstinline{bwrite}\index{bwrite@\lstinline{bwrite}};
 the former obtains a
-.italic-index buf
+\textit{buf}\index{buf}
 containing a copy of a block which can be read or modified in memory, and the
 latter writes a modified buffer to the appropriate block on the disk.
 A kernel thread must release a buffer by calling
-.code-index brelse
+\lstinline{brelse}\index{brelse@\lstinline{brelse}}
 when it is done with it.
 The buffer cache uses a per-buffer sleep-lock to ensure
 that only one thread at a time uses each buffer
 (and thus each disk block);
-.code bread
+\lstinline{bread}
 returns a locked buffer, and
-.code brelse
+\lstinline{brelse}
 releases the lock.
-.PP
+
 Let's return to the buffer cache.
 The buffer cache has a fixed number of buffers to hold disk blocks,
 which means that if the file system asks for a block that is not
@@ -135,172 +136,178 @@ holding some other block. The buffer cache recycles the
 least recently used buffer for the new block. The assumption is that
 the least recently used buffer is the one least likely to be used
 again soon.
-.figure fslayout
-.\"
-.\" -------------------------------------------
-.\"
-.section "Code: Buffer cache"
-.PP
+
+\begin{figure}[t]
+\center
+\includegraphics[scale=0.5]{fig/fslayout.eps}
+\caption{Structure of the xv6 file system. }
+\label{fig:fslayout}
+\end{figure}
+%% 
+%%  -------------------------------------------
+%% 
+\section{Code: Buffer cache}
+
 The buffer cache is a doubly-linked list of buffers.
 The function
-.code-index binit ,
+\lstinline{binit}\index{binit@\lstinline{binit}},
 called by
-.code-index main
-.line kernel/main.c:/binit/ ,
+\lstinline{main}\index{main@\lstinline{main}}
+\lineref{kernel/main.c:/binit/},
 initializes the list with the
-.code-index NBUF
+\lstinline{NBUF}\index{NBUF@\lstinline{NBUF}}
 buffers in the static array
-.code buf
-.lines kernel/bio.c:/Create.linked.list/,/^..}/ .
+\lstinline{buf}
+\linerefs{kernel/bio.c:/Create.linked.list/,/^..}/}.
 All other access to the buffer cache refer to the linked list via
-.code-index bcache.head ,
+\lstinline{bcache.head}\index{bcache.head@\lstinline{bcache.head}},
 not the
-.code buf
+\lstinline{buf}
 array.
-.PP
+
 A buffer has two state bits associated with it.
-.code-index B_VALID
+\lstinline{B_VALID}\index{B_VALID@\lstinline{B_VALID}}
 indicates that the buffer contains a copy of the block.
-.code-index B_DIRTY
+\lstinline{B_DIRTY}\index{B_DIRTY@\lstinline{B_DIRTY}}
 indicates that the buffer content has been modified and needs
 to be written to the disk.
-.PP
-.code Bread
-.line kernel/bio.c:/^bread/
+
+\lstinline{Bread}
+\lineref{kernel/bio.c:/^bread/}
 calls
-.code-index bget
+\lstinline{bget}\index{bget@\lstinline{bget}}
 to get a buffer for the given sector
-.line kernel/bio.c:/b.=.bget/ .
+\lineref{kernel/bio.c:/b.=.bget/}.
 If the buffer needs to be read from disk,
-.code bread
+\lstinline{bread}
 calls
-.code-index iderw
+\lstinline{iderw}\index{iderw@\lstinline{iderw}}
 to do that before returning the buffer.
-.PP
-.code Bget
-.line kernel/bio.c:/^bget/
+
+\lstinline{Bget}
+\lineref{kernel/bio.c:/^bget/}
 scans the buffer list for a buffer with the given device and sector numbers
-.lines kernel/bio.c:/Is.the.block.already/,/^..}/ .
+\linerefs{kernel/bio.c:/Is.the.block.already/,/^..}/}.
 If there is such a buffer,
-.code-index bget
+\lstinline{bget}\index{bget@\lstinline{bget}}
 acquires the sleep-lock for the buffer.
-.code bget
+\lstinline{bget}
 then returns the locked buffer.
-.PP
+
 If there is no cached buffer for the given sector,
-.code-index bget
+\lstinline{bget}\index{bget@\lstinline{bget}}
 must make one, possibly reusing a buffer that held
 a different sector.
 It scans the buffer list a second time, looking for a buffer
 that is not locked and not dirty:
 any such buffer can be used.
-.code Bget
+\lstinline{Bget}
 edits the buffer metadata to record the new device and sector number
 and acquires its sleep-lock.
 Note that the assignment to
-.code flags
+\lstinline{flags}
 clears
-.code-index B_VALID ,
+\lstinline{B_VALID}\index{B_VALID@\lstinline{B_VALID}},
 thus ensuring that
-.code bread
+\lstinline{bread}
 will read the block data from disk
 rather than incorrectly using the buffer's previous contents.
-.PP
+
 It is important that there is at most one cached buffer per
 disk sector, to ensure that readers see writes, and because the
 file system uses locks on buffers for synchronization.
-.code bget
+\lstinline{bget}
 ensures this invariant by holding the
-.code bache.lock
+\lstinline{bache.lock}
 continuously from the first loop's check of whether the
 block is cached through the second loop's declaration that
 the block is now cached (by setting
-.code dev ,
-.code blockno ,
+\lstinline{dev},
+\lstinline{blockno},
 and
-.code refcnt ).
+\lstinline{refcnt}).
 This causes the check for a block's presence and (if not
 present) the designation of a buffer to hold the block to
 be atomic.
-.PP
+
 It is safe for
-.code bget
+\lstinline{bget}
 to acquire the buffer's sleep-lock outside of the 
-.code bcache.lock
+\lstinline{bcache.lock}
 critical section,
 since the non-zero
-.code b->refcnt
+\lstinline{b->refcnt}
 prevents the buffer from being re-used for a different disk block.
 The sleep-lock protects reads
 and writes of the block's buffered content, while the
-.code bcache.lock
+\lstinline{bcache.lock}
 protects information about which blocks are cached.
-.PP
+
 If all the buffers are busy, then too many processes are
 simultaneously executing file system calls;
-.code bget
+\lstinline{bget}
 panics.
 A more graceful response might be to sleep until a buffer became free,
 though there would then be a possibility of deadlock.
-.PP
+
 Once
-.code-index bread
+\lstinline{bread}\index{bread@\lstinline{bread}}
 has read the disk (if needed) and returned the
 buffer to its caller, the caller has
 exclusive use of the buffer and can read or write the data bytes.
 If the caller does modify the buffer, it must call
-.code-index bwrite
+\lstinline{bwrite}\index{bwrite@\lstinline{bwrite}}
 to write the changed data to disk before releasing the buffer.
-.code Bwrite
-.line kernel/bio.c:/^bwrite/
+\lstinline{Bwrite}
+\lineref{kernel/bio.c:/^bwrite/}
 calls
-.code-index iderw
+\lstinline{iderw}\index{iderw@\lstinline{iderw}}
 to talk to the disk hardware, after setting
-.code-index B_DIRTY
+\lstinline{B_DIRTY}\index{B_DIRTY@\lstinline{B_DIRTY}}
 to indicate that
-.code iderw
+\lstinline{iderw}
 should write (rather than read).
-.PP
+
 When the caller is done with a buffer,
 it must call
-.code-index brelse
+\lstinline{brelse}\index{brelse@\lstinline{brelse}}
 to release it. 
 (The name
-.code brelse ,
+\lstinline{brelse},
 a shortening of
 b-release,
 is cryptic but worth learning:
 it originated in Unix and is used in BSD, Linux, and Solaris too.)
-.code Brelse
-.line kernel/bio.c:/^brelse/
+\lstinline{Brelse}
+\lineref{kernel/bio.c:/^brelse/}
 releases the sleep-lock and
 moves the buffer
 to the front of the linked list
-.lines kernel/bio.c:/b->next->prev.=.b->prev/,/bcache.head.next.=.b/ .
+\linerefs{kernel/bio.c:/b->next->prev.=.b->prev/,/bcache.head.next.=.b/}.
 Moving the buffer causes the
 list to be ordered by how recently the buffers were used (meaning released):
 the first buffer in the list is the most recently used,
 and the last is the least recently used.
 The two loops in
-.code bget
+\lstinline{bget}
 take advantage of this:
 the scan for an existing buffer must process the entire list
 in the worst case, but checking the most recently used buffers
 first (starting at
-.code bcache.head
+\lstinline{bcache.head}
 and following
-.code next
+\lstinline{next}
 pointers) will reduce scan time when there is good locality of reference.
 The scan to pick a buffer to reuse picks the least recently used
 buffer by scanning backward
 (following 
-.code prev
+\lstinline{prev}
 pointers).
-.\"
-.\" -------------------------------------------
-.\"
-.section "Logging layer"
-.PP
+%% 
+%%  -------------------------------------------
+%% 
+\section{Logging layer}
+
 One of the most interesting problems in file system design is crash
 recovery. The problem arises because many file system operations
 involve multiple writes to the disk, and a crash after a subset of the
@@ -311,7 +318,7 @@ Depending on the order of the disk writes, the crash
 may either leave an inode with a reference
 to a content block that is marked free,
 or it may leave an allocated but unreferenced content block.
-.PP
+
 The latter is relatively benign, but an inode that refers to a freed
 block is likely to cause serious problems after a reboot.  After reboot, the
 kernel might allocate that block to another file, and now we have two different
@@ -319,20 +326,20 @@ files pointing unintentionally to the same block.  If xv6 supported
 multiple users, this situation could be a security problem, since the
 old file's owner would be able to read and write blocks in the
 new file, owned by a different user.
-.PP
+
 Xv6 solves the problem of crashes during file system operations with a
 simple form of logging. An xv6 system call does not directly write
 the on-disk file system data structures. Instead, it places a
 description of all the disk writes it wishes to make in a 
-.italic-index log 
+\textit{log}\index{log} 
 on the disk. Once the system call has logged all of its writes, it writes a
 special 
-.italic-index commit
+\textit{commit}\index{commit}
 record to the disk indicating that the log contains
 a complete operation. At that point the system call copies the writes
 to the on-disk file system data structures. After those writes have
 completed, the system call erases the log on disk.
-.PP
+
 If the system should crash and reboot, the file system code recovers
 from the crash as follows, before running any processes. If the log is
 marked as containing a complete operation, then the recovery code
@@ -340,7 +347,7 @@ copies the writes to where they belong in the on-disk file system. If
 the log is not marked as containing a complete operation, the recovery
 code ignores the log.  The recovery code finishes by erasing
 the log.
-.PP
+
 Why does xv6's log solve the problem of crashes during file system
 operations? If the crash occurs before the operation commits, then the
 log on disk will not be marked as complete, the recovery code will
@@ -351,11 +358,11 @@ repeating them if the operation had started to write them to the
 on-disk data structure. In either case, the log makes operations
 atomic with respect to crashes: after recovery, either all of the
 operation's writes appear on the disk, or none of them appear.
-.\"
-.\"
-.\"
-.section "Log design"
-.PP
+%% 
+%% 
+%% 
+\section{Log design}
+
 The log resides at a known fixed location, specified in the superblock.
 It consists of a header block followed by a sequence
 of updated block copies (``logged blocks'').
@@ -372,7 +379,7 @@ count to zero after copying the logged blocks to the file system.
 Thus a crash midway through a transaction will result in a
 count of zero in the log's header block; a crash after a commit
 will result in a non-zero count.
-.PP
+
 Each system call's code indicates the start and end of the sequence of
 writes that must be atomic with respect to crashes.
 To allow concurrent execution of file system operations
@@ -383,9 +390,9 @@ Thus a single commit may involve the writes of multiple
 complete system calls.
 To avoid splitting a system call across transactions, the logging system
 only commits when no file system system calls are underway.
-.PP
+
 The idea of committing several transactions together is known as 
-.italic-index "group commit" .
+\textit{group commit}\index{group commit}.
 Group commit reduces the number of disk operations
 because it amortizes the fixed cost of a commit over multiple
 operations.
@@ -393,9 +400,9 @@ Group commit also hands the disk system more concurrent writes
 at the same time, perhaps allowing the disk to write
 them all during a single disk rotation.
 Xv6's IDE driver doesn't support this kind of
-.italic-index batching ,
+\textit{batching}\index{batching},
 but xv6's file system design allows for it.
-.PP
+
 Xv6 dedicates a fixed amount of space on the disk to hold the log.
 The total number of blocks written by the system calls in a
 transaction must fit in that space.
@@ -404,29 +411,29 @@ No single system call
 can be allowed to write more distinct blocks than there is space
 in the log. This is not a problem for most system calls, but two
 of them can potentially write many blocks: 
-.code-index write
+\lstinline{write}\index{write@\lstinline{write}}
 and
-.code-index unlink .
+\lstinline{unlink}\index{unlink@\lstinline{unlink}}.
 A large file write may write many data blocks and many bitmap blocks
 as well as an inode block; unlinking a large file might write many
 bitmap blocks and an inode.
 Xv6's write system call breaks up large writes into multiple smaller
 writes that fit in the log,
 and 
-.code unlink
+\lstinline{unlink}
 doesn't cause problems because in practice the xv6 file system uses
 only one bitmap block.
 The other consequence of limited log space
 is that the logging system cannot allow a system call to start
 unless it is certain that the system call's writes will
 fit in the space remaining in the log.
-.\"
-.\"
-.\"
-.section "Code: logging"
-.PP
+%% 
+%% 
+%% 
+\section{Code: logging}
+
 A typical use of the log in a system call looks like this:
-.P1
+\begin{lstlisting}[]
   begin_op();
   ...
   bp = bread(...);
@@ -434,36 +441,36 @@ A typical use of the log in a system call looks like this:
   log_write(bp);
   ...
   end_op();
-.P2
-.PP
-.code-index begin_op
-.line kernel/log.c:/^begin.op/
+\end{lstlisting}
+
+\lstinline{begin_op}\index{begin_op@\lstinline{begin_op}}
+\lineref{kernel/log.c:/^begin.op/}
 waits until
 the logging system is not currently committing, and until
 there is enough unreserved log space to hold
 the writes from this call.
-.code log.outstanding
+\lstinline{log.outstanding}
 counts the number of system calls that have reserved log
 space; the total reserved space is 
-.code log.outstanding
+\lstinline{log.outstanding}
 times
-.code MAXOPBLOCKS .
+\lstinline{MAXOPBLOCKS}.
 Incrementing
-.code log.outstanding
+\lstinline{log.outstanding}
 both reserves space and prevents a commit
 from occuring during this system call.
 The code conservatively assumes that each system call might write up to
-.code MAXOPBLOCKS
+\lstinline{MAXOPBLOCKS}
 distinct blocks.
-.PP
-.code-index log_write
-.line kernel/log.c:/^log.write/
+
+\lstinline{log_write}\index{log_write@\lstinline{log_write}}
+\lineref{kernel/log.c:/^log.write/}
 acts as a proxy for 
-.code-index bwrite .
+\lstinline{bwrite}\index{bwrite@\lstinline{bwrite}}.
 It records the block's sector number in memory,
 reserving it a slot in the log on disk,
 and marks the buffer
-.code B_DIRTY
+\lstinline{B_DIRTY}
 to prevent the block cache from evicting it.
 The block must stay in the cache until committed:
 until then, the cached copy is the only record
@@ -471,79 +478,79 @@ of the modification; it cannot be written to
 its place on disk until after commit;
 and other reads in the same transaction must
 see the modifications.
-.code log_write
+\lstinline{log_write}
 notices when a block is written multiple times during a single
 transaction, and allocates that block the same slot in the log.
 This optimization is often called
-.italic-index "absorption" .
+\textit{absorption}\index{absorption}.
 It is common that, for example, the disk block containing inodes
 of several files is written several times within a transaction.  By absorbing
 several disk writes into one, the file system can save log space and
 can achieve better performance because only one copy of the disk block must be
 written to disk.
-.PP
-.code-index end_op
-.line kernel/log.c:/^end.op/
+
+\lstinline{end_op}\index{end_op@\lstinline{end_op}}
+\lineref{kernel/log.c:/^end.op/}
 first decrements the count of outstanding system calls.
 If the count is now zero, it commits the current
 transaction by calling
-.code commit().
+\lstinline{commit().}
 There are four stages in this process.
-.code write_log()
-.line kernel/log.c:/^write.log/
+\lstinline{write_log()}
+\lineref{kernel/log.c:/^write.log/}
 copies each block modified in the transaction from the buffer
 cache to its slot in the log on disk.
-.code write_head()
-.line kernel/log.c:/^write.head/
+\lstinline{write_head()}
+\lineref{kernel/log.c:/^write.head/}
 writes the header block to disk: this is the
 commit point, and a crash after the write will
 result in recovery replaying the transaction's writes from the log.
-.code-index install_trans
-.line kernel/log.c:/^install_trans/
+\lstinline{install_trans}\index{install_trans@\lstinline{install_trans}}
+\lineref{kernel/log.c:/^install_trans/}
 reads each block from the log and writes it to the proper
 place in the file system.
 Finally
-.code end_op
+\lstinline{end_op}
 writes the log header with a count of zero;
 this has to happen before the next transaction starts writing
 logged blocks, so that a crash doesn't result in recovery
 using one transaction's header with the subsequent transaction's
 logged blocks.
-.PP
-.code-index recover_from_log
-.line kernel/log.c:/^recover_from_log/
+
+\lstinline{recover_from_log}\index{recover_from_log@\lstinline{recover_from_log}}
+\lineref{kernel/log.c:/^recover_from_log/}
 is called from 
-.code-index initlog
-.line kernel/log.c:/^initlog/ ,
+\lstinline{initlog}\index{initlog@\lstinline{initlog}}
+\lineref{kernel/log.c:/^initlog/},
 which is called during boot before the first user process runs.
-.line kernel/proc.c:/initlog/
+\lineref{kernel/proc.c:/initlog/}
 It reads the log header, and mimics the actions of
-.code end_op
+\lstinline{end_op}
 if the header indicates that the log contains a committed transaction.
-.PP
+
 An example use of the log occurs in 
-.code-index filewrite
-.line kernel/file.c:/^filewrite/ .
+\lstinline{filewrite}\index{filewrite@\lstinline{filewrite}}
+\lineref{kernel/file.c:/^filewrite/}.
 The transaction looks like this:
-.P1
+\begin{lstlisting}[]
       begin_op();
       ilock(f->ip);
       r = writei(f->ip, ...);
       iunlock(f->ip);
       end_op();
-.P2
+\end{lstlisting}
 This code is wrapped in a loop that breaks up large writes into individual
 transactions of just a few sectors at a time, to avoid overflowing
 the log.  The call to
-.code-index writei
+\lstinline{writei}\index{writei@\lstinline{writei}}
 writes many blocks as part of this
 transaction: the file's inode, one or more bitmap blocks, and some data
 blocks.
-.\"
-.\"
-.\"
-.section "Code: Block allocator"
-.PP
+%% 
+%% 
+%% 
+\section{Code: Block allocator}
+
 File and directory content is stored in disk blocks,
 which must be allocated from a free pool.
 xv6's block allocator
@@ -551,67 +558,67 @@ maintains a free bitmap on disk, with one bit per block.
 A zero bit indicates that the corresponding block is free;
 a one bit indicates that it is in use.
 The program
-.code mkfs
+\lstinline{mkfs}
 sets the bits corresponding to the boot sector, superblock, log blocks, inode
 blocks, and bitmap blocks.
-.PP
+
 The block allocator provides two functions:
-.code-index balloc
+\lstinline{balloc}\index{balloc@\lstinline{balloc}}
 allocates a new disk block, and
-.code-index bfree
+\lstinline{bfree}\index{bfree@\lstinline{bfree}}
 frees a block.
-.code Balloc
+\lstinline{Balloc}
 The loop in
-.code balloc
+\lstinline{balloc}
 at
-.line kernel/fs.c:/^..for.b.=.0/
+\lineref{kernel/fs.c:/^..for.b.=.0/}
 considers every block, starting at block 0 up to 
-.code sb.size ,
+\lstinline{sb.size},
 the number of blocks in the file system.
 It looks for a block whose bitmap bit is zero,
 indicating that it is free.
 If
-.code balloc
+\lstinline{balloc}
 finds such a block, it updates the bitmap 
 and returns the block.
 For efficiency, the loop is split into two 
 pieces.
 The outer loop reads each block of bitmap bits.
 The inner loop checks all 
-.code BPB
+\lstinline{BPB}
 bits in a single bitmap block.
 The race that might occur if two processes try to allocate
 a block at the same time is prevented by the fact that
 the buffer cache only lets one process use any one bitmap block at a time.
-.PP
-.code Bfree
-.line kernel/fs.c:/^bfree/
+
+\lstinline{Bfree}
+\lineref{kernel/fs.c:/^bfree/}
 finds the right bitmap block and clears the right bit.
 Again the exclusive use implied by
-.code bread
+\lstinline{bread}
 and
-.code brelse
+\lstinline{brelse}
 avoids the need for explicit locking.
-.PP
+
 As with much of the code described in the remainder of this chapter, 
-.code balloc
+\lstinline{balloc}
 and
-.code bfree
+\lstinline{bfree}
 must be called inside a transaction.
-.\"
-.\" -------------------------------------------
-.\"
-.section "Inode layer"
-.PP
+%% 
+%%  -------------------------------------------
+%% 
+\section{Inode layer}
+
 The term 
-.italic-index inode 
+\textit{inode}\index{inode} 
 can have one of two related meanings.
 It might refer to the on-disk data structure containing
 a file's size and list of data block numbers.
 Or ``inode'' might refer to an in-memory inode, which contains
 a copy of the on-disk inode as well as extra information needed
 within the kernel.
-.PP
+
 The on-disk inodes
 are packed into a contiguous area
 of disk called the inode blocks.
@@ -619,118 +626,118 @@ Every inode is the same size, so it is easy, given a
 number n, to find the nth inode on the disk.
 In fact, this number n, called the inode number or i-number,
 is how inodes are identified in the implementation.
-.PP
+
 The on-disk inode is defined by a
-.code-index "struct dinode"
-.line kernel/fs.h:/^struct.dinode/ .
+\lstinline{struct dinode}\index{struct dinode@\lstinline{struct dinode}}
+\lineref{kernel/fs.h:/^struct.dinode/}.
 The 
-.code type
+\lstinline{type}
 field distinguishes between files, directories, and special
 files (devices).
 A type of zero indicates that an on-disk inode is free.
 The
-.code nlink
+\lstinline{nlink}
 field counts the number of directory entries that
 refer to this inode, in order to recognize when the
 on-disk inode and its data blocks should be freed.
 The
-.code size
+\lstinline{size}
 field records the number of bytes of content in the file.
 The
-.code addrs
+\lstinline{addrs}
 array records the block numbers of the disk blocks holding
 the file's content.
-.PP
+
 The kernel keeps the set of active inodes in memory;
-.code-index "struct inode"
-.line kernel/file.h:/^struct.inode/
+\lstinline{struct inode}\index{struct inode@\lstinline{struct inode}}
+\lineref{kernel/file.h:/^struct.inode/}
 is the in-memory copy of a 
-.code struct
-.code dinode
+\lstinline{struct}
+\lstinline{dinode}
 on disk.
 The kernel stores an inode in memory only if there are
 C pointers referring to that inode. The
-.code ref
+\lstinline{ref}
 field counts the number of C pointers referring to the
 in-memory inode, and the kernel discards the inode from
 memory if the reference count drops to zero.
 The
-.code-index iget
+\lstinline{iget}\index{iget@\lstinline{iget}}
 and
-.code-index iput
+\lstinline{iput}\index{iput@\lstinline{iput}}
 functions acquire and release pointers to an inode,
 modifying the reference count.
 Pointers to an inode can come from file descriptors,
 current working directories, and transient kernel code
 such as
-.code exec .
-.PP
+\lstinline{exec}.
+
 There are four lock or lock-like mechanisms in xv6's
 inode code.
-.code icache.lock
+\lstinline{icache.lock}
 protects the invariant that an inode is present in the cache
 at most once, and the invariant that a cached inode's
-.code ref
+\lstinline{ref}
 field counts the number of in-memory pointers to the cached inode.
 Each in-memory inode has a
-.code lock
+\lstinline{lock}
 field containing a
 sleep-lock, which ensures exclusive access to the
 inode's fields (such as file length) as well as to the
 inode's file or directory content blocks.
 An inode's
-.code ref ,
+\lstinline{ref},
 if it is greater than zero, causes the system to maintain
 the inode in the cache, and not re-use the cache entry for
 a different inode.
 Finally, each inode contains a
-.code nlink
+\lstinline{nlink}
 field (on disk and copied in memory if it is cached) that
 counts the number of directory entries that refer to a file;
 xv6 won't free an inode if its link count is greater than zero.
-.PP
+
 A
-.code struct
-.code inode
+\lstinline{struct}
+\lstinline{inode}
 pointer returned by
-.code iget()
+\lstinline{iget()}
 is guaranteed to be valid until the corresponding call to
-.code iput() ;
+\lstinline{iput()};
 the inode won't be deleted, and the memory referred to
 by the pointer won't be re-used for a different inode.
-.code iget()
+\lstinline{iget()}
 provides non-exclusive access to an inode, so that
 there can be many pointers to the same inode.
 Many parts of the file system code depend on this behavior of
-.code iget() ,
+\lstinline{iget()},
 both to hold long-term references to inodes (as open files
 and current directories) and to prevent races while avoiding
 deadlock in code that manipulates multiple inodes (such as
 pathname lookup).
-.PP
+
 The
-.code struct
-.code inode
+\lstinline{struct}
+\lstinline{inode}
 that 
-.code iget
+\lstinline{iget}
 returns may not have any useful content.
 In order to ensure it holds a copy of the on-disk
 inode, code must call
-.code-index ilock .
+\lstinline{ilock}\index{ilock@\lstinline{ilock}}.
 This locks the inode (so that no other process can
-.code ilock
+\lstinline{ilock}
 it) and reads the inode from the disk,
 if it has not already been read.
-.code iunlock
+\lstinline{iunlock}
 releases the lock on the inode.
 Separating acquisition of inode pointers from locking
 helps avoid deadlock in some situations, for example during
 directory lookup.
 Multiple processes can hold a C pointer to an inode
 returned by 
-.code iget ,
+\lstinline{iget},
 but only one process can lock the inode at a time.
-.PP
+
 The inode cache only caches inodes to which kernel code
 or data structures hold C pointers.
 Its main job is really synchronizing access by multiple processes;
@@ -739,869 +746,875 @@ If an inode is used frequently, the buffer cache will probably
 keep it in memory if it isn't kept by the inode cache.
 The inode cache is write-through, which means that code that
 modifies a cached inode must immediately write it to disk with
-.code iupdate .
-.\"
-.\" -------------------------------------------
-.\"
-.section "Code: Inodes"
-.PP
+\lstinline{iupdate}.
+%% 
+%%  -------------------------------------------
+%% 
+\section{Code: Inodes}
+
 To allocate a new inode (for example, when creating a file),
 xv6 calls
-.code-index ialloc
-.line kernel/fs.c:/^ialloc/ .
-.code Ialloc
+\lstinline{ialloc}\index{ialloc@\lstinline{ialloc}}
+\lineref{kernel/fs.c:/^ialloc/}.
+\lstinline{Ialloc}
 is similar to
-.code-index balloc :
+\lstinline{balloc}\index{balloc@\lstinline{balloc}}:
 it loops over the inode structures on the disk, one block at a time,
 looking for one that is marked free.
 When it finds one, it claims it by writing the new 
-.code type
+\lstinline{type}
 to the disk and then returns an entry from the inode cache
 with the tail call to 
-.code-index iget
-.line kernel/fs.c:/return.iget!(dev..inum!)/ .
+\lstinline{iget}\index{iget@\lstinline{iget}}
+\lineref{kernel/fs.c:/return.iget\(dev..inum\)/}.
 The correct operation of
-.code ialloc
+\lstinline{ialloc}
 depends on the fact that only one process at a time
 can be holding a reference to 
-.code bp :
-.code ialloc
+\lstinline{bp}:
+\lstinline{ialloc}
 can be sure that some other process does not
 simultaneously see that the inode is available
 and try to claim it.
-.PP
-.code Iget
-.line kernel/fs.c:/^iget/
+
+\lstinline{Iget}
+\lineref{kernel/fs.c:/^iget/}
 looks through the inode cache for an active entry 
-.code ip->ref "" (
-.code >
-.code 0 )
+\lstinline{ip->ref} "" (
+\lstinline{>}
+\lstinline{0})
 with the desired device and inode number.
 If it finds one, it returns a new reference to that inode
-.lines kernel/fs.c:/^....if.ip->ref.>.0/,/^....}/ .
+\linerefs{kernel/fs.c:/^....if.ip->ref.>.0/,/^....}/}.
 As
-.code-index iget
+\lstinline{iget}\index{iget@\lstinline{iget}}
 scans, it records the position of the first empty slot
-.lines kernel/fs.c:/^....if.empty.==.0/,/empty.=.ip/ ,
+\linerefs{kernel/fs.c:/^....if.empty.==.0/,/empty.=.ip/},
 which it uses if it needs to allocate a cache entry.
-.PP
+
 Code must lock the inode using
-.code-index ilock
+\lstinline{ilock}\index{ilock@\lstinline{ilock}}
 before reading or writing its metadata or content.
-.code Ilock
-.line kernel/fs.c:/^ilock/
+\lstinline{Ilock}
+\lineref{kernel/fs.c:/^ilock/}
 uses a sleep-lock for this purpose.
 Once
-.code-index ilock
+\lstinline{ilock}\index{ilock@\lstinline{ilock}}
 has exclusive access to the inode, it reads the inode
 from disk (more likely, the buffer cache) if needed.
 The function
-.code-index iunlock
-.line kernel/fs.c:/^iunlock/
+\lstinline{iunlock}\index{iunlock@\lstinline{iunlock}}
+\lineref{kernel/fs.c:/^iunlock/}
 releases the sleep-lock,
 which may cause any processes sleeping
 to be woken up.
-.PP
-.code Iput
-.line kernel/fs.c:/^iput/
+
+\lstinline{Iput}
+\lineref{kernel/fs.c:/^iput/}
 releases a C pointer to an inode
 by decrementing the reference count
-.line kernel/fs.c:/^..ip->ref--/ .
+\lineref{kernel/fs.c:/^..ip->ref--/}.
 If this is the last reference, the inode's
 slot in the inode cache is now free and can be re-used
 for a different inode.
-.PP
+
 If 
-.code-index iput
+\lstinline{iput}\index{iput@\lstinline{iput}}
 sees that there are no C pointer references to an inode
 and that the inode has no links to it (occurs in no
 directory), then the inode and its data blocks must
 be freed.
-.code Iput
+\lstinline{Iput}
 calls
-.code-index itrunc
+\lstinline{itrunc}\index{itrunc@\lstinline{itrunc}}
 to truncate the file to zero bytes, freeing the data blocks;
 sets the inode type to 0 (unallocated);
 and writes the inode to disk
-.line kernel/fs.c:/inode.has.no.links.and/ .
-.PP
+\lineref{kernel/fs.c:/inode.has.no.links.and/}.
+
 The locking protocol in 
-.code-index iput
+\lstinline{iput}\index{iput@\lstinline{iput}}
 in the case in which it frees the inode deserves a closer look.
 One danger is that a concurrent thread might be waiting in
-.code ilock
+\lstinline{ilock}
 to use this inode (e.g. to read a file or list a directory),
 and won't be prepared to find the inode is not longer
 allocated. This can't happen because there is no way for
 a system call to get a pointer to a cached inode if it has
 no links to it and 
-.code ip->ref
+\lstinline{ip->ref}
 is one. That one reference is the reference owned by the
 thread calling
-.code iput .
+\lstinline{iput}.
 It's true that 
-.code iput
+\lstinline{iput}
 checks that the reference count is one outside of its
-.code icache.lock
+\lstinline{icache.lock}
 critical section, but at that point the link
 count is known to be zero, so no thread will try
 to acquire a new reference.
 The other main danger is that a concurrent call to
-.code ialloc
+\lstinline{ialloc}
 might choose the same inode that
-.code iput
+\lstinline{iput}
 is freeing.
 This can only happen after the
-.code iupdate
+\lstinline{iupdate}
 writes the disk so that the inode has type zero.
 This race is benign; the allocating thread will politely wait
 to acquire the inode's sleep-lock before reading or writing
 the inode, at which point
-.code iput
+\lstinline{iput}
 is done with it.
-.PP
-.code iput()
+
+\lstinline{iput()}
 can write to the disk.  This means that any system call that uses the file
 system may write the disk, because the system call may be the last one having a
 reference to the file. Even calls like
-.code read()
+\lstinline{read()}
 that appear to be read-only, may end up calling
-.code iput().
+\lstinline{iput().}
 This, in turn, means that even read-only system calls
 must be wrapped in transactions if they use the file system.
-.PP
+
 There is a challenging interaction between
-.code iput()
+\lstinline{iput()}
 and crashes.
-.code iput()
+\lstinline{iput()}
 doesn't truncate a file immediately when the link count for the file
 drops to zero, because some process might still hold a reference to the inode in
 memory: a process might still be reading and writing to the file, because it
 successfully opened it. But, if a crash happens before the last process closes
 the file descriptor for the file, then the file will be marked allocated on disk
 but no directory entry points to it.
-.PP
+
 File systems handle this case in one of two ways. The simple solution is that on
 recovery, after reboot, the file system scans the whole file system for files
 that are marked allocated, but have no directory entry pointing to them.  If any
 such file exists, then it can free those files.
-.PP
+
 The second solution doesn't require scanning the file system.  In this solution,
 the file system records on disk (e.g., in the super block) the inode inumber of
 a file whose link count drops to zero but whose reference count isn't zero.  If
 the file system removes the file when its reference counts reaches 0, then it
 updates the on-disk list by removing that inode from the list. On recovery, the
 file system frees any file in the list.
-.PP
+
 Xv6 implements neither solution, which means that inodes may be marked allocated
 on disk, even though they are not in use anymore.  This means that over time xv6
 runs the risk that it may run out of disk space.
-.\"
-.\"
-.\"
-.section "Code: Inode content"
-.figure inode
-.PP
+%% 
+%% 
+%% 
+\section{Code: Inode content}
+
+\begin{figure}[t]
+\center
+\includegraphics[scale=0.5]{fig/inode.eps}
+\caption{The representation of a file on disk.}
+\label{fig:inode}
+\end{figure}
+
 The on-disk inode structure,
-.code-index "struct dinode" ,
+\lstinline{struct dinode}\index{struct dinode@\lstinline{struct dinode}},
 contains a size and an array of block numbers (see 
-.figref inode ).
+Figure~\ref{fig:inode}).
 The inode data is found in the blocks listed
 in the
-.code dinode 's
-.code addrs
+\lstinline{dinode} 's
+\lstinline{addrs}
 array.
 The first
-.code-index NDIRECT
+\lstinline{NDIRECT}\index{NDIRECT@\lstinline{NDIRECT}}
 blocks of data are listed in the first
-.code NDIRECT
+\lstinline{NDIRECT}
 entries in the array; these blocks are called 
-.italic-index "direct blocks" .
+\textit{direct blocks}\index{direct blocks}.
 The next 
-.code-index NINDIRECT
+\lstinline{NINDIRECT}\index{NINDIRECT@\lstinline{NINDIRECT}}
 blocks of data are listed not in the inode
 but in a data block called the
-.italic-index "indirect block" .
+\textit{indirect block}\index{indirect block}.
 The last entry in the
-.code addrs
+\lstinline{addrs}
 array gives the address of the indirect block.
 Thus the first 6 kB (
-.code NDIRECT 
-.code x
-.code-index BSIZE )
+\lstinline{NDIRECT} 
+\lstinline{x}
+\lstinline{BSIZE}\index{BSIZE@\lstinline{BSIZE}})
 bytes of a file can be loaded from blocks listed in the inode,
 while the next
-.code 64 kB (
-.code NINDIRECT
-.code x
-.code BSIZE )
+\lstinline{64} kB (
+\lstinline{NINDIRECT}
+\lstinline{x}
+\lstinline{BSIZE})
 bytes can only be loaded after consulting the indirect block.
 This is a good on-disk representation but a 
 complex one for clients.
 The function
-.code-index bmap
+\lstinline{bmap}\index{bmap@\lstinline{bmap}}
 manages the representation so that higher-level routines such as
-.code-index readi
+\lstinline{readi}\index{readi@\lstinline{readi}}
 and
-.code-index writei ,
+\lstinline{writei}\index{writei@\lstinline{writei}},
 which we will see shortly.
-.code Bmap
+\lstinline{Bmap}
 returns the disk block number of the
-.code bn 'th
+\lstinline{bn} 'th
 data block for the inode
-.code ip .
+\lstinline{ip}.
 If
-.code ip
+\lstinline{ip}
 does not have such a block yet,
-.code bmap
+\lstinline{bmap}
 allocates one.
-.PP
+
 The function
-.code-index bmap
-.line kernel/fs.c:/^bmap/
+\lstinline{bmap}\index{bmap@\lstinline{bmap}}
+\lineref{kernel/fs.c:/^bmap/}
 begins by picking off the easy case: the first 
-.code-index NDIRECT
+\lstinline{NDIRECT}\index{NDIRECT@\lstinline{NDIRECT}}
 blocks are listed in the inode itself
-.lines kernel/fs.c:/^..if.bn.<.NDIRECT/,/^..}/ .
+\linerefs{kernel/fs.c:/^..if.bn.<.NDIRECT/,/^..}/}.
 The next 
-.code-index NINDIRECT
+\lstinline{NINDIRECT}\index{NINDIRECT@\lstinline{NINDIRECT}}
 blocks are listed in the indirect block at
-.code ip->addrs[NDIRECT] .
-.code Bmap
+\lstinline{ip->addrs[NDIRECT]}.
+\lstinline{Bmap}
 reads the indirect block
-.line kernel/fs.c:/bp.=.bread.ip->dev..addr/
+\lineref{kernel/fs.c:/bp.=.bread.ip->dev..addr/}
 and then reads a block number from the right 
 position within the block
-.line kernel/fs.c:/a.=..uint!*.bp->data/ .
+\lineref{kernel/fs.c:/a.=..uint\*.bp->data/}.
 If the block number exceeds
-.code NDIRECT+NINDIRECT ,
-.code bmap 
+\lstinline{NDIRECT}+NINDIRECT,
+\lstinline{bmap} 
 panics; 
-.code writei
+\lstinline{writei}
 contains the check that prevents this from happening
-.line kernel/fs.c:/off...n...MAXFILE.BSIZE/ .
-.PP
-.code Bmap
+\lineref{kernel/fs.c:/off...n...MAXFILE.BSIZE/}.
+
+\lstinline{Bmap}
 allocates blocks as needed.
 An
-.code ip->addrs[]
+\lstinline{ip->addrs[]}
 or indirect
 entry of zero indicates that no block is allocated.
 As
-.code bmap
+\lstinline{bmap}
 encounters zeros, it replaces them with the numbers of fresh blocks,
 allocated on demand
-.lines kernel/fs.c:/^....if..addr.=.*==.0/,/./
-.lines kernel/fs.c:/^....if..addr.*NDIRECT.*==.0/,/./ .
-.PP
-.code-index itrunc
+\linerefs{kernel/fs.c:/^....if..addr.=.*==.0/,/./}
+\linerefs{kernel/fs.c:/^....if..addr.*NDIRECT.*==.0/,/./}.
+
+\lstinline{itrunc}\index{itrunc@\lstinline{itrunc}}
 frees a file's blocks, resetting the inode's size to zero.
-.code Itrunc
-.line kernel/fs.c:/^itrunc/
+\lstinline{Itrunc}
+\lineref{kernel/fs.c:/^itrunc/}
 starts by freeing the direct blocks
-.lines kernel/fs.c:/^..for.i.=.0.*NDIRECT/,/^..}/ ,
+\linerefs{kernel/fs.c:/^..for.i.=.0.*NDIRECT/,/^..}/},
 then the ones listed in the indirect block
-.lines kernel/fs.c:/^....for.j.=.0.*NINDIRECT/,/^....}/ ,
+\linerefs{kernel/fs.c:/^....for.j.=.0.*NINDIRECT/,/^....}/},
 and finally the indirect block itself
-.lines kernel/fs.c:/^....bfree.*NDIRECT/,/./ .
-.PP
-.code Bmap
+\linerefs{kernel/fs.c:/^....bfree.*NDIRECT/,/./}.
+
+\lstinline{Bmap}
 makes it easy for
-.code-index readi
+\lstinline{readi}\index{readi@\lstinline{readi}}
 and
-.code-index writei 
+\lstinline{writei}\index{writei@\lstinline{writei}} 
 to get at an inode's data.
-.code Readi
-.line kernel/fs.c:/^readi/
+\lstinline{Readi}
+\lineref{kernel/fs.c:/^readi/}
 starts by
 making sure that the offset and count are not 
 beyond the end of the file.
 Reads that start beyond the end of the file return an error
-.lines kernel/fs.c:/^..if.off.>.ip->size/,/./
+\linerefs{kernel/fs.c:/^..if.off.>.ip->size/,/./}
 while reads that start at or cross the end of the file 
 return fewer bytes than requested
-.lines kernel/fs.c:/^..if.off.!+.n.>.ip->size/,/./ .
+\linerefs{kernel/fs.c:/^..if.off.\+.n.>.ip->size/,/./}.
 The main loop processes each block of the file,
 copying data from the buffer into 
-.code dst
-.lines kernel/fs.c:/^..for.tot=0/,/^..}/ .
-.\" NOTE: It is very hard to write line references
-.\" for writei because so many of the lines are identical
-.\" to those in readi.  Luckily, identical lines probably
-.\" don't need to be commented upon.
-.code-index writei
-.line kernel/fs.c:/^writei/
+\lstinline{dst}
+\linerefs{kernel/fs.c:/^..for.tot=0/,/^..}/}.
+%%  NOTE: It is very hard to write line references
+%%  for writei because so many of the lines are identical
+%%  to those in readi.  Luckily, identical lines probably
+%%  don't need to be commented upon.
+\lstinline{writei}\index{writei@\lstinline{writei}}
+\lineref{kernel/fs.c:/^writei/}
 is identical to
-.code-index readi ,
+\lstinline{readi}\index{readi@\lstinline{readi}},
 with three exceptions:
 writes that start at or cross the end of the file
 grow the file, up to the maximum file size
-.lines kernel/fs.c:/^..if.off.!+.n.>.MAXFILE/,/./ ;
+\linerefs{kernel/fs.c:/^..if.off.\+.n.>.MAXFILE/,/./};
 the loop copies data into the buffers instead of out
-.line kernel/fs.c:/memmove.bp->data/ ;
+\lineref{kernel/fs.c:/memmove.bp->data/};
 and if the write has extended the file,
-.code-index writei
+\lstinline{writei}\index{writei@\lstinline{writei}}
 must update its size
-.line kernel/fs.c:/^..if.n.>.0.*off.>.ip->size/,/^..}/ .
-.PP
+\lineref{kernel/fs.c:/^..if.n.>.0.*off.>.ip->size/,/^..}/}.
+
 Both
-.code-index readi
+\lstinline{readi}\index{readi@\lstinline{readi}}
 and
-.code-index writei
+\lstinline{writei}\index{writei@\lstinline{writei}}
 begin by checking for
-.code ip->type
-.code ==
-.code-index T_DEV .
+\lstinline{ip->type}
+\lstinline{==}
+\lstinline{T_DEV}\index{T_DEV@\lstinline{T_DEV}}.
 This case handles special devices whose data does not
 live in the file system; we will return to this case in the file descriptor layer.
-.PP
+
 The function
-.code-index stati
-.line kernel/fs.c:/^stati!(/
+\lstinline{stati}\index{stati@\lstinline{stati}}
+\lineref{kernel/fs.c:/^stati\(/}
 copies inode metadata into the 
-.code stat
+\lstinline{stat}
 structure, which is exposed to user programs
 via the
-.code-index stat
+\lstinline{stat}\index{stat@\lstinline{stat}}
 system call.
-.\"
-.\"
-.\"
-.section "Code: directory layer"
-.PP
+%% 
+%% 
+%% 
+\section{Code: directory layer}
+
 A directory is implemented internally much like a file.
 Its inode has type
-.code-index T_DIR
+\lstinline{T_DIR}\index{T_DIR@\lstinline{T_DIR}}
 and its data is a sequence of directory entries.
 Each entry is a
-.code-index "struct dirent"
-.line kernel/fs.h:/^struct.dirent/ ,
+\lstinline{struct dirent}\index{struct dirent@\lstinline{struct dirent}}
+\lineref{kernel/fs.h:/^struct.dirent/},
 which contains a name and an inode number.
 The name is at most
-.code-index DIRSIZ
+\lstinline{DIRSIZ}\index{DIRSIZ@\lstinline{DIRSIZ}}
 (14) characters;
 if shorter, it is terminated by a NUL (0) byte.
 Directory entries with inode number zero are free.
-.PP
+
 The function
-.code-index dirlookup
-.line kernel/fs.c:/^dirlookup/
+\lstinline{dirlookup}\index{dirlookup@\lstinline{dirlookup}}
+\lineref{kernel/fs.c:/^dirlookup/}
 searches a directory for an entry with the given name.
 If it finds one, it returns a pointer to the corresponding inode, unlocked,
 and sets 
-.code *poff
+\lstinline{*poff}
 to the byte offset of the entry within the directory,
 in case the caller wishes to edit it.
 If
-.code dirlookup
+\lstinline{dirlookup}
 finds an entry with the right name,
 it updates
-.code *poff ,
+\lstinline{*poff},
 releases the block, and returns an unlocked inode
 obtained via
-.code-index iget .
-.code Dirlookup
+\lstinline{iget}\index{iget@\lstinline{iget}}.
+\lstinline{Dirlookup}
 is the reason that 
-.code iget
+\lstinline{iget}
 returns unlocked inodes.
 The caller has locked
-.code dp ,
+\lstinline{dp},
 so if the lookup was for
-.code-index "." ,
+\lstinline{.}\index{.@\lstinline{.}},
 an alias for the current directory,
 attempting to lock the inode before
 returning would try to re-lock
-.code dp
+\lstinline{dp}
 and deadlock.
 (There are more complicated deadlock scenarios involving
 multiple processes and
-.code-index ".." ,
+\lstinline{..}\index{..@\lstinline{..}},
 an alias for the parent directory;
-.code "."
+\lstinline{.}
 is not the only problem.)
 The caller can unlock
-.code dp
+\lstinline{dp}
 and then lock
-.code ip ,
+\lstinline{ip},
 ensuring that it only holds one lock at a time.
-.PP
+
 The function
-.code-index dirlink
-.line kernel/fs.c:/^dirlink/
+\lstinline{dirlink}\index{dirlink@\lstinline{dirlink}}
+\lineref{kernel/fs.c:/^dirlink/}
 writes a new directory entry with the given name and inode number into the
 directory
-.code dp .
+\lstinline{dp}.
 If the name already exists,
-.code dirlink
+\lstinline{dirlink}
 returns an error
-.lines kernel/fs.c:/Check.that.name.is.not.present/,/^..}/ .
+\linerefs{kernel/fs.c:/Check.that.name.is.not.present/,/^..}/}.
 The main loop reads directory entries looking for an unallocated entry.
 When it finds one, it stops the loop early
-.lines kernel/fs.c:/^....if.de.inum.==.0/,/./ ,
+\linerefs{kernel/fs.c:/^....if.de.inum.==.0/,/./},
 with 
-.code off
+\lstinline{off}
 set to the offset of the available entry.
 Otherwise, the loop ends with
-.code off
+\lstinline{off}
 set to
-.code dp->size .
+\lstinline{dp->size}.
 Either way, 
-.code dirlink
+\lstinline{dirlink}
 then adds a new entry to the directory
 by writing at offset
-.code off
-.lines kernel/fs.c:/^..strncpy/,/panic/ .
-.\"
-.\"
-.\"
-.section "Code: Path names"
-.PP
+\lstinline{off}
+\linerefs{kernel/fs.c:/^..strncpy/,/panic/}.
+%% 
+%% 
+%% 
+\section{Code: Path names}
+
 Path name lookup involves a succession of calls to
-.code-index dirlookup ,
+\lstinline{dirlookup}\index{dirlookup@\lstinline{dirlookup}},
 one for each path component.
-.code Namei
-.line kernel/fs.c:/^namei/
+\lstinline{Namei}
+\lineref{kernel/fs.c:/^namei/}
 evaluates 
-.code path
+\lstinline{path}
 and returns the corresponding 
-.code inode .
+\lstinline{inode}.
 The function
-.code-index nameiparent
+\lstinline{nameiparent}\index{nameiparent@\lstinline{nameiparent}}
 is a variant: it stops before the last element, returning the 
 inode of the parent directory and copying the final element into
-.code name .
+\lstinline{name}.
 Both call the generalized function
-.code-index namex
+\lstinline{namex}\index{namex@\lstinline{namex}}
 to do the real work.
-.PP
-.code Namex
-.line kernel/fs.c:/^namex/
+
+\lstinline{Namex}
+\lineref{kernel/fs.c:/^namex/}
 starts by deciding where the path evaluation begins.
 If the path begins with a slash, evaluation begins at the root;
 otherwise, the current directory
-.lines kernel/fs.c:/..if.!*path.==....!)/,/idup/ .
+\linerefs{kernel/fs.c:/..if.\*path.==....\)/,/idup/}.
 Then it uses
-.code-index skipelem
+\lstinline{skipelem}\index{skipelem@\lstinline{skipelem}}
 to consider each element of the path in turn
-.line kernel/fs.c:/while.*skipelem/ .
+\lineref{kernel/fs.c:/while.*skipelem/}.
 Each iteration of the loop must look up 
-.code name
+\lstinline{name}
 in the current inode
-.code ip .
+\lstinline{ip}.
 The iteration begins by locking
-.code ip
+\lstinline{ip}
 and checking that it is a directory.
 If not, the lookup fails
-.lines kernel/fs.c:/^....ilock.ip/,/^....}/ .
+\linerefs{kernel/fs.c:/^....ilock.ip/,/^....}/}.
 (Locking
-.code ip
+\lstinline{ip}
 is necessary not because 
-.code ip->type
+\lstinline{ip->type}
 can change underfoot—it can't—but because
 until 
-.code-index ilock
+\lstinline{ilock}\index{ilock@\lstinline{ilock}}
 runs,
-.code ip->type
+\lstinline{ip->type}
 is not guaranteed to have been loaded from disk.)
 If the call is 
-.code-index nameiparent
+\lstinline{nameiparent}\index{nameiparent@\lstinline{nameiparent}}
 and this is the last path element, the loop stops early,
 as per the definition of
-.code nameiparent ;
+\lstinline{nameiparent};
 the final path element has already been copied
 into
-.code name ,
+\lstinline{name},
 so
-.code-index namex
+\lstinline{namex}\index{namex@\lstinline{namex}}
 need only
 return the unlocked
-.code ip
-.lines kernel/fs.c:/^....if.nameiparent/,/^....}/ .
+\lstinline{ip}
+\linerefs{kernel/fs.c:/^....if.nameiparent/,/^....}/}.
 Finally, the loop looks for the path element using
-.code-index dirlookup
+\lstinline{dirlookup}\index{dirlookup@\lstinline{dirlookup}}
 and prepares for the next iteration by setting
-.code "ip = next"
-.lines kernel/fs.c:/^....if..next.*dirlookup/,/^....ip.=.next/ .
+\lstinline{ip = next}
+\linerefs{kernel/fs.c:/^....if..next.*dirlookup/,/^....ip.=.next/}.
 When the loop runs out of path elements, it returns
-.code ip .
-.PP
+\lstinline{ip}.
+
 The procedure
-.code namex
+\lstinline{namex}
 may take a long time to complete: it could involve several disk operations to
 read inodes and directory blocks for the directories traversed in the pathname
 (if they are not in the buffer cache).  Xv6 is carefully designed so that if an
 invocation of
-.code namex
+\lstinline{namex}
 by one kernel thread is blocked on a disk I/O, another kernel thread looking up
 a different pathname can proceed concurrently.
-.code namex
+\lstinline{namex}
 locks each directory in the path separately so that lookups in different
 directories can proceed in parallel.
-.PP
+
 This concurrency introduces some challenges. For example, while one kernel
 thread is looking up a pathname another kernel thread may be changing the
 directory tree by unlinking a directory.  A potential risk is that a lookup
 may be searching a directory that has been deleted by another kernel thread and
 its blocks have been re-used for another directory or file.
-.PP
+
 Xv6 avoids such races.  For example, when executing
-.code dirlookup
+\lstinline{dirlookup}
 in
-.code namex ,
+\lstinline{namex},
 the lookup thread holds the lock on the directory and
-.code dirlookup
+\lstinline{dirlookup}
 returns an inode that was obtained using
-.code iget .
-.code iget
+\lstinline{iget}.
+\lstinline{iget}
 increases the reference count of the inode.  Only after receiving the
 inode from
-.code dirlookup
+\lstinline{dirlookup}
 does
-.code namex
+\lstinline{namex}
 release the lock on the directory.  Now another thread may unlink the inode from
 the directory but xv6 will not delete the inode yet, because the reference count
 of the inode is still larger than zero.
-.PP
+
 Another risk is deadlock.  For example,
-.code next
+\lstinline{next}
 points to the same inode as
-.code ip
+\lstinline{ip}
 when looking up ".".
 Locking
-.code next
+\lstinline{next}
 before releasing the lock on
-.code ip
+\lstinline{ip}
 would result in a deadlock.
 To avoid this deadlock,
-.code namex
+\lstinline{namex}
 unlocks the directory before obtaining a lock on
-.code next .
+\lstinline{next}.
 Here again we see why the separation between
-.code iget
+\lstinline{iget}
 and
-.code ilock
+\lstinline{ilock}
 is important.
-.\"
-.\"
-.\"
-.section "File descriptor layer"
-.PP
+%% 
+%% 
+%% 
+\section{File descriptor layer}
+
 A cool aspect of the Unix interface is that most resources in Unix are
 represented as files, including devices such as the console, pipes, and of
 course, real files.  The file descriptor layer is the layer that achieves this
 uniformity.
-.PP
+
 Xv6 gives each process its own table of open files, or
 file descriptors, as we saw in
-Chapter \*[CH:UNIX].
+Chapter~\ref{CH:UNIX}.
 Each open file is represented by a
-.code-index "struct file"
-.line kernel/file.h:/^struct.file/ ,
+\lstinline{struct file}\index{struct file@\lstinline{struct file}}
+\lineref{kernel/file.h:/^struct.file/},
 which is a wrapper around either an inode or a pipe,
 plus an i/o offset.
 Each call to 
-.code-index open
+\lstinline{open}\index{open@\lstinline{open}}
 creates a new open file (a new
-.code struct
-.code file ):
+\lstinline{struct}
+\lstinline{file}):
 if multiple processes open the same file independently,
 the different instances will have different i/o offsets.
 On the other hand, a single open file
 (the same
-.code struct
-.code file )
+\lstinline{struct}
+\lstinline{file})
 can appear
 multiple times in one process's file table
 and also in the file tables of multiple processes.
 This would happen if one process used
-.code open
+\lstinline{open}
 to open the file and then created aliases using
-.code-index dup
+\lstinline{dup}\index{dup@\lstinline{dup}}
 or shared it with a child using
-.code-index fork .
+\lstinline{fork}\index{fork@\lstinline{fork}}.
 A reference count tracks the number of references to
 a particular open file.
 A file can be open for reading or writing or both.
 The
-.code readable
+\lstinline{readable}
 and
-.code writable
+\lstinline{writable}
 fields track this.
-.PP
+
 All the open files in the system are kept in a global file table,
 the 
-.code-index ftable .
+\lstinline{ftable}\index{ftable@\lstinline{ftable}}.
 The file table
 has a function to allocate a file
-.code-index filealloc ), (
+(\lstinline{filealloc}\index{filealloc@\lstinline{filealloc}}),
 create a duplicate reference
-.code-index filedup ), (
+(\lstinline{filedup}\index{filedup@\lstinline{filedup}}),
 release a reference
-.code-index fileclose ), (
+(\lstinline{fileclose}\index{fileclose@\lstinline{fileclose}}),
 and read and write data
-.code-index fileread "" (
+\lstinline{fileread}\index{fileread@\lstinline{fileread}} "" (
 and 
-.code-index filewrite ).
-.PP
+\lstinline{filewrite}\index{filewrite@\lstinline{filewrite}}).
+
 The first three follow the now-familiar form.
-.code Filealloc
-.line kernel/file.c:/^filealloc/
+\lstinline{Filealloc}
+\lineref{kernel/file.c:/^filealloc/}
 scans the file table for an unreferenced file
-.code f->ref "" (
-.code ==
-.code 0 )
+\lstinline{f->ref} "" (
+\lstinline{==}
+\lstinline{0})
 and returns a new reference;
-.code-index filedup
-.line kernel/file.c:/^filedup/
+\lstinline{filedup}\index{filedup@\lstinline{filedup}}
+\lineref{kernel/file.c:/^filedup/}
 increments the reference count;
 and
-.code-index fileclose
-.line kernel/file.c:/^fileclose/
+\lstinline{fileclose}\index{fileclose@\lstinline{fileclose}}
+\lineref{kernel/file.c:/^fileclose/}
 decrements it.
 When a file's reference count reaches zero,
-.code fileclose
+\lstinline{fileclose}
 releases the underlying pipe or inode,
 according to the type.
-.PP
+
 The functions
-.code-index filestat ,
-.code-index fileread ,
+\lstinline{filestat}\index{filestat@\lstinline{filestat}},
+\lstinline{fileread}\index{fileread@\lstinline{fileread}},
 and
-.code-index filewrite
+\lstinline{filewrite}\index{filewrite@\lstinline{filewrite}}
 implement the 
-.code-index stat ,
-.code-index read ,
+\lstinline{stat}\index{stat@\lstinline{stat}},
+\lstinline{read}\index{read@\lstinline{read}},
 and
-.code-index write
+\lstinline{write}\index{write@\lstinline{write}}
 operations on files.
-.code Filestat
-.line kernel/file.c:/^filestat/
+\lstinline{Filestat}
+\lineref{kernel/file.c:/^filestat/}
 is only allowed on inodes and calls
-.code-index stati .
-.code Fileread
+\lstinline{stati}\index{stati@\lstinline{stati}}.
+\lstinline{Fileread}
 and
-.code filewrite
+\lstinline{filewrite}
 check that the operation is allowed by
 the open mode and then
 pass the call through to either
 the pipe or inode implementation.
 If the file represents an inode,
-.code fileread
+\lstinline{fileread}
 and
-.code filewrite
+\lstinline{filewrite}
 use the i/o offset as the offset for the operation
 and then advance it
-.lines kernel/file.c:/readi/,/./
-.lines kernel/file.c:/writei/,/./ .
+\linerefs{kernel/file.c:/readi/,/./}
+\linerefs{kernel/file.c:/writei/,/./}.
 Pipes have no concept of offset.
 Recall that the inode functions require the caller
 to handle locking
-.lines kernel/file.c:/stati/-1,/iunlock/
-.lines kernel/file.c:/readi/-1,/iunlock/
-.lines kernel/file.c:/writei!(f/-1,/iunlock/ .
+\linerefs{kernel/file.c:/stati/-1,/iunlock/}
+\linerefs{kernel/file.c:/readi/-1,/iunlock/}
+\linerefs{kernel/file.c:/writei\(f/-1,/iunlock/}.
 The inode locking has the convenient side effect that the
 read and write offsets are updated atomically, so that
 multiple writing to the same file simultaneously
 cannot overwrite each other's data, though their writes may end up interlaced.
-.\"
-.\"
-.\"
-.section "Code: System calls"
-.PP
+%% 
+%% 
+%% 
+\section{Code: System calls}
+
 With the functions that the lower layers provide the implementation of most
 system calls is trivial
 (see
-.file kernel/sysfile.c  ).
+\fileref{kernel/sysfile.c}).
 There are a few calls that
 deserve a closer look.
-.PP
+
 The functions
-.code-index sys_link
+\lstinline{sys_link}\index{sys_link@\lstinline{sys_link}}
 and
-.code-index sys_unlink
+\lstinline{sys_unlink}\index{sys_unlink@\lstinline{sys_unlink}}
 edit directories, creating or removing references to inodes.
 They are another good example of the power of using 
 transactions. 
-.code Sys_link
-.line kernel/sysfile.c:/^sys_link/
+\lstinline{Sys_link}
+\lineref{kernel/sysfile.c:/^sys_link/}
 begins by fetching its arguments, two strings
-.code old
+\lstinline{old}
 and
-.code new
-.line kernel/sysfile.c:/argstr.*old.*new/ .
+\lstinline{new}
+\lineref{kernel/sysfile.c:/argstr.*old.*new/}.
 Assuming 
-.code old
+\lstinline{old}
 exists and is not  a directory
-.lines kernel/sysfile.c:/namei.old/,/^..}/ ,
-.code sys_link
+\linerefs{kernel/sysfile.c:/namei.old/,/^..}/},
+\lstinline{sys_link}
 increments its 
-.code ip->nlink
+\lstinline{ip->nlink}
 count.
 Then
-.code sys_link
+\lstinline{sys_link}
 calls
-.code-index nameiparent
+\lstinline{nameiparent}\index{nameiparent@\lstinline{nameiparent}}
 to find the parent directory and final path element of
-.code new 
-.line kernel/sysfile.c:/nameiparent.new/
+\lstinline{new} 
+\lineref{kernel/sysfile.c:/nameiparent.new/}
 and creates a new directory entry pointing at
-.code old 's
+\lstinline{old} 's
 inode
-.line kernel/sysfile.c:/!|!| dirlink/ .
+\lineref{kernel/sysfile.c:/\|\| dirlink/}.
 The new parent directory must exist and
 be on the same device as the existing inode:
 inode numbers only have a unique meaning on a single disk.
 If an error like this occurs, 
-.code-index sys_link
+\lstinline{sys_link}\index{sys_link@\lstinline{sys_link}}
 must go back and decrement
-.code ip->nlink .
-.PP
+\lstinline{ip->nlink}.
+
 Transactions simplify the implementation because it requires updating multiple
 disk blocks, but we don't have to worry about the order in which we do
 them. They either will all succeed or none.
 For example, without transactions, updating
-.code ip->nlink
+\lstinline{ip->nlink}
 before creating a link, would put the file system temporarily in an unsafe
 state, and a crash in between could result in havoc.
 With transactions we don't have to worry about this.
-.PP
-.code Sys_link
+
+\lstinline{Sys_link}
 creates a new name for an existing inode.
 The function
-.code-index create
-.line kernel/sysfile.c:/^create/
+\lstinline{create}\index{create@\lstinline{create}}
+\lineref{kernel/sysfile.c:/^create/}
 creates a new name for a new inode.
 It is a generalization of the three file creation
 system calls:
-.code-index open
+\lstinline{open}\index{open@\lstinline{open}}
 with the
-.code-index O_CREATE
+\lstinline{O_CREATE}\index{O_CREATE@\lstinline{O_CREATE}}
 flag makes a new ordinary file,
-.code-index mkdir
+\lstinline{mkdir}\index{mkdir@\lstinline{mkdir}}
 makes a new directory,
 and
-.code-index mkdev
+\lstinline{mkdev}\index{mkdev@\lstinline{mkdev}}
 makes a new device file.
 Like
-.code-index sys_link ,
-.code-index create
+\lstinline{sys_link}\index{sys_link@\lstinline{sys_link}},
+\lstinline{create}\index{create@\lstinline{create}}
 starts by caling
-.code-index nameiparent
+\lstinline{nameiparent}\index{nameiparent@\lstinline{nameiparent}}
 to get the inode of the parent directory.
 It then calls
-.code-index dirlookup
+\lstinline{dirlookup}\index{dirlookup@\lstinline{dirlookup}}
 to check whether the name already exists
-.line kernel/sysfile.c:/dirlookup.*[^=]=.0/ .
+\lineref{kernel/sysfile.c:/dirlookup.*[^=]=.0/}.
 If the name does exist, 
-.code create 's
+\lstinline{create} 's
 behavior depends on which system call it is being used for:
-.code open
+\lstinline{open}
 has different semantics from 
-.code-index mkdir
+\lstinline{mkdir}\index{mkdir@\lstinline{mkdir}}
 and
-.code-index mkdev .
+\lstinline{mkdev}\index{mkdev@\lstinline{mkdev}}.
 If
-.code create
+\lstinline{create}
 is being used on behalf of
-.code open
-.code type "" (
-.code ==
-.code-index T_FILE )
+\lstinline{open}
+\lstinline{type} "" (
+\lstinline{==}
+\lstinline{T_FILE}\index{T_FILE@\lstinline{T_FILE}})
 and the name that exists is itself
 a regular file,
 then 
-.code open
+\lstinline{open}
 treats that as a success,
 so
-.code create
+\lstinline{create}
 does too
-.line kernel/sysfile.c:/^......return.ip/ .
+\lineref{kernel/sysfile.c:/^......return.ip/}.
 Otherwise, it is an error
-.lines kernel/sysfile.c:/^......return.ip/+1,/return.0/ .
+\linerefs{kernel/sysfile.c:/^......return.ip/+1,/return.0/}.
 If the name does not already exist,
-.code create
+\lstinline{create}
 now allocates a new inode with
-.code-index ialloc
-.line kernel/sysfile.c:/ialloc/ .
+\lstinline{ialloc}\index{ialloc@\lstinline{ialloc}}
+\lineref{kernel/sysfile.c:/ialloc/}.
 If the new inode is a directory, 
-.code create
+\lstinline{create}
 initializes it with
-.code-index .
+\lstinline{.}\index{.@\lstinline{.}}
 and
-.code-index ..
+\lstinline{..}\index{..@\lstinline{..}}
 entries.
 Finally, now that the data is initialized properly,
-.code-index create
+\lstinline{create}\index{create@\lstinline{create}}
 can link it into the parent directory
-.line kernel/sysfile.c:/if.dirlink/ .
-.code Create ,
+\lineref{kernel/sysfile.c:/if.dirlink/}.
+\lstinline{Create},
 like
-.code-index sys_link ,
+\lstinline{sys_link}\index{sys_link@\lstinline{sys_link}},
 holds two inode locks simultaneously:
-.code ip
+\lstinline{ip}
 and
-.code dp .
+\lstinline{dp}.
 There is no possibility of deadlock because
 the inode
-.code ip
+\lstinline{ip}
 is freshly allocated: no other process in the system
 will hold 
-.code ip 's
+\lstinline{ip} 's
 lock and then try to lock
-.code dp .
-.PP
+\lstinline{dp}.
+
 Using
-.code create ,
+\lstinline{create},
 it is easy to implement
-.code-index sys_open ,
-.code-index sys_mkdir ,
+\lstinline{sys_open}\index{sys_open@\lstinline{sys_open}},
+\lstinline{sys_mkdir}\index{sys_mkdir@\lstinline{sys_mkdir}},
 and
-.code-index sys_mknod .
-.code Sys_open
-.line kernel/sysfile.c:/^sys_open/
+\lstinline{sys_mknod}\index{sys_mknod@\lstinline{sys_mknod}}.
+\lstinline{Sys_open}
+\lineref{kernel/sysfile.c:/^sys_open/}
 is the most complex, because creating a new file is only
 a small part of what it can do.
 If
-.code-index open
+\lstinline{open}\index{open@\lstinline{open}}
 is passed the
-.code-index O\_CREATE
+\lstinline{O}\index{O@\lstinline{O}}\_CREATE
 flag, it calls
-.code create
-.line kernel/sysfile.c:/create.*T_FILE/ .
+\lstinline{create}
+\lineref{kernel/sysfile.c:/create.*T_FILE/}.
 Otherwise, it calls
-.code-index namei
-.line kernel/sysfile.c:/if..ip.=.namei.path/ .
-.code Create
+\lstinline{namei}\index{namei@\lstinline{namei}}
+\lineref{kernel/sysfile.c:/if..ip.=.namei.path/}.
+\lstinline{Create}
 returns a locked inode, but 
-.code namei
+\lstinline{namei}
 does not, so
-.code-index sys_open
+\lstinline{sys_open}\index{sys_open@\lstinline{sys_open}}
 must lock the inode itself.
 This provides a convenient place to check that directories
 are only opened for reading, not writing.
 Assuming the inode was obtained one way or the other,
-.code sys_open
+\lstinline{sys_open}
 allocates a file and a file descriptor
-.line kernel/sysfile.c:/filealloc.*fdalloc/
+\lineref{kernel/sysfile.c:/filealloc.*fdalloc/}
 and then fills in the file
-.lines kernel/sysfile.c:/type.=.FD_INODE/,/writable/ .
+\linerefs{kernel/sysfile.c:/type.=.FD_INODE/,/writable/}.
 Note that no other process can access the partially initialized file since it is only
 in the current process's table.
-.PP
-Chapter \*[CH:SCHED] examined the implementation of pipes
+
+Chapter~\ref{CH:SCHED} examined the implementation of pipes
 before we even had a file system.
 The function
-.code-index sys_pipe
+\lstinline{sys_pipe}\index{sys_pipe@\lstinline{sys_pipe}}
 connects that implementation to the file system
 by providing a way to create a pipe pair.
 Its argument is a pointer to space for two integers,
 where it will record the two new file descriptors.
 Then it allocates the pipe and installs the file descriptors.
-.\"
-.\" -------------------------------------------
-.\"
-.section "Real world"
-.PP
+%% 
+%%  -------------------------------------------
+%% 
+\section{Real world}
+
 The buffer cache in a real-world operating system is significantly
 more complex than xv6's, but it serves the same two purposes:
 caching and synchronizing access to the disk.
@@ -1613,7 +1626,7 @@ A more efficient LRU cache would eliminate the linked list,
 instead using a hash table for lookups and a heap for LRU evictions.
 Modern buffer caches are typically integrated with the
 virtual memory system to support memory-mapped files.
-.PP
+
 Xv6's logging system is inefficient.
 A commit cannot occur concurrently with file system system calls.
 The system logs entire blocks, even if
@@ -1621,10 +1634,10 @@ only a few bytes in a block are changed. It performs synchronous
 log writes, a block at a time, each of which is likely to require an
 entire disk rotation time. Real logging systems address all of these
 problems.
-.PP
+
 Logging is not the only way to provide crash recovery. Early file systems
 used a scavenger during reboot (for example, the UNIX
-.code-index fsck
+\lstinline{fsck}\index{fsck@\lstinline{fsck}}
 program) to examine every file and directory and the block and inode
 free lists, looking for and resolving inconsistencies. Scavenging can take
 hours for large file systems, and there are situations where it is not
@@ -1632,7 +1645,7 @@ possible to resolve inconsistencies in a way that causes the original
 system calls to be atomic. Recovery
 from a log is much faster and causes system calls to be atomic
 in the face of crashes.
-.PP
+
 Xv6 uses the same basic on-disk layout of inodes and directories
 as early UNIX;
 this scheme has been remarkably persistent over the years.
@@ -1644,7 +1657,7 @@ but is expensive for directories holding many files.
 Microsoft Windows's NTFS, Mac OS X's HFS, and Solaris's ZFS, just to name a few, implement
 a directory as an on-disk balanced tree of blocks.
 This is complicated but guarantees logarithmic-time directory lookups.
-.PP
+
 Xv6 is naive about disk failures: if a disk
 operation fails, xv6 panics.
 Whether this is reasonable depends on the hardware:
@@ -1655,7 +1668,7 @@ On the other hand, operating systems using plain disks
 should expect failures and handle them more gracefully,
 so that the loss of a block in one file doesn't affect the
 use of the rest of the file system.
-.PP
+
 Xv6 requires that the file system
 fit on one disk device and not change in size.
 As large databases and multimedia files drive storage
@@ -1675,22 +1688,22 @@ in such environments.
 Separating disk management from the file system may be
 the cleanest design, but the complex interface between the two
 has led some systems, like Sun's ZFS, to combine them.
-.PP
+
 Xv6's file system lacks many other features of modern file systems; for example,
 it lacks support for snapshots and incremental backup.
-.PP
+
 Modern Unix systems allow many kinds of resources to be
 accessed with the same system calls as on-disk storage:
 named pipes, network connections,
 remotely-accessed network file systems, and monitoring and control
 interfaces such as
-.code /proc .
+\lstinline{/proc}.
 Instead of xv6's
-.code if
+\lstinline{if}
 statements in
-.code-index fileread
+\lstinline{fileread}\index{fileread@\lstinline{fileread}}
 and
-.code-index filewrite ,
+\lstinline{filewrite}\index{filewrite@\lstinline{filewrite}},
 these systems typically give each open file a table of function pointers,
 one per operation,
 and call the function pointer to invoke that inode's
@@ -1698,88 +1711,88 @@ implementation of the call.
 Network file systems and user-level file systems 
 provide functions that turn those calls into network RPCs
 and wait for the response before returning.
-.\"
-.\" -------------------------------------------
-.\"
-.section "Exercises"
-.PP
+%% 
+%%  -------------------------------------------
+%% 
+\section{Exercises}
+
 1. Why panic in
-.code balloc ?
+\lstinline{balloc} ?
 Can xv6 recover?
-.PP
+
 2. Why panic in
-.code ialloc ?
+\lstinline{ialloc} ?
 Can xv6 recover?
-.PP
+
 3. Why doesn't
-.code filealloc
+\lstinline{filealloc}
 panic when it runs out of files?
 Why is this more common and therefore worth handling?
-.PP
+
 4. Suppose the file corresponding to 
-.code ip
+\lstinline{ip}
 gets unlinked by another process
 between 
-.code sys_link 's
+\lstinline{sys_link} 's
 calls to 
-.code iunlock(ip)
+\lstinline{iunlock(ip)}
 and
-.code dirlink .
+\lstinline{dirlink}.
 Will the link be created correctly?
 Why or why not?
-.PP
+
 6.
-.code create
+\lstinline{create}
 makes four function calls (one to
-.code ialloc
+\lstinline{ialloc}
 and three to
-.code dirlink )
+\lstinline{dirlink})
 that it requires to succeed.
 If any doesn't,
-.code create
+\lstinline{create}
 calls
-.code panic .
+\lstinline{panic}.
 Why is this acceptable?
 Why can't any of those four calls fail?
-.PP
+
 7. 
-.code sys_chdir
+\lstinline{sys_chdir}
 calls
-.code iunlock(ip)
+\lstinline{iunlock(ip)}
 before
-.code iput(cp->cwd) ,
+\lstinline{iput(cp->cwd)},
 which might try to lock
-.code cp->cwd ,
+\lstinline{cp->cwd},
 yet postponing
-.code iunlock(ip)
+\lstinline{iunlock(ip)}
 until after the
-.code iput
+\lstinline{iput}
 would not cause deadlocks.
 Why not?
-.PP
+
 8. Implement the
-.code lseek
+\lstinline{lseek}
 system call.  Supporting
-.code lseek
+\lstinline{lseek}
 will also require that you modify
-.code filewrite
+\lstinline{filewrite}
 to fill holes in the file with zero if
-.code lseek
+\lstinline{lseek}
 sets
-.code off
+\lstinline{off}
 beyond
-.code f->ip->size.
-.PP
+\lstinline{f->ip->size.}
+
 9. Add
-.code O_TRUNC
+\lstinline{O_TRUNC}
 and
-.code O_APPEND
+\lstinline{O_APPEND}
 to
-.code open ,
+\lstinline{open},
 so that
-.code >
+\lstinline{>}
 and
-.code >>
+\lstinline{>>}
 operators work in the shell.
-.PP
+
 10. Modify the file system to support symbolic links.
