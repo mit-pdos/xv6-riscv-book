@@ -587,8 +587,8 @@ in the operating systems literature.
 
 To illustrate what we mean, let's consider a
 simple producer/consumer queue.
-This queue is similar to the one that feeds commands from processes
-to the IDE driver
+XXX This queue is similar to the one that feeds commands from processes
+to the virtio driver
 (see Chapter~\ref{CH:TRAP}), but abstracts away all
 IDE-specific code.
 The queue allows one process to send a nonzero pointer
@@ -1125,10 +1125,10 @@ that use
 and
 \lstinline{wakeup}
 to synchronize readers and writers.
-One is in the IDE driver: a process adds a disk request to a queue and then
+One is in the virtio driver: a process adds a disk request to a queue and then
 calls
 \lstinline{sleep}.
-The IDE interrupt handler uses
+The virtio interrupt handler uses
 \lstinline{wakeup}
 to alert the process that its request has completed.
 
@@ -1496,7 +1496,7 @@ loops do not check
 \lstinline{p->killed} 
 because the code is in the middle of a multi-step
 system call that should be atomic.
-The IDE driver
+The virtio driver
 \lineref{ide.c:/sleep.b/} 
 is an example: it does not check
 \lstinline{p->killed}
@@ -1504,7 +1504,7 @@ because a disk operation may be one of a set of
 writes that are all needed in order for the file system to
 be left in a correct state.
 To avoid the complication of cleaning up after a partial operation, xv6 delays
-the killing of a process that is in the IDE driver until some point later when
+the killing of a process that is in the virtio driver until some point later when
 it is easy to kill the process (e.g., when the complete file system operation
 has completed and the process is about to return to user space).
 %% 
@@ -1666,7 +1666,7 @@ but before it calls
 If this problem occurs, the victim won't notice the
 \lstinline{p->killed}
 until the condition it is waiting for occurs. This may be quite a bit later
-(e.g., when the IDE driver returns a disk block that the victim is waiting for) or never
+(e.g., when the virtio driver returns a disk block that the victim is waiting for) or never
 (e.g., if the victim is waiting from input from the console, but the user
 doesn't type any input).
 
@@ -1736,7 +1736,7 @@ results in the victim abandoning the current system call.
 
 5. Design a plan so that every sleep loop checks 
 \lstinline{p->killed}
-so that, for example, a process that is in the IDE driver can return quickly from the while loop
+so that, for example, a process that is in the virtio driver can return quickly from the while loop
 if another kills that process.
 % Answer: this is difficult.  Moderns Unixes do this with setjmp and longjmp and very carefully programming to clean any partial state that the interrupted systems call may have built up.
 

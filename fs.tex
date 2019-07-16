@@ -18,7 +18,7 @@ typically support sharing of data among users and applications, as well as
 so that data is still available after a reboot.
 
 The xv6 file system provides Unix-like files, directories, and pathnames
-(see Chapter~\ref{CH:UNIX}), and stores its data on an IDE disk for
+(see Chapter~\ref{CH:UNIX}), and stores its data on a virtio disk for
 persistence (see Chapter~\ref{CH:TRAP}). The file system addresses
 several challenges:
 \begin{itemize}
@@ -50,7 +50,7 @@ The rest of this chapter explains how xv6 addresses these challenges.
 The xv6 file system implementation is
 organized in seven layers, shown in 
 Figure~\ref{fig:fslayer}.
-The disk layer reads and writes blocks on an IDE hard drive.
+The disk layer reads and writes blocks on an virtio hard drive.
 The buffer cache layer caches disk blocks and synchronizes access to them,
 making sure that only one kernel process at a time can modify the
 data stored in any particular block.  The logging layer allows higher
@@ -403,7 +403,7 @@ operations.
 Group commit also hands the disk system more concurrent writes
 at the same time, perhaps allowing the disk to write
 them all during a single disk rotation.
-Xv6's IDE driver doesn't support this kind of
+Xv6's virtio driver doesn't support this kind of
 \textit{batching}\index{batching},
 but xv6's file system design allows for it.
 

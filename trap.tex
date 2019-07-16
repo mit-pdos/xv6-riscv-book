@@ -545,7 +545,7 @@ Xv6 represent file system blocks using
 \lineref{kernel/buf.h:/^struct.buf/}.
 \lstinline{BSIZE}
 \lineref{kernel/fs.h:/BSIZE/}
-is identical to the IDE's sector size and thus
+is identical to the virtio disk's sector size and thus
 each buffer represents the contents of one sector on a particular
 disk device.  The
 \lstinline{dev}
@@ -557,7 +557,7 @@ number and the
 field is an in-memory copy of the disk sector.
 Although the xv6 file system chooses
 \lstinline{BSIZE}
-to be identical to the IDE's sector size, the driver can handle
+to be identical to the virtio disk's sector size, the driver can handle
 a
 \lstinline{BSIZE}
 that is a multiple of the sector size. Operating systems often use
