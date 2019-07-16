@@ -24,9 +24,9 @@ src:
 	if [ ! -d $(SRC) ]; then \
 		git clone git@github.com:kaashoek/xv6-risc-v.git $(SRC) ; \
 	fi; \
-	cd $(SRC) && git pull
+	cd $(SRC); git pull; true
 
-book.pdf: book.tex src $(TEX)
+book.pdf: book.tex $(TEX) src
 	pdflatex book.tex
 	bibtex book
 	pdflatex book.tex
