@@ -21,21 +21,25 @@ The xv6 file system provides Unix-like files, directories, and pathnames
 (see Chapter~\ref{CH:UNIX}), and stores its data on an IDE disk for
 persistence (see Chapter~\ref{CH:TRAP}). The file system addresses
 several challenges:
-\paragraph{\textbullet}The file system needs on-disk data structures to represent the tree
+\begin{itemize}
+  
+\item The file system needs on-disk data structures to represent the tree
 of named directories and files, to record the identities of the
 blocks that hold each file's content, and to record which areas
 of the disk are free.
-\paragraph{\textbullet}The file system must support
+\item The file system must support
 \textit{crash recovery}\index{crash recovery}.
 That is, if a crash (e.g., power failure) occurs, the file system must
 still work correctly after a restart. The risk is that a crash might
 interrupt a sequence of updates and leave inconsistent on-disk data
 structures (e.g., a block that is both used in a file and marked free).
-\paragraph{\textbullet}Different processes may operate on the file system at the same time,
+\item Different processes may operate on the file system at the same time,
 so the file system code must coordinate to maintain invariants.
-\paragraph{\textbullet}Accessing a disk is orders of magnitude slower than accessing
+\item Accessing a disk is orders of magnitude slower than accessing
 memory, so the file system must maintain an in-memory cache of
 popular blocks.
+
+\end{itemize}
 
 The rest of this chapter explains how xv6 addresses these challenges.
 %% 
