@@ -715,10 +715,12 @@ ones.
 \section{Exercises}
 %% 
 
-1. Parse RISC-V's device tree to find the amount of physical memory
+\begin{enumerate}
+  
+\item Parse RISC-V's device tree to find the amount of physical memory
 the computer has.
 
-2. Write a user program that grows its address space with 1 byte by calling
+\item Write a user program that grows its address space with 1 byte by calling
 \lstinline{sbrk(1)}.
 Run the  program and investigate the page table for the program before the call
 to
@@ -729,13 +731,13 @@ How much space has the kernel allocated?  What does the
 \lstinline{pte}
 for the new memory contain?
 
-3. Modify xv6 to use super pages for the kernel.
+\item Modify xv6 to use super pages for the kernel.
 
-4. Modify xv6 so that when a user program dereferences a null pointer, it will
+\item Modify xv6 so that when a user program dereferences a null pointer, it will
 receive a fault.  That is, modify xv6 so that virtual address 0 isn't mapped for
 user programs.
 
-5. Unix implementations of
+\item Unix implementations of
 \lstinline{exec}
 traditionally include special handling for shell scripts.
 If the file to execute begins with the text
@@ -761,4 +763,5 @@ with command line
 \lstinline{arg1}.
 Implement support for this convention in xv6.
 
+\end{enumerate}
 

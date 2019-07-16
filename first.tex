@@ -530,8 +530,11 @@ to control which parts of
 a process threads share.
 %% 
 \section{Exercises}
-%% 
-1. Set a breakpoint at swtch.  Single step with gdb's
+%%
+
+\begin{enumerate}
+  
+\item Set a breakpoint at swtch.  Single step with gdb's
 \lstinline{stepi}
 through the ret to
 \lstinline{forkret},
@@ -545,10 +548,4 @@ until you get to
 \lstinline{initcode} 
 at virtual address zero.
 
-2.
-\lstinline{KERNBASE} 
-limits the amount of memory a single process can use,
-which might be irritating on a machine with a full 4 GB of RAM.
-Would raising
-\lstinline{KERNBASE}
-allow a process to use more memory?
+\end{enumerate}
