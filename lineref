@@ -10,6 +10,7 @@ if len(sys.argv) < 2:
 path = sys.argv[2]
 
 def lookup_regex(fname, pat1, pat2=None):
+   fname = fname.replace("\_", "_")
    p1 = re.compile(pat1)
    if pat2 != None:
       p2 = re.compile(pat2)
