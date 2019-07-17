@@ -100,7 +100,7 @@ are saved and restored means that the CPU will switch stacks and
 switch what code it is executing.
 
 The function
-\lstinline{swtch}\index{swtch@\lstinline{swtch}}
+\indexcode{swtch}
 performs the saves and restores for a thread switch.
 \lstinline{swtch}
 doesn't directly know about threads; it just saves and
@@ -117,7 +117,7 @@ Each context is represented by a
 a pointer to a structure stored on the kernel stack involved.
 \lstinline{Swtch}
 takes two arguments:
-\lstinline{struct context}\index{struct context@\lstinline{struct context}}
+\indexcode{struct context}
 \lstinline{**old}
 and
 \lstinline{struct}
@@ -140,18 +140,18 @@ into the scheduler.
 We saw in Chapter~\ref{CH:TRAP}
 that one possibility at the end of each interrupt
 is that 
-\lstinline{trap}\index{trap@\lstinline{trap}}
+\indexcode{trap}
 calls 
-\lstinline{yield}\index{yield@\lstinline{yield}}.
+\indexcode{yield}.
 \lstinline{Yield}
 in turn calls
-\lstinline{sched}\index{sched@\lstinline{sched}},
+\indexcode{sched},
 which calls
-\lstinline{swtch}\index{swtch@\lstinline{swtch}}
+\indexcode{swtch}
 to save the current context in
 \lstinline{proc->context}
 and switch to the scheduler context previously saved in 
-\lstinline{cpu->scheduler}\index{cpu->scheduler@\lstinline{cpu->scheduler}}
+\indexcode{cpu->scheduler}
 \lineref{kernel/proc.c:/swtch..p/}.
 
 \lstinline{Swtch}
@@ -190,7 +190,7 @@ It moves the pointer to the new context
 into the stack pointer
 \lineref{kernel/swtch.S:/mov..rsi/}.
 The new stack has the same form as the old one that
-\lstinline{swtch}\index{swtch@\lstinline{swtch}}
+\indexcode{swtch}
 just left—the new stack
 \textit{was}
 the old one in a previous call to
@@ -215,11 +215,11 @@ and the instruction address returned to
 are the ones from the new context.
 
 In our example, 
-\lstinline{sched}\index{sched@\lstinline{sched}}
+\indexcode{sched}
 called
-\lstinline{swtch}\index{swtch@\lstinline{swtch}}
+\indexcode{swtch}
 to switch to
-\lstinline{cpu->scheduler}\index{cpu->scheduler@\lstinline{cpu->scheduler}},
+\indexcode{cpu->scheduler},
 the per-CPU scheduler context.
 That context had been saved by 
 \lstinline{scheduler} 's
@@ -227,12 +227,12 @@ call to
 \lstinline{swtch}
 \lineref{kernel/proc.c:/swtch.&.c/}.
 When the
-\lstinline{swtch}\index{swtch@\lstinline{swtch}}
+\indexcode{swtch}
 we have been tracing returns,
 it returns not to
 \lstinline{sched}
 but to 
-\lstinline{scheduler}\index{scheduler@\lstinline{scheduler}},
+\indexcode{scheduler},
 and its stack pointer points at the current CPU's
 scheduler stack.
 %% 
@@ -240,7 +240,7 @@ scheduler stack.
 %% 
 
 The last section looked at the low-level details of
-\lstinline{swtch}\index{swtch@\lstinline{swtch}};
+\indexcode{swtch};
 now let's take 
 \lstinline{swtch}
 as a given and examine 
@@ -248,18 +248,18 @@ switching from a process through the scheduler to another process.
 A process
 that wants to give up the CPU must
 acquire the process table lock
-\lstinline{ptable.lock}\index{ptable.lock@\lstinline{ptable.lock}},
+\indexcode{ptable.lock},
 release any other locks it is holding,
 update its own state
 (\lstinline{proc->state}),
 and then call
-\lstinline{sched}\index{sched@\lstinline{sched}}.
+\indexcode{sched}.
 \lstinline{Yield}
 \lineref{kernel/proc.c:/^yield/}
 follows this convention, as do
-\lstinline{sleep}\index{sleep@\lstinline{sleep}}
+\indexcode{sleep}
 and
-\lstinline{exit}\index{exit@\lstinline{exit}},
+\indexcode{exit},
 which we will examine later.
 \lstinline{Sched}
 double-checks those conditions
@@ -268,17 +268,17 @@ and then an implication of those conditions:
 since a lock is held, the CPU should be
 running with interrupts disabled.
 Finally,
-\lstinline{sched}\index{sched@\lstinline{sched}}
+\indexcode{sched}
 calls
-\lstinline{swtch}\index{swtch@\lstinline{swtch}}
+\indexcode{swtch}
 to save the current context in 
 \lstinline{proc->context}
 and switch to the scheduler context in
-\lstinline{cpu->scheduler}\index{cpu->scheduler@\lstinline{cpu->scheduler}}.
+\indexcode{cpu->scheduler}.
 \lstinline{Swtch}
 returns on the scheduler's stack
 as though
-\lstinline{scheduler}\index{scheduler@\lstinline{scheduler}} 's
+\indexcode{scheduler} 's
 \lstinline{swtch}
 had returned
 \lineref{kernel/proc.c:/swtch.&.c/}.
@@ -288,17 +288,17 @@ loop, finds a process to run,
 switches to it, and the cycle repeats.
 
 We just saw that xv6 holds
-\lstinline{ptable.lock}\index{ptable.lock@\lstinline{ptable.lock}}
+\indexcode{ptable.lock}
 across calls to
 \lstinline{swtch}:
 the caller of
-\lstinline{swtch}\index{swtch@\lstinline{swtch}}
+\indexcode{swtch}
 must already hold the lock, and control of the lock passes to the
 switched-to code.  This convention is unusual with locks; usually
 the thread that acquires a lock is also responsible for
 releasing the lock, which makes it easier to reason about correctness.
 For context switching it is necessary to break this convention because
-\lstinline{ptable.lock}\index{ptable.lock@\lstinline{ptable.lock}}
+\indexcode{ptable.lock}
 protects invariants on the process's
 \lstinline{state}
 and
@@ -308,10 +308,10 @@ fields that are not true while executing in
 One example of a problem that could arise if
 \lstinline{ptable.lock}
 were not held during
-\lstinline{swtch}\index{swtch@\lstinline{swtch}}:
+\indexcode{swtch}:
 a different CPU might decide
 to run the process after 
-\lstinline{yield}\index{yield@\lstinline{yield}}
+\indexcode{yield}
 had set its state to
 \lstinline{RUNNABLE},
 but before 
@@ -336,22 +336,22 @@ and so on.  The procedures in which this stylized switching between
 two threads happens are sometimes referred to as 
 \textit{coroutines}\index{coroutines}; 
 in this example,
-\lstinline{sched}\index{sched@\lstinline{sched}}
+\indexcode{sched}
 and
-\lstinline{scheduler}\index{scheduler@\lstinline{scheduler}}
+\indexcode{scheduler}
 are co-routines of each other.
 
 There is one case when the scheduler's call to
-\lstinline{swtch}\index{swtch@\lstinline{swtch}}
+\indexcode{swtch}
 does not end up in
-\lstinline{sched}\index{sched@\lstinline{sched}}.
+\indexcode{sched}.
 We saw this case in Chapter~\ref{CH:MEM}: when a
 new process is first scheduled, it begins at
-\lstinline{forkret}\index{forkret@\lstinline{forkret}}
+\indexcode{forkret}
 \lineref{kernel/proc.c:/^forkret/}.
 \lstinline{Forkret}
 exists to release the 
-\lstinline{ptable.lock}\index{ptable.lock@\lstinline{ptable.lock}};
+\indexcode{ptable.lock};
 otherwise, the new process could start at
 \lstinline{trapret}.
 
@@ -359,9 +359,9 @@ otherwise, the new process could start at
 \lineref{kernel/proc.c:/^scheduler/} 
 runs a simple loop:
 find a process to run, run it until it yields, repeat.
-\lstinline{scheduler}\index{scheduler@\lstinline{scheduler}}
+\indexcode{scheduler}
 holds
-\lstinline{ptable.lock}\index{ptable.lock@\lstinline{ptable.lock}}
+\indexcode{ptable.lock}
 for most of its actions,
 but releases the lock (and explicitly enables interrupts)
 once in each iteration of its outer loop.
@@ -374,7 +374,7 @@ the lock continuously held, no other CPU that
 was running a process could ever perform a context
 switch or any process-related system call,
 and in particular could never mark a process as
-\lstinline{RUNNABLE}\index{RUNNABLE@\lstinline{RUNNABLE}}
+\indexcode{RUNNABLE}
 so as to break the idling CPU out of its scheduling loop.
 The reason to enable interrupts periodically on an idling
 CPU is that there might be no
@@ -394,23 +394,23 @@ Once it finds a process, it sets the per-CPU current process
 variable
 \lstinline{proc},
 switches to the process's page table with
-\lstinline{switchuvm}\index{switchuvm@\lstinline{switchuvm}},
+\indexcode{switchuvm},
 marks the process as
 \lstinline{RUNNING},
 and then calls
-\lstinline{swtch}\index{swtch@\lstinline{swtch}}
+\indexcode{swtch}
 to start running it
 \linerefs{kernel/proc.c:/Switch.to/,/swtch/}.
 
 One way to think about the structure of the scheduling code is
 that it arranges to enforce a set of invariants about each process,
 and holds
-\lstinline{ptable.lock}\index{ptable.lock@\lstinline{ptable.lock}}
+\indexcode{ptable.lock}
 whenever those invariants are not true.
 One invariant is that if a process is
 \lstinline{RUNNING},
 a timer interrupt's
-\lstinline{yield}\index{yield@\lstinline{yield}}
+\indexcode{yield}
 must be able to switch away from the process;
 this means that the CPU registers must hold the process's register values
 (i.e. they aren't actually in a
@@ -426,12 +426,12 @@ must refer to the process's
 \lstinline{proc[]}
 slot.
 Another invariant is that if a process is
-\lstinline{RUNNABLE}\index{RUNNABLE@\lstinline{RUNNABLE}},
+\indexcode{RUNNABLE},
 an idle CPU's
-\lstinline{scheduler}\index{scheduler@\lstinline{scheduler}}
+\indexcode{scheduler}
 must be able to run it;
 this means that 
-\lstinline{p->context}\index{p->context@\lstinline{p->context}}
+\indexcode{p->context}
 must hold the process's kernel thread variables,
 that no CPU is executing on the process's kernel stack,
 that no CPU's
@@ -442,7 +442,7 @@ and that no CPU's
 refers to the process.
 
 Maintaining the above invariants is the reason why xv6 acquires 
-\lstinline{ptable.lock}\index{ptable.lock@\lstinline{ptable.lock}}
+\indexcode{ptable.lock}
 in one thread (often in
 \lstinline{yield)}
 and releases the lock in a different thread
@@ -465,13 +465,13 @@ is completely running (after the
 e.g. in
 \lstinline{yield}).
 
-\lstinline{ptable.lock}\index{ptable.lock@\lstinline{ptable.lock}}
+\indexcode{ptable.lock}
 protects other things as well:
 allocation of process IDs and free process table slots,
 the interplay between
-\lstinline{exit}\index{exit@\lstinline{exit}}
+\indexcode{exit}
 and
-\lstinline{wait}\index{wait@\lstinline{wait}},
+\indexcode{wait},
 the machinery to avoid lost wakeups (see next section),
 and probably other things too.
 It might be worth thinking about whether the 
@@ -485,7 +485,7 @@ for performance.
 
 As we saw in Chapter~\ref{CH:TRAP},
 xv6 maintains a
-\lstinline{struct cpu}\index{struct cpu@\lstinline{struct cpu}}
+\indexcode{struct cpu}
 for each processor, which records
 the process currently running
 on the processor (if any),
@@ -493,7 +493,7 @@ the processor's unique hardware identifier
 (\lstinline{apicid}),
 and some other information.
 The function
-\lstinline{getmycpu}\index{getmycpu@\lstinline{getmycpu}}
+\indexcode{getmycpu}
 \lineref{kernel/proc.c:/^getmycpu/}
 returns the current processor's
 \lstinline{struct cpu}.
@@ -511,7 +511,7 @@ programs the register
 to contain a pointer to the core's
 \lstinline{struct cpu}.
 The function
-\lstinline{mycpu}\index{mycpu@\lstinline{mycpu}}
+\indexcode{mycpu}
 \lineref{kernel/proc.c:/^mycpu/}
 returns that
 value using
@@ -541,7 +541,7 @@ them after they finish using the returned
 \lstinline{struct cpu}.
 
 The function
-\lstinline{myproc}\index{myproc@\lstinline{myproc}}
+\indexcode{myproc}
 \lineref{kernel/proc.c:/^myproc/}
 returns the
 \lstinline{struct proc}
@@ -664,13 +664,13 @@ and resume only when
 delivers a pointer.
 
 Let's imagine a pair of calls, 
-\lstinline{sleep}\index{sleep@\lstinline{sleep}}
+\indexcode{sleep}
 and
-\lstinline{wakeup}\index{wakeup@\lstinline{wakeup}},
+\indexcode{wakeup},
 that work as follows.
 \lstinline{Sleep(chan)}
 sleeps on the arbitrary value
-\lstinline{chan}\index{chan@\lstinline{chan}},
+\indexcode{chan},
 called the 
 \textit{wait channel}\index{wait channel}.
 \lstinline{Sleep}
@@ -831,7 +831,7 @@ so that the
 \lstinline{wakeup}
 will find the sleeping receiver and wake it up.
 Once the receiver is awake again
-\lstinline{sleep}\index{sleep@\lstinline{sleep}}
+\indexcode{sleep}
 reacquires the lock before returning.
 Our new correct scheme is useable as follows:
 \begin{lstlisting}[]
@@ -894,22 +894,22 @@ the value from a previous
 %% 
 
 Let's look at the implementation of
-\lstinline{sleep}\index{sleep@\lstinline{sleep}}
+\indexcode{sleep}
 \lineref{kernel/proc.c:/^sleep/}
 and
-\lstinline{wakeup}\index{wakeup@\lstinline{wakeup}}
+\indexcode{wakeup}
 \lineref{kernel/proc.c:/^wakeup/}.
 The basic idea is to have
 \lstinline{sleep}
 mark the current process as
-\lstinline{SLEEPING}\index{SLEEPING@\lstinline{SLEEPING}}
+\indexcode{SLEEPING}
 and then call
-\lstinline{sched}\index{sched@\lstinline{sched}}
+\indexcode{sched}
 to release the processor;
 \lstinline{wakeup}
 looks for a process sleeping on the given wait channel
 and marks it as 
-\lstinline{RUNNABLE}\index{RUNNABLE@\lstinline{RUNNABLE}}.
+\indexcode{RUNNABLE}.
 Callers of
 \lstinline{sleep}
 and
@@ -930,7 +930,7 @@ must have been passed a lock
 Then 
 \lstinline{sleep}
 acquires 
-\lstinline{ptable.lock}\index{ptable.lock@\lstinline{ptable.lock}}
+\indexcode{ptable.lock}
 \lineref{kernel/proc.c:/sleeplock1/}.
 Now the process going to sleep holds both
 \lstinline{ptable.lock}
@@ -955,9 +955,9 @@ it is safe to release
 some other process may start a call to
 \lstinline{wakeup(chan)},
 but
-\lstinline{wakeup}\index{wakeup@\lstinline{wakeup}}
+\indexcode{wakeup}
 will not run until it can acquire
-\lstinline{ptable.lock}\index{ptable.lock@\lstinline{ptable.lock}},
+\indexcode{ptable.lock},
 so it must wait until
 \lstinline{sleep}
 has finished putting the process to sleep,
@@ -1007,12 +1007,12 @@ At some point later, a process will call
 \lstinline{Wakeup}
 \lineref{'kernel/proc.c:/^wakeup\(/}'
 acquires
-\lstinline{ptable.lock}\index{ptable.lock@\lstinline{ptable.lock}}
+\indexcode{ptable.lock}
 and calls
-\lstinline{wakeup1}\index{wakeup1@\lstinline{wakeup1}},
+\indexcode{wakeup1},
 which does the real work.
 It is important that
-\lstinline{wakeup}\index{wakeup@\lstinline{wakeup}}
+\indexcode{wakeup}
 hold the
 \lstinline{ptable.lock}
 both because it is manipulating process states
@@ -1034,11 +1034,11 @@ we will see an example of this later.
 \lineref{kernel/proc.c:/^wakeup1/}
 loops over the process table.
 When it finds a process in state
-\lstinline{SLEEPING}\index{SLEEPING@\lstinline{SLEEPING}}
+\indexcode{SLEEPING}
 with a matching
-\lstinline{chan}\index{chan@\lstinline{chan}},
+\indexcode{chan},
 it changes that process's state to
-\lstinline{RUNNABLE}\index{RUNNABLE@\lstinline{RUNNABLE}}.
+\indexcode{RUNNABLE}.
 The next time the scheduler runs, it will
 see that the process is ready to be run.
 
@@ -1140,13 +1140,13 @@ of the other end of the pipe.
 Future chapters will examine the file descriptor support
 surrounding pipes, but let's look now at the
 implementations of 
-\lstinline{pipewrite}\index{pipewrite@\lstinline{pipewrite}}
+\indexcode{pipewrite}
 and
-\lstinline{piperead}\index{piperead@\lstinline{piperead}}.
+\indexcode{piperead}.
 
 Each pipe
 is represented by a 
-\lstinline{struct pipe}\index{struct pipe@\lstinline{struct pipe}},
+\indexcode{struct pipe},
 which contains
 a 
 \lstinline{lock}
@@ -1269,7 +1269,7 @@ the process that was running
 \lstinline{pipewrite}
 but stopped when the buffer filled.
 It marks that process as
-\lstinline{RUNNABLE}\index{RUNNABLE@\lstinline{RUNNABLE}}.
+\indexcode{RUNNABLE}.
 
 The pipe code uses separate sleep channels for reader and writer
 (
@@ -1292,18 +1292,18 @@ and
 can be used for many kinds of waiting.
 An interesting example, seen in Chapter~\ref{CH:UNIX},
 is the
-\lstinline{wait}\index{wait@\lstinline{wait}}
+\indexcode{wait}
 system call that a parent process uses to wait for a child to exit.
 When a child exits, it does not die immediately.
 Instead, it switches to the
-\lstinline{ZOMBIE}\index{ZOMBIE@\lstinline{ZOMBIE}}
+\indexcode{ZOMBIE}
 process state until the parent calls
 \lstinline{wait}
 to learn of the exit.
 The parent is then responsible for freeing the
 memory associated with the process 
 and preparing the
-\lstinline{struct proc}\index{struct proc@\lstinline{struct proc}}
+\indexcode{struct proc}
 for reuse.
 If the parent exits before the child, the 
 \lstinline{init}
@@ -1353,7 +1353,7 @@ channel equal to the current process's parent
 if there is such a process, it will be the parent in
 \lstinline{wait}.
 This may look premature, since 
-\lstinline{exit}\index{exit@\lstinline{exit}}
+\indexcode{exit}
 has not marked the current process as a
 \lstinline{ZOMBIE}
 yet, but it is safe:
@@ -1386,7 +1386,7 @@ passing them to the
 Finally,
 \lstinline{exit}
 calls
-\lstinline{sched}\index{sched@\lstinline{sched}}
+\indexcode{sched}
 to relinquish the CPU.
 
 If the parent process was sleeping in
@@ -1417,9 +1417,9 @@ of the cleanup during
 \lstinline{exit},
 but it is important that the parent 
 process be the one to free
-\lstinline{p->kstack}\index{p->kstack@\lstinline{p->kstack}} 
+\indexcode{p->kstack} 
 and 
-\lstinline{p->pgdir}\index{p->pgdir@\lstinline{p->pgdir}}:
+\indexcode{p->pgdir}:
 when the child runs
 \lstinline{exit},
 its stack sits in the memory allocated as
@@ -1427,7 +1427,7 @@ its stack sits in the memory allocated as
 and it uses its own pagetable.
 They can only be freed after the child process has
 finished running for the last time by calling
-\lstinline{swtch}\index{swtch@\lstinline{swtch}}
+\indexcode{swtch}
 (via
 \lstinline{sched}).
 This is one reason that the scheduler procedure runs on its
@@ -1637,7 +1637,7 @@ using explicit mechanisms for exception handling, such as
 Furthermore, there are other events that can cause a sleeping process to be
 woken up, even though the event it is waiting for has not happened yet.  For
 example, when a Unix process is sleeping, another process may send a 
-\lstinline{signal}\index{signal@\lstinline{signal}}
+\indexcode{signal}
 to it.  In this case, the
 process will return from the interrupted system call with the value -1 and with
 the error code set to EINTR. The application can check for these values and

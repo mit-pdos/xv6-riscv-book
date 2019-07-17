@@ -308,12 +308,12 @@ memory to switch to the kernel, as we will explain later.
 
 The xv6 kernel maintains many pieces of state for each process,
 which it gathers into a
-\lstinline{struct proc}\index{struct proc@\lstinline{struct proc}}
+\indexcode{struct proc}
 \lineref{kernel/proc.h:/^struct.proc/}.
 A process's most important pieces of kernel state are its 
 page table, its kernel stack, and its run state.
 We'll use the notation
-\lstinline{p->xxx}\index{p->xxx@\lstinline{p->xxx}}
+\indexcode{p->xxx}
 to refer to elements of the
 \lstinline{proc}
 structure.
@@ -327,7 +327,7 @@ the kernel suspends the currently running thread and resumes another process's
 thread.  Much of the state of a thread (local variables, function call return
 addresses) is stored on the thread's stacks.
 Each process has two stacks: a user stack and a kernel stack
-(\lstinline{p->kstack}\index{p->kstack@\lstinline{p->kstack}}).
+(\indexcode{p->kstack}).
 When the process is executing user instructions, only its user stack
 is in use, and its kernel stack is empty.
 When the process enters the kernel (for a system call or interrupt),
@@ -350,11 +350,11 @@ A process's thread
 can ``block'' in the kernel to wait for I/O, and resume where it left
 off when the I/O has finished.
 
-\lstinline{p->state}\index{p->state@\lstinline{p->state}} 
+\indexcode{p->state} 
 indicates whether the process is allocated, ready
 to run, running, waiting for I/O, or exiting.
 
-\lstinline{p->pagetable}\index{p->pagetable@\lstinline{p->pagetable}}
+\indexcode{p->pagetable}
 holds the process's page table, in the format
 that the RISC-V hardware expects.
 xv6 causes the paging hardware to use a process's
@@ -373,7 +373,7 @@ When a RISC-V development board powers on, it initializes
 itself and runs a program boot loader which is stored in read-only
 memory.  The boot loader loads the xv6 kernel into memory.  Then, in
 machine mode, the processor executes xv6 starting at
-\lstinline{start}\index{start@\lstinline{start}}
+\indexcode{start}
 \lineref{kernel/entry.S:/^_entry/}.
 Xv6 starts with the RISC-V paging hardware disabled:
 virtual addresses map directly to physical addresses.
@@ -470,14 +470,14 @@ it creates the first process by calling
 \lstinline{userinit}
 \lineref{kernel/proc.c:/^userinit/}.
 The first process is executing a small program,
-\lstinline{initcode.S}\index{initcode.S@\lstinline{initcode.S}} 
+\indexcode{initcode.S} 
 \lineref{user/initcode.S:1}.
 The first action of 
 \lstinline{initcode.S}
 is to invoke  the
 \lstinline{exec}
 system call to replace itself with
-\lstinline{/init}\index{/init@\lstinline{/init}},
+\indexcode{/init},
 loaded out of the file system.
 Invoking
 \lstinline{exec}
@@ -487,7 +487,7 @@ to enter the kernel and execute
 \lstinline{exec}
 \lineref{kernel/exec.c:/^exec/}.
 As we saw in Chapter~\ref{CH:UNIX}, 
-\lstinline{exec}\index{exec@\lstinline{exec}}
+\indexcode{exec}
 replaces the memory and registers of the
 current process with a new program (in this case,
 \lstinline{/init}),
@@ -496,7 +496,7 @@ file descriptors, process id, and parent process unchanged.
 Once the kernel has completed the
 \lstinline{exec}
 system call, the kernel will return to user space and run
-\lstinline{/init}\index{/init@\lstinline{/init}}.
+\indexcode{/init}.
 \lstinline{Init}
 \lineref{user/init.c:/^main/}
 creates a new console device file

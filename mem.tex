@@ -82,16 +82,16 @@ has room for growth; in Sv39 it is 56 bits, but could grow to 64 bits.
 
 Each PTE contains flag bits that tell the paging hardware
 how the associated virtual address is allowed to be used.
-\lstinline{PTE_V}\index{PTE_V@\lstinline{PTE_V}}
+\indexcode{PTE_V}
 indicates whether the PTE is present: if it is
 not set, a reference to the page causes a fault (i.e. is not allowed).
-\lstinline{PTE_R}\index{PTE_R@\lstinline{PTE_R}}
+\indexcode{PTE_R}
 controls whether instructions are allowed to issue
 reads to the page.
-\lstinline{PTE_W}\index{PTE_W@\lstinline{PTE_W}}
+\indexcode{PTE_W}
 controls whether instructions are allowed to issue
 writes to the page.
-\lstinline{PTE_X}\index{PTE_X@\lstinline{PTE_X}}
+\indexcode{PTE_X}
 controls whether the processor may interpret the content
 of the page as instruction and execute them.
 Figure~\ref{fig:riscv_pagetable}
@@ -219,22 +219,22 @@ thus a single page of physical memory shows up in all address spaces.
 \section{Code: creating an address space}
 %% 
 
-\lstinline{main}\index{main@\lstinline{main}}
+\indexcode{main}
 calls
-\lstinline{kvminit}\index{kvminit@\lstinline{kvminit}}
+\indexcode{kvminit}
 \lineref{kernel/vm.c:/^kvminit/}
 to create the kernel page table.
 \lstinline{Kvminit}
 first allocates a page of memory to hold the page directory.
 Then it calls
-\lstinline{mappages}\index{mappages@\lstinline{mappages}}
+\indexcode{mappages}
 to install the translations that the kernel needs.
 The translations include the kernel's
 instructions and data, physical memory up to
-\lstinline{PHYSTOP}\index{PHYSTOP@\lstinline{PHYSTOP}},
+\indexcode{PHYSTOP},
 and memory ranges which are actually devices.
 
-\lstinline{mappages}\index{mappages@\lstinline{mappages}}
+\indexcode{mappages}
 \lineref{kernel/vm.c:/^mappages/}
 installs mappings into a page table
 for a range of virtual addresses to
@@ -244,7 +244,7 @@ at page intervals.
 For each virtual address to be mapped,
 \lstinline{mappages}
 calls
-\lstinline{walk}\index{walk@\lstinline{walk}}
+\indexcode{walk}
 to find the address of the PTE for that address.
 It then initializes the PTE to hold the relevant physical page
 number, the desired permissions (e.g.,
@@ -257,7 +257,7 @@ and
 to mark the PTE as valid
 \lineref{kernel/vm.c:/perm...PTE_V/}.
 
-\lstinline{walk}\index{walk@\lstinline{walk}}
+\indexcode{walk}
 \lineref{kernel/vm.c:/^walk/}
 mimics the actions of the RISC-V paging hardware as it
 looks up the PTE for a virtual address (see
@@ -277,9 +277,9 @@ allocates it and puts its physical address in the PTE.
 It returns the PTE in lowest layer in the tree
 \lineref{kernel/vm.c:/return..pagetable/}.
 
-\lstinline{main}\index{main@\lstinline{main}}
+\indexcode{main}
 calls
-\lstinline{kvminithart}\index{kvminithart@\lstinline{kvminithart}}
+\indexcode{kvminithart}
 \lineref{kernel/vm.c:/^kvminithart/}
 to install the kernel page table.
 It writes the physical address of the root page
@@ -300,7 +300,7 @@ kernel stacks,
 and pipe buffers.
 
 xv6 uses the physical memory between the end of the kernel and
-\lstinline{PHYSTOP}\index{PHYSTOP@\lstinline{PHYSTOP}}
+\indexcode{PHYSTOP}
 for run-time allocation. It allocates and frees whole 4096-byte pages
 at a time. It keeps track of which pages are free by threading a
 linked list through the pages themselves. Allocation consists of
@@ -315,7 +315,7 @@ The allocator's data structure is a
 of physical memory pages that are available
 for allocation.
 Each free page's list element is a
-\lstinline{struct run}\index{struct run@\lstinline{struct run}}
+\indexcode{struct run}
 \lineref{kernel/kalloc.c:/^struct.run/}.
 Where does the allocator get the memory
 to hold that data structure?
@@ -337,9 +337,9 @@ Chapter~\ref{CH:LOCK} will examine
 locking in detail.
 
 The function
-\lstinline{main}\index{main@\lstinline{main}}
+\indexcode{main}
 calls
-\lstinline{kinit}\index{kinit@\lstinline{kinit}}
+\indexcode{kinit}
 to initialize the allocator
 \lineref{kernel/kalloc.c:/^kinit/}.
 \lstinline{kinit}
@@ -352,18 +352,18 @@ Instead xv6 assumes that the machine has
 (\lstinline{PHYSTOP})
 of physical memory, and uses all the memory between the end of the kernel
 and
-\lstinline{PHYSTOP}\index{PHYSTOP@\lstinline{PHYSTOP}}
+\indexcode{PHYSTOP}
 as the initial pool of free memory.
 \lstinline{kinit}
 calls
-\lstinline{freerange}\index{freerange@\lstinline{freerange}}
+\indexcode{freerange}
 to add memory to the free list via per-page calls to
-\lstinline{kfree}\index{kfree@\lstinline{kfree}}.
+\indexcode{kfree}.
 A PTE can only refer to a physical address that is aligned
 on a 4096-byte boundary (is a multiple of 4096), so
 \lstinline{freerange}
 uses
-\lstinline{PGROUNDUP}\index{PGROUNDUP@\lstinline{PGROUNDUP}}
+\indexcode{PGROUNDUP}
 to ensure that it frees only aligned physical addresses.
 The allocator starts with no memory;
 these calls to
@@ -404,7 +404,7 @@ records the old start of the free list in
 \lstinline{r->next},
 and sets the free list equal to
 \lstinline{r}.
-\lstinline{kalloc}\index{kalloc@\lstinline{kalloc}}
+\indexcode{kalloc}
 removes and returns the first element in the free list.
 %% 
 \section{User part of an address space}
@@ -423,7 +423,7 @@ Each user process starts at address 0. The bottom of the address space
 contains the text for the user program, its data, and its stack.
 The heap is above the stack so that the heap can expand when the process
 calls
-\lstinline{sbrk}\index{sbrk@\lstinline{sbrk}}.
+\indexcode{sbrk}.
 Note that the text, data, and stack sections are layed out contiguously in the
 process's address space but xv6 is free to use non-contiguous physical pages for
 those sections. For example, when xv6 expands a process's heap, it can use any
@@ -499,7 +499,7 @@ system.
 opens the named binary
 \lstinline{path}
 using
-\lstinline{namei}\index{namei@\lstinline{namei}}
+\indexcode{namei}
 \lineref{kernel/exec.c:/namei/},
 which is explained in Chapter~\ref{CH:FS}.
 Then, it reads the ELF header. Xv6 applications are described in the widely-used
@@ -507,7 +507,7 @@ Then, it reads the ELF header. Xv6 applications are described in the widely-used
 defined in
 \fileref{kernel/elf.h}.
 An ELF binary consists of an ELF header,
-\lstinline{struct elfhdr}\index{struct elfhdr@\lstinline{struct elfhdr}}
+\indexcode{struct elfhdr}
 \lineref{kernel/elf.h:/^struct.elfhdr/},
 followed by a sequence of program section headers,
 \lstinline{struct proghdr}
@@ -527,7 +527,7 @@ An ELF binary starts with the four-byte ``magic number''
 .code 'L',
 .code 'F',
 or
-\lstinline{ELF_MAGIC}\index{ELF_MAGIC@\lstinline{ELF_MAGIC}}
+\indexcode{ELF_MAGIC}
 \lineref{kernel/elf.h:/ELF_MAGIC/}.
 If the ELF header has the right magic number,
 \lstinline{exec}
@@ -535,24 +535,24 @@ assumes that the binary is well-formed.
 
 \lstinline{Exec}
 allocates a new page table with no user mappings with
-\lstinline{proc_pagetable}\index{proc_pagetable@\lstinline{proc_pagetable}}
+\indexcode{proc_pagetable}
 \lineref{kernel/exec.c:/proc_pagetable/},
 allocates memory for each ELF segment with
-\lstinline{uvmalloc}\index{uvmalloc@\lstinline{uvmalloc}}
+\indexcode{uvmalloc}
 \lineref{kernel/exec.c:/uvmalloc/},
 and loads each segment into memory with
-\lstinline{loadseg}\index{loadseg@\lstinline{loadseg}}
+\indexcode{loadseg}
 \lineref{kernel/exec.c:/loadseg/}.
 \lstinline{loadseg}
 uses
-\lstinline{walkaddr}\index{walkaddr@\lstinline{walkaddr}}
+\indexcode{walkaddr}
 to find the physical address of the allocated memory at which to write
 each page of the ELF segment, and
-\lstinline{readi}\index{readi@\lstinline{readi}}
+\indexcode{readi}
 to read from the file.
 
 The program section header for
-\lstinline{/init}\index{/init@\lstinline{/init}},
+\indexcode{/init},
 the first user program created with
 \lstinline{exec},
 looks like this:
@@ -580,27 +580,27 @@ is 2112 bytes and
 \lstinline{memsz}
 is 2136 bytes,
 and thus
-\lstinline{uvmalloc}\index{uvmalloc@\lstinline{uvmalloc}}
+\indexcode{uvmalloc}
 allocates enough physical memory to hold 2136 bytes, but reads only 2112 bytes
 from the file
 \lstinline{/init}.
 
 Now
-\lstinline{exec}\index{exec@\lstinline{exec}}
+\indexcode{exec}
 allocates and initializes the user stack.
 It allocates just one stack page.
 \lstinline{Exec}
 copies the argument strings to the top of the stack
 one at a time, recording the pointers to them in
-\lstinline{ustack}\index{ustack@\lstinline{ustack}}.
+\indexcode{ustack}.
 It places a null pointer at the end of what will be the
-\lstinline{argv}\index{argv@\lstinline{argv}}
+\indexcode{argv}
 list passed to
 \lstinline{main}.
 The first three entries in
 \lstinline{ustack}
 are the fake return PC,
-\lstinline{argc}\index{argc@\lstinline{argc}},
+\indexcode{argc},
 and
 \lstinline{argv}
 pointer.
@@ -613,7 +613,7 @@ This inaccessible page also allows
 to deal with arguments that are too large;
 in that situation,
 the
-\lstinline{copyout}\index{copyout@\lstinline{copyout}}
+\indexcode{copyout}
 \lineref{kernel/vm.c:/^copyout/}
 function that
 \lstinline{exec}

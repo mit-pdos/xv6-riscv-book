@@ -239,7 +239,7 @@ invocations.
 Xv6 has two types of locks: spin-locks and sleep-locks.
 We'll start with spin-locks.
 Xv6 represents a spin-lock as a
-\lstinline{struct spinlock}\index{struct spinlock@\lstinline{struct spinlock}}
+\indexcode{struct spinlock}
 \lineref{kernel/spinlock.h:/struct.spinlock/}.
 The important field in the structure is
 \lstinline{locked},
@@ -287,7 +287,7 @@ hardware to prevent any
 other CPU from using the memory address between the read and the write.
 
 Xv6's 
-\lstinline{acquire}\index{acquire@\lstinline{acquire}}
+\indexcode{acquire}
 \lineref{kernel/spinlock.c:/^acquire/}
 uses the portable C library call 
 \lstinline{__sync_lock_test_and_set},
@@ -322,7 +322,7 @@ field is protected by the lock
 and must only be changed while holding the lock.
 
 The function
-\lstinline{release}\index{release@\lstinline{release}}
+\indexcode{release}
 \lineref{kernel/spinlock.c:/^release/}
 is the opposite of 
 \lstinline{acquire}:
@@ -476,7 +476,7 @@ To do this,
 holds
 \lstinline{cons.lock}
 while calling 
-\lstinline{wakeup}\index{wakeup@\lstinline{wakeup}},
+\indexcode{wakeup},
 which acquires 
 the waiting process's lock in order to wake it up.
 In consequence, the global deadlock-avoiding
@@ -499,23 +499,23 @@ both threads and interrupt handlers.
 For example, the
 \lstinline{clockintr}
 timer interrupt handler might increment
-\lstinline{ticks}\index{ticks@\lstinline{ticks}} 
+\indexcode{ticks} 
 \lineref{kernel/trap.c:/^clockintr/}
 at about the same time that a kernel
 thread reads
 \lstinline{ticks} 
 in
-\lstinline{sys_sleep}\index{sys_sleep@\lstinline{sys_sleep}}
+\indexcode{sys_sleep}
 \lineref{kernel/sysproc.c:/ticks0.=.ticks/}.
 The lock
-\lstinline{tickslock}\index{tickslock@\lstinline{tickslock}}
+\indexcode{tickslock}
 serializes the two accesses.
 
 The interaction of spin-locks and interrupts raises a potential danger.
 Suppose
-\lstinline{sys_sleep}\index{sys_sleep@\lstinline{sys_sleep}}
+\indexcode{sys_sleep}
 holds
-\lstinline{tickslock}\index{tickslock@\lstinline{tickslock}},
+\indexcode{tickslock},
 and its CPU is interrupted by a timer interrupt.
 \lstinline{clockintr}
 would try to acquire
@@ -546,12 +546,12 @@ xv6 re-enables interrupts when a processor holds no spin-locks; it must
 do a little book-keeping to cope with nested critical sections.
 \lstinline{acquire}
 calls
-\lstinline{push_off}\index{push_off@\lstinline{push_off}}
+\indexcode{push_off}
 \lineref{kernel/spinlock.c:/^push_off/}
 and
 \lstinline{release}
 calls
-\lstinline{pop_off}\index{pop_off@\lstinline{pop_off}}
+\indexcode{pop_off}
 \lineref{kernel/spinlock.c:/^pop_off/}
 to track the nesting level of locks on the current processor.
 When that count reaches zero,
@@ -566,7 +566,7 @@ functions execute RISC-V instructions to disable and enable
 interrupts, respectively.
 
 It is important that
-\lstinline{acquire}\index{acquire@\lstinline{acquire}}
+\indexcode{acquire}
 call
 \lstinline{push_off}
 strictly before setting
@@ -577,9 +577,9 @@ a brief window when the lock
 was held with interrupts enabled, and
 an unfortunately timed interrupt would deadlock the system.
 Similarly, it is important that
-\lstinline{release}\index{release@\lstinline{release}}
+\indexcode{release}
 call
-\lstinline{pop_off}\index{pop_off@\lstinline{pop_off}}
+\indexcode{pop_off}
 only after 
 releasing the lock
 \lineref{kernel/spinlock.c:/sync_lock_release/}.
