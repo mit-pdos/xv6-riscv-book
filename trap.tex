@@ -602,7 +602,7 @@ disk as a numbered sequence of 512-byte
 sector 0 is the first 512 bytes, sector 1 is the next, and so on. The block size
 that an operating system uses for its file system maybe different than the
 sector size that a disk uses, but typically the block size is a multiple of the
-sector size.  Xv6's block size is identical to the disk's sector size.  To
+sector size. To
 represent a block xv6 has a structure
 \lstinline{struct buf}
 \lineref{kernel/buf.h:/^struct.buf/}.
@@ -629,23 +629,18 @@ Xv6 represent file system blocks using
 \lineref{kernel/buf.h:/^struct.buf/}.
 \lstinline{BSIZE}
 \lineref{kernel/fs.h:/BSIZE/}
-is identical to the virtio disk's sector size and thus
-each buffer represents the contents of one sector on a particular
+is twice the virtio disk's sector size and thus
+each buffer represents the contents of two sectors on a particular
 disk device.  The
 \lstinline{dev}
 and
-\lstinline{sector}
-fields give the device and sector
+\lstinline{blockno}
+fields give the device and block
 number and the
 \lstinline{data}
-field is an in-memory copy of the disk sector.
-Although the xv6 file system chooses
-\lstinline{BSIZE}
-to be identical to the virtio disk's sector size, the driver can handle
-a
-\lstinline{BSIZE}
-that is a multiple of the sector size. Operating systems often use
-bigger blocks than 512 bytes to obtain higher disk throughput.
+field is an in-memory copy of the disk sectors that correspond to block.
+Operating systems often use
+bigger blocks than 1,024 bytes to obtain higher disk throughput.
 
 The
 \lstinline{flags}
@@ -661,31 +656,43 @@ flag means that
 \lstinline{data}
 needs to be written out.
 
+Like with the CLINT, programming the virtio disk uses memory-mapped
+I/O.  The virtio disk is at address \lstinline{0x10001000} in the
+kernel adddres space (see Figure~\ref{fig:xv6_layout}).  The driver
+uses ordinary load and stores instructions to interact with the
+device, but the addresses have special meaning.  For example, reading
+from the address \lstinline{0x10001000 + VIRTIO_MMIO_VERSION}
+\lineref{kernel/virtio.h:/VERSION/} returns the version of the virtio
+standard that the device supports
+\lineref{kernel/virtio\_disk.c:/MMIO_VERSION/}.  The driver uses the
+macro \lstinline{R} to read/write registers on the disk
+\lineref{kernel/virtio\_disk.c:/R/}.
 
 The kernel initializes the disk driver at boot time by calling
 \indexcode{virtio_disk_init}
-\lineref{kernel/virtio\_disk.c:/^virtio_disk_init/}
-from
-\indexcode{main}
-\lineref{kernel/main.c:/virtio_disk_init/}.
+\lineref{kernel/virtio\_disk.c:/^virtio_disk_init/} from
+\indexcode{main} \lineref{kernel/main.c:/virtio_disk_init/}.
 \lstinline{virtio_disk_init} negotiates the simplest features with the
-disk and sets up one queues for disk requests.  The driver can have
+disk \linerefs{kernel/virtio\_disk.c:/features/,/=.features/} and sets
+up one queue for disk requests \linerefs{kernel/virtio\_disk.c:/QUEUE_SEL/,/free\[/}.  The driver can have
 \lstinline{NUM} outstanding requests to the disk.
 
 Disk accesses typically take milliseconds, a long time for a
 processor.  Therefore, xv6 lets another process run on the CPU after a
 disk I/O request and arranges to receive an interrupt when the disk
-operation has completed.
-\indexcode{plic_init} programs
-the \textit{PLIC}\index{PLIC} to accept interrupts from the disk during boot.  It
-enables interrupts for \lstinline{VIRTIO0_IRQ}
-\lineref{kernel/plic.c:/^plicinit/}.  If the disk generates an
-interrupt, \lstinline{devintr} \lineref{kernel/trap.c:/^devintr/} will
-see that \lstinline{VIRTIO0_IRQ} was enabled and invoke
+operation has completed.  Using memory-mapped I/O,
+\indexcode{plic_init}, which is called from \lstinline{main}, programs
+the \textit{Platform Level Interrupt Controller (PLIC)}\index{PLIC} to
+accept interrupts from the disk.  It enables interrupts for
+\lstinline{VIRTIO0_IRQ} \lineref{kernel/plic.c:/^plicinit/}.  If the
+disk generates an interrupt, \lstinline{devintr}
+\lineref{kernel/trap.c:/^devintr/} will see that
+\lstinline{VIRTIO0_IRQ} was enabled and invoke
 \lstinline{virtio_disk_intr}.
 
 After this setup, the disk is not used again until the buffer cache calls
-\indexcode{virtio_disk_rw},
+\indexcode{virtio_disk_rw}
+\lineref{kernel/virtio\_disk.c:/^virtio_disk_rw/},
 which updates a locked buffer
 as indicated by the flags.
 If
@@ -698,14 +705,32 @@ to the disk; if
 is not set,
 \indexcode{virtio_disk_rw}
 reads the buffer from the disk.
-\lstinline{Virtio_Disk_Rw}
-\lineref{kernel/virtio\_disk.c:/^virtio_disk_rw/}
-adds the buffer
-\lstinline{b}
-to the end of the queue of outstanding requests (or waits if all
-\lstinline{NUM} entries are in use).
+To add a request to the queue of requests, the driver must find 3
+descriptors that describe the request.  The first descriptor
+describes the operation (e.g., read/write).  The second descriptor
+records the address of the data to be read or written. The third
+descriptor is where the device will post the result status of the
+request.  \lstinline{Virtio_Disk_Rw} starts by finding 3 free descriptors.  If
+it cannot find 3 descriptors, it means that the queue of requests is
+full and it waits until previously issued requests complete, freeing
+up descriptors.   If it finds 3 descriptors, the drivers fills them
+in \linerefs{kernel/virtio\_disk.c:/buf0.type/,/.next.=.0/}.
 
-Having added the request to the queue,
+The virtio disk supports \textit{Direct Memory Access
+  (DMA)}\index{DMA}, which allows the device to read/write physical
+memory.  The driver gives the device the physical address of the
+buffer's data \lineref{kernel/virtio\_disk.c:/b->data/} and the device
+copies directly to or from main memory.  DMA is faster and more
+efficient than programmed I/O and is less taxing for the CPU's memory
+caches.
+
+Once the driver has filled out the descriptors, it can alert the disk
+that a new quests is available.  It does so by writing to
+\lstinline{avail}.  The disk monitors \lstinline{avail} and reads the
+value in \lstinline{avail[1]} to find out how many new requests it
+should process.
+
+Having posted the request to the disk,
 \lstinline{virtio_disk_rw}
 must wait for the result.  As discussed above,
 polling does not make efficient use of the CPU.
@@ -723,42 +748,37 @@ interrupt, which will result in a call to
 \indexcode{virtio_disk_intr}
 to handle it
 \lineref{kernel/trap.c:/virtio_disk_intr/}.
+The disk posts the requests that it has completed in \lstinline{used}.
 \lstinline{Virtio_Disk_Intr}
 \lineref{kernel/virtio\_disk.c:/^virtio_disk_intr/}
-consults the first buffer in the queue to find
-out which operation was happening.
-\lstinline{virtio_disk_intr}
+reads \lstinline{used} to find the \lstinline{id} of
+the request that has completed.
+Then, \lstinline{virtio_disk_intr}
 sets 
 \indexcode{B_VALID},
 clears
 \indexcode{B_DIRTY},
-and wakes up any process sleeping on the buffer
-\linerefs{kernel/virtio\_disk.c:/info\[id\]\.b/,/wakeup/}.
+wakes up any process sleeping on the buffer
+\linerefs{kernel/virtio\_disk.c:/info\[id\]\.b/,/wakeup/},
+and frees up the descriptors that were used for request \lstinline{id}.
 
-XXX DMA allows the device direct access to physical memory.
-The driver gives the device the physical address of the buffer's data and
-the device copies directly to or from main memory,
-interrupting once the copy is complete.
-DMA is faster and more efficient than programmed I/O
-and is less taxing for the CPU's memory caches.
-
-XXX The IDE driver routes interrupts statically to a particular processor.  Some
-drivers configure the IO APIC
-to route interrupts to multiple processors to spread out
-the work of processing packets.
-For example, a network driver might arrange to deliver interrupts
-for packets of one network connection to the processor that is managing that
-connection, while interrupts for packets of another connection are delivered to
-another processor.  This routing can get quite sophisticated; for example, if
-some network connections are short lived while others are long lived and the
-operating system wants to keep all processors busy to achieve high throughput.
-
+The PLIC routes interrupts to the first processor that claims it.
+Thus, cores can process different disk interrupts concurrently.  In
+some operating systems, this routing can get sophisticated.  For
+example, a network driver might arrange to deliver interrupts for
+packets of one network connection to the processor that is managing
+that connection, while interrupts for packets of another connection
+are delivered to another processor.  This routing can get quite
+complex; for example, if some network connections are short lived
+while others are long lived and the operating system wants to keep all
+processors busy to achieve high throughput.
 
 \section{Real world}
 
 Supporting all the devices on a typical computer in its full glory is
 much work, because there are many devices, the devices have many
-features, and the protocol between device and driver can be complex.
+features, and the protocol between device and driver can be complex
+and badly documented.
 In many operating systems, the drivers together account for more code
 in the operating system than the core kernel.
 
