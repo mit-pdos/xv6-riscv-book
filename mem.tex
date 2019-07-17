@@ -37,7 +37,7 @@ xv6 runs on Sv39 RISC-V processor with has 39-bit virtual addresses;
 the top of 25 bits of a 64-bit virtual address are unused.  In this
 configuration, a RISC-V page table is logically an array of $2^{27}$
 (134,217,728)
-\textit{page table entries (PTEs)}\index{page table entries (PTEs)}.
+\indextext{page table entries (PTEs)}.
 Each PTE contains a
 44-bit physical page number (PPN) and some flags. The paging
 hardware translates a virtual address by using the top 27 bits
@@ -49,7 +49,7 @@ translated physical address.  Thus a page table gives
 the operating system control over virtual-to-physical address translations
 at the granularity of aligned chunks of 4096 ($2^{12}$) bytes.
 Such a chunk is called a
-\textit{page}\index{page}.
+\indextext{page}.
 
 \begin{figure}[t]
 \center
@@ -140,7 +140,7 @@ virtual addresses to physical addresses.  The file
 declares the constants for xv6's kernel memory layout.
 
 The RISC-V development board has a number of
-\textit{memory-mapped}\index{memory-mapped}
+\indextext{memory-mapped}
 devices that sit below
 \texttt{0x80000000}
 in physical memory. The particular addresses are chosen by the board's
@@ -477,7 +477,7 @@ and
 do.
 
 The RISC-V hardware caches page table entries in a
-\textit{Translation Look-aside Buffer (TLB)}\index{Translation Look-aside Buffer (TLB)},
+\indextext{Translation Look-aside Buffer (TLB)},
 and when xv6 changes the page tables, it must invalidate the cached entries.  If
 it didn't invalidate the cached entries, then at some point later the TLB might
 use an old mapping, pointing to a physical page that in the mean time has been
@@ -503,7 +503,7 @@ using
 \lineref{kernel/exec.c:/namei/},
 which is explained in Chapter~\ref{CH:FS}.
 Then, it reads the ELF header. Xv6 applications are described in the widely-used
-\textit{ELF format}\index{ELF format},
+\indextext{ELF format},
 defined in
 \fileref{kernel/elf.h}.
 An ELF binary consists of an ELF header,

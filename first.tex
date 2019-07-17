@@ -21,13 +21,13 @@ chapter~\ref{CH:UNIX}
 a process can start new processes with 
 \lstinline{fork}.
 The operating system must 
-\textit{time-share}\index{time-share} 
+\indextext{time-share} 
 the resources of the computer among these processes.
 For example, even if there are more processes
 than there are hardware processors, the operating
 system must ensure that all of the processes
 make progress.  The operating system must also arrange for
-\textit{isolation}\index{isolation} 
+\indextext{isolation} 
 between the processes.
 That is, if one process has a bug and fails, it shouldn't affect processes that
 don't depend on the failed process.
@@ -40,7 +40,7 @@ and interaction.
 This chapter provides an overview of how operating systems are organized to achieve
 these 3 requirements.  It turns out there are many ways to do so, but this text
 focuses on mainstream designs centered around a 
-\textit{monolithic kernel}\index{monolithic kernel}, 
+\indextext{monolithic kernel}, 
 which is used by many Unix operating systems.  This chapter 
 introduces xv6's design by
 tracing the creation of the first process when xv6 starts
@@ -144,19 +144,19 @@ applications cannot access other process's memory.
 Processors provide hardware support for strong isolation.   For
 example, a RISC-V processor, has three modes in which
 the processor can execute instructions:
-\textit{machine mode}\index{machine mode},
-\textit{kernel mode}\index{kernel mode} 
+\indextext{machine mode},
+\indextext{kernel mode} 
 (called
-\textit{supervisor mode}\index{supervisor mode}
+\indextext{supervisor mode}
 in RISC-V terminology), and
-\textit{user mode}\index{user mode}.
+\indextext{user mode}.
 Instructions executing in machine mode have full privilege and a
 processor starts in machine mode.  Machine mode is mostly intended for
 configuring a computer.  Xv6 executes a few lines of machine mode and
 then jumps into kernel mode.
 
 In kernel mode the processor is allowed to execute 
-\textit{privileged instructions}\index{privileged instructions}.
+\indextext{privileged instructions}.
 For example, enabling and disabling interrupts,  reading and writing
 the register that holds the address of a page table, etc.
 If an application in user mode attempts to execute
@@ -167,13 +167,13 @@ Figure~\ref{fig:os}
 in Chapter ~\ref{CH:UNIX} illustrates this organization.  An application can
 execute only user-mode instructions (e.g., adding numbers, etc.) and is said to
 be running in 
-\textit{user space}\index{user space},
+\indextext{user space},
 while the software in kernel mode can also execute privileged instructions and
 is said to be running in
-\textit{kernel space}\index{kernel space}.
+\indextext{kernel space}.
 The software running in kernel space (or in kernel mode) is called
 the
-\textit{kernel}\index{kernel}.
+\indextext{kernel}.
 
 An application that wants to invoke a kernel function (e.g., the
 \lstinline{read}
@@ -200,7 +200,7 @@ One possibility is that the entire operating system resides
 in the kernel, so that the implementations of all system calls
 run in kernel mode.
 This organization is called a
-\textit{monolithic kernel}\index{monolithic kernel}.
+\indextext{monolithic kernel}.
 
 In this organization the entire operating system runs with full hardware
 privilege. This organization is convenient because the OS designer doesn't have
@@ -221,7 +221,7 @@ To reduce the risk of mistakes in the kernel, OS designers can minimize the
 amount of operating system code that runs in kernel mode, and execute the
 bulk of the operating system in user mode.
 This kernel organization is called a
-\textit{microkernel}\index{microkernel}.
+\indextext{microkernel}.
 
 \begin{figure}[t]
 \center
@@ -257,7 +257,7 @@ microkernels.
 %% 
 
 The unit of isolation in xv6 (as in other Unix operating systems) is a 
-\textit{process}\index{process}.
+\indextext{process}.
 The process abstraction prevents one process from wrecking or spying on
 another process's memory, CPU, file descriptors, etc.  It also prevents a process
 from wrecking the kernel itself, so that a process can't subvert the kernel's
@@ -271,7 +271,7 @@ and time-slicing of threads.
 To help enforce isolation, the process abstraction provides the
 illusion to a program that it has its own private machine.  A process provides
 a program with what appears to be a private memory system, or
-\textit{address space}\index{address space}, 
+\indextext{address space}, 
 which other processes cannot read or write.
 A process also provides the program with what appears to be its own
 CPU to execute the program's instructions.
@@ -279,9 +279,9 @@ CPU to execute the program's instructions.
 Xv6 uses page tables (which are implemented by hardware) to give each process
 its own address space. The RISC-V page table
 translates (or ``maps'') a
-\textit{virtual address}\index{virtual address}
+\indextext{virtual address}
 (the address that an RISC-V instruction manipulates) to a
-\textit{physical address}\index{physical address}
+\indextext{physical address}
 (an address that the processor chip sends to main memory).
 
 \begin{figure}[t]
@@ -295,7 +295,7 @@ Xv6 maintains a separate page table for each process that defines that process's
 address space.  As illustrated in 
 Figure~\ref{fig:as},
 an address space includes the process's
-\textit{user memory}\index{user memory}
+\indextext{user memory}
 starting at virtual address zero. Instructions come first,
 followed by global variables, then the stack,
 and finally a ``heap'' area (for malloc)
@@ -303,7 +303,7 @@ that the process can expand as needed.
 Xv6 runs on a RISC-V processor with 39 bits of virtual addresses,
 so the maximum address is $2^{39}-1$ = 0x3fffffffff.
 At the top of the address space xv6 reserves some
-\textit{trampoline}\index{trampoline}
+\indextext{trampoline}
 memory to switch to the kernel, as we will explain later.
 
 The xv6 kernel maintains many pieces of state for each process,
@@ -319,7 +319,7 @@ to refer to elements of the
 structure.
 
 Each process has a thread of execution (or 
-\textit{thread}\index{thread}
+\indextext{thread}
 for short) that executes the process's instructions.
 A thread can be suspended and later resumed.
 To switch transparently between processes,

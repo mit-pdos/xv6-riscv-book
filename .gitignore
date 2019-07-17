@@ -1,10 +1,6 @@
 *.pdf
 *.*~
 *.ps
-*.dit
-z.*
-contents1.t
-index1.t
 latex.out/
 xv6-riscv-src/
 *.aux

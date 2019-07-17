@@ -14,7 +14,7 @@
 
 The purpose of a file system is to organize and store data. File systems
 typically support sharing of data among users and applications, as well as
-\textit{persistence}\index{persistence}
+\indextext{persistence}
 so that data is still available after a reboot.
 
 The xv6 file system provides Unix-like files, directories, and pathnames
@@ -28,7 +28,7 @@ of named directories and files, to record the identities of the
 blocks that hold each file's content, and to record which areas
 of the disk are free.
 \item The file system must support
-\textit{crash recovery}\index{crash recovery}.
+\indextext{crash recovery}.
 That is, if a crash (e.g., power failure) occurs, the file system must
 still work correctly after a restart. The risk is that a crash might
 interrupt a sequence of updates and leave inconsistent on-disk data
@@ -55,11 +55,11 @@ The buffer cache layer caches disk blocks and synchronizes access to them,
 making sure that only one kernel process at a time can modify the
 data stored in any particular block.  The logging layer allows higher
 layers to wrap updates to several blocks in a
-\textit{transaction}\index{transaction},
+\indextext{transaction},
 and ensures that the blocks are updated atomically in the
 face of crashes (i.e., all of them are updated or none).
 The inode layer provides individual files, each represented as an
-\textit{inode}\index{inode}
+\indextext{inode}
 with a unique i-number
 and some blocks holding the file's data.  The directory
 layer implements each directory as a special kind of
@@ -87,7 +87,7 @@ sections, as shown in
 Figure~\ref{fig:fslayout}.
 The file system does not use
 block 0 (it holds the boot sector).  Block 1 is called the 
-\textit{superblock}\index{superblock}; 
+\indextext{superblock}; 
 it contains metadata about the file system (the file system size in blocks, the
 number of data blocks, the number of inodes, and the number of blocks in the
 log).  Blocks starting at 2 hold the log.  After the log are the inodes, with multiple inodes per block.  After
@@ -118,7 +118,7 @@ The main interface exported by the buffer cache consists of
 and
 \indexcode{bwrite};
 the former obtains a
-\textit{buf}\index{buf}
+\indextext{buf}
 containing a copy of a block which can be read or modified in memory, and the
 latter writes a modified buffer to the appropriate block on the disk.
 A kernel thread must release a buffer by calling
@@ -335,10 +335,10 @@ Xv6 solves the problem of crashes during file system operations with a
 simple form of logging. An xv6 system call does not directly write
 the on-disk file system data structures. Instead, it places a
 description of all the disk writes it wishes to make in a 
-\textit{log}\index{log} 
+\indextext{log} 
 on the disk. Once the system call has logged all of its writes, it writes a
 special 
-\textit{commit}\index{commit}
+\indextext{commit}
 record to the disk indicating that the log contains
 a complete operation. At that point the system call copies the writes
 to the on-disk file system data structures. After those writes have
@@ -396,7 +396,7 @@ To avoid splitting a system call across transactions, the logging system
 only commits when no file system system calls are underway.
 
 The idea of committing several transactions together is known as 
-\textit{group commit}\index{group commit}.
+\indextext{group commit}.
 Group commit reduces the number of disk operations
 because it amortizes the fixed cost of a commit over multiple
 operations.
@@ -404,7 +404,7 @@ Group commit also hands the disk system more concurrent writes
 at the same time, perhaps allowing the disk to write
 them all during a single disk rotation.
 Xv6's virtio driver doesn't support this kind of
-\textit{batching}\index{batching},
+\indextext{batching},
 but xv6's file system design allows for it.
 
 Xv6 dedicates a fixed amount of space on the disk to hold the log.
@@ -486,7 +486,7 @@ see the modifications.
 notices when a block is written multiple times during a single
 transaction, and allocates that block the same slot in the log.
 This optimization is often called
-\textit{absorption}\index{absorption}.
+\indextext{absorption}.
 It is common that, for example, the disk block containing inodes
 of several files is written several times within a transaction.  By absorbing
 several disk writes into one, the file system can save log space and
@@ -615,7 +615,7 @@ must be called inside a transaction.
 \section{Inode layer}
 
 The term 
-\textit{inode}\index{inode} 
+\indextext{inode} 
 can have one of two related meanings.
 It might refer to the on-disk data structure containing
 a file's size and list of data block numbers.
@@ -933,12 +933,12 @@ The first
 blocks of data are listed in the first
 \lstinline{NDIRECT}
 entries in the array; these blocks are called 
-\textit{direct blocks}\index{direct blocks}.
+\indextext{direct blocks}.
 The next 
 \indexcode{NINDIRECT}
 blocks of data are listed not in the inode
 but in a data block called the
-\textit{indirect block}\index{indirect block}.
+\indextext{indirect block}.
 The last entry in the
 \lstinline{addrs}
 array gives the address of the indirect block.

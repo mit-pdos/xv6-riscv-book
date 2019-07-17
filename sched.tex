@@ -11,7 +11,7 @@ computer has processors, so a plan is needed to time-share the
 processors among the processes. Ideally the sharing would be transparent to user
 processes.  A common approach is to provide each process
 with the illusion that it has its own virtual processor by
-\textit{multiplexing}\index{multiplexing}
+\indextext{multiplexing}
 the processes onto the hardware processors.
 This chapter explains how xv6 achieves this multiplexing.
 %% 
@@ -105,7 +105,7 @@ performs the saves and restores for a thread switch.
 \lstinline{swtch}
 doesn't directly know about threads; it just saves and
 restores register sets, called 
-\textit{contexts}\index{contexts}.
+\indextext{contexts}.
 When it is time for a process to give up the CPU,
 the process's kernel thread calls
 \lstinline{swtch}
@@ -334,7 +334,7 @@ threads, one would observe the following simple pattern:
 \lineref{kernel/proc.c:/swtch..p/},
 and so on.  The procedures in which this stylized switching between
 two threads happens are sometimes referred to as 
-\textit{coroutines}\index{coroutines}; 
+\indextext{coroutines}; 
 in this example,
 \indexcode{sched}
 and
@@ -579,9 +579,9 @@ Sleep and wakeup fill that void, allowing one process to
 sleep waiting for an event and another process to wake it up
 once the event has happened.
 Sleep and wakeup are often called 
-\textit{sequence coordination}\index{sequence coordination}
+\indextext{sequence coordination}
 or 
-\textit{conditional synchronization}\index{conditional synchronization}
+\indextext{conditional synchronization}
 mechanisms, and there are many other similar mechanisms
 in the operating systems literature.
 
@@ -653,9 +653,9 @@ of its time spinning in the
 \lstinline{while}
 loop hoping for a pointer.
 The receiver's CPU could find more productive work than
-\textit{busy waiting}\index{busy waiting}
+\indextext{busy waiting}
 by repeatedly 
-\textit{polling}\index{polling}
+\indextext{polling}
 \lstinline{q->ptr}.
 Avoiding busy waiting requires
 a way for the receiver to yield the CPU
@@ -672,7 +672,7 @@ that work as follows.
 sleeps on the arbitrary value
 \indexcode{chan},
 called the 
-\textit{wait channel}\index{wait channel}.
+\indextext{wait channel}.
 \lstinline{Sleep}
 puts the calling process to sleep, releasing the CPU
 for other work.
@@ -761,7 +761,7 @@ will wait for
 \lstinline{recv}
 to consume the pointer in the queue,
 at which point the system will be 
-\textit{deadlocked}\index{deadlocked}.
+\indextext{deadlocked}.
 
 The root of this problem is that the
 invariant that
@@ -1513,7 +1513,7 @@ has completed and the process is about to return to user space).
 
 The xv6 scheduler implements a simple scheduling policy, which runs each process
 in turn.  This policy is called
-\textit{round robin}\index{round robin}.
+\indextext{round robin}.
 Real operating systems implement more sophisticated policies that, for example,
 allow processes to have priorities.  The idea is that a runnable high-priority process
 will be preferred by the scheduler over a runnable low-priority process.   These
@@ -1521,9 +1521,9 @@ policies can become complex quickly because there are often competing goals: for
 example, the operating might also want to guarantee fairness and
 high throughput.  In addition, complex policies may lead to unintended
 interactions such as
-\textit{priority inversion}\index{priority inversion}
+\indextext{priority inversion}
 and 
-\textit{convoys}\index{convoys}.
+\indextext{convoys}.
 Priority inversion can happen when a low-priority and high-priority process
 share a lock, which when acquired by the low-priority process can prevent the
 high-priority process from making progress.  A long convoy can form when many
@@ -1600,7 +1600,7 @@ wakes up all processes that are waiting on a particular channel, and it might be
 the case that many processes are waiting for that particular channel.   The
 operating system will schedule all these processes and they will race to check
 the sleep condition.  Processes that behave in this way are sometimes called a
-\textit{thundering herd}\index{thundering herd},
+\indextext{thundering herd},
 and it is best avoided.
 Most condition variables have two primitives for
 \lstinline{wakeup}:

@@ -25,11 +25,11 @@ There are three cases when control must be transferred from a user program to
 the kernel. First, a system call: when a user program asks for an operating
 system service, as we saw at the end of the last chapter.
 Second, an
-\textit{trap}\index{trap}:
+\indextext{trap}:
 when a program performs an illegal action. Examples of illegal actions include
 divide by zero, attempt to access memory for a page-table entry that is not
 present, and so on.  Third, an
-\textit{interrupt}\index{interrupt}:
+\indextext{interrupt}:
 when a device generates a signal to indicate that
 it needs attention from the operating system.  For example, a clock chip may
 generate an interrupt every 10 ms to allow the kernel to implement
@@ -71,7 +71,7 @@ xv6 must set up the hardware to handle these interrupts.  Devices
 usually interrupt in order to tell the kernel that some hardware event
 has occured, such as I/O completion.  Interrupts are usually optional
 in the sense that the kernel could instead periodically check (or
-\textit{poll}\index{poll}) the device hardware to check for new
+\indextext{poll}) the device hardware to check for new
 events.  Interrupts are preferable to polling if the events are
 relatively rare, so that polling would waste CPU time.
 
@@ -107,7 +107,7 @@ The RISC-V processor has minimal mechanism for handling interrupts,
 and much of the work is done by the kernel.  The RISC-V processor has
 registers (\indexcode{mtvec} and
 \indexcode{stvec}) to specify the
-address of the \textit{interrupt handler}\index{interrupt handler} in
+address of the \indextext{interrupt handler} in
 machine mode or supervisor mode, respectively.  It also has registers
 (\indexcode{mip} and
 \indexcode{sip}) to specify which
@@ -178,7 +178,7 @@ all three modes. xv6 has a different plan for each mode:
   contain an address that is not part of the process's user memory.
 
   To addresses these challenges, xv6 uses a
-  \textit{trampoline}\index{trampoline} page.  It maps a page with
+  \indextext{trampoline} page.  It maps a page with
   code to enter and exit the kernel in every process's address space
   and in the kernel address space (as we saw in Figure~\ref{fig:as}
   and in Figure~\ref{fig:xv6_layout}).  This page is mapped at the
@@ -581,7 +581,7 @@ uses these functions to get at its arguments.
 \section{Drivers}
 
 A
-\textit{driver}\index{driver}
+\indextext{driver}
 is the code in an operating system that manages a particular device:
 it tells the device hardware to perform operations,
 configures the device to generate interrupts when done,
@@ -615,7 +615,7 @@ structure is out of sync with the disk.
 
 \section{Code: Disk driver}
 
-Xv6 has a disk driver for \textit{virtio}\index{virtio} disks. The
+Xv6 has a disk driver for \indextext{virtio} disks. The
 virtio standard is a standard for devices for kernels that run on a
 virtual machine.  It defines the interactions between a guest kernel
 and the virtual machine monitor for virtual devices emulating network
@@ -682,7 +682,7 @@ processor.  Therefore, xv6 lets another process run on the CPU after a
 disk I/O request and arranges to receive an interrupt when the disk
 operation has completed.  Using memory-mapped I/O,
 \indexcode{plic_init}, which is called from \lstinline{main}, programs
-the \textit{Platform Level Interrupt Controller (PLIC)}\index{PLIC} to
+the \indextext{Platform Level Interrupt Controller (PLIC)} to
 accept interrupts from the disk.  It enables interrupts for
 \lstinline{VIRTIO0_IRQ} \lineref{kernel/plic.c:/^plicinit/}.  If the
 disk generates an interrupt, \lstinline{devintr}
@@ -794,7 +794,7 @@ typically devices are slower than CPU, so the hardware uses
 interrupts to notify the operating system of status changes.
 Modern disk controllers typically
 accept a 
-\textit{batch}\index{batch} 
+\indextext{batch} 
 of disk requests at a time and even reorder
 them to make most efficient use of the disk arm.
 When disks were simpler, operating systems often reordered the
