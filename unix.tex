@@ -416,7 +416,7 @@ each
 \lstinline{write}
 picks up where the previous one left off.
 
-The following program fragment (which forms the essence of
+The following program fragment (which forms the essence of the program
 \lstinline{cat})
 copies data from its standard input
 to its standard output.  If an error occurs, it writes a message
@@ -522,7 +522,7 @@ in the child to change the standard input and output
 file descriptors, and then
 \lstinline{exec}.
 No changes to the program being exec-ed
-\lstinline{(} cat
+(\lstinline{cat}
 in our example)
 are required.
 If
@@ -611,7 +611,7 @@ tells the shell to give the command a file descriptor 2 that
 is a duplicate of descriptor 1.
 Both the name of the existing file and the error message for the
 non-existing file will show up in the file
-\lstinline{tmp1.}
+\lstinline{tmp1}.
 The xv6 shell doesn't support I/O redirection for the error file
 descriptor, but now you know how to implement it.
 
