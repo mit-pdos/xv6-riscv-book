@@ -120,7 +120,7 @@ among the set of processes waiting to execute.
 When a process is not executing, xv6 saves its CPU registers,
 restoring them when it next runs the process.
 The kernel associates a process identifier, or
-\lstinline{pid}\index{pid@\lstinline{pid}},
+\indexcode{pid},
 with each process.
 
 \begin{figure}[t]
@@ -154,7 +154,7 @@ unlink(filename) & Remove a file \\
 \end{figure}
 
 A process may create a new process using the
-\lstinline{fork}\index{fork@\lstinline{fork}}
+\indexcode{fork}
 system call.
 \lstinline{Fork}
 creates a new process, called the 
@@ -165,7 +165,7 @@ as the calling process, called the
 \lstinline{Fork}
 returns in both the parent and the child.
 In the parent,
-\lstinline{fork}\index{fork@\lstinline{fork}}
+\indexcode{fork}
 returns the child's pid;
 in the child, it returns zero.
 For example, consider the following program fragment:
@@ -183,15 +183,15 @@ if(pid > 0){
 }
 \end{lstlisting}
 The
-\lstinline{exit}\index{exit@\lstinline{exit}}
+\indexcode{exit}
 system call causes the calling process to stop executing and
 to release resources such as memory and open files.
 The
-\lstinline{wait}\index{wait@\lstinline{wait}}
+\indexcode{wait}
 system call returns the pid of an exited child of the
 current process; if none of the caller's children
 has exited,
-\lstinline{wait}\index{wait@\lstinline{wait}}
+\indexcode{wait}
 waits for one to do so.
 In the example, the output lines
 \begin{lstlisting}[]
@@ -200,10 +200,10 @@ child: exiting
 \end{lstlisting}
 might come out in either order, depending on whether the
 parent or child gets to its
-\lstinline{printf}\index{printf@\lstinline{printf}}
+\indexcode{printf}
 call first.
 After the child exits the parent's
-\lstinline{wait}\index{wait@\lstinline{wait}}
+\indexcode{wait}
 returns, causing the parent to print
 \begin{lstlisting}[]
 parent: child 1234 is done
@@ -223,7 +223,7 @@ in the child.  The value of
 in the child will still be zero.
 
 The
-\lstinline{exec}\index{exec@\lstinline{exec}}
+\indexcode{exec}
 system call
 replaces the calling process's memory with a new memory
 image loaded from a file stored in the file system.
@@ -233,7 +233,7 @@ to start, etc. xv6
 uses the ELF format, which Chapter~\ref{CH:MEM} discusses in
 more detail.
 When
-\lstinline{exec}\index{exec@\lstinline{exec}}
+\indexcode{exec}
 succeeds, it does not return to the calling program;
 instead, the instructions loaded from the file start
 executing at the entry point declared in the ELF header.
@@ -264,7 +264,7 @@ users. The main structure of the shell is simple; see
 \lstinline{main} 
 \lineref{user/sh.c:/main/}.
 The main loop reads a line of input from the user with
-\lstinline{getcmd}\index{getcmd@\lstinline{getcmd}}.
+\indexcode{getcmd}.
 Then it calls 
 \lstinline{fork}, 
 which creates a copy of the shell process. The
@@ -302,9 +302,9 @@ in
 \lineref{user/sh.c:/main/}.
 
 You might wonder why
-\lstinline{fork}\index{fork@\lstinline{fork}}
+\indexcode{fork}
 and
-\lstinline{exec}\index{exec@\lstinline{exec}}
+\indexcode{exec}
 are not combined in a single call; we will see later that separate
 calls for creating a process and loading a program has some clever
 usages in the shell for I/O redirection.  To avoid the wastefulness of
@@ -315,19 +315,19 @@ for this use case by using virtual-memory techniques such as copy-on-write.
 
 Xv6 allocates most user-space memory
 implicitly:
-\lstinline{fork}\index{fork@\lstinline{fork}}
+\indexcode{fork}
 allocates the memory required for the child's copy of the
 parent's memory, and 
-\lstinline{exec}\index{exec@\lstinline{exec}}
+\indexcode{exec}
 allocates enough memory to hold the executable file.
 A process that needs more memory at run-time (perhaps for
-\lstinline{malloc}\index{malloc@\lstinline{malloc}})
+\indexcode{malloc})
 can call
 \lstinline{sbrk(n)}
 to grow its data memory by
 \lstinline{n}
 bytes;
-\lstinline{sbrk}\index{sbrk@\lstinline{sbrk}}
+\indexcode{sbrk}
 returns the location of the new memory.
 
 Xv6 does not provide a notion of users or of protecting
@@ -465,13 +465,13 @@ is always the lowest-numbered unused
 descriptor of the current process.
 
 File descriptors and
-\lstinline{fork}\index{fork@\lstinline{fork}}
+\indexcode{fork}
 interact to make I/O redirection easy to implement.
 \lstinline{Fork}
 copies the parent's file descriptor table along with its memory,
 so that the child starts with exactly the same open files as the parent.
 The system call
-\lstinline{exec}\index{exec@\lstinline{exec}}
+\indexcode{exec}
 replaces the calling process's memory but preserves its file table.
 This behavior allows the shell to
 implement I/O redirection by forking, reopening chosen file descriptors,
