@@ -105,20 +105,20 @@ the CLINT will interrupt core \lstinline{id}.
 
 The RISC-V processor has minimal mechanism for handling interrupts,
 and much of the work is done by the kernel.  The RISC-V processor has
-registers (\lstinline{mtvec}\index{mtvec@\lstinline{mtvec}} and
-\lstinline{stvec}\index{stvec@\lstinline{stvec}}) to specify the
+registers (\indexcode{mtvec} and
+\indexcode{stvec}) to specify the
 address of the \textit{interrupt handler}\index{interrupt handler} in
 machine mode or supervisor mode, respectively.  It also has registers
-(\lstinline{mip}\index{mip@\lstinline{mip}} and
-\lstinline{sip}\index{sip@\lstinline{sip}}) to specify which
+(\indexcode{mip} and
+\indexcode{sip}) to specify which
 interrupts are taking in machine mode and in supervisor mode,
 respectively.  When a devices raises an interrupt, the processor sees
 whether the interrupt must be handled in machine mode or supervisor
 mode by inspecting the \lstinline{ip} registers, switches to that
 mode, changes the program counter to the value in the mode's
 \lstinline{tvec} register, saves the value of the program counter at
-the time of interrupt in \lstinline{mepc}\index{mepc@\lstinline{mepc}}
-or in \lstinline{sepc}\index{sepc@\lstinline{sepc}}, and saves the
+the time of interrupt in \indexcode{mepc}
+or in \indexcode{sepc}, and saves the
 previous mode in \indexcode{mstatus} or \indexcode{sstatus}.
 
 It is important that the processor performs all these steps in a
@@ -196,8 +196,8 @@ it cannot use any register because those contain values of the
 interrupted code and they must be saved before the interrupt handler
 can use them. To handle this conundrum, the RISC-V processor provides
 a scratch register for machine and kernel mode:
-\lstinline{mscratch}\index{mscratch@\lstinline{mscratch}} and
-\lstinline{sscratch}\index{sscratch@\lstinline{sscratch}}.  The idea is
+\indexcode{mscratch} and
+\indexcode{sscratch}.  The idea is
 that the scratch register contains an address of scratch area in
 memory.  The RISC-V processor also has an instruction to exchange the
 content of a register and with the content of the scratch
@@ -212,10 +212,10 @@ system calls as interrupts induced by software.  When the processor
 cannot execute an instruction in user space (e.g., dividing by zero),
 the processor switches to the interrupt handler in kernel mode.  To
 switch to kernel mode for a system call, the RISC-V processor provides
-an instruction \lstinline{ecall}\index{ecall@\lstinline{ecall}}, which
+an instruction \indexcode{ecall}, which
 transfers control to the interrupt handler.  For the interrupt to tell
 which ``interrupt'' happened, the RISC-V processor provides a register
-\lstinline{scause}\index{scause@\lstinline{scause}}, which specifies
+\indexcode{scause}, which specifies
 the cause of the interrupt (e.g., timer interrupt, illegal
 instruction, system call).
 
@@ -391,10 +391,10 @@ If an exception causes the kernel/user transition, then xv6 records
 that the user process must be killed and will call \lstinline{exit}.
 (We will look at how xv6 does this cleanup in Chapter~\ref{CH:SCHED}.)
 Otherwise, the cause was an interrupt, which are dealt with by
-\lstinline{devintr}\index{devintr@\lstinline{devintr}}.  For a timer
+\indexcode{devintr}.  For a timer
 interrupt, \lstinline{devintr} just do two things: increment the ticks
 variable \lineref{kernel/trap.c:/ticks\+\+/}, and call
-\lstinline{wakeup}\index{wakeup@\lstinline{wakeup}}.  The latter, as
+\indexcode{wakeup}.  The latter, as
 we will see in Chapter~\ref{CH:SCHED}, may make a process runnable.
 
 After completing the system call or handling an interrupt, xv6 yields
@@ -420,13 +420,13 @@ interrupts during these code fragments.  For example,
 \section{Code: System calls}
 
 Chapter~\ref{CH:FIRST} ended with 
-\lstinline{initcode.S}\index{initcode.S@\lstinline{initcode.S}}
+\indexcode{initcode.S}
 invoking a system call.
 Let's look at that again
 \lineref{user/initcode.S:/SYS_exec/}.
 The process pushed the arguments
 for an 
-\lstinline{exec}\index{exec@\lstinline{exec}}
+\indexcode{exec}
 call on the process's stack, and put the
 system call number in
 \texttt{a7}.
@@ -437,7 +437,7 @@ The \lstinline{ecall} instruction
 switches the processor from user mode to kernel mode, and will
 cause the kernel to call \lstinline{syscall}, as we saw above.
 
-\lstinline{Syscall}\index{Syscall@\lstinline{Syscall}}
+\indexcode{Syscall}
 \lineref{kernel/syscall.c:/^syscall/} 
 loads the system call number from the trap frame, which
 contains the saved
@@ -446,7 +446,7 @@ and indexes into the system call tables.
 For the first system call, 
 \texttt{a7}
 contains the value 
-\lstinline{SYS_exec}\index{SYS_exec@\lstinline{SYS_exec}}
+\indexcode{SYS_exec}
 \lineref{kernel/syscall.h:/SYS_exec/},
 and
 \lstinline{syscall}
@@ -462,7 +462,7 @@ When the system call returns to user space,
 \lstinline{usertrapret}
 will load the values
 from
-\lstinline{p->tf}\index{p->tf@\lstinline{p->tf}}
+\indexcode{p->tf}
 into the machine registers
 and return to user space
 using
@@ -476,7 +476,7 @@ that the system call handler returned
 System calls conventionally return negative numbers to indicate
 errors, positive numbers for success.
 If the system call number is invalid,
-\lstinline{syscall}\index{syscall@\lstinline{syscall}}
+\indexcode{syscall}
 prints an error and returns \-1.
 
 \section{Code: System call arguments}
@@ -496,9 +496,9 @@ retrieve the
 \textit{n} 'th 
 system call
 argument, as either an integer, pointer, a string, or a file descriptor.
-\lstinline{argint}\index{argint@\lstinline{argint}}
+\indexcode{argint}
 and
-\lstinline{argaddr}\index{argaddr@\lstinline{argaddr}}
+\indexcode{argaddr}
 use the function
 \lstinline{fetcharg}
 to locate the
@@ -513,7 +513,7 @@ argument 6 through
 
 \lstinline{argint} 
 calls 
-\lstinline{fetchint}\index{fetchint@\lstinline{fetchint}}
+\indexcode{fetchint}
 to read the value at that address from user memory and write it to
 \lstinline{*ip}.  
 \lstinline{fetchint}
@@ -526,9 +526,9 @@ verifies that the
 pointer lies in the process's addres
 space: it checks
 that the address is below
-\lstinline{p->sz}\index{p->sz@\lstinline{p->sz}}.
+\indexcode{p->sz}.
 
-\lstinline{copyin}\index{copyin@\lstinline{copying}}
+\indexcode{copyin}
 \lineref{kernel/vm.c:/^copyin/} copies \lstinline{len} bytes to
 \lstinline{dst} from virtual address \lstinline{srcva} in the page
 table \lstinline{pagetable}.  It walks the page table in software to
@@ -538,18 +538,18 @@ addresses and maps all physical addresses, the kernel can use
 \lstinline{pa0} as a virtual address and copy the bytes at
 \lstinline{pa0} using \lstinline{memmove}.
 
-\lstinline{fetchaddr}\index{fetchaddr@\lstinline{fetchaddr}},
+\indexcode{fetchaddr},
 is like
 \lstinline{fetchint},
 but retrieves 64-bit value instead of a 32-bit int.
 
-\lstinline{argptr}\index{argptr@\lstinline{argptr}}
+\indexcode{argptr}
 fetches the
 \textit{n}'th 
 system call argument and checks that this argument is a valid
 user-space pointer.
 
-\lstinline{argstr}\index{argstr@\lstinline{argstr}} 
+\indexcode{argstr} 
 interprets the
 \textit{n}'th 
 argument as a pointer.  It ensures that the pointer points at a
@@ -557,7 +557,7 @@ NUL-terminated string and that the complete string is located below
 the end of the user part of the address space.
 
 Finally,
-\lstinline{argfd}\index{argfd@\lstinline{argfd}}
+\indexcode{argfd}
 \lineref{kernel/sysfile.c:/^argfd/}
 uses
 \lstinline{argint}
@@ -625,7 +625,7 @@ base development board that xv6 targets (SiFive's HiFive) doesn't
 provide a disk.
 
 Xv6 represent file system blocks using
-\lstinline{struct buf}\index{struct buf@\lstinline{struct buf}}
+\indexcode{struct buf}
 \lineref{kernel/buf.h:/^struct.buf/}.
 \lstinline{BSIZE}
 \lineref{kernel/fs.h:/BSIZE/}
@@ -651,22 +651,22 @@ The
 \lstinline{flags}
 track the relationship between memory and disk:
 the
-\lstinline{B_VALID}\index{B_VALID@\lstinline{B_VALID}}
+\indexcode{B_VALID}
 flag means that
 \lstinline{data}
 has been read in, and
 the 
-\lstinline{B_DIRTY}\index{B_DIRTY@\lstinline{B_DIRTY}} 
+\indexcode{B_DIRTY} 
 flag means that
 \lstinline{data}
 needs to be written out.
 
 
 The kernel initializes the disk driver at boot time by calling
-\lstinline{virtio_disk_init}\index{virtio_disk_init@\lstinline{virtio_disk_init}}
+\indexcode{virtio_disk_init}
 \lineref{kernel/virtio\_disk.c:/^virtio_disk_init/}
 from
-\lstinline{main}\index{main@\lstinline{main}}
+\indexcode{main}
 \lineref{kernel/main.c:/virtio_disk_init/}.
 \lstinline{virtio_disk_init} negotiates the simplest features with the
 disk and sets up one queues for disk requests.  The driver can have
@@ -676,7 +676,7 @@ Disk accesses typically take milliseconds, a long time for a
 processor.  Therefore, xv6 lets another process run on the CPU after a
 disk I/O request and arranges to receive an interrupt when the disk
 operation has completed.
-\lstinline{plic_init}\index{plic_init@\lstinline{plic_init}} programs
+\indexcode{plic_init} programs
 the \textit{PLIC}\index{PLIC} to accept interrupts from the disk during boot.  It
 enables interrupts for \lstinline{VIRTIO0_IRQ}
 \lineref{kernel/plic.c:/^plicinit/}.  If the disk generates an
@@ -685,18 +685,18 @@ see that \lstinline{VIRTIO0_IRQ} was enabled and invoke
 \lstinline{virtio_disk_intr}.
 
 After this setup, the disk is not used again until the buffer cache calls
-\lstinline{virtio_disk_rw}\index{virtio_disk_rww@\lstinline{virtio_disk_rw}},
+\indexcode{virtio_disk_rw},
 which updates a locked buffer
 as indicated by the flags.
 If
-\lstinline{B_DIRTY}\index{B_DIRTY@\lstinline{B_DIRTY}}
+\indexcode{B_DIRTY}
 is set,
 \lstinline{virtio_disk_rw}
 writes the buffer
 to the disk; if
-\lstinline{B_VALID}\index{B_VALID@\lstinline{B_VALID}}
+\indexcode{B_VALID}
 is not set,
-\lstinline{virtio_disk_rw}\index{virtio_disk_rw@\lstinline{virtio_disk_rw}}
+\indexcode{virtio_disk_rw}
 reads the buffer from the disk.
 \lstinline{Virtio_Disk_Rw}
 \lineref{kernel/virtio\_disk.c:/^virtio_disk_rw/}
@@ -710,7 +710,7 @@ Having added the request to the queue,
 must wait for the result.  As discussed above,
 polling does not make efficient use of the CPU.
 Instead,
-\lstinline{virtio_disk_rw}\index{virtio_disk_rw@\lstinline{virtio_disk_rw}}
+\indexcode{virtio_disk_rw}
 yields the CPU for other processes by sleeping,
 waiting for the interrupt handler to 
 record in the buffer's flags that the operation is done
@@ -720,7 +720,7 @@ xv6 will schedule other processes to keep the CPU busy.
 
 Eventually, the disk will finish its operation and trigger an
 interrupt, which will result in a call to
-\lstinline{virtio_disk_intr}\index{virtio_disk_intr@\lstinline{virtio_disk_intr}}
+\indexcode{virtio_disk_intr}
 to handle it
 \lineref{kernel/trap.c:/virtio_disk_intr/}.
 \lstinline{Virtio_Disk_Intr}
@@ -729,9 +729,9 @@ consults the first buffer in the queue to find
 out which operation was happening.
 \lstinline{virtio_disk_intr}
 sets 
-\lstinline{B_VALID}\index{B_VALID@\lstinline{B_VALID}},
+\indexcode{B_VALID},
 clears
-\lstinline{B_DIRTY}\index{B_DIRTY@\lstinline{B_DIRTY}},
+\indexcode{B_DIRTY},
 and wakes up any process sleeping on the buffer
 \linerefs{kernel/virtio\_disk.c:/info\[id\]\.b/,/wakeup/}.
 
