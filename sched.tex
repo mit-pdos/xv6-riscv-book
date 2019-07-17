@@ -28,8 +28,8 @@ for device or pipe I/O to complete, or waits for a child
 to exit, or waits in the
 \lstinline{sleep}
 system call.
-Second, xv6 periodically forces a switch when a process
-is executing user instructions.
+Second, xv6 periodically forces a switch to cope with
+processes that compute for long periods without sleeping.
 This multiplexing creates the illusion that
 each process has its own CPU, just as xv6 uses the memory allocator and hardware
 page tables to create the illusion that each process has its own memory.
@@ -38,7 +38,8 @@ Implementing multiplexing poses a few challenges. First, how to switch from one
 process to another? 
 Although the idea of context switching
 is simple, the implementation is some of the most opaque code
-in xv6. Second, how to switch transparently to user processes?  Xv6 uses the
+in xv6. Second, how to force
+switches in a way that is transparent to user processes?  Xv6 uses the
 standard technique of driving context switches with timer interrupts.
 Third, many CPUs may be switching among processes concurrently, and a
 locking plan is necessary to avoid races. Fourth, a process's
@@ -63,8 +64,6 @@ up the CPU and sleep
 waiting for an event, and allows another process to wake the first
 process up. Care is needed to avoid races that result in
 the loss of event notifications.
-As an example of these problems and their solution, this
-chapter examines the implementation of pipes.
 %% 
 \section{Code: Context switching}
 %% 
@@ -84,7 +83,8 @@ call or interrupt) to the old process's kernel thread,
 a context switch to the current CPU's scheduler thread, a context
 switch to a new process's kernel thread, and a trap return
 to the user-level process.
-The xv6 scheduler has its own thread (saved registers and stack) because
+The xv6 scheduler has a dedicate thread (saved registers and stack)
+per CPU because
 it is sometimes not safe for it execute on
 any process's kernel stack;
 we'll see an example in
@@ -95,9 +95,7 @@ between a kernel thread and a scheduler thread.
 Switching from one thread to another involves saving the old thread's
 CPU registers, and restoring the previously-saved registers of the
 new thread; the fact that
-\texttt{\%esp}
-and
-\texttt{\%eip}
+the stack pointer and program counter
 are saved and restored means that the CPU will switch stacks and
 switch what code it is executing.
 
