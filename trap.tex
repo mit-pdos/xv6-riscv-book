@@ -765,7 +765,7 @@ clears
 wakes up any process sleeping on the buffer
 \linerefs{kernel/virtio\_disk.c:/info\[id\]\.b/,/wakeup/},
 and frees up the descriptors that were used for request.
-Freeing up a descriptor might also wakeup processes
+Freeing up a descriptor also wakes up processes
 waiting for free descriptors.
 
 The PLIC routes interrupts to the first processor that claims it.
