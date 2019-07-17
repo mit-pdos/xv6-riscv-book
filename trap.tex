@@ -32,7 +32,7 @@ present, and so on.  Third, an
 \textit{interrupt}\index{interrupt}:
 when a device generates a signal to indicate that
 it needs attention from the operating system.  For example, a clock chip may
-generate an interrupt every 100 msec to allow the kernel to implement
+generate an interrupt every 10 ms to allow the kernel to implement
 time sharing.  As another example, when the disk has read a block from
 disk, it generates an interrupt to alert the operating system that the
 block is ready to be retrieved.
@@ -91,7 +91,7 @@ not swamping the processor with handling interrupts.
 The development board on which xv6 is running has a \textit{Core Local
   Interruptor (CLINT)}\index{Core Local Interruptor (CLINT)}, which
 can be programmed to generate timer interrupts.  The CLINT is a
-memory-mapped device located at \lstinline{02000000} (see
+memory-mapped device located at \lstinline{0x02000000} (see
 Fig.~\ref{fig:xv6_layout}), and can thus be programmed with ordinary
 load and store instructions.  xv6 programs the CLINT during start
 \lineref{kernel/start.c:/CLINT/}: it reads the clock from address
@@ -101,39 +101,124 @@ The hardware clock runs at 1Mhz and after 10,000 cycles (i.e., 10ms) the clock
 value will be as large as the value in \lstinline{CLINT_MTIMECMP}, and
 the CLINT will interrupt core \lstinline{id}.
 
-\section{RISC-V protection and interrupt handling}
+\section{RISC-V protection and interrupts and traps}
 
-The RISC-V has 3 protection levels: machine mode (most privilege),
-supervisor mode (also called kernel mode), and user mode (least
-privilege).  Xv6 mainly uses 2 levels: supervisor and user. On an
-interrupt or exception, the processor may have to switch from user
-mode to kernel mode (e.g., when an interrupt arrives while user code
-is running on the processor).
+The RISC-V processor has minimal mechanism for handling interrupts,
+and much of the work is done by the kernel.  The RISC-V processor has
+registers (\lstinline{mtvec}\index{mtvec@\lstinline{mtvec}} and
+\lstinline{stvec}\index{stvec@\lstinline{stvec}}) to specify the
+address of the \textit{interrupt handler}\index{interrupt handler} in
+machine mode or supervisor mode, respectively.  It also has registers
+(\lstinline{mip}\index{mip@\lstinline{mip}} and
+\lstinline{sip}\index{sip@\lstinline{sip}}) to specify which
+interrupts are taking in machine mode and in supervisor mode,
+respectively.  When a devices raises an interrupt, the processor sees
+whether the interrupt must be handled in machine mode or supervisor
+mode by inspecting the \lstinline{ip} registers, switches to that
+mode, changes the program counter to the value in the mode's
+\lstinline{tvec} register, saves the value of the program counter at
+the time of interrupt in \lstinline{mepc}\index{mepc@\lstinline{mepc}}
+or in \lstinline{sepc}\index{sepc@\lstinline{sepc}}, and saves the
+previous mode in \indexcode{mstatus} or \indexcode{sstatus}.
 
-Taking interrupt in user mode is challenging.  At the time of the
-interrupt, the user program is running with user-level page table and
-it will enter the kernel with that page table, but in the kernel xv6
-must run with the kernel page table. Furthermore, the kernel shouldn't
-use the stack of the user process, because it may not be valid.  The
-user process may be malicious or contain an error that causes the user
-\texttt{sp} to contain an address that is not part of the process's
-user memory.
+It is important that the processor performs all these steps in a
+single operation.  Consider if one of these steps were omitted: for
+example, the processor didn't switch program counters.  Then, an
+interrupt may cause a switch from user mode to kernel mode with an
+entry point chosen by the user (i.e., namely the value of the
+user-controlled program counter).  This would allow the user program
+to run any kernel code of its choice, which allows the user program to
+break the isolation between user and kernel. For example, the user
+program can run the code to switch to the kernel page table, because
+it is in kernel mode it can write the \lstinline{satp} register.  It
+is thus important that the kernel specify the entry point, and not the
+user program.
 
-To addresses these challenges, xv6 uses a
-\textit{trampoline}\index{trampoline} to switch page tables.  It maps
-a page code to enter and exit the kernel in every process's address
-space and in the kernel address space.  This page is mapped at the
-same address in each address space.  This page contains the code that
-switches page tables, and because the page is mapped at the same
-virtual address, the instruction right after the page table switch
-will translate correctly.  The trampoline also switches from a user
-stack to a valid kernel stack.
+Note that the processor doesn't switch page tables or stacks on an
+interrupt.  For example, an interrupt in user mode will switch the
+processor to kernel mode at a specific address, but still running with
+the user page table.  It is up to the kernel complete the rest of the
+switch to kernel mode: switch page tables, switch stacks, etc.
 
-XXX switching off interrupts from user to kernel
+To return from an interrupt back to the original mode, the RISC-V
+processor provides the instructions \indexcode{mret} and
+\indexcode{sret}. \lstinline{sret} sets the program counter to the
+value stored in \lstinline{sepc} and the mode to previous mode stored
+in \lstinline{sstatus}. \lstinline{mret} performs the corresponding
+steps with m-registers.
 
-XXX outline the high-level plan for interrups in each mode.
+Xv6 mainly uses 2 levels: supervisor and user mode.  Xv6 programs the
+processor to delegate all interrupts to supervisor mode. Timer
+interrupts, however, must be handled in machine mode.  Thus, handling
+timer interrupts requires us to think about what the kernel must do in
+all three modes. xv6 has a different plan for each mode:
 
-XXX scratch register
+\begin{itemize}
+  
+\item Interrupt in machine mode.  Only timer interrupts can happen in
+  machine mode and Xv6 does as little as possible: it resets the
+  timer, sets a bit in the \lstinline{sip} register to indicate that
+  there is an interrupt pending for the kernel, and returns from the
+  interrupt to whatever mode it came from (kernel or user mode).
+  Because there is an interrupt pending for supervisor mode, the
+  processor immediately will take it.
+
+\item Interrupt in supervisor/kernel mode.  This case is simple: xv6
+  is already in the kernel and there is no need to switch page tables
+  etc. It also has a valid stack, so Xv6 can immediately call a C
+  function to handle the interrupt.
+
+\item Interrupt in user mode. This case is challenging.  At the time
+  of the interrupt, the user program is running with user-level page
+  table and it will enter the kernel with that page table at a
+  \textit{kernel-specified} virtual address. Furthermore, the kernel
+  cannot use the stack of the user process to call, for example, a C
+  function, because it may not be valid.  The user process may be
+  malicious or contain an error that causes the user \texttt{sp} to
+  contain an address that is not part of the process's user memory.
+
+  To addresses these challenges, xv6 uses a
+  \textit{trampoline}\index{trampoline} page.  It maps a page with
+  code to enter and exit the kernel in every process's address space
+  and in the kernel address space (as we saw in Figure~\ref{fig:as}
+  and in Figure~\ref{fig:xv6_layout}).  This page is mapped at the
+  same address in each address space.  This page contains the code
+  that switches page tables, and because the page is mapped
+  identically in each page table, the instruction right after the page
+  table switch will translate correctly.  The trampoline also switches
+  from a user stack to a valid kernel stack.
+
+\end{itemize}
+
+A small hurdle in all three modes is that the interrupt handler
+often needs some scratch space. But, when the interrupt handler starts
+it cannot use any register because those contain values of the
+interrupted code and they must be saved before the interrupt handler
+can use them. To handle this conundrum, the RISC-V processor provides
+a scratch register for machine and kernel mode:
+\lstinline{mscratch}\index{mscratch@\lstinline{mscratch}} and
+\lstinline{sscratch}\index{sscratch@\lstinline{sscratch}}.  The idea is
+that the scratch register contains an address of scratch area in
+memory.  The RISC-V processor also has an instruction to exchange the
+content of a register and with the content of the scratch
+register. After executing this instruction, the register will contain
+the address of the scratch area and the scratch register the content
+of the register. The interrupt handler can then save registers in the
+scratch area.
+
+This subsection has focused on interrupts, but the plan above works
+also for exceptions and system calls: one can think off exceptions and
+system calls as interrupts induced by software.  When the processor
+cannot execute an instruction in user space (e.g., dividing by zero),
+the processor switches to the interrupt handler in kernel mode.  To
+switch to kernel mode for a system call, the RISC-V processor provides
+an instruction \lstinline{ecall}\index{ecall@\lstinline{ecall}}, which
+transfers control to the interrupt handler.  For the interrupt to tell
+which ``interrupt'' happened, the RISC-V processor provides a register
+\lstinline{scause}\index{scause@\lstinline{scause}}, which specifies
+the cause of the interrupt (e.g., timer interrupt, illegal
+instruction, system call).
+
 
 \section{Code: machine mode interrupts}
 
@@ -147,12 +232,12 @@ address to jump to on an interrupt \lineref{kernel/start.c:/w_mtvec/}
 and enables timer interrupts in the \lstinline{mie} register
 \lineref{kernel/start.c:/w_mie/}.
 
-When the CLINT interrupts the processor, the processor switches its program
-counter to the value stored in lstinline{mtvec} register, which is
-\lstinline{machinevec}.  \lstinline{machinevec} is defined in assembly
-\lineref{kernel/kernelvec.S:/machinevec/}.  \lstinline{machinevec}
-starts out by saving \lstinline{a0} in the \lstinline{mscratch} register
-and loading into \lstinline{a0}.  xv6 stored earlier in the
+When the CLINT interrupts the processor, the processor switches its
+program counter to the value stored in \lstinline{mtvec} register,
+which is \lstinline{machinevec}.  \lstinline{machinevec} is defined in
+assembly \lineref{kernel/kernelvec.S:/machinevec/}.
+\lstinline{machinevec} starts out by exchanging \lstinline{a0} and the
+\lstinline{mscratch} register.  xv6 stored earlier in the
 \lstinline{mscratch} register \lineref{kernel/start.c:/mscratch/} the
 address \lstinline{mscratch0}, which points to an area of 5
 \lstinline{uint64}s.  Entries 4 and 5 contain the address of the
@@ -168,7 +253,7 @@ receive an interrupt after \lstinline{machinevec} completes.
 and returning from machine mode \lineref{kernel/kernelvec.S:/mret/} to
 the mode where it came from when it was interrupted.
 
-The code what was interrupted cannot tell it was interrupted: the
+The code that was interrupted cannot tell it was interrupted: the
 processor is in exactly the same state as before the interrupt,
 because the \lstinline{machinevec} has restored all registers.  This
 idea of saving the processor state to run some code, and then
@@ -193,7 +278,7 @@ and then calls the C function \lstinline{kerneltrap}
 \lineref{kernel/kernelvec.S:/call/}.  \lstinline{kerneltrap}
 \lineref{kernel/trap.c:/kerneltrap/} performs a few sanity checks
 (e.g., it checks that it was indeed interrupted in kernel mode) and
-then yield the core so that another process can run.  We will discuss
+then yields the core so that another process can run.  We will discuss
 the implementation of \lstinline{yield} in Chapter~\ref{CH:SCHED}.
 
 At some point later, the scheduler may decide to resume the process
@@ -204,7 +289,7 @@ that \lstinline{sret} in \lineref{kernel/kernelvec.S:/sret/} will
 resume the instruction that was interrupted.  \lstinline{kerneltrap}
 returns and restores all the saved registers
 \linerefs{kernel/kernelvec.S:/ld ra/,/ld t6/}, adjusts the stack
-pointer, and resumes at \lstinline{sepc}.
+pointer, and resumes at the addresses stored in \lstinline{sepc}.
 
 \section{Code: user mode interrupts}
 
@@ -239,7 +324,7 @@ the processor to use the user page table.  After this instruction, the
 processor will translate virtual address with the new page table; for
 example, the address of the next instruction will be translated with
 the new page table.  This address will be translated in the same way
-with the kernel page table, because the mapping is the same in both
+as with the kernel page table, because the mapping is the same in both
 page tables.
 
 To execute the remaining instructions, \lstinline{trampout} needs a
@@ -297,8 +382,8 @@ should be resumed after completing the interrupt, exception, or system
 call.  If the user process entered the kernel to execute a system
 call, the register \lstinline{scause} contains 8.  In that case, xv6
 adds 4 to \lstinline{p->tf->epc}, to skip the instruction that entered
-the kernel (\lstinline{scall}) so that on return to user space the
-process will resume at the instruction after \lstinline{scall}).
+the kernel (\lstinline{ecall}) so that on return to user space the
+process will resume at the instruction after \lstinline{ecall}).
 \lstinline{usertrap} then enables interrupts and calls
 \lstinline{syscall}.
 
@@ -315,9 +400,8 @@ we will see in Chapter~\ref{CH:SCHED}, may make a process runnable.
 After completing the system call or handling an interrupt, xv6 yields
 the core to another process if the interrupt was a timer interrupt.
 Otherwise, \lstinline{usertrap} returns back to user space using
-\lstinline{usertrapret}; this section started with explaining
-\lstinline{usertrapret}.  We have seen all the machinery to enter and
-leave the kernel.
+\lstinline{usertrapret}, which was explained above.  We have seen all
+the machinery to enter and leave the kernel.
  
 \section{Code: Enabling/disabling interrupts}
 
@@ -437,7 +521,7 @@ cannot simply cast the address to a pointer, because the user and the
 kernel don't share the same page table. Instead,
 \lstinline{fetchint} calls \lstinline{copyin} to copy the address from the
 process's address space to the kernel address space.  Before
-calling \lstinline{copying}, \lstinline{fetchint}
+calling \lstinline{copyin}, \lstinline{fetchint}
 verifies that the
 pointer lies in the process's addres
 space: it checks
@@ -537,7 +621,7 @@ virtual machine.  It defines the interactions between a guest kernel
 and the virtual machine monitor for virtual devices emulating network
 devices, disk devices, etc.  Xv6 runs on \texttt{qemu} and
 \texttt{qemu} supports a virtio disk device for RISC-V platforms.  The
-base development board that xv6 targets (the SiFive's HiFive) doesn't
+base development board that xv6 targets (SiFive's HiFive) doesn't
 provide a disk.
 
 Xv6 represent file system blocks using
@@ -592,7 +676,7 @@ Disk accesses typically take milliseconds, a long time for a
 processor.  Therefore, xv6 lets another process run on the CPU after a
 disk I/O request and arranges to receive an interrupt when the disk
 operation has completed.
-\lstinline{plic_Init}\index{plic_init@\lstinline{plic_init}} programs
+\lstinline{plic_init}\index{plic_init@\lstinline{plic_init}} programs
 the \textit{PLIC}\index{PLIC} to accept interrupts from the disk during boot.  It
 enables interrupts for \lstinline{VIRTIO0_IRQ}
 \lineref{kernel/plic.c:/^plicinit/}.  If the disk generates an
@@ -618,10 +702,10 @@ reads the buffer from the disk.
 \lineref{kernel/virtio\_disk.c:/^virtio_disk_rw/}
 adds the buffer
 \lstinline{b}
-to the end of the queue of outstanding requests (or wait if all
+to the end of the queue of outstanding requests (or waits if all
 \lstinline{NUM} entries are in use).
 
-Having added the request to the queue and started it if necessary,
+Having added the request to the queue,
 \lstinline{virtio_disk_rw}
 must wait for the result.  As discussed above,
 polling does not make efficient use of the CPU.

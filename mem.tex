@@ -101,7 +101,7 @@ The flags and all other page hardware related structures are defined in
 
 To tell the hardware to use a page table, the kernel must
 write the physical address of the root page into the register
-\texttt{\%satp}.
+\texttt{\%satp}\index{satp@\lstinline{satp}}.
 Each processor has its own
 \texttt{\%satp}.
 A processor will translate all addresses in subsequent instructions
