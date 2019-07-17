@@ -656,7 +656,7 @@ flag means that
 \lstinline{data}
 needs to be written out.
 
-Like with the CLINT, programming the virtio disk uses memory-mapped
+Like programming the CLINT, programming the virtio disk uses memory-mapped
 I/O.  The virtio disk is at address \lstinline{0x10001000} in the
 kernel adddres space (see Figure~\ref{fig:xv6_layout}).  The driver
 uses ordinary load and stores instructions to interact with the
@@ -706,13 +706,13 @@ is not set,
 \indexcode{virtio_disk_rw}
 reads the buffer from the disk.
 To add a request to the queue of requests, the driver must find 3
-descriptors that describe the request.  The first descriptor
+descriptors to describe the request.  The first descriptor
 describes the operation (e.g., read/write).  The second descriptor
 records the address of the data to be read or written. The third
 descriptor is where the device will post the result status of the
 request.  \lstinline{Virtio_Disk_Rw} starts by finding 3 free descriptors.  If
 it cannot find 3 descriptors, it means that the queue of requests is
-full and it waits until previously issued requests complete, freeing
+full, and it waits until a previously issued request completes, freeing
 up descriptors.   If it finds 3 descriptors, the drivers fills them
 in \linerefs{kernel/virtio\_disk.c:/buf0.type/,/.next.=.0/}.
 
@@ -728,7 +728,11 @@ Once the driver has filled out the descriptors, it can alert the disk
 that a new quests is available.  It does so by writing to
 \lstinline{avail}.  The disk monitors \lstinline{avail} and reads the
 value in \lstinline{avail[1]} to find out how many new requests it
-should process.
+should process.  To make sure that stores to \lstinline{avail} are not
+re-ordered, the driver inserts a memory barrier between them
+\lineref{kernel/virtio\_disk.c:/sync_synchronize/}. This guarantees
+that if the disk sees a new requests in \lstinline{avail[1]}, it will
+also see the correct index in \lstinline{avail[2 + (avail[1]%NUM)]}
 
 Having posted the request to the disk,
 \lstinline{virtio_disk_rw}
@@ -757,10 +761,12 @@ Then, \lstinline{virtio_disk_intr}
 sets 
 \indexcode{B_VALID},
 clears
-\indexcode{B_DIRTY},
+\indexcode{B_DIRTY} for the buffer in the request,
 wakes up any process sleeping on the buffer
 \linerefs{kernel/virtio\_disk.c:/info\[id\]\.b/,/wakeup/},
-and frees up the descriptors that were used for request \lstinline{id}.
+and frees up the descriptors that were used for request.
+Freeing up a descriptor might also wakeup processes
+waiting for free descriptors.
 
 The PLIC routes interrupts to the first processor that claims it.
 Thus, cores can process different disk interrupts concurrently.  In
