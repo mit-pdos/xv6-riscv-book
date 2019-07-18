@@ -13,7 +13,7 @@
    height="744.09448"
    id="svg2976"
    version="1.1"
-   inkscape:version="0.47 r22583"
+   inkscape:version="0.92.4 5da689c313, 2019-01-14"
    sodipodi:docname="inode.svg">
   <defs
      id="defs2978">
@@ -64,10 +64,10 @@
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="true"
-     inkscape:window-width="1430"
-     inkscape:window-height="1070"
-     inkscape:window-x="175"
-     inkscape:window-y="0"
+     inkscape:window-width="849"
+     inkscape:window-height="1381"
+     inkscape:window-x="1707"
+     inkscape:window-y="1468"
      inkscape:window-maximized="0">
     <inkscape:grid
        type="xygrid"
@@ -85,7 +85,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title />
+        <dc:title></dc:title>
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -101,24 +101,26 @@
     <flowRoot
        xml:space="preserve"
        id="flowRoot2852"
-       style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"><flowRegion
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0.01%;font-family:'Bitstream Vera Sans';-inkscape-font-specification:'Bitstream Vera Sans';text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"><flowRegion
          id="flowRegion2854"><rect
            id="rect2856"
            width="415.80243"
            height="718.20422"
            x="194.72841"
            y="268.86667" /></flowRegion><flowPara
-         id="flowPara2858" /></flowRoot>    <flowRoot
+         id="flowPara2858"
+         style="font-size:24px;line-height:1.25"> </flowPara></flowRoot>    <flowRoot
        xml:space="preserve"
        id="flowRoot2860"
-       style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"><flowRegion
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0.01%;font-family:'Bitstream Vera Sans';-inkscape-font-specification:'Bitstream Vera Sans';text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"><flowRegion
          id="flowRegion2862"><rect
            id="rect2864"
            width="674.6767"
            height="710.18597"
            x="21.763763"
            y="218.46638" /></flowRegion><flowPara
-         id="flowPara2866" /></flowRoot>    <rect
+         id="flowPara2866"
+         style="font-size:24px;line-height:1.25"> </flowPara></flowRoot>    <rect
        style="fill:none;stroke:#000000;stroke-width:2;stroke-miterlimit:4;stroke-opacity:0.95454544;stroke-dasharray:none;stroke-dashoffset:0"
        id="rect2870"
        width="220"
@@ -127,15 +129,15 @@
        y="372.36218" />
     <text
        xml:space="preserve"
-       style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'Bitstream Vera Sans';-inkscape-font-specification:'Bitstream Vera Sans';text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
        x="155.81808"
        y="400.65277"
-       id="text3656"
-       sodipodi:linespacing="125%"><tspan
+       id="text3656"><tspan
          sodipodi:role="line"
          id="tspan3658"
          x="155.81808"
-         y="400.65277">type</tspan></text>
+         y="400.65277"
+         style="font-size:24px;line-height:1.25">type</tspan></text>
     <path
        style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
        d="m 80,104.09448 c 220,0 220,0 220,0"
@@ -143,92 +145,92 @@
        transform="translate(0,308.2677)" />
     <text
        xml:space="preserve"
-       style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'Bitstream Vera Sans';-inkscape-font-specification:'Bitstream Vera Sans';text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
        x="145.36864"
        y="437.4086"
-       id="text3662"
-       sodipodi:linespacing="125%"><tspan
+       id="text3662"><tspan
          sodipodi:role="line"
          id="tspan3664"
          x="145.36864"
-         y="437.4086">major</tspan></text>
+         y="437.4086"
+         style="font-size:24px;line-height:1.25">major</tspan></text>
     <text
        xml:space="preserve"
-       style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'Bitstream Vera Sans';-inkscape-font-specification:'Bitstream Vera Sans';text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
        x="145.36864"
        y="475.57816"
-       id="text3666"
-       sodipodi:linespacing="125%"><tspan
+       id="text3666"><tspan
          sodipodi:role="line"
          id="tspan3668"
          x="145.36864"
-         y="475.57816">minor</tspan></text>
+         y="475.57816"
+         style="font-size:24px;line-height:1.25">minor</tspan></text>
     <text
        xml:space="preserve"
-       style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'Bitstream Vera Sans';-inkscape-font-specification:'Bitstream Vera Sans';text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
        x="152.54126"
        y="517.50659"
-       id="text3670"
-       sodipodi:linespacing="125%"><tspan
+       id="text3670"><tspan
          sodipodi:role="line"
          id="tspan3672"
          x="152.54126"
-         y="517.50659">nlink</tspan></text>
+         y="517.50659"
+         style="font-size:24px;line-height:1.25">nlink</tspan></text>
     <text
        xml:space="preserve"
-       style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'Bitstream Vera Sans';-inkscape-font-specification:'Bitstream Vera Sans';text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
        x="160"
        y="556.36218"
-       id="text3674"
-       sodipodi:linespacing="125%"><tspan
+       id="text3674"><tspan
          sodipodi:role="line"
          id="tspan3676"
          x="160"
-         y="556.36218">size</tspan></text>
+         y="556.36218"
+         style="font-size:24px;line-height:1.25">size</tspan></text>
     <text
        xml:space="preserve"
-       style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'Bitstream Vera Sans';-inkscape-font-specification:'Bitstream Vera Sans';text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
        x="138"
        y="602.36218"
-       id="text3678"
-       sodipodi:linespacing="125%"><tspan
+       id="text3678"><tspan
          sodipodi:role="line"
          id="tspan3680"
          x="138"
-         y="602.36218">address 1</tspan></text>
+         y="602.36218"
+         style="font-size:24px;line-height:1.25">address 1</tspan></text>
     <text
        xml:space="preserve"
-       style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'Bitstream Vera Sans';-inkscape-font-specification:'Bitstream Vera Sans';text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
        x="160"
        y="632.36218"
-       id="text3682"
-       sodipodi:linespacing="125%"><tspan
+       id="text3682"><tspan
          sodipodi:role="line"
          id="tspan3684"
          x="160"
-         y="632.36218">.....</tspan></text>
+         y="632.36218"
+         style="font-size:24px;line-height:1.25">.....</tspan></text>
     <text
        xml:space="preserve"
-       style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'Bitstream Vera Sans';-inkscape-font-specification:'Bitstream Vera Sans';text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
        x="134"
        y="678.36218"
-       id="text3686"
-       sodipodi:linespacing="125%"><tspan
+       id="text3686"><tspan
          sodipodi:role="line"
          id="tspan3688"
          x="134"
-         y="678.36218">address 12</tspan></text>
+         y="678.36218"
+         style="font-size:24px;line-height:1.25">address 12</tspan></text>
     <text
        xml:space="preserve"
-       style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'Bitstream Vera Sans';-inkscape-font-specification:'Bitstream Vera Sans';text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
        x="140"
        y="716.36218"
-       id="text3690"
-       sodipodi:linespacing="125%"><tspan
+       id="text3690"><tspan
          sodipodi:role="line"
          id="tspan3692"
          x="140"
-         y="716.36218">indirect</tspan></text>
+         y="716.36218"
+         style="font-size:24px;line-height:1.25">indirect</tspan></text>
     <path
        id="path3694"
        d="m 80,452.36218 c 220,0 220,0 220,0"
@@ -259,16 +261,16 @@
        style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
     <text
        xml:space="preserve"
-       style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'Bitstream Vera Sans';-inkscape-font-specification:'Bitstream Vera Sans';text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
        x="154.09181"
        y="41.492371"
        id="text3708"
-       sodipodi:linespacing="125%"
        transform="translate(0,308.2677)"><tspan
          sodipodi:role="line"
          id="tspan3710"
          x="154.09181"
-         y="41.492371">dinode</tspan></text>
+         y="41.492371"
+         style="font-size:24px;line-height:1.25">dinode</tspan></text>
     <rect
        style="fill:none;stroke:#000000;stroke-width:1.99999988;stroke-miterlimit:4;stroke-opacity:0.95454544;stroke-dasharray:none;stroke-dashoffset:0"
        id="rect3712"
@@ -278,37 +280,37 @@
        y="812.36218" />
     <text
        xml:space="preserve"
-       style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'Bitstream Vera Sans';-inkscape-font-specification:'Bitstream Vera Sans';text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
        x="422"
        y="842.36218"
-       id="text3717"
-       sodipodi:linespacing="125%"><tspan
+       id="text3717"><tspan
          sodipodi:role="line"
          id="tspan3719"
          x="422"
-         y="842.36218">address 1</tspan></text>
+         y="842.36218"
+         style="font-size:24px;line-height:1.25">address 1</tspan></text>
     <text
-       sodipodi:linespacing="125%"
        id="text3721"
        y="918.36218"
        x="408"
-       style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'Bitstream Vera Sans';-inkscape-font-specification:'Bitstream Vera Sans';text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
        xml:space="preserve"><tspan
          y="918.36218"
          x="408"
          id="tspan3723"
-         sodipodi:role="line">address 128</tspan></text>
+         sodipodi:role="line"
+         style="font-size:24px;line-height:1.25">address 128</tspan></text>
     <text
-       sodipodi:linespacing="125%"
        id="text3725"
        y="872.36218"
        x="440"
-       style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'Bitstream Vera Sans';-inkscape-font-specification:'Bitstream Vera Sans';text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
        xml:space="preserve"><tspan
          y="872.36218"
          x="440"
          id="tspan3727"
-         sodipodi:role="line">.....</tspan></text>
+         sodipodi:role="line"
+         style="font-size:24px;line-height:1.25">.....</tspan></text>
     <path
        style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
        d="m 400,852.36218 c 160,0 160,0 160,0 l 0,0"
@@ -319,15 +321,15 @@
        style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
     <text
        xml:space="preserve"
-       style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'Bitstream Vera Sans';-inkscape-font-specification:'Bitstream Vera Sans';text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
        x="400"
        y="800.36218"
-       id="text3733"
-       sodipodi:linespacing="125%"><tspan
+       id="text3733"><tspan
          sodipodi:role="line"
          id="tspan3735"
          x="400"
-         y="800.36218">indirect block</tspan></text>
+         y="800.36218"
+         style="font-size:24px;line-height:1.25">indirect block</tspan></text>
     <g
        id="g3745">
       <rect
@@ -339,16 +341,16 @@
          y="352.36218" />
       <text
          transform="translate(0,308.2677)"
-         sodipodi:linespacing="125%"
          id="text3741"
          y="106.52194"
          x="445.31119"
-         style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'Bitstream Vera Sans';-inkscape-font-specification:'Bitstream Vera Sans';text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
          xml:space="preserve"><tspan
            y="106.52194"
            x="445.31119"
            id="tspan3743"
-           sodipodi:role="line">data</tspan></text>
+           sodipodi:role="line"
+           style="font-size:24px;line-height:1.25">data</tspan></text>
     </g>
     <g
        id="g3750"
@@ -362,16 +364,16 @@
          style="fill:none;stroke:#000000;stroke-width:1.99999988;stroke-miterlimit:4;stroke-opacity:0.95454544;stroke-dasharray:none;stroke-dashoffset:0" />
       <text
          xml:space="preserve"
-         style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'Bitstream Vera Sans';-inkscape-font-specification:'Bitstream Vera Sans';text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
          x="445.31119"
          y="106.52194"
          id="text3754"
-         sodipodi:linespacing="125%"
          transform="translate(0,308.2677)"><tspan
            sodipodi:role="line"
            id="tspan3756"
            x="445.31119"
-           y="106.52194">data</tspan></text>
+           y="106.52194"
+           style="font-size:24px;line-height:1.25">data</tspan></text>
     </g>
     <g
        transform="translate(318.68881,337.57254)"
@@ -385,16 +387,16 @@
          y="352.36218" />
       <text
          transform="translate(0,308.2677)"
-         sodipodi:linespacing="125%"
          id="text3762"
          y="106.52194"
          x="445.31119"
-         style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'Bitstream Vera Sans';-inkscape-font-specification:'Bitstream Vera Sans';text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
          xml:space="preserve"><tspan
            y="106.52194"
            x="445.31119"
            id="tspan3764"
-           sodipodi:role="line">data</tspan></text>
+           sodipodi:role="line"
+           style="font-size:24px;line-height:1.25">data</tspan></text>
     </g>
     <g
        id="g3766"
@@ -408,16 +410,16 @@
          style="fill:none;stroke:#000000;stroke-width:1.99999988;stroke-miterlimit:4;stroke-opacity:0.95454544;stroke-dasharray:none;stroke-dashoffset:0" />
       <text
          xml:space="preserve"
-         style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'Bitstream Vera Sans';-inkscape-font-specification:'Bitstream Vera Sans';text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
          x="445.31119"
          y="106.52194"
          id="text3770"
-         sodipodi:linespacing="125%"
          transform="translate(0,308.2677)"><tspan
            sodipodi:role="line"
            id="tspan3772"
            x="445.31119"
-           y="106.52194">data</tspan></text>
+           y="106.52194"
+           style="font-size:24px;line-height:1.25">data</tspan></text>
     </g>
     <path
        style="fill:none;stroke:#000000;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:none;marker-end:url(#Arrow1Lend)"
@@ -445,25 +447,23 @@
        id="path4714" />
     <text
        xml:space="preserve"
-       style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'Bitstream Vera Sans';-inkscape-font-specification:'Bitstream Vera Sans';text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
        x="443.89752"
        y="218.20316"
        id="text4902"
-       sodipodi:linespacing="125%"
        transform="translate(0,308.2677)"><tspan
          sodipodi:role="line"
          id="tspan4904"
          x="443.89752"
          y="218.20316"
-         style="font-size:56">...</tspan></text>
+         style="font-size:56px;line-height:1.25">...</tspan></text>
     <text
-       sodipodi:linespacing="125%"
        id="text4910"
        y="872.36218"
        x="760"
-       style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'Bitstream Vera Sans';-inkscape-font-specification:'Bitstream Vera Sans';text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
        xml:space="preserve"><tspan
-         style="font-size:56px"
+         style="font-size:56px;line-height:1.25"
          y="872.36218"
          x="760"
          id="tspan4912"
