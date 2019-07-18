@@ -131,7 +131,7 @@ Then
 copies
 \lstinline{new}
 to 
-\texttt{\%rsp},
+\texttt{rsp},
 pops previously saved registers, and returns.
 
 Let's follow a user process through
@@ -160,13 +160,13 @@ pushes the register state, creating a context structure
 on the current stack.
 Only the callee-saved registers need to be saved;
 the convention on the x86-64 is that these are
-\texttt{\%rbp},
-\texttt{\%rbx},
-\texttt{\%r11}
+\texttt{rbp},
+\texttt{rbx},
+\texttt{r11}
 through
-\texttt{\%r15},
+\texttt{r15},
 and
-\texttt{\%rsp}.
+\texttt{rsp}.
 \lstinline{Swtch}
 pushes the first 7 explicitly
 \linerefs{kernel/swtch.S:/push..rbp/,/push..r15/};
@@ -178,7 +178,7 @@ written to
 \lineref{kernel/swtch.S:/mov..rsp/}.
 There is one more important register:
 the program counter 
-\texttt{\%eip}.
+\texttt{eip}.
 It has already been saved on the stack by the
 \lstinline{call}
 instruction that invoked
@@ -199,13 +199,13 @@ so
 \lstinline{swtch}
 can invert the sequence to restore the new context.
 It pops the values for
-\texttt{\%r15}
+\texttt{r15}
 through
-\texttt{\%r11},
+\texttt{r11},
 and
-\texttt{\%rbx},
+\texttt{rbx},
 and
-\texttt{\%rbp},
+\texttt{rbp},
 and then returns
 \linerefs{kernel/swtch.S:/pop/,/ret/}.
 Because 
@@ -415,9 +415,9 @@ must be able to switch away from the process;
 this means that the CPU registers must hold the process's register values
 (i.e. they aren't actually in a
 \lstinline{context}),
-\texttt{\%cr3}
+\texttt{cr3}
 must refer to the process's pagetable,
-\texttt{\%esp}
+\texttt{esp}
 must refer to the process's kernel stack so that
 \lstinline{swtch}
 can push registers correctly, and
@@ -435,7 +435,7 @@ this means that
 must hold the process's kernel thread variables,
 that no CPU is executing on the process's kernel stack,
 that no CPU's
-\texttt{\%cr3}
+\texttt{cr3}
 refers to the process's page table,
 and that no CPU's
 \lstinline{proc}
@@ -515,9 +515,9 @@ The function
 \lineref{kernel/proc.c:/^mycpu/}
 returns that
 value using
-\texttt{\%gs}.
+\texttt{gs}.
 Using
-\texttt{\%gs}
+\texttt{gs}
 avoids every call to
 \lstinline{mycpu}
 having to loop

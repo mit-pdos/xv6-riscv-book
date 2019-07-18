@@ -105,9 +105,9 @@ The flags and all other page hardware related structures are defined in
 
 To tell the hardware to use a page table, the kernel must
 write the physical address of the root page into the register
-\texttt{\%satp}\index{satp@\lstinline{satp}}.
+\texttt{satp}\index{satp@\lstinline{satp}}.
 Each processor has its own
-\texttt{\%satp}.
+\texttt{satp}.
 A processor will translate all addresses in subsequent instructions
 using its page table.
 Each processor has its own page-table register so that one processor
@@ -246,7 +246,7 @@ calls
 to install the kernel page table.
 It writes the physical address of the root page
 into the register
-\texttt{\%satp}.
+\texttt{satp}.
 After this the processor will translate addresses using the kernel
 page table.  Since the kernel uses an identity mapping, the now
 virtual address of the next instruction will map to the right physical
@@ -470,7 +470,7 @@ might be able to scribble on some other process's memory.  The RISC-V
 has an instruction \indexcode{sfence.vma} that promises that memory
 references after this instruction will observe the new translations.
 xv6 calls this instruction before reloading the register
-\texttt{\%satp}.
+\texttt{satp}.
 
 %% 
 \section{Code: exec}
