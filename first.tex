@@ -37,19 +37,13 @@ Thus
 an operating system must fulfil three requirements: multiplexing, isolation,
 and interaction.
 
-This chapter provides an overview of how operating systems are organized to achieve
-these 3 requirements.  It turns out there are many ways to do so, but this text
-focuses on mainstream designs centered around a 
-\indextext{monolithic kernel}, 
-which is used by many Unix operating systems.  This chapter 
-introduces xv6's design by
-tracing the creation of the first process when xv6 starts
-running.  In doing so, the text provides a glimpse of the implementation of all
-major abstractions that xv6 provides, how they interact, and how the three
-requirements of multiplexing, isolation, and interaction are met.  Most of xv6
-avoids special-casing the first process, and instead reuses code that xv6 must
-provide for standard operation.  Subsequent chapters will explore each
-abstraction in more detail.
+This chapter provides an overview of how operating systems are
+organized to achieve these 3 requirements.  It turns out there are
+many ways to do so, but this text focuses on mainstream designs
+centered around a \indextext{monolithic kernel}, which is used by many
+Unix operating systems.  This chapter also provides an overview of an
+xv6 process, which is the unit of isolation in xv6, and the
+creation of the first process when xv6 starts running.
 
 Xv6 runs on a RISC-V development board, and much of its low-level
 functionality (for example, its process implementation) is specific to
@@ -182,7 +176,7 @@ transition to the kernel.  Processors provide a special instruction that switche
 processor from user mode to kernel mode and enters the kernel at an entry point
 specified by the kernel.  (The RISC-V
 processor provides the 
-\lstinline{ecall}
+\indexcode{ecall}
 instruction for this purpose.)  Once the processor has switched to kernel mode,
 the kernel can then validate the arguments of the system call, decide whether
 the application is allowed to perform the requested operation, and then deny it
@@ -225,7 +219,7 @@ This kernel organization is called a
 
 \begin{figure}[t]
 \center
-\includegraphics[scale=0.5]{fig/mkernel.eps}
+\includegraphics[scale=0.5]{fig/mkernel.pdf}
 \caption{A microkernel with a file system server}
 \label{fig:mkernel}
 \end{figure}
@@ -264,7 +258,7 @@ from wrecking the kernel itself, so that a process can't subvert the kernel's
 isolation mechanisms.
 The kernel must implement the process abstraction with care because
 a buggy or malicious application may trick the kernel or hardware in doing
-something bad (e.g., circumventing enforced isolation).  The mechanisms used by
+something bad (e.g., circumventing isolation).  The mechanisms used by
 the kernel to implement processes include the user/kernel mode flag, address spaces,
 and time-slicing of threads.
 
@@ -286,7 +280,7 @@ translates (or ``maps'') a
 
 \begin{figure}[t]
 \center
-\includegraphics[scale=0.5]{fig/as.eps}
+\includegraphics[scale=0.5]{fig/as.pdf}
 \caption{Layout of a virtual address space of a user process}
 \label{fig:as}
 \end{figure}
@@ -303,8 +297,8 @@ that the process can expand as needed.
 Xv6 runs on a RISC-V processor with 39 bits of virtual addresses,
 so the maximum address is $2^{39}-1$ = 0x3fffffffff.
 At the top of the address space xv6 reserves some
-\indextext{trampoline}
-memory to switch to the kernel, as we will explain later.
+memory for a \indextext{trampoline}
+to switch to the kernel, as we will explain in Chapter~\ref{CH:TRAP}.
 
 The xv6 kernel maintains many pieces of state for each process,
 which it gathers into a
@@ -339,16 +333,17 @@ and its kernel stack. The kernel stack is separate (and protected from
 user code) so that the kernel
 can execute even if a process has wrecked its user stack.
 
-When a process makes a system call, the processor switches to the 
-kernel stack, raises the hardware privilege level, and starts
-executing the kernel instructions that implement the system call.
-When the system call completes, the kernel returns to user space:
-the hardware lowers its privilege level, switches back to the
-user stack, and resumes executing user instructions just after
-the system call instruction.
-A process's thread
-can ``block'' in the kernel to wait for I/O, and resume where it left
-off when the I/O has finished.
+A process can make a system call by executing the RISC-V \indexcode{ecall}
+instruction. This instruction raises the hardware privilege level and
+changes the program counter to a kernel-defined entry point.  The code
+at the entry point switches to a kernel stack and executes the kernel
+instructions that implement the system call.  When the system call
+completes, the kernel switches back to the user stack and returns to
+user space by calling the \indexcode{sret} instruction, which lowers
+the hardware privilege level and resumes executing user instructions
+just after the system call instruction.  A process's thread can
+``block'' in the kernel to wait for I/O, and resume where it left off
+when the I/O has finished.
 
 \indexcode{p->state} 
 indicates whether the process is allocated, ready
@@ -363,11 +358,11 @@ when executing that process.
 A process's page table also serves as the record of the
 addresses of the physical pages allocated to store the process's memory.
 %% 
-\section{Code: starting xv6 and the shell}
+\section{Code: starting xv6 and the first process}
 %% 
 To make xv6 more concrete, we'll overview how the kernel starts and
-runs a shell. The subsequent chapters will describe the mechanisms
-that show up in this overview in more detail.
+runs the first process. The subsequent chapters will describe the
+mechanisms that show up in this overview in more detail.
 
 When a RISC-V development board powers on, it initializes
 itself and runs a program boot loader which is stored in read-only
@@ -424,35 +419,27 @@ that machine mode was entered
 from supervisor mode:
 it sets the previous privilege mode to
 supervisor in the register
-\texttt{\%mstatus},
+\lstinline{mstatus},
 it sets the return address to
 \lstinline{main}
 by writing
 \lstinline{main} 's
 address into
 the register
-\texttt{\%mepc},
+\lstinline{mepc},
 disables virtual memory in supervisor mode
 by writing
 \lstinline{0}
 into the page-table register
-\texttt{\%satp},
+\lstinline{satp},
 and delegates all interrupts and exceptions
 to supervisor mode.
 
 Before jumping into supervisor mode,
 \lstinline{mstart}
 performs one more task: it programs the clock
-chip to generate interrupts and arranges
-that on a clock interrupt the program
-counter will be set to
-\lstinline{machinevec}
-\lineref{kernel/kernelvec.S:/^machinevec/}
-by setting the register
-\texttt{\%mtvec}
-to the address of
-\lstinline{machinevec}.
-With this bookkeeping out of the way,
+chip to generate interrupts.
+With this housekeeping out of the way,
 \lstinline{mstart}
 ``returns'' to supervisor
 mode by calling
