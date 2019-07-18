@@ -521,14 +521,14 @@ a process threads share.
 
 \begin{enumerate}
   
-\item Set a breakpoint at swtch.  Single step with gdb's
+\item Set a breakpoint at \lstinline{swtch}.  Single step with gdb's
 \lstinline{stepi}
 through the ret to
 \lstinline{forkret},
 then use gdb's
 \lstinline{finish}
 to proceed to
-\lstinline{sysexit},
+\lstinline{usertrapret},
 then
 \lstinline{stepi}
 until you get to
