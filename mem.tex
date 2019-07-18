@@ -692,8 +692,7 @@ and may reduce overhead for page-table manipulation.
 
 Memory allocation was a hot topic a long time ago, the basic problems being
 efficient use of limited memory and
-preparing for unknown future requests;
-see Knuth.  Today people care more about speed than
+preparing for unknown future requests~\cite{knuth}.  Today people care more about speed than
 space-efficiency.  In addition, a more elaborate kernel
 would likely allocate many different sizes of small blocks,
 rather than (as in xv6) just 4096-byte blocks;
