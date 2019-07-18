@@ -33,23 +33,27 @@ addresses.
 The RISC-V page table hardware connects these two kinds of addresses,
 by mapping each virtual address to a physical address.
 
-xv6 runs on Sv39 RISC-V processor with has 39-bit virtual addresses;
-the top of 25 bits of a 64-bit virtual address are unused.  In this
-configuration, a RISC-V page table is logically an array of $2^{27}$
-(134,217,728)
-\indextext{page table entries (PTEs)}.
-Each PTE contains a
-44-bit physical page number (PPN) and some flags. The paging
-hardware translates a virtual address by using the top 27 bits
-of the 39 bits to index into the page table to find a PTE, and
-making a 56-bit physical address by setting
-the address's top 44 bits with the PPN in the PTE.  The paging hardware
-copies the low 12 bits unchanged from the virtual to the
-translated physical address.  Thus a page table gives
-the operating system control over virtual-to-physical address translations
-at the granularity of aligned chunks of 4096 ($2^{12}$) bytes.
-Such a chunk is called a
-\indextext{page}.
+\begin{figure}[t]
+\center
+\includegraphics[scale=0.5]{fig/riscv_address.pdf}
+\caption{RISC-V virtual and physical addresses.}
+\label{fig:riscv_address}
+\end{figure}
+
+xv6 runs on the Sv39 RISC-V processor, which has 39-bit virtual
+addresses (see Figure~\ref{fig:riscv_address}). The top 25 bits of a
+64-bit virtual address are unused.  In this Sv39 configuration, a
+RISC-V page table is logically an array of $2^{27}$ (134,217,728)
+\indextext{page table entries (PTEs)}.  Each PTE contains a 44-bit
+physical page number (PPN) and some flags. The paging hardware
+translates a virtual address by using the top 27 bits of the 39 bits
+to index into the page table to find a PTE, and making a 56-bit
+physical address by setting the address's top 44 bits with the PPN in
+the PTE.  The paging hardware copies the low 12 bits unchanged from
+the virtual to the translated physical address.  Thus a page table
+gives the operating system control over virtual-to-physical address
+translations at the granularity of aligned chunks of 4096 ($2^{12}$)
+bytes.  Such a chunk is called a \indextext{page}.
 
 \begin{figure}[t]
 \center
@@ -57,6 +61,11 @@ Such a chunk is called a
 \caption{RISC-V page table hardware.}
 \label{fig:riscv_pagetable}
 \end{figure}
+
+In Sv39 RISC-V processors, the top 25 bits of virtual address are not
+used for translation; in the future, RISC-V can use those bits to
+define more levels of translation.  Similarly, the physical address
+has room for growth; in Sv39 it is 56 bits, but could grow to 64 bits.
 
 As shown in
 Figure~\ref{fig:riscv_pagetable},
@@ -74,11 +83,6 @@ If any of the PTEs is not present, the paging hardware raises a fault.
 This three-level structure allows a page table to omit entire page
 table pages in the common case in which large ranges of virtual
 addresses have no mappings.
-
-In Sv39 RISC-V processors, the top 25 bits of virtual address are not
-used for translation; in the future, RISC-V can use those bits to
-define more levels of translation.  Similarly, the physical address
-has room for growth; in Sv39 it is 56 bits, but could grow to 64 bits.
 
 Each PTE contains flag bits that tell the paging hardware
 how the associated virtual address is allowed to be used.
@@ -120,9 +124,8 @@ At this level of discussion there is no such thing as virtual memory,
 only virtual addresses.
 
 \begin{figure}[t]
-\begin{center}
-  \includegraphics[scale=0.5]{fig/xv6_layout.pdf}
-\end{center}
+\center
+\includegraphics[scale=0.5]{fig/xv6_layout.pdf}
 \caption{Layout of the kernel address space.}
 \label{fig:xv6_layout}
 \end{figure}
@@ -147,9 +150,8 @@ devices that sit below
 in physical memory. The particular addresses are chosen by the board's
 manufacturer.  The kernel can interact with devices by reading/writing
 memory locations, and the board routes those reads and writes to the
-appropriate devices. For example, as we saw in Chapter~\ref{CH:FIRST}, the kernel
-programmed the CLINT to generate clock interrupts.  We will
-see later how xv6 interacts with the other devices.
+appropriate devices.  Chapter~\ref{CH:TRA} explains
+how xv6 interacts with devices.
 
 The kernel uses an identity mapping for most virtual addresses.  For,
 example, the kernel itself is located at
@@ -174,48 +176,7 @@ The kernel maps the other pages with the permissions
 and
 \lstinline{PTE_W},
 so that it read and write the memory in those pages.
-%% 
-\section{Process address space}
-%% 
 
-Each process has a separate page table, and when xv6 switches between
-processes, xv6 also changes page tables.
-As shown in
-Figure~\ref{fig:as},
-a process's user memory starts at virtual address
-zero and can grow up to
-\texttt{MAXVA}
-\lineref{kernel/riscv.h:/MAXVA/},
-allowing a process to address in principle 256 Gigabyte of memory.
-
-When a process asks xv6 for more memory,
-xv6 first finds free physical pages in the area
-labeled "Free memory", the area above the end of the data segment
-of the kernel and below
-\texttt{PHYSTOP}.
-It then adds PTEs to the process's page table that point
-to the new physical pages.
-xv6 sets the
-\lstinline{PTE_W},
-\lstinline{PTE_X},
-\lstinline{PTE_R},
-\lstinline{PTE_U},
-and
-\lstinline{PTE_V}
-flags in these PTEs.
-Most processes do not use the entire user address space;
-xv6 leaves
-\lstinline{PTE_V}
-clear in unused PTEs.
-
-We see here a few nice examples of use of page tables.  First,
-different processes' page tables translate user addresses to different
-pages of physical memory, so that each process has private user
-memory.  Second, each process sees its memory as having contiguous
-virtual addresses starting at zero, while the process's physical
-memory can be non-contiguous.  Third, the kernel maps the page with
-trampoline code also at the top of address space of user processes,
-thus a single page of physical memory shows up in all address spaces.
 %% 
 \section{Code: creating an address space}
 %% 
@@ -407,9 +368,47 @@ and sets the free list equal to
 \lstinline{r}.
 \indexcode{kalloc}
 removes and returns the first element in the free list.
-%% 
-\section{User part of an address space}
-%% 
+
+\section{Process address space}
+
+Each process has a separate page table, and when xv6 switches between
+processes, xv6 also changes page tables.
+As shown in
+Figure~\ref{fig:as},
+a process's user memory starts at virtual address
+zero and can grow up to
+\texttt{MAXVA}
+\lineref{kernel/riscv.h:/MAXVA/},
+allowing a process to address in principle 256 Gigabyte of memory.
+
+When a process asks xv6 for more memory,
+xv6 first finds free physical pages in the area
+labeled "Free memory", the area above the end of the data segment
+of the kernel and below
+\texttt{PHYSTOP}.
+It then adds PTEs to the process's page table that point
+to the new physical pages.
+xv6 sets the
+\lstinline{PTE_W},
+\lstinline{PTE_X},
+\lstinline{PTE_R},
+\lstinline{PTE_U},
+and
+\lstinline{PTE_V}
+flags in these PTEs.
+Most processes do not use the entire user address space;
+xv6 leaves
+\lstinline{PTE_V}
+clear in unused PTEs.
+
+We see here a few nice examples of use of page tables.  First,
+different processes' page tables translate user addresses to different
+pages of physical memory, so that each process has private user
+memory.  Second, each process sees its memory as having contiguous
+virtual addresses starting at zero, while the process's physical
+memory can be non-contiguous.  Third, the kernel maps the page with
+trampoline code also at the top of address space of user processes,
+thus a single page of physical memory shows up in all address spaces.
 
 \begin{figure}[t]
 \center
@@ -418,40 +417,24 @@ removes and returns the first element in the free list.
 \label{fig:processlayout}
 \end{figure}
 
-Figure~\ref{fig:processlayout}
-shows the layout of the user memory of an executing process in xv6.
-Each user process starts at address 0. The bottom of the address space
-contains the text for the user program, its data, and its stack.
-The heap is above the stack so that the heap can expand when the process
-calls
-\indexcode{sbrk}.
-Note that the text, data, and stack sections are layed out contiguously in the
-process's address space but xv6 is free to use non-contiguous physical pages for
-those sections. For example, when xv6 expands a process's heap, it can use any
-free physical page for the new virtual page and then program the page table
-hardware to map the virtual page to the allocated physical page.  This
-flexibility is a major advantage of using paging hardware.
+Figure~\ref{fig:processlayout} shows the layout of the user memory of
+an executing process in xv6 in more detail.  The stack is a single
+page, and is shown with the initial contents as created by exec.
+Strings containing the command-line arguments, as well as an array of
+pointers to them, are at the very top of the stack.  Just under that
+are values that allow a program to start at \lstinline{main} as if the
+function call \lstinline{main(argc}, \lstinline{argv)} had just
+started.
 
-The stack is a single page, and is
-shown with the initial contents as created by exec.
-Strings containing the command-line arguments, as well as an
-array of pointers to them, are at the very top of the stack.
-Just under that are values that allow a program
-to start at
-\lstinline{main}
-as if the function call
-\lstinline{main(argc},
-\lstinline{argv)}
-had just started.
-To guard a stack growing off the stack page, xv6 places a guard page right below
-the stack.  The guard page is not mapped and so if the stack runs off the stack
-page, the hardware will generate an exception because it cannot translate the
-faulting address.
-A real-world operating system might allocate more space for the stack so that it can
-grow beyond one page.
-%% 
+To guard a stack growing off the stack page, xv6 places a guard page
+right below the stack.  The guard page is not mapped and so if the
+stack runs off the stack page, the hardware will generate an exception
+because it cannot translate the faulting address.  A real-world
+operating system might allocate more space for the stack so that it
+can grow beyond one page.
+
 \section{Code: sbrk}
-%% 
+
 \lstinline{Sbrk}
 is the system call for a process to shrink or grow its memory. The system
 call is implemented by the function
@@ -478,16 +461,17 @@ and
 do.
 
 The RISC-V hardware caches page table entries in a
-\indextext{Translation Look-aside Buffer (TLB)},
-and when xv6 changes the page tables, it must invalidate the cached entries.  If
-it didn't invalidate the cached entries, then at some point later the TLB might
-use an old mapping, pointing to a physical page that in the mean time has been
-allocated to another process, and as a result, a process might be able to
-scribble on some other process's memory.  Reloading the register
-\texttt{\%satp}
-will flush the TLB, and xv6 reloads this register
-when the kernel returns to user space to switch to the user process's
-page table.
+\indextext{Translation Look-aside Buffer (TLB)}, and when xv6 changes
+the page tables, it must invalidate the cached entries.  If it didn't
+invalidate the cached entries, then at some point later the TLB might
+use an old mapping, pointing to a physical page that in the mean time
+has been allocated to another process, and as a result, a process
+might be able to scribble on some other process's memory.  The RISC-V
+has an instruction \indexcode{sfence.vma} that promises that memory
+references after this instruction will observe the new translations.
+xv6 calls this instruction before reloading the register
+\texttt{\%satp}.
+
 %% 
 \section{Code: exec}
 %% 
