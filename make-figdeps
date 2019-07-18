@@ -1,8 +1,0 @@
-#!/bin/sh
-
-for i
-do
-	dep=$(awk '$1==".figure" {dep=dep " fig/" $2 ".t"} END{print dep}' $i.t)
-	echo "$i.dit: $dep"
-done >z.figdeps
-echo z.figdeps

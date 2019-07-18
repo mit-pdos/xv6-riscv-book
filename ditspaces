@@ -1,5 +1,0 @@
-#!/bin/sh
-# The heirloom dit output is denser than the Plan 9.
-sed 's/\(.\)x X/\1\
-x X/; s/^wV\([0-9][0-9]*\)$/w\
-V\1/' "$@"
