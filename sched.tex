@@ -83,7 +83,7 @@ call or interrupt) to the old process's kernel thread,
 a context switch to the current CPU's scheduler thread, a context
 switch to a new process's kernel thread, and a trap return
 to the user-level process.
-The xv6 scheduler has a dedicate thread (saved registers and stack)
+The xv6 scheduler has a dedicated thread (saved registers and stack)
 per CPU because
 it is sometimes not safe for it execute on
 any process's kernel stack;
@@ -110,37 +110,34 @@ When it is time for a process to give up the CPU,
 the process's kernel thread calls
 \lstinline{swtch}
 to save its own context and return to the scheduler context.
-Each context is represented by a
+Each context is contained in a
 \lstinline{struct}
-\lstinline{context*}
+\lstinline{context}
 \lineref{kernel/proc.h:/^struct.context/},
-a pointer to a structure stored on the kernel stack involved.
+itself contained in a process's
+\lstinline{struct proc}
+or a CPU's
+\lstinline{struct cpu}.
 \lstinline{Swtch}
 takes two arguments:
 \indexcode{struct context}
-\lstinline{**old}
+\lstinline{*old}
 and
 \lstinline{struct}
 \lstinline{context}
 \lstinline{*new}.
-It pushes the current registers onto the stack
-and saves the stack pointer in
-\lstinline{*old}.
-Then
-\lstinline{swtch}
-copies
-\lstinline{new}
-to 
-\texttt{rsp},
-pops previously saved registers, and returns.
+It saves the current registers in
+\lstinline{old},
+loads registers from 
+\lstinline{new},
+and returns.
 
-Let's follow a user process through
+Let's follow a process through
 \lstinline{swtch} 
 into the scheduler.
 We saw in Chapter~\ref{CH:TRAP}
-that one possibility at the end of each interrupt
-is that 
-\indexcode{trap}
+that one possibility at the end of an interrupt is that 
+\indexcode{usertrap}
 calls 
 \indexcode{yield}.
 \lstinline{Yield}
@@ -156,63 +153,34 @@ and switch to the scheduler context previously saved in
 
 \lstinline{Swtch}
 \lineref{kernel/swtch.S:/swtch/}
-pushes the register state, creating a context structure
-on the current stack.
-Only the callee-saved registers need to be saved;
-the convention on the x86-64 is that these are
-\texttt{rbp},
-\texttt{rbx},
-\texttt{r11}
-through
-\texttt{r15},
-and
-\texttt{rsp}.
-\lstinline{Swtch}
-pushes the first 7 explicitly
-\linerefs{kernel/swtch.S:/push..rbp/,/push..r15/};
-it saves the last implicitly as the
-\lstinline{struct}
-\lstinline{context*}
-written to
-\lstinline{*old} 
-\lineref{kernel/swtch.S:/mov..rsp/}.
-There is one more important register:
-the program counter 
-\texttt{eip}.
-It has already been saved on the stack by the
-\lstinline{call}
-instruction that invoked
+saves only callee-saved registers;
+caller-saved registers are saved (if needed) by the
+calling C code.
+\lstinline{Swtch} knows the offset of each
+register's field in 
+\lstinline{struct context}.
+It does not save the program counter.
+Instead,
+\lstinline{swtch}
+saves the
+\lstinline{ra} register,
+which holds the return address from which
+\lstinline{swtch}
+was called.
+Now
+\lstinline{swtch}
+restores registers from the new context,
+which holds register values saved by a previous
 \lstinline{swtch}.
-Having saved the old context,
+When 
 \lstinline{swtch}
-is ready to restore the new one.
-It moves the pointer to the new context
-into the stack pointer
-\lineref{kernel/swtch.S:/mov..rsi/}.
-The new stack has the same form as the old one that
-\indexcode{swtch}
-just left—the new stack
-\textit{was}
-the old one in a previous call to
-\lstinline{swtch} —\c
-so 
-\lstinline{swtch}
-can invert the sequence to restore the new context.
-It pops the values for
-\texttt{r15}
-through
-\texttt{r11},
-and
-\texttt{rbx},
-and
-\texttt{rbp},
-and then returns
-\linerefs{kernel/swtch.S:/pop/,/ret/}.
-Because 
-\lstinline{swtch}
-has changed the stack pointer, the values restored
-and the instruction address returned to
-are the ones from the new context.
+returns, it returns to the instructions pointed to
+by the restored
+\lstinline{ra}
+register, that is,
+the instruction from which the new thread previously
+called \lstinline{swtch}.
+In addition, it returns on the new thread's stack.
 
 In our example, 
 \indexcode{sched}
@@ -222,7 +190,7 @@ to switch to
 \indexcode{cpu->scheduler},
 the per-CPU scheduler context.
 That context had been saved by 
-\lstinline{scheduler} 's
+\lstinline{scheduler}'s
 call to
 \lstinline{swtch}
 \lineref{kernel/proc.c:/swtch.&.c/}.
