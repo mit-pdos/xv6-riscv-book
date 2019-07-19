@@ -237,7 +237,7 @@ assembly \lineref{kernel/kernelvec.S:/machinevec/}.
 \lstinline{machinevec} starts out by exchanging \lstinline{a0} and the
 \lstinline{mscratch} register.  xv6 stored earlier in the
 \lstinline{mscratch} register \lineref{kernel/start.c:/mscratch/} the
-address \lstinline{mscratch0}, which points to an area of 5
+address \lstinline{mscratch0}, which points to an area of
 \lstinline{uint64}s.  Entries 4 and 5 contain the address of the
 core's \lstinline{CLINT_MTIME} and the new value
 \linerefs{kernel/start.c:/scratch.4/,/scratch.5/}.
