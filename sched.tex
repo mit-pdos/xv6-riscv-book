@@ -213,6 +213,10 @@ now let's take
 \lstinline{swtch}
 as a given and examine 
 switching from a process through the scheduler to another process.
+The scheduler exists in the form of a special thread per CPU, each running the
+\lstinline{scheduler}
+function.
+This function is in charge of choosing which process to run next.
 A process
 that wants to give up the CPU must
 acquire its own process lock
@@ -248,14 +252,14 @@ as though
 \indexcode{scheduler}'s
 \lstinline{swtch}
 had returned
-\lineref{kernel/proc.c:/swtch.&.c/}.
+\lineref{kernel/proc.c:/swtch.*schedul.*contex/}.
 The scheduler continues the 
 \lstinline{for}
 loop, finds a process to run, 
 switches to it, and the cycle repeats.
 
 We just saw that xv6 holds
-\indexcode{ptable.lock}
+\indexcode{p->lock}
 across calls to
 \lstinline{swtch}:
 the caller of
@@ -265,7 +269,7 @@ switched-to code.  This convention is unusual with locks; usually
 the thread that acquires a lock is also responsible for
 releasing the lock, which makes it easier to reason about correctness.
 For context switching it is necessary to break this convention because
-\indexcode{ptable.lock}
+\indexcode{p->lock}
 protects invariants on the process's
 \lstinline{state}
 and
@@ -273,7 +277,7 @@ and
 fields that are not true while executing in
 \lstinline{swtch}.
 One example of a problem that could arise if
-\lstinline{ptable.lock}
+\lstinline{p->lock}
 were not held during
 \indexcode{swtch}:
 a different CPU might decide
@@ -295,9 +299,9 @@ and always switches to the same location in the scheduler, which
 \lstinline{sched}. 
 Thus, if one were to print out the line numbers where xv6 switches
 threads, one would observe the following simple pattern:
-\lineref{kernel/proc.c:/swtch.&.c/},
+\lineref{kernel/proc.c:/swtch..c/},
 \lineref{kernel/proc.c:/swtch..p/},
-\lineref{kernel/proc.c:/swtch.&.c/},
+\lineref{kernel/proc.c:/swtch..c/},
 \lineref{kernel/proc.c:/swtch..p/},
 and so on.  The procedures in which this stylized switching between
 two threads happens are sometimes referred to as 
@@ -317,39 +321,14 @@ When a new process is first scheduled, it begins at
 \lineref{kernel/proc.c:/^forkret/}.
 \lstinline{Forkret}
 exists to release the 
-\indexcode{ptable.lock};
+\indexcode{p->lock};
 otherwise, the new process could start at
-\lstinline{trapret}.
+\lstinline{usertrapret}.
 
 \lstinline{Scheduler}
 \lineref{kernel/proc.c:/^scheduler/} 
 runs a simple loop:
 find a process to run, run it until it yields, repeat.
-\indexcode{scheduler}
-holds
-\indexcode{ptable.lock}
-for most of its actions,
-but releases the lock (and explicitly enables interrupts)
-once in each iteration of its outer loop.
-This is important for the special case in which this CPU
-is idle (can find no
-\lstinline{RUNNABLE}
-process).
-If an idling scheduler looped with
-the lock continuously held, no other CPU that
-was running a process could ever perform a context
-switch or any process-related system call,
-and in particular could never mark a process as
-\indexcode{RUNNABLE}
-so as to break the idling CPU out of its scheduling loop.
-The reason to enable interrupts periodically on an idling
-CPU is that there might be no
-\lstinline{RUNNABLE}
-process because processes (e.g., the shell) are
-waiting for I/O;
-if the scheduler left interrupts disabled all the time,
-the I/O would never arrive.
-
 The scheduler
 loops over the process table
 looking for a runnable process, one that has
@@ -358,9 +337,7 @@ looking for a runnable process, one that has
 \lstinline{RUNNABLE}.
 Once it finds a process, it sets the per-CPU current process
 variable
-\lstinline{proc},
-switches to the process's page table with
-\indexcode{switchuvm},
+\lstinline{c->proc},
 marks the process as
 \lstinline{RUNNING},
 and then calls
@@ -369,50 +346,47 @@ to start running it
 \linerefs{kernel/proc.c:/Switch.to/,/swtch/}.
 
 One way to think about the structure of the scheduling code is
-that it arranges to enforce a set of invariants about each process,
+that it enforces a set of invariants about each process,
 and holds
-\indexcode{ptable.lock}
+\indexcode{p->lock}
 whenever those invariants are not true.
 One invariant is that if a process is
 \lstinline{RUNNING},
 a timer interrupt's
 \indexcode{yield}
-must be able to switch away from the process;
+must be able to safely switch away from the process;
 this means that the CPU registers must hold the process's register values
-(i.e. they aren't actually in a
-\lstinline{context}),
-\texttt{cr3}
-must refer to the process's pagetable,
-\texttt{esp}
-must refer to the process's kernel stack so that
+(i.e. 
 \lstinline{swtch}
-can push registers correctly, and
-\lstinline{proc}
-must refer to the process's
-\lstinline{proc[]}
-slot.
+hasn't moved them to a
+\lstinline{context}),
+and
+\lstinline{c->proc}
+must refer to the process.
 Another invariant is that if a process is
 \indexcode{RUNNABLE},
+it must be safe for
 an idle CPU's
 \indexcode{scheduler}
-must be able to run it;
+to run it;
 this means that 
 \indexcode{p->context}
-must hold the process's kernel thread variables,
+must hold the process's registers (i.e. they are
+not actually in the real registers),
 that no CPU is executing on the process's kernel stack,
-that no CPU's
-\texttt{cr3}
-refers to the process's page table,
 and that no CPU's
-\lstinline{proc}
+\lstinline{c->proc}
 refers to the process.
+Observe that these properties are often not true while
+\lstinline{p->lock} is held.
 
-Maintaining the above invariants is the reason why xv6 acquires 
-\indexcode{ptable.lock}
-in one thread (often in
-\lstinline{yield)}
-and releases the lock in a different thread
-(the scheduler thread or another next kernel thread).
+Maintaining the above invariants is the reason why xv6 often acquires 
+\indexcode{p->lock}
+in one thread and releases it in other,
+for example acquiring in
+\lstinline{yield}
+and releasing in
+\lstinline{scheduler}.
 Once the code has started to modify a running process's state
 to make it
 \lstinline{RUNNABLE},
