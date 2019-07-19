@@ -185,7 +185,7 @@ to get a buffer for the given sector
 If the buffer needs to be read from disk,
 \lstinline{bread}
 calls
-\indexcode{iderw}
+\indexcode{virtio_disk_rw}
 to do that before returning the buffer.
 
 \lstinline{Bget}
@@ -265,11 +265,11 @@ to write the changed data to disk before releasing the buffer.
 \lstinline{Bwrite}
 \lineref{kernel/bio.c:/^bwrite/}
 calls
-\indexcode{iderw}
+\indexcode{virtio_disk_rw}
 to talk to the disk hardware, after setting
 \indexcode{B_DIRTY}
 to indicate that
-\lstinline{iderw}
+\lstinline{virtio_disk_rw}
 should write (rather than read).
 
 When the caller is done with a buffer,
@@ -748,7 +748,7 @@ Its main job is really synchronizing access by multiple processes;
 caching is secondary.
 If an inode is used frequently, the buffer cache will probably
 keep it in memory if it isn't kept by the inode cache.
-The inode cache is write-through, which means that code that
+The inode cache is \indextext{write-through}, which means that code that
 modifies a cached inode must immediately write it to disk with
 \lstinline{iupdate}.
 %% 
@@ -783,8 +783,7 @@ and try to claim it.
 
 \lstinline{Iget}
 \lineref{kernel/fs.c:/^iget/}
-looks through the inode cache for an active entry 
-\lstinline{ip->ref} "" (
+looks through the inode cache for an active entry (\lstinline{ip->ref}
 \lstinline{>}
 \lstinline{0})
 with the desired device and inode number.
@@ -1720,20 +1719,22 @@ and wait for the response before returning.
 %% 
 \section{Exercises}
 
-1. Why panic in
+\begin{enumerate}
+
+\item Why panic in
 \lstinline{balloc} ?
 Can xv6 recover?
 
-2. Why panic in
+\item Why panic in
 \lstinline{ialloc} ?
 Can xv6 recover?
 
-3. Why doesn't
+\item Why doesn't
 \lstinline{filealloc}
 panic when it runs out of files?
 Why is this more common and therefore worth handling?
 
-4. Suppose the file corresponding to 
+\item Suppose the file corresponding to 
 \lstinline{ip}
 gets unlinked by another process
 between 
@@ -1745,7 +1746,7 @@ and
 Will the link be created correctly?
 Why or why not?
 
-6.
+\item
 \lstinline{create}
 makes four function calls (one to
 \lstinline{ialloc}
@@ -1759,7 +1760,7 @@ calls
 Why is this acceptable?
 Why can't any of those four calls fail?
 
-7. 
+\item
 \lstinline{sys_chdir}
 calls
 \lstinline{iunlock(ip)}
@@ -1774,7 +1775,7 @@ until after the
 would not cause deadlocks.
 Why not?
 
-8. Implement the
+\item Implement the
 \lstinline{lseek}
 system call.  Supporting
 \lstinline{lseek}
@@ -1787,7 +1788,7 @@ sets
 beyond
 \lstinline{f->ip->size.}
 
-9. Add
+\item Add
 \lstinline{O_TRUNC}
 and
 \lstinline{O_APPEND}
@@ -1799,4 +1800,10 @@ and
 \lstinline{>>}
 operators work in the shell.
 
-10. Modify the file system to support symbolic links.
+\item Modify the file system to support symbolic links.
+
+\item Modify the file system to support names pipes.
+
+\item Modify the file and VM system to support mmap.
+
+\end{enumerate}
