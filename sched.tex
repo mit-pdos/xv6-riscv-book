@@ -146,7 +146,7 @@ in turn calls
 which calls
 \indexcode{swtch}
 to save the current context in
-\lstinline{proc->context}
+\lstinline{p->context}
 and switch to the scheduler context previously saved in 
 \indexcode{cpu->scheduler}
 \lineref{kernel/proc.c:/swtch..p/}.
@@ -154,7 +154,7 @@ and switch to the scheduler context previously saved in
 \lstinline{Swtch}
 \lineref{kernel/swtch.S:/swtch/}
 saves only callee-saved registers;
-caller-saved registers are saved (if needed) by the
+caller-saved registers are saved on the stack (if needed) by the
 calling C code.
 \lstinline{Swtch} knows the offset of each
 register's field in 
@@ -215,11 +215,11 @@ as a given and examine
 switching from a process through the scheduler to another process.
 A process
 that wants to give up the CPU must
-acquire the process table lock
-\indexcode{ptable.lock},
+acquire its own process lock
+\indexcode{p->lock},
 release any other locks it is holding,
 update its own state
-(\lstinline{proc->state}),
+(\lstinline{p->state}),
 and then call
 \indexcode{sched}.
 \lstinline{Yield}
@@ -233,20 +233,19 @@ which we will examine later.
 double-checks those conditions
 \linerefs{kernel/proc.c:/if..holding/,/running/}
 and then an implication of those conditions:
-since a lock is held, the CPU should be
-running with interrupts disabled.
+since a lock is held, interrupts should be disabled.
 Finally,
 \indexcode{sched}
 calls
 \indexcode{swtch}
 to save the current context in 
-\lstinline{proc->context}
+\lstinline{p->context}
 and switch to the scheduler context in
 \indexcode{cpu->scheduler}.
 \lstinline{Swtch}
 returns on the scheduler's stack
 as though
-\indexcode{scheduler} 's
+\indexcode{scheduler}'s
 \lstinline{swtch}
 had returned
 \lineref{kernel/proc.c:/swtch.&.c/}.
@@ -313,8 +312,7 @@ There is one case when the scheduler's call to
 \indexcode{swtch}
 does not end up in
 \indexcode{sched}.
-We saw this case in Chapter~\ref{CH:MEM}: when a
-new process is first scheduled, it begins at
+When a new process is first scheduled, it begins at
 \indexcode{forkret}
 \lineref{kernel/proc.c:/^forkret/}.
 \lstinline{Forkret}
@@ -785,7 +783,7 @@ holds the lock while it sleeps,
 so the sender will block forever waiting for the lock.
 
 We'll fix the preceding scheme by changing
-\lstinline{sleep} 's
+\lstinline{sleep}'s
 interface:
 the caller must pass the lock to
 \lstinline{sleep}
@@ -840,7 +838,7 @@ holds
 prevents 
 \lstinline{send}
 from trying to wake it up between 
-\lstinline{recv} 's
+\lstinline{recv}'s
 check of
 \lstinline{q->ptr}
 and its call to
@@ -1047,7 +1045,7 @@ lock on the condition is after
 acquires
 \lstinline{ptable.lock},
 so that
-\lstinline{wakeup} 's
+\lstinline{wakeup}'s
 acquisition of
 \lstinline{ptable.lock}
 must wait until
@@ -1197,7 +1195,7 @@ out of the buffer.
 releases 
 \lstinline{p->lock}
 as part of putting
-\lstinline{pipewrite} 's
+\lstinline{pipewrite}'s
 process to sleep.
 
 Now that
