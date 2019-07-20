@@ -952,7 +952,7 @@ see that the process is ready to be run.
 
 Xv6 code always calls
 \lstinline{wakeup}
-while holding the lock that guards the sleep condition;
+while holding the ``condition lock;''
 in the example above that lock is
 \lstinline{q->lock}.
 Strictly speaking it is sufficient if
@@ -969,12 +969,12 @@ and
 \lstinline{wakeup}
 ensure a sleeping process won't miss a wakeup it needs?
 The sleeping process holds either
-the lock on the condition or its own
+the condition lock or its own
 \lstinline{p->lock} 
 or both from a point before it checks the condition
 to a point after it is marked as sleeping.
 If a concurrent thread causes the condition to be true,
-that thread must either hold the lock on the condition before the
+that thread must either hold condition lock before the
 sleeping thread acquired it, or after the sleeping
 thread released it in
 \lstinline{sleep}.
@@ -982,7 +982,7 @@ If before, the sleeping thread must have seen the new condition
 value, and decided to sleep anyway, so it doesn't matter
 if it misses the wakeup.
 If after, then the earliest the waker could acquire the
-lock on the condition is after
+condition lock is after
 \lstinline{sleep}
 acquires
 \lstinline{p->lock},
@@ -1189,21 +1189,24 @@ system call that a parent process uses to wait for a child to exit.
 When a child exits, it does not die immediately.
 Instead, it switches to the
 \indexcode{ZOMBIE}
-process state until the parent calls
+state until the parent calls
 \lstinline{wait}
 to learn of the exit.
 The parent is then responsible for freeing the
-memory associated with the process 
+the child's kernel stack
 and preparing the
 \indexcode{struct proc}
 for reuse.
+\lstinline{Exit} cannot free the exiting process's
+kernel stack because \lstinline{exit} is using
+that stack; thus the parent does it.
 If the parent exits before the child, the 
+parent gives the child to the
 \lstinline{init}
-process
-adopts the child and waits for it, so that
+process, which perpetually waits;
+thus
 every child has a parent to clean up after it.
-
-An implementation challenge is
+The main implementation challenge is
 the possibility of races between
 parent and child
 \lstinline{wait}
@@ -1213,51 +1216,80 @@ as well as
 \lstinline{exit}
 and
 \lstinline{exit}.
+
 \lstinline{Wait}
-begins by
-acquiring 
-\lstinline{ptable.lock}.
-Then it scans the process table
-looking for children.
+uses its own
+\lstinline{p->lock}
+as the condition lock to avoid lost wakeups,
+and it acquires that lock at the start.
+Then it scans the process table.
+If it finds a child in zombie state,
+it frees that child's resources and
+its \lstinline{proc} structure and returns the child's process ID.
 If 
 \lstinline{wait}
-finds that the current process has children
-but that none have exited,
+finds children but none have exited,
 it calls
 \lstinline{sleep}
 to wait for one of them to exit
-\lineref{kernel/proc.c:/wait-sleep/}
-and scans again.
+\lineref{kernel/proc.c:/wait-sleep/},
+then scans again.
 Here,
-the lock being released in 
+the condition lock being released in 
 \lstinline{sleep}
-is
-\lstinline{ptable.lock},
-the special case we saw above.
+is \lstinline{p->lock},
+the special case mentioned above.
+Note that \lstinline{wait} often holds two locks,
+and that the deadlock-avoiding order it uses is
+parent, then child.
+
+\lstinline{Wait} uses \lstinline{np->parent} without holding
+\lstinline{np->lock}, which is a violation of the usual rule that
+shared variables must be protected by locks. It is possible that
+\lstinline{np} is an ancestor of the current process, in which case
+acquiring \lstinline{np->lock} could cause a deadlock since that would
+violate the order mentioned above. Examining \lstinline{np->parent}
+without a lock seems safe in this case; a process's \lstinline{parent}
+field is only changed by its parent, so if \lstinline{np->parent==p}
+is true, the value can't change unless the current process changes it.
 
 \lstinline{Exit}
-acquires
-\lstinline{ptable.lock}
-and then wakes up any process sleeping on a wait
-channel equal to the current process's parent
-\lstinline{proc}
-\lineref{kernel/proc.c:/wakeup1.curproc->parent/};
-if there is such a process, it will be the parent in
-\lstinline{wait}.
-This may look premature, since 
-\indexcode{exit}
-has not marked the current process as a
-\lstinline{ZOMBIE}
-yet, but it is safe:
+\lineref{kernel/proc.c:/^exit/}
+frees some resources,
+re-parents any children so that their parent is
+the \lstinline{init} process,
+wakes up its parent in case it is in \lstinline{wait},
+marks itself as a zombie, and permanently
+yields the CPU.
+The final sequence is a little tricky.
+The exiting process must hold its parent's lock when
+setting its state to \lstinline{ZOMBIE} and
+waking the parent up, since the parent's lock
+is the condition lock
+that guards against lost wakeups in \lstinline{wait}. The child must also
+holds its own \lstinline{p->lock}, since otherwise the parent
+might see it in state \lstinline{ZOMBIE} and prematurely free it.
+The lock acquisition order is important to avoid deadlock: since \lstinline{wait}
+acquires the parent's lock before the child's lock,
+\lstinline{exit} must use the same order.
+
+\lstinline{Exit} calls a specialized wakeup function,
+\lstinline{wakeup1}, that wakes up only the parent,
+and only if it is sleeping in 
+\lstinline{wait}
+\lineref{kernel/proc.c:/^wakeup1/}.
+It may look incorrect for the child to wake up the parent
+before setting its state to \lstinline{ZOMBIE}, 
+but that is safe:
 although
 \lstinline{wakeup}
 may cause the parent to run,
 the loop in
 \lstinline{wait}
-cannot run until
+cannot examine the child until the child's
 \lstinline{exit}
-releases 
-\lstinline{ptable.lock}
+releases its
+\lstinline{p->lock}
 by calling
 \lstinline{sched}
 to enter the scheduler,
@@ -1269,70 +1301,13 @@ the exiting process until after
 has set its state to
 \lstinline{ZOMBIE}
 \lineref{kernel/proc.c:/state.=.ZOMBIE/}.
-Before exit yields the processor,
-it reparents all of
-the exiting process's children,
-passing them to the
-\lstinline{initproc}
-\linerefs{kernel/proc.c:/Pass.abandoned/,/wakeup1/+2}.
-Finally,
-\lstinline{exit}
-calls
-\indexcode{sched}
-to relinquish the CPU.
-
-If the parent process was sleeping in
-\lstinline{wait},
-the scheduler will eventually run it.
-The call to
-\lstinline{sleep}
-returns holding
-\lstinline{ptable.lock};
-\lstinline{wait}
-rescans the process table
-and finds the exited child with
-\lstinline{state}
-\lstinline{==}
-\lstinline{ZOMBIE}.
-\lineref{kernel/proc.c:/state.==.ZOMBIE/}.
-It records the child's
-\lstinline{pid}
-and then cleans up the 
-\lstinline{struct} 
-\lstinline{proc},
-freeing the memory associated
-with the process
-\lineref{kernel/proc.c:/pid.=.p..pid/,/killed.=.0/}.
-
-The child process could have done most
-of the cleanup during
-\lstinline{exit},
-but it is important that the parent 
-process be the one to free
-\indexcode{p->kstack} 
-and 
-\indexcode{p->pgdir}:
-when the child runs
-\lstinline{exit},
-its stack sits in the memory allocated as
-\lstinline{p->kstack} 
-and it uses its own pagetable.
-They can only be freed after the child process has
-finished running for the last time by calling
-\indexcode{swtch}
-(via
-\lstinline{sched}).
-This is one reason that the scheduler procedure runs on its
-own stack rather than on the stack of the thread
-that called
-\lstinline{sched}.
 
 While
 \lstinline{exit} 
 allows a process to terminate itself,
 \lstinline{kill}
 \lineref{kernel/proc.c:/^kill/} 
-lets one process request that another be terminated.
+lets one process request that another terminate.
 It would be too complex for
 \lstinline{kill}
 to directly destroy the victim process, since the victim
@@ -1345,11 +1320,11 @@ does very little: it just sets the victim's
 and, if it is sleeping, wakes it up.
 Eventually the victim will enter or leave the kernel,
 at which point code in
-\lstinline{trap}
+\lstinline{usertrap}
 will call
 \lstinline{exit}
 if
-\lstinline{pi->killed}
+\lstinline{p->killed}
 is set.
 If the victim is running in user space, it will soon enter
 the kernel by making a system call or because the timer (or
@@ -1357,9 +1332,9 @@ some other device) interrupts.
 
 If the victim process is in
 \lstinline{sleep},
-the call to
+\lstinline{kill}'s call to
 \lstinline{wakeup}
-will cause the victim process to return from
+will cause the victim to return from
 \lstinline{sleep}.
 This is potentially dangerous because 
 the condition being waiting for may not be true.
@@ -1395,10 +1370,9 @@ is an example: it does not check
 because a disk operation may be one of a set of
 writes that are all needed in order for the file system to
 be left in a correct state.
-To avoid the complication of cleaning up after a partial operation, xv6 delays
-the killing of a process that is in the virtio driver until some point later when
-it is easy to kill the process (e.g., when the complete file system operation
-has completed and the process is about to return to user space).
+A process that is killed while waiting for disk I/O won't
+exit until it completes the current system call and
+\lstinline{usertrap} sees the killed flag.
 %% 
 \section{Real world}
 %% 
