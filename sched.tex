@@ -427,59 +427,57 @@ for performance.
 \section{Code: mycpu and myproc}
 %% 
 
-As we saw in Chapter~\ref{CH:TRAP},
-xv6 maintains a
+Xv6 often needs a pointer to the current process's \lstinline{proc}
+structure. On a uniprocessor one could have a global variable pointing
+to the current \lstinline{proc}. This doesn't work on a multi-core
+machine, since each core executes a different process.
+
+Xv6 maintains a
 \indexcode{struct cpu}
-for each processor, which records
+for each processor
+\lineref{kernel/proc.h:/^struct.cpu/},
+which records
 the process currently running
-on the processor (if any),
-the processor's unique hardware identifier
-(\lstinline{apicid}),
-and some other information.
-The function
-\indexcode{getmycpu}
-\lineref{kernel/proc.c:/^getmycpu/}
-returns the current processor's
-\lstinline{struct cpu}.
-\lstinline{getmycpu}
-does this by reading the processor
-identifier from the local APIC hardware and looking through
-the array of
-\lstinline{struct cpu}
-for an entry with that identifier.
-The function 
-\lstinline{seginit}
-\lineref{kernel/vm.c:/^seginit/}
-programs the register
-\lstinline{MSR_GS_KERNBASE}
-to contain a pointer to the core's
-\lstinline{struct cpu}.
+on that processor (if any),
+saved registers for the processor's scheduler thread,
+and the count of nested spinlocks needed to manage
+interrupt disabling.
 The function
 \indexcode{mycpu}
 \lineref{kernel/proc.c:/^mycpu/}
-returns that
-value using
-\texttt{gs}.
-Using
-\texttt{gs}
-avoids every call to
-\lstinline{mycpu}
-having to loop
-through the array
-\lstinline{cpus},
-as
-\lstinline{getmycpu}
-does.
+returns a pointer to the current processor's
+\lstinline{struct cpu}.
+A RISC-V processor numbers its CPUs, giving each
+a ``hartid''.
+Xv6 ensures that each CPU's hartid is stored in that CPU's \lstinline{tp} register
+while in the kernel.
+This allows
+\lstinline{mycpu} to use \lstinline{tp} to index an array
+of \lstinline{cpu} structures to find the right one.
 
-The return value of
-\lstinline{getmycpu}
+Ensuring that a CPU's \lstinline{tp} always holds the CPU's
+hartid is a little involved. \lstinline{mstart} sets the tp
+register early in the CPU's boot sequence, while still in machine mode
+\lineref{kernel/start.c:/w_tp/}.
+\lstinline{usertrapret} saves \lstinline{tp} in the trampoline
+page, because the user process might modify \lstinline{tp}.
+Finally, \lstinline{trampin} restores that saved \lstinline{tp}
+when entering the kernel from user space
+\lineref{kernel/trampoline.S:/make tp hold/}.
+The compiler guarantees never to use the \lstinline{tp}
+register.
+It would be more convenient if RISC-V allowed xv6 to read the
+current hartid directly, but that is allowed only in
+machine mode, not in supervisor mode.
+
+The return values of
+\lstinline{cpuid}
 and
 \lstinline{mycpu}
 are fragile: if the timer were to interrupt and cause
-the thread to be moved to a different processor, the
+the thread to yield and then move to a different processor, the
 return value would no longer be correct.
-To avoid this problem, xv6 requires that callers of
-\lstinline{getmycpu}
+To avoid this problem, xv6 requires that callers 
 disable interrupts, and only enable
 them after they finish using the returned
 \lstinline{struct cpu}.
@@ -499,11 +497,6 @@ fetches the current process pointer
 out of the
 \lstinline{struct cpu},
 and then enables interrupts.
-If there is no process running, because the the caller is
-executing in
-\lstinline{scheduler},
-\lstinline{myproc}
-returns zero.
 The return value of
 \lstinline{myproc}
 is safe to use even if interrupts are enabled:
