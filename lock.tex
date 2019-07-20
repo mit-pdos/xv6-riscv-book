@@ -487,9 +487,9 @@ The file system code contains xv6's longest lock chains.
 For example, creating a file requires simultaneously
 holding a lock on the directory, a lock on the new file's inode,
 a lock on a disk block buffer, 
-\lstinline{idelock},
+\lstinline{vdisk\_lock},
 and
-\lstinline{ptable.lock}.
+\lstinline{p->lock}.
 To avoid deadlock, file system code always acquires locks in the order 
 mentioned in the previous sentence.
 \section{Locks and interrupt handlers}

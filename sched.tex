@@ -1026,25 +1026,13 @@ they are interacting with).
 %% 
 \section{Code: Pipes}
 %% 
-The simple queue we used earlier in this chapter
-was a toy, but xv6 contains two real queues
-that use
-\lstinline{sleep}
-and
-\lstinline{wakeup}
-to synchronize readers and writers.
-One is in the virtio driver: a process adds a disk request to a queue and then
-calls
-\lstinline{sleep}.
-The virtio interrupt handler uses
-\lstinline{wakeup}
-to alert the process that its request has completed.
-
-A more complex example is the implementation of pipes.
+A more complex example that uses \lstinline{sleep}
+and \lstinline{wakeup} to synchronize producers and
+consumers is xv6's implementation of pipes.
 We saw the interface for pipes in Chapter~\ref{CH:UNIX}:
 bytes written to one end of a pipe are copied
-in an in-kernel buffer and then can be read out
-of the other end of the pipe.
+to an in-kernel buffer and then can be read from
+the other end of the pipe.
 Future chapters will examine the file descriptor support
 surrounding pipes, but let's look now at the
 implementations of 
@@ -1065,7 +1053,7 @@ The fields
 \lstinline{nread}
 and
 \lstinline{nwrite}
-count the number of bytes read from
+count the total number of bytes read from
 and written to the buffer.
 The buffer wraps around:
 the next byte written after
@@ -1075,11 +1063,11 @@ is
 The counts do not wrap.
 This convention lets the implementation
 distinguish a full buffer 
-\lstinline{nwrite} "" (
+(\lstinline{nwrite}
 \lstinline{==}
-\lstinline{nread}+PIPESIZE)
+\lstinline{nread+PIPESIZE})
 from an empty buffer
-\lstinline{nwrite} "" (
+(\lstinline{nwrite}
 \lstinline{==}
 \lstinline{nread}),
 but it means that indexing into the buffer
@@ -1091,12 +1079,12 @@ instead of just
 \lstinline{buf[nread]} 
 (and similarly for
 \lstinline{nwrite}).
+
 Let's suppose that calls to
 \lstinline{piperead}
 and
 \lstinline{pipewrite}
 happen simultaneously on two different CPUs.
-
 \lstinline{Pipewrite}
 \lineref{kernel/pipe.c:/^pipewrite/}
 begins by acquiring the pipe's lock, which
@@ -1114,10 +1102,7 @@ While
 waits,
 \lstinline{pipewrite}
 loops over the bytes being written
-\lstinline{addr[0]},
-\lstinline{addr[1]},
-\&...,
-\lstinline{addr[n-1]}
+(\lstinline{addr[0..n-1]}),
 adding each to the pipe in turn
 \lineref{kernel/pipe.c:/nwrite\+\+/}.
 During this loop, it could happen that
@@ -1130,36 +1115,36 @@ calls
 to alert any sleeping readers to the fact
 that there is data waiting in the buffer
 and then sleeps on
-\lstinline{&p->nwrite}
+\lstinline{&pi->nwrite}
 to wait for a reader to take some bytes
 out of the buffer.
 \lstinline{Sleep}
 releases 
-\lstinline{p->lock}
+\lstinline{pi->lock}
 as part of putting
 \lstinline{pipewrite}'s
 process to sleep.
 
 Now that
-\lstinline{p->lock}
+\lstinline{pi->lock}
 is available,
 \lstinline{piperead}
 manages to acquire it and enters its critical section:
 it finds that
-\lstinline{p->nread}
+\lstinline{pi->nread}
 \lstinline{!=}
-\lstinline{p->nwrite}
+\lstinline{pi->nwrite}
 \lineref{kernel/pipe.c:/pipe-empty/}
-\lstinline{pipewrite} "" (
+(\lstinline{pipewrite}
 went to sleep because
-\lstinline{p->nwrite}
+\lstinline{pi->nwrite}
 \lstinline{==}
-\lstinline{p->nread}+PIPESIZE
-\lineref{kernel/pipe.c:/pipewrite-full/})
+\lstinline{pi->nread+PIPESIZE}
+\lineref{kernel/pipe.c:/pipewrite-full/}),
 so it falls through to the 
 \lstinline{for}
 loop, copies data out of the pipe
-\lineref{kernel/pipe.c:/piperead-copy/,/^..}/},
+\lineref{kernel/pipe.c:/piperead-copy/},
 and increments 
 \lstinline{nread}
 by the number of bytes copied.
@@ -1169,10 +1154,10 @@ calls
 \lstinline{wakeup}
 \lineref{kernel/pipe.c:/piperead-wakeup/}
 to wake any sleeping writers
-before it returns to its caller.
+before it returns.
 \lstinline{Wakeup}
 finds a process sleeping on
-\lstinline{&p->nwrite},
+\lstinline{&pi->nwrite},
 the process that was running
 \lstinline{pipewrite}
 but stopped when the buffer filled.
@@ -1180,10 +1165,9 @@ It marks that process as
 \indexcode{RUNNABLE}.
 
 The pipe code uses separate sleep channels for reader and writer
-(
-\lstinline{p->nread}
+(\lstinline{pi->nread}
 and
-\lstinline{p->nwrite});
+\lstinline{pi->nwrite});
 this might make the system more efficient in the unlikely
 event that there are lots of
 readers and writers waiting for the same pipe.
@@ -1365,7 +1349,7 @@ at which point code in
 will call
 \lstinline{exit}
 if
-\lstinline{p->killed}
+\lstinline{pi->killed}
 is set.
 If the victim is running in user space, it will soon enter
 the kernel by making a system call or because the timer (or
