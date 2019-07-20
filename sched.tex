@@ -1473,7 +1473,7 @@ Most condition variables have two primitives for
 \lstinline{signal},
 which wakes up one process, and
 \lstinline{broadcast},
-which wakes up all processes waiting.
+which wakes up all waiting processes.
 
 Semaphores are another common coordination
 mechanism.
@@ -1547,21 +1547,21 @@ xv6 uses the linear scan for simplicity.
 %% 
 
 1. Sleep has to check
-\lstinline{lk != &ptable.lock}
+\lstinline{lk != &p->lock}
 to avoid a deadlock
 \linerefs{kernel/proc.c:/sleeplock0/,/^..}/}.
 Suppose the special case were eliminated by
 replacing
 \begin{lstlisting}[]
-if(lk != &ptable.lock){
-  acquire(&ptable.lock);
+if(lk != &p->lock){
+  acquire(&p->lock);
   release(lk);
 }
 \end{lstlisting}
 with
 \begin{lstlisting}[]
 release(lk);
-acquire(&ptable.lock);
+acquire(&p->lock);
 \end{lstlisting}
 Doing this would break
 \lstinline{sleep}.
@@ -1574,12 +1574,14 @@ or
 but we saw above that
 \lstinline{exit}
 must not free
-\lstinline{p->stack}.
+\lstinline{p->kstack}.
 It turns out that
 \lstinline{exit}
 must be the one to close the open files.
 Why?
 The answer involves pipes.
+% Answer: deadlock. wait() holds p->lock, but the wakeup()
+% in pipeclose() tries to acquire every process's lock.
 
 3. Implement semaphores in xv6.
 You can use mutexes but do not use sleep and wakeup.
@@ -1614,12 +1616,13 @@ benefit of avoiding one context switch.
 % Answer: maybe keep the current design but create a fast path for when there is
 % a runnable user process available.
 
-7. Modify xv6 to turn off a processor when it is idle and just spinning in the
-loop in
-\lstinline{scheduler}.
-(Hint: look at the x86
-\lstinline{HLT}
-instruction.)
+7. Modify xv6's
+\lstinline{scheduler}
+to use the
+RISC-V
+\lstinline{WFI}
+instruction
+when no processes are runnable.
 
 8. The lock
 \lstinline{p->lock}
@@ -1627,7 +1630,7 @@ protects many invariants, and when looking at a particular piece of xv6 code tha
 is protected by
 \lstinline{p->lock},
 it can be difficult to figure out which invariant is being enforced.  Design a
-plan that is more clean by perhaps splitting
+plan that is more clean by splitting
 \lstinline{p->lock}
 in several locks.
 % Answer: don't know.
