@@ -430,7 +430,10 @@ for performance.
 Xv6 often needs a pointer to the current process's \lstinline{proc}
 structure. On a uniprocessor one could have a global variable pointing
 to the current \lstinline{proc}. This doesn't work on a multi-core
-machine, since each core executes a different process.
+machine, since each core executes a different process. The way to
+solve this problem is to exploit the fact that each core has its own
+set of registers; we can use one of those registers to help find
+per-core information.
 
 Xv6 maintains a
 \indexcode{struct cpu}
@@ -512,23 +515,19 @@ Scheduling and locks help conceal the existence of one process
 from another,
 but so far we have no abstractions that help
 processes intentionally interact.
-Sleep and wakeup fill that void, allowing one process to 
+Many mechanisms have been invented to solve this problem.
+Xv6 uses one called sleep and wakeup, which allow one process to
 sleep waiting for an event and another process to wake it up
 once the event has happened.
 Sleep and wakeup are often called 
 \indextext{sequence coordination}
 or 
 \indextext{conditional synchronization}
-mechanisms, and there are many other similar mechanisms
-in the operating systems literature.
+mechanisms.
 
 To illustrate what we mean, let's consider a
 simple producer/consumer queue.
-XXX This queue is similar to the one that feeds commands from processes
-to the virtio driver
-(see Chapter~\ref{CH:TRAP}), but abstracts away all
-IDE-specific code.
-The queue allows one process to send a nonzero pointer
+This one-element queue allows one process to send a nonzero pointer
 to another process.
 If there were only one sender and one receiver,
 and they executed on different CPUs,
@@ -560,9 +559,9 @@ this implementation would be correct:
 \end{lstlisting}
 \lstinline{Send}
 loops until the queue is empty
-\lstinline{ptr} "" (
+(\lstinline{ptr}
 \lstinline{==}
-\lstinline{0)}
+\lstinline{0})
 and then puts the pointer
 \lstinline{p}
 in the queue.
@@ -856,21 +855,11 @@ Xv6 often uses the address
 of a kernel data structure involved in the waiting.
 
 \lstinline{Sleep}
-\lineref{kernel/proc.c:/^sleep/}
-begins with a few sanity checks:
-there must be a current process
-\lineref{kernel/proc.c:/p.==.0/}
-and
-\lstinline{sleep}
-must have been passed a lock
-\linerefs{kernel/proc.c:/lk == 0/,/sleep.without/}.
-Then 
-\lstinline{sleep}
 acquires 
-\indexcode{ptable.lock}
+\indexcode{p->lock}
 \lineref{kernel/proc.c:/sleeplock1/}.
 Now the process going to sleep holds both
-\lstinline{ptable.lock}
+\lstinline{p->lock}
 and
 \lstinline{lk}.
 Holding
@@ -886,16 +875,16 @@ could start a call to
 Now that
 \lstinline{sleep}
 holds
-\lstinline{ptable.lock},
+\lstinline{p->lock},
 it is safe to release
 \lstinline{lk}:
 some other process may start a call to
 \lstinline{wakeup(chan)},
 but
 \indexcode{wakeup}
-will not run until it can acquire
-\indexcode{ptable.lock},
-so it must wait until
+will wait to acquire
+\indexcode{p->lock},
+and thus will wait until
 \lstinline{sleep}
 has finished putting the process to sleep,
 keeping the
@@ -905,32 +894,29 @@ from missing the
 
 There is a minor complication: if 
 \lstinline{lk}
-is equal to
-\lstinline{&ptable.lock},
+is the same lock as
+\lstinline{p->lock},
 then
 \lstinline{sleep}
-would deadlock trying to acquire it as
-\lstinline{&ptable.lock}
-and then release it as
-\lstinline{lk}.
-In this case,
+would deadlock with itself if it tried to acquire 
+\lstinline{p->lock}.
+But if the process calling
 \lstinline{sleep}
-considers the acquire and release
-to cancel each other out
-and skips them entirely
-\lineref{kernel/proc.c:/sleeplock0/}.
-For example,
+already holds \lstinline{p->lock}, it
+doesn't need to do anything more in order
+to avoiding missing a concurrent \lstinline{wakeup}.
+This case arises when
 \lstinline{wait}
 \lineref{kernel/proc.c:/^wakeup\(/}
 calls
 \lstinline{sleep}
 with 
-\lstinline{&ptable.lock}.
+\lstinline{p->lock}.
 
 Now that
 \lstinline{sleep}
 holds
-\lstinline{ptable.lock}
+\lstinline{p->lock}
 and no others,
 it can put the process to sleep by recording
 the sleep channel,
@@ -940,36 +926,21 @@ and calling
 \lineref{kernel/proc.c:/chan.=.chan/,/sched/}.
 
 At some point later, a process will call
-\lstinline{wakeup(chan)}.
+\lstinline{wakeup(chan)}
+\lineref{kernel/proc.c:/^wakeup\(/}.
 \lstinline{Wakeup}
-\lineref{'kernel/proc.c:/^wakeup\(/}'
-acquires
-\indexcode{ptable.lock}
-and calls
-\indexcode{wakeup1},
-which does the real work.
-It is important that
-\indexcode{wakeup}
-hold the
-\lstinline{ptable.lock}
-both because it is manipulating process states
+loops over the process table.
+It acquires the
+\lstinline{p->lock}
+of each process it inspects,
+both because it may manipulating that process's state
 and because, as we just saw,
-\lstinline{ptable.lock}
-makes sure that
+\lstinline{p->lock}
+ensures that
 \lstinline{sleep}
 and
 \lstinline{wakeup}
 do not miss each other.
-\lstinline{Wakeup1}
-is a separate function because
-sometimes the scheduler needs to
-execute a wakeup when it already
-holds the 
-\lstinline{ptable.lock};
-we will see an example of this later.
-\lstinline{Wakeup1}
-\lineref{kernel/proc.c:/^wakeup1/}
-loops over the process table.
 When it finds a process in state
 \indexcode{SLEEPING}
 with a matching
@@ -998,8 +969,8 @@ and
 \lstinline{wakeup}
 ensure a sleeping process won't miss a wakeup it needs?
 The sleeping process holds either
-the lock on the condition or the
-\lstinline{ptable.lock} 
+the lock on the condition or its own
+\lstinline{p->lock} 
 or both from a point before it checks the condition
 to a point after it is marked as sleeping.
 If a concurrent thread causes the condition to be true,
@@ -1014,11 +985,11 @@ If after, then the earliest the waker could acquire the
 lock on the condition is after
 \lstinline{sleep}
 acquires
-\lstinline{ptable.lock},
+\lstinline{p->lock},
 so that
 \lstinline{wakeup}'s
 acquisition of
-\lstinline{ptable.lock}
+\lstinline{p->lock}
 must wait until
 \lstinline{sleep}
 has completely finished putting the sleeper to sleep.
