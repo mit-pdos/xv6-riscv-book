@@ -387,14 +387,15 @@ for example acquiring in
 \lstinline{yield}
 and releasing in
 \lstinline{scheduler}.
-Once the code has started to modify a running process's state
+Once \lstinline{yield} has started to modify a running process's state
 to make it
 \lstinline{RUNNABLE},
-it must hold the lock until it has finished restoring
-the invariants: the earliest correct release point is after
+the lock must remain held until the invariants are restored:
+the earliest correct release point is after
 \lstinline{scheduler}
-stops using the process's page table and clears
-\lstinline{proc}.
+(running on its own stack)
+clears
+\lstinline{c->proc}.
 Similarly, once 
 \lstinline{scheduler}
 starts to convert a runnable process to
@@ -405,19 +406,22 @@ is completely running (after the
 e.g. in
 \lstinline{yield}).
 
-\indexcode{ptable.lock}
+\indexcode{p->lock}
 protects other things as well:
-allocation of process IDs and free process table slots,
 the interplay between
 \indexcode{exit}
 and
 \indexcode{wait},
 the machinery to avoid lost wakeups (see next section),
-and probably other things too.
+and avoidance of races between a process exiting and other processes
+reading or writing its state (e.g. the \lstinline{exit}
+system call looking at \lstinline{p->pid} and
+setting \lstinline{p->killed}
+\lineref{kernel/proc.c:/^kill/}).
 It might be worth thinking about whether the 
 different functions of
-\lstinline{ptable.lock}
-could be split up, certainly for clarity and perhaps
+\lstinline{p->lock}
+could be split up, for clarity and perhaps
 for performance.
 %% 
 \section{Code: mycpu and myproc}
