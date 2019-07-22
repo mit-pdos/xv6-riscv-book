@@ -246,35 +246,35 @@ The important field in the structure is
 a word that is zero when the lock is available
 and non-zero when it is held.
 Logically, xv6 should acquire a lock by executing code like
-\begin{lstlisting}[]
-   21	void
-   22	acquire(struct spinlock *lk)
-   23	{
-   24	  for(;;) {
-   25	    if(lk->locked == 0) {
-   26	      lk->locked = 1;
-   27	      break;
-   28	    }
-   29	  }
-   30	}
+\begin{lstlisting}[numbers=left,firstnumber=21]
+   void
+   acquire(struct spinlock *lk)
+   {
+     for(;;) {
+       if(lk->locked == 0) {  (*@\label{line:test}@*)
+         lk->locked = 1;      (*@\label{line:assign}@*)
+         break;
+       }
+     }
+   }
 \end{lstlisting}
 Unfortunately, this implementation does not
 guarantee mutual exclusion on a multiprocessor.
 It could happen that two CPUs simultaneously
-reach line 25, see that 
+reach line~\ref{line:test}, see that 
 \lstinline{lk->locked}
-is zero, and then both grab the lock by executing line 26.
+is zero, and then both grab the lock by executing line~\ref{line:assign}.
 At this point, two different CPUs hold the lock,
 which violates the mutual exclusion property.
 What we need is a way to
-make lines 25 and 26 execute as an
+make lines \ref{line:test} and \ref{line:assign} execute as an
 \indextext{atomic}
 (i.e., indivisible) step.
 
 Because locks are widely used,
 multi-core processors usually provide instructions that
 can be used to implement an atomic version of
-lines 25 and 26.
+lines~\ref{line:test} and \ref{line:assign}.
 On the RISC-V this instruction is
 \lstinline{amoswap register, address}.
 \lstinline{amoswap}
@@ -615,16 +615,16 @@ For example, in this code for
 \lstinline{push},
 it would be a disaster if the compiler or processor moved the
 store corresponding to
-line 4 to a point after the
+line~\ref{line:next2} to a point after the
 \lstinline{release}
-on line 6:
-\begin{lstlisting}[]
-    1	  l = malloc(sizeof *l);
-    2	  l->data = data;
-    3	  acquire(&listlock);
-    4	  l->next = list;
-    5	  list = l;
-    6	  release(&listlock);
+on line~\ref{line:release}:
+\begin{lstlisting}[numbers=left,firstnumber=1]
+      l = malloc(sizeof *l);
+      l->data = data;
+      acquire(&listlock);
+      l->next = list;   (*@\label{line:next2}@*)
+      list = l;      
+      release(&listlock);  (*@\label{line:release}@*)
 \end{lstlisting}
 If such a re-ordering occurred, there would be a window during
 which another processor could acquire the lock,
