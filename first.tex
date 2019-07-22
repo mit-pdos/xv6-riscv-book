@@ -301,8 +301,9 @@ starting at virtual address zero. Instructions come first,
 followed by global variables, then the stack,
 and finally a ``heap'' area (for malloc)
 that the process can expand as needed.
-Xv6 runs on a RISC-V processor with 39 bits of virtual addresses,
-so the maximum address is $2^{39}-1$ = 0x3fffffffff.
+Xv6 runs on a RISC-V processor with 39 bits for virtual addresses,
+but uses only 38 bits.  Thus, the maximum address is $2^{38}-1$ =
+0x3fffffffff, which is \lstinline{MAXVA}\lineref{kernel/riscv.h:/MAXVA/}.
 At the top of the address space xv6 reserves some
 memory for a \indextext{trampoline}
 to switch to the kernel, as we will explain in Chapter~\ref{CH:TRAP}.
