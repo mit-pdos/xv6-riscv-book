@@ -72,24 +72,24 @@ If there were no
 concurrent requests, you might implement a list
 \lstinline{push}
 operation as follows:
-\begin{lstlisting}[]
-    1	struct element {
-    2	  int data;
-    3	  struct element *next;
-    4	};
-    5	
-    6	struct element *list = 0;
-    7	
-    8	void
-    9	push(int data)
-   10	{
-   11	  struct element *l;
-   12	
-   13	  l = malloc(sizeof *l);
-   14	  l->data = data;
-   15	  l->next = list;
-   16	  list = l;
-   17	}
+\begin{lstlisting}[numbers=left,firstnumber=1]
+    struct element {
+      int data;
+      struct element *next;
+    };
+    
+    struct element *list = 0;
+    
+    void
+    push(int data)
+    {
+      struct element *l;
+   
+      l = malloc(sizeof *l);
+      l->data = data;
+      l->next = list; (*@\label{line:next}@*)
+      list = l;  (*@\label{line:list}@*)
+   }
 \end{lstlisting}
 
 \begin{figure}[t]
@@ -104,8 +104,8 @@ copy executes concurrently.
 If two CPUs execute
 \lstinline{push}
 at the same time,
-both might execute line 15
-before either executes 16 (see 
+both might execute line~\ref{line:next},
+before either executes line~\ref{line:list},  (see 
 Figure~\ref{fig:race}).
 There would then be two
 list elements with
@@ -114,12 +114,12 @@ set to the former value of
 \lstinline{list}.
 When the two assignments to
 \lstinline{list}
-happen at line 16,
+happen at line ~\ref{line:list},
 the second one will overwrite the first;
 the element involved in the first assignment
 will be lost.
 
-The lost update at line 16 is an example of a
+The lost update at line~\ref{line:list} is an example of a
 \indextext{race condition}.
 A race condition is a situation in which a memory location is accessed
 concurrently, and at least one access is a write.
@@ -144,23 +144,23 @@ the sensitive lines of
 \lstinline{push};
 this makes the scenario above impossible.
 The correctly locked version of the above code
-adds just a few lines (not numbered):
-\begin{lstlisting}[]
-    6	struct element *list = 0;
-     	struct lock listlock;
-    7	
-    8	void
-    9	push(int data)
-   10	{
-   11	  struct element *l;
-   12	  l = malloc(sizeof *l);
-   13	  l->data = data;
-   14	
-     	  acquire(&listlock);
-   15	  l->next = list;
-   16	  list = l;
-     	  release(&listlock);
-   17	}
+adds just a few lines (highlighted in yellow):
+\begin{lstlisting}[numbers=left,firstnumber=6]
+   struct element *list = 0;
+   (*@\hl{struct lock listlock;}@*)
+    	
+   void
+   push(int data)
+   {
+     struct element *l;
+     l = malloc(sizeof *l); (*@\label{line:malloc}@*)
+     l->data = data;
+   
+     (*@\hl{acquire(\&listlock);} @*)
+     l->next = list;     (*@\label{line:next1}@*)
+     list = l;           (*@\label{line:list1}@*)
+     (*@\hl{release(\&listlock)}; @*)
+   }
 \end{lstlisting}
 The sequence of instructions between
 \lstinline{acquire}
@@ -189,14 +189,14 @@ and that each element's
 field points at the next element.
 The implementation of
 \lstinline{push}
-violates this invariant temporarily: in line 15,
+violates this invariant temporarily: in line~\ref{line:next1},
 \lstinline{l}
 points
 to the next list element, but
 \lstinline{list}
 does not point at
 \lstinline{l}
-yet (reestablished at line 16).
+yet (reestablished at line~\ref{line:list1}).
 The race condition we examined above
 happened because a second CPU executed
 code that depended on the list invariants
@@ -223,12 +223,12 @@ earlier in
 \lstinline{push.}
 For example, it is fine to move the call to
 \lstinline{acquire}
-up to before line 12.
+up to before line~\ref{line:malloc}.
 This may reduce parallelism because then the calls
 to
 \lstinline{malloc}
 are also serialized.
-The section "Using locks" below provides some guidelines for where to insert
+The section ``Using locks'' below provides some guidelines for where to insert
 \lstinline{acquire}
 and
 \lstinline{release}

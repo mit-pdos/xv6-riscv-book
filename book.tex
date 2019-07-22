@@ -11,6 +11,7 @@
 \usepackage{url}
 \usepackage{etoolbox}  % for showidx
 \usepackage{fullpage}
+\usepackage{soul}
 
 \usepackage{hyperref}  % should be last
 
@@ -20,8 +21,10 @@
 \hypersetup{pdfauthor={Russ Cox, Frans Kaashoek, Robert Morris},
             pdftitle={xv6: a simple, Unix-like teaching operating system},}
   
-\lstset{language=C,basicstyle=\small\ttfamily}
+\lstset{basicstyle=\small\ttfamily}
 \lstset{morecomment=[is]{[[[}{]]]}}
+\lstset{escapeinside={(*@}{@*)}}
+\lstset{xleftmargin=5.0ex}
 
 \newcommand{\github}{https://github.com/kaashoek/xv6-risc-v/blob/riscv/}
 
@@ -39,7 +42,6 @@
 \newcommand{\mfk}[1]{\insertnote{red}{MFK}{#1}}
 %% for publishing book without notes
 %\renewcommand{\insertnote}[3]{}
-
 
 \title{\textbf{xv6: a simple, Unix-like teaching operating system}}
 \author{Russ Cox \and Frans Kaashoek \and Robert Morris}
