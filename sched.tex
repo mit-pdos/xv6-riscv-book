@@ -526,79 +526,59 @@ or
 mechanisms.
 
 To illustrate what we mean, let's consider a
-simple producer/consumer queue.
-This one-element queue allows one process to send a nonzero pointer
-to another process.
-If there were only one sender and one receiver,
+simple producer/consumer mechanism called a semaphore~\cite{dijkstra65}.
+A semaphore maintains a count, and provides two operations.
+The ``V'' operation (for the producer) increments the count.
+The ``P'' operation (for the consumer) waits until the count is non-zero,
+and then decrements it and returns.
+If there were only one producer thread and one consumer thread,
 and they executed on different CPUs,
 and the compiler didn't optimize too agressively,
 this implementation would be correct:
 \begin{lstlisting}[]
-  100	struct q {
-  101	  void *ptr;
-  102	};
-  103	
-  104	void*
-  105	send(struct q *q, void *p)
-  106	{
-  107	  while(q->ptr != 0)
-  108	    ;
-  109	  q->ptr = p;
-  110	}
-  111	
-  112	void*
-  113	recv(struct q *q)
-  114	{
-  115	  void *p;
-  116	
-  117	  while((p = q->ptr) == 0)
-  118	    ;
-  119	  q->ptr = 0;
-  120	  return p;
-  121	}
+  100   struct semaphore {
+  101     struct spinlock lock;
+  102     int count;
+  103   };
+  104   
+  105   void
+  106   V(struct semaphore *s)
+  107   {
+  108     acquire(&s->lock);
+  109     s->count += 1;
+  110     release(&s->lock);
+  111   }
+  112   
+  113   void
+  114   P(struct semaphore *s)
+  115   {
+  116     while(s->count == 0)
+  117       ;
+  118     acquire(&s->lock);
+  119     s->count -= 1;
+  120     release(&s->lock);
+  121   }
 \end{lstlisting}
-\lstinline{Send}
-loops until the queue is empty
-(\lstinline{ptr}
-\lstinline{==}
-\lstinline{0})
-and then puts the pointer
-\lstinline{p}
-in the queue.
-\lstinline{Recv}
-loops until the queue is non-empty
-and takes the pointer out.
-When run in different processes,
-\lstinline{send}
-and
-\lstinline{recv}
-both modify
-\lstinline{q->ptr},
-but
-\lstinline{send}
-only writes the pointer when it is zero
-and
-\lstinline{recv}
-only writes the pointer when it is nonzero,
-so no updates are lost.
 
 The implementation above 
-is expensive.  If the sender sends
-rarely, the receiver will spend most
+is expensive.  If the producer acts
+rarely, the consumer will spend most
 of its time spinning in the 
 \lstinline{while}
-loop hoping for a pointer.
-The receiver's CPU could find more productive work than
+loop hoping for a non-zero count.
+The consumer's CPU could find more productive work than
 \indextext{busy waiting}
 by repeatedly 
 \indextext{polling}
-\lstinline{q->ptr}.
+\lstinline{s->count}.
 Avoiding busy waiting requires
-a way for the receiver to yield the CPU
-and resume only when 
-\lstinline{send}
-delivers a pointer.
+a way for the consumer to yield the CPU
+and resume only after
+\lstinline{V}
+increments the count.
 
+Here's a step in that direction, though as we
+will see it is not enough.
 Let's imagine a pair of calls, 
 \indexcode{sleep}
 and
@@ -622,30 +602,29 @@ If no processes are waiting on
 \lstinline{chan},
 \lstinline{wakeup}
 does nothing.
-We can change the queue implementation to use
+We can change the semaphore implementation to use
 \lstinline{sleep}
 and
 \lstinline{wakeup}:
 \begin{lstlisting}[]
-  201	void*
-  202	send(struct q *q, void *p)
-  203	{
-  204	  while(q->ptr != 0)
-  205	    ;
-  206	  q->ptr = p;
-  207	  wakeup(q);  /* wake recv */
-  208	}
-  209	
-  210	void*
-  211	recv(struct q *q)
-  212	{
-  213	  void *p;
-  214	
-  215	  while((p = q->ptr) == 0)
-  216	    sleep(q);
-  217	  q->ptr = 0;
-  218	  return p;
-  219	}
+  200   void
+  201   V(struct semaphore *s)
+  202   {
+  203     acquire(&s->lock);
+  204     s->count += 1;
+  205     wakeup(s);         // new
+  206     release(&s->lock);
+  207   }
+  208   
+  209   void
+  210   P(struct semaphore *s)
+  211   {
+  212     while(s->count == 0)
+  213       sleep(s);        // new
+  214     acquire(&s->lock);
+  215     s->count -= 1;
+  216     release(&s->lock);
+  217   }
 \end{lstlisting}
 
 \begin{figure}[t]
@@ -655,7 +634,7 @@ and
 \label{fig:deadlock}
 \end{figure}
 
-\lstinline{Recv}
+\lstinline{P}
 now gives up the CPU instead of spinning, which is nice.
 However, it turns out not to be straightforward to design
 \lstinline{sleep}
@@ -665,92 +644,81 @@ with this interface without suffering
 from what is known as the ``lost wake-up'' problem (see 
 Figure~\ref{fig:deadlock}).
 Suppose that
-\lstinline{recv}
+\lstinline{P}
 finds that
-\lstinline{q->ptr}
+\lstinline{s->count}
 \lstinline{==}
 \lstinline{0} 
-on line 215.
+on line 212.
 While
-\lstinline{recv}
-is between lines 215 and 216,
-\lstinline{send}
+\lstinline{P}
+is between lines 212 and 213,
+\lstinline{V}
 runs on another CPU:
 it changes
-\lstinline{q->ptr}
+\lstinline{s->count}
 to be nonzero and calls
 \lstinline{wakeup},
 which finds no processes sleeping and thus does nothing.
 Now
-\lstinline{recv}
-continues executing at line 216:
+\lstinline{P}
+continues executing at line 213:
 it calls
 \lstinline{sleep}
 and goes to sleep.
 This causes a problem:
-\lstinline{recv}
-is asleep waiting for a pointer
-that has already arrived.
-The next
-\lstinline{send}
-will wait for 
-\lstinline{recv}
-to consume the pointer in the queue,
-at which point the system will be 
+\lstinline{P}
+is asleep waiting for a \lstinline{V} call
+that has already happened.
+Unless we get lucky and the producer calls
+\lstinline{V} again, the consumer will wait
+forever even though the count is non-zero.
 \indextext{deadlocked}.
 
 The root of this problem is that the
 invariant that
-\lstinline{recv}
+\lstinline{P}
 only sleeps when
-\lstinline{q->ptr}
+\lstinline{s->count}
 \lstinline{==}
 \lstinline{0}
 is violated by 
-\lstinline{send}
+\lstinline{V}
 running at just the wrong moment.
-One incorrect way of protecting the invariant would be to modify the code for
-\lstinline{recv}
-as follows:
+An incorrect way to protect the invariant would be to 
+move the lock acquisition in
+\lstinline{P}
+so that its check of the count and its call to \lstinline{sleep}
+are atomic:
 \begin{lstlisting}[]
-  300	struct q {
-  301	  struct spinlock lock;
-  302	  void *ptr;
-  303	};
-  304	
-  305	void*
-  306	send(struct q *q, void *p)
-  307	{
-  308	  acquire(&q->lock);
-  309	  while(q->ptr != 0)
-  310	    ;
-  311	  q->ptr = p;
-  312	  wakeup(q);
-  313	  release(&q->lock);
-  314	}
-  315	
-  316	void*
-  317	recv(struct q *q)
-  318	{
-  319	  void *p;
-  320	
-  321	  acquire(&q->lock);
-  322	  while((p = q->ptr) == 0)
-  323	    sleep(q);
-  324	  q->ptr = 0;
-  325	  release(&q->lock);
-  326	  return p;
-  327	}
+  300   void
+  301   V(struct semaphore *s)
+  302   {
+  303     acquire(&s->lock);
+  304     s->count += 1;
+  305     wakeup(s);
+  306     release(&s->lock);
+  307   }
+  308   
+  309   void
+  310   P(struct semaphore *s)
+  311   {
+  312     acquire(&s->lock);   // moved
+  313     while(s->count == 0)
+  314       sleep(s);
+  315     s->count -= 1;
+  316     release(&s->lock);
+  317   }
 \end{lstlisting}
 One might hope that this version of
-\lstinline{recv}
+\lstinline{P}
 would avoid the lost wakeup because the lock prevents
-\lstinline{send}
-from executing between lines 322 and 323.
+\lstinline{V}
+from executing between lines 313 and 314.
 It does that, but it also deadlocks:
-\lstinline{recv}
+\lstinline{P}
 holds the lock while it sleeps,
-so the sender will block forever waiting for the lock.
+so \lstinline{V} will block forever waiting for the lock.
 
 We'll fix the preceding scheme by changing
 \lstinline{sleep}'s
@@ -761,70 +729,54 @@ so it can release the lock after
 the calling process is marked as asleep and waiting on the
 sleep channel.
 The lock will force a concurrent
-\lstinline{send}
-to wait until the receiver has finished putting itself to sleep,
+\lstinline{V}
+to wait until \lstinline{P} has finished putting itself to sleep,
 so that the
 \lstinline{wakeup}
-will find the sleeping receiver and wake it up.
-Once the receiver is awake again
+will find the sleeping consumer and wake it up.
+Once the consumer is awake again
 \indexcode{sleep}
 reacquires the lock before returning.
-Our new correct scheme is useable as follows:
+Our new correct sleep/wakeup scheme is useable as follows:
 \begin{lstlisting}[]
-  400	struct q {
-  401	  struct spinlock lock;
-  402	  void *ptr;
-  403	};
-  404	
-  405	void*
-  406	send(struct q *q, void *p)
-  407	{
-  408	  acquire(&q->lock);
-  409	  while(q->ptr != 0)
-  410	    ;
-  411	  q->ptr = p;
-  412	  wakeup(q);
-  413	  release(&q->lock);
-  414	}
-  415	
-  416	void*
-  417	recv(struct q *q)
-  418	{
-  419	  void *p;
-  420	
-  421	  acquire(&q->lock);
-  422	  while((p = q->ptr) == 0)
-  423	    sleep(q, &q->lock);
-  424	  q->ptr = 0;
-  425	  release(&q->lock);
-  426	  return p;
-  427	}
+  400   void
+  401   V(struct semaphore *s)
+  402   {
+  403     acquire(&s->lock);
+  404     s->count += 1;
+  405     wakeup(s);
+  406     release(&s->lock);
+  407   }
+  408   
+  409   void
+  410   P(struct semaphore *s)
+  411   {
+  412     acquire(&s->lock);
+  413     while(s->count == 0)
+  414       sleep(s, &s->lock);   // changed
+  415     s->count -= 1;
+  416     release(&s->lock);
+  417   }
 \end{lstlisting}
 
 The fact that
-\lstinline{recv}
+\lstinline{P}
 holds
-\lstinline{q->lock}
+\lstinline{s->lock}
 prevents 
-\lstinline{send}
+\lstinline{V}
 from trying to wake it up between 
-\lstinline{recv}'s
+\lstinline{P}'s
 check of
-\lstinline{q->ptr}
+\lstinline{c->count}
 and its call to
 \lstinline{sleep}.
 We need
 \lstinline{sleep}
 to atomically release
-\lstinline{q->lock}
-and put the receiving process to sleep.
+\lstinline{s->lock}
+and put the consuming process to sleep.
 
-A complete sender/receiver implementation would also sleep
-in
-\lstinline{send}
-when waiting for a receiver to consume
-the value from a previous
-\lstinline{send}.
 %% 
 \section{Code: Sleep and wakeup}
 %% 
@@ -1580,7 +1532,7 @@ It turns out that
 must be the one to close the open files.
 Why?
 The answer involves pipes.
-% Answer: deadlock. wait() holds p->lock, but the wakeup()
+% Answer: self-deadlock. wait() holds p->lock, but the wakeup()
 % in pipeclose() tries to acquire every process's lock.
 
 3. Implement semaphores in xv6.
