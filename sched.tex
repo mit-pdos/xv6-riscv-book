@@ -53,6 +53,7 @@ Xv6 tries to solve these problems as
 simply as possible, but nevertheless the resulting code is
 tricky.
 
+\mfk{Is this a sixth challenge?}
 xv6 must provide
 ways for processes to coordinate among themselves. For example,
 a parent process may need to wait for one of its children to
@@ -459,7 +460,7 @@ This allows
 of \lstinline{cpu} structures to find the right one.
 
 Ensuring that a CPU's \lstinline{tp} always holds the CPU's
-hartid is a little involved. \lstinline{mstart} sets the tp
+hartid is a little involved. \lstinline{mstart} sets the \lstinline{tp}
 register early in the CPU's boot sequence, while still in machine mode
 \lineref{kernel/start.c:/w_tp/}.
 \lstinline{usertrapret} saves \lstinline{tp} in the trampoline
@@ -1376,7 +1377,7 @@ the function serves as a last minute check
 of the sleep condition, to avoid lost wakeups.
 The Linux kernel's
 \lstinline{sleep}
-uses an explicit process queue instead of
+uses an explicit process queue, called a wait queue, instead of
 a wait channel; the queue has its own internal lock.
 
 Scanning the entire process list in
@@ -1391,7 +1392,8 @@ in both
 and
 \lstinline{wakeup}
 with a data structure that holds
-a list of processes sleeping on that structure.
+a list of processes sleeping on that structure,
+such as Linux's wait queue.
 Plan 9's
 \lstinline{sleep}
 and
@@ -1498,7 +1500,9 @@ xv6 uses the linear scan for simplicity.
 \section{Exercises}
 %% 
 
-1. Sleep has to check
+\begin{enumerate}
+  
+\item Sleep has to check
 \lstinline{lk != &p->lock}
 to avoid a deadlock
 \linerefs{kernel/proc.c:/sleeplock0/,/^..}/}.
@@ -1519,7 +1523,7 @@ Doing this would break
 \lstinline{sleep}.
 How?
 
-2. Most process cleanup could be done by either
+\item Most process cleanup could be done by either
 \lstinline{exit}
 or
 \lstinline{wait},
@@ -1535,12 +1539,12 @@ The answer involves pipes.
 % Answer: self-deadlock. wait() holds p->lock, but the wakeup()
 % in pipeclose() tries to acquire every process's lock.
 
-3. Implement semaphores in xv6.
+\item Implement semaphores in xv6.
 You can use mutexes but do not use sleep and wakeup.
 Replace the uses of sleep and wakeup in xv6
 with semaphores.  Judge the result.
 
-4. Fix the race mentioned above between
+\item Fix the race mentioned above between
 \lstinline{kill}
 and 
 \lstinline{sleep},
@@ -1554,13 +1558,13 @@ results in the victim abandoning the current system call.
 % Answer: a solution is to to check in sleep if p->killed is set before setting
 % the processes's state to sleep. 
 
-5. Design a plan so that every sleep loop checks 
+\item Design a plan so that every sleep loop checks 
 \lstinline{p->killed}
 so that, for example, a process that is in the virtio driver can return quickly from the while loop
 if another kills that process.
 % Answer: this is difficult.  Moderns Unixes do this with setjmp and longjmp and very carefully programming to clean any partial state that the interrupted systems call may have built up.
 
-6. Design a plan that uses only one context switch when switching from one user
+\item Design a plan that uses only one context switch when switching from one user
 process to another.  This plan involves running the scheduler procedure on the
 kernel stack of the user process, instead of the dedicated scheduler stack.  The
 main challenge is to clean up a user process correctly.  Measure the performance
@@ -1568,7 +1572,7 @@ benefit of avoiding one context switch.
 % Answer: maybe keep the current design but create a fast path for when there is
 % a runnable user process available.
 
-7. Modify xv6's
+\item Modify xv6's
 \lstinline{scheduler}
 to use the
 RISC-V
@@ -1576,7 +1580,7 @@ RISC-V
 instruction
 when no processes are runnable.
 
-8. The lock
+\item The lock
 \lstinline{p->lock}
 protects many invariants, and when looking at a particular piece of xv6 code that
 is protected by
@@ -1586,3 +1590,5 @@ plan that is more clean by splitting
 \lstinline{p->lock}
 in several locks.
 % Answer: don't know.
+
+\end{enumerate}
