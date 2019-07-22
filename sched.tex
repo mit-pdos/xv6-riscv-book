@@ -528,7 +528,7 @@ mechanisms.
 
 To illustrate what we mean, let's consider a
 simple producer/consumer mechanism called a semaphore~\cite{dijkstra65}.
-A semaphore maintains a count, and provides two operations.
+A semaphore maintains a count and provides two operations.
 The ``V'' operation (for the producer) increments the count.
 The ``P'' operation (for the consumer) waits until the count is non-zero,
 and then decrements it and returns.
@@ -906,8 +906,8 @@ see that the process is ready to be run.
 Xv6 code always calls
 \lstinline{wakeup}
 while holding the ``condition lock;''
-in the example above that lock is
-\lstinline{q->lock}.
+in the semaphore example that lock is
+\lstinline{s->lock}.
 Strictly speaking it is sufficient if
 \lstinline{wakeup}
 always follows the
@@ -965,7 +965,7 @@ The other processes will find that, despite being woken up,
 there is no data to be read.
 From their point of view the wakeup was ``spurious,'' and
 they must sleep again.
-For this reason sleep is always called inside a loop that
+For this reason \lstinline{sleep} is always called inside a loop that
 checks the condition.
 
 No harm is done if two uses of sleep/wakeup accidentally
@@ -1429,17 +1429,9 @@ which wakes up one process, and
 \lstinline{broadcast},
 which wakes up all waiting processes.
 
-Semaphores are another common coordination
-mechanism.
-A semaphore is an integer value with two operations,
-increment and decrement (or up and down).
-It is aways possible to increment a semaphore,
-but the semaphore value is not allowed to drop below zero:
-a decrement of a zero semaphore sleeps until
-another process increments the semaphore,
-and then those two operations cancel out.
-The integer value typically corresponds to a real
-count, such as the number of bytes available in a pipe buffer
+Semaphores are often used for synchronization.
+The count typically corresponds to something like
+the number of bytes available in a pipe buffer
 or the number of zombie children that a process has.
 Using an explicit count as part of the abstraction
 avoids the ``lost wakeup'' problem:
@@ -1539,8 +1531,9 @@ The answer involves pipes.
 % Answer: self-deadlock. wait() holds p->lock, but the wakeup()
 % in pipeclose() tries to acquire every process's lock.
 
-\item Implement semaphores in xv6.
-You can use mutexes but do not use sleep and wakeup.
+\item Implement semaphores in xv6 without using
+\lstinline{sleep} and \lstinline{wakeup} (but it
+is OK to use spin locks).
 Replace the uses of sleep and wakeup in xv6
 with semaphores.  Judge the result.
 
