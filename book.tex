@@ -32,6 +32,15 @@
 \newcommand{\indextext}[1]{\textit{#1}\index{#1}}
 \newcommand{\indexcode}[1]{\lstinline{#1}\index{#1@\lstinline{#1}}}
 
+%% editing markup
+\newcommand{\insertnote}[3]{\noindent\textcolor{#1}{\textbf{#2:} #3}}
+\newcommand{\note}[1]{\insertnote{blue}{NOTE}{#1}}
+\newcommand{\rtm}[1]{\insertnote{red}{RTM}{#1}}
+\newcommand{\mfk}[1]{\insertnote{red}{MFK}{#1}}
+%% for publishing book without notes
+%\renewcommand{\insertnote}[3]{}
+
+
 \title{\textbf{xv6: a simple, Unix-like teaching operating system}}
 \author{Rus Cox \and Frans Kaashoek \and Robert Morris}
 
