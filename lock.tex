@@ -770,7 +770,7 @@ kernel code that calls
 what symptoms do you expect to see?
 When you run xv6, do you see these symptoms?
 How about when running
-\lstinline{usertests} ?
+\lstinline{usertests}?
 If you don't see a problem, why not?
 See if you can provoke a problem by inserting
 dummy loops into the critical section of
@@ -784,7 +784,7 @@ locking in
 What might now go wrong? Is lack of locks in
 \lstinline{kfree}
 less harmful than in
-\lstinline{kalloc} ?
+\lstinline{kalloc}?
 
 3. If two CPUs call
 \lstinline{kalloc}
@@ -806,3 +806,10 @@ thread library so that a user process can have more than 1 thread and arrange
 that these threads can run in parallel on different processors.  Come up with a
 design that correctly handles a thread making a blocking system call and
 changing its shared address space.
+
+% LocalWords:  CPUs uniprocessor interruptible allocator kalloc kfree
+% LocalWords:  struct malloc sizeof listlock invariants spinlock lk
+% LocalWords:  amoswap cpu bcache ftable icache inode vdisk DMA kmem
+% LocalWords:  pid proc's tickslock inode's ip buf's proc SCHED sys
+% LocalWords:  consoleintr wakeup clockintr intr acquiresleep POSIX
+% LocalWords:  Pthreads pthread unmaps TLB IPIs

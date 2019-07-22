@@ -534,7 +534,7 @@ The ``P'' operation (for the consumer) waits until the count is non-zero,
 and then decrements it and returns.
 If there were only one producer thread and one consumer thread,
 and they executed on different CPUs,
-and the compiler didn't optimize too agressively,
+and the compiler didn't optimize too aggressively,
 this implementation would be correct:
 \begin{lstlisting}[]
   100   struct semaphore {
@@ -628,12 +628,12 @@ and
   217   }
 \end{lstlisting}
 
-\begin{figure}[t]
-\center
-\includegraphics[scale=0.5]{fig/deadlock.pdf}
-\caption{Example lost wakeup problem}
-\label{fig:deadlock}
-\end{figure}
+% \begin{figure}[t]
+% \center
+% \includegraphics[scale=0.5]{fig/deadlock.pdf}
+% \caption{Example lost wakeup problem}
+% \label{fig:deadlock}
+% \end{figure}
 
 \lstinline{P}
 now gives up the CPU instead of spinning, which is nice.
@@ -642,8 +642,9 @@ However, it turns out not to be straightforward to design
 and 
 \lstinline{wakeup}
 with this interface without suffering
-from what is known as the ``lost wake-up'' problem (see 
-Figure~\ref{fig:deadlock}).
+from what is known as the ``lost wake-up'' problem.
+% (see 
+% Figure~\ref{fig:deadlock}).
 Suppose that
 \lstinline{P}
 finds that
@@ -738,7 +739,7 @@ will find the sleeping consumer and wake it up.
 Once the consumer is awake again
 \indexcode{sleep}
 reacquires the lock before returning.
-Our new correct sleep/wakeup scheme is useable as follows:
+Our new correct sleep/wakeup scheme is usable as follows:
 \begin{lstlisting}[]
   400   void
   401   V(struct semaphore *s)
@@ -818,11 +819,11 @@ and
 Holding
 \lstinline{lk}
 was necessary in the caller (in the example,
-\lstinline{recv}):
+\lstinline{P}):
 it
 ensured that no other process (in the example,
 one running
-\lstinline{send})
+\lstinline{V})
 could start a call to
 \lstinline{wakeup(chan)}.
 Now that
@@ -1317,7 +1318,7 @@ loops do not check
 because the code is in the middle of a multi-step
 system call that should be atomic.
 The virtio driver
-\lineref{ide.c:/sleep.b/} 
+\lineref{kernel/virtio\_disk.c:/sleep.b/} 
 is an example: it does not check
 \lstinline{p->killed}
 because a disk operation may be one of a set of
