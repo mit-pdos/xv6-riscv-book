@@ -107,8 +107,8 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="0.76095916"
-     inkscape:cx="480.24908"
+     inkscape:zoom="1.3289991"
+     inkscape:cx="482.87734"
      inkscape:cy="381.00098"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
@@ -263,15 +263,15 @@
        inkscape:connector-curvature="0" />
     <text
        id="text3395"
-       y="380.32816"
-       x="183.97835"
+       y="378.82327"
+       x="271.26208"
        style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'Bitstream Vera Sans';-inkscape-font-specification:'Bitstream Vera Sans';text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
        xml:space="preserve"><tspan
-         y="380.32816"
-         x="183.97835"
+         y="378.82327"
+         x="271.26208"
          id="tspan3397"
          sodipodi:role="line"
-         style="font-size:24px;line-height:1.25">0x3FFFFFFFFF</tspan></text>
+         style="font-size:24px;line-height:1.25">MAXVA</tspan></text>
     <text
        xml:space="preserve"
        style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'Bitstream Vera Sans';-inkscape-font-specification:'Bitstream Vera Sans';text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
@@ -283,5 +283,21 @@
          x="424.17627"
          y="400.46313"
          style="font-size:24px;line-height:1.25">trampoline</tspan></text>
+    <path
+       inkscape:connector-curvature="0"
+       id="path46"
+       d="m 400,437.56912 c 180,0 180,0 180,0"
+       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    <text
+       id="text50"
+       y="431.31345"
+       x="431.70071"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'Bitstream Vera Sans';-inkscape-font-specification:'Bitstream Vera Sans';text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
+       xml:space="preserve"><tspan
+         style="font-size:24px;line-height:1.25"
+         y="431.31345"
+         x="431.70071"
+         id="tspan48"
+         sodipodi:role="line">trapframe</tspan></text>
   </g>
 </svg>
