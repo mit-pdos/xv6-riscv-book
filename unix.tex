@@ -84,14 +84,11 @@ that Unix kernels traditionally offer.
 Figure~\ref{fig:api} 
 lists all of xv6's system calls.
 
-The rest of this chapter outlines xv6's services—\c
-processes, memory, file descriptors, pipes, and file system—\c
-and illustrates them with code snippets and discussions
-of how the 
-\indextext{shell}, 
-which is the primary user interface to 
-traditional Unix-like systems, uses them.
-The shell's use of system calls illustrates how carefully they
+The rest of this chapter outlines xv6's services---processes, memory,
+file descriptors, pipes, and file system---and illustrates them with
+code snippets and discussions of how the \indextext{shell}, which is
+the primary user interface to traditional Unix-like systems, uses
+them. The shell's use of system calls illustrates how carefully they
 have been designed.
 
 The shell is an ordinary program that reads commands from the user
@@ -104,7 +101,7 @@ modern Unix systems have a variety of
 shells to choose from, each with its own user interface
 and scripting features.
 The xv6 shell is a simple implementation of the essence of
-the Unix Bourne shell.  Its implementation can be found at line
+the Unix Bourne shell.  Its implementation can be found at 
 \lineref{user/sh.c:1}.
 %% 
 %% 	Processes and memory
@@ -950,7 +947,7 @@ the shell's) working directory would not change.
 %% 
 \section{Real world}
 
-Unix's combination of the ``standard'' file
+Unix's combination of ``standard'' file
 descriptors, pipes, and convenient shell syntax for
 operations on them was a major advance in writing
 general-purpose reusable programs.
@@ -968,8 +965,8 @@ POSIX compliant.  It misses system calls (including basic ones such as
 \lstinline{lseek}),
 it implements systems calls only partially, etc.  Our main goals for xv6 are
 simplicity and clarity while providing a simple UNIX-like system-call interface.
-Several people have extended xv6 with a few more basic system calls and a simple
-C library so that they can run basic Unix programs.  Modern kernels, however,
+Several people have extended xv6 with a few more system calls and a simple
+C library in order to run basic Unix programs.  Modern kernels, however,
 provide many more system calls, and many more kinds of kernel services, than
 xv6.  For example, they support networking, windowing systems, user-level threads,
 drivers for many devices, and so on.  Modern kernels evolve continuously and
@@ -986,8 +983,8 @@ concept to modern facilities,
 representing networks, graphics, and other resources
 as files or file trees.
 
-The file system abstraction has been a powerful
-idea.
+The file system and file descriptors have been  powerful
+abstractions.
 Even so, there are other models for operating system interfaces.
 Multics, a predecessor of Unix,
 abstracted file storage in a way that made it look like memory,
