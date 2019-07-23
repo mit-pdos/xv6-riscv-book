@@ -753,11 +753,14 @@ item in a list.  Lock-free programming is more complicated, however, than
 programming locks; for example, one must worry about instruction and memory
 reordering.  Programming with locks is already hard, so xv6 avoids the
 additional complexity of lock-free programming.
+
 %% 
 \section{Exercises}
 %% 
 
-1. Comment out the calls to
+\begin{enumerate}
+  
+\item Comment out the calls to
 \lstinline{acquire}
 and
 \lstinline{release}
@@ -776,7 +779,7 @@ See if you can provoke a problem by inserting
 dummy loops into the critical section of
 \lstinline{kalloc}.
 
-2. Suppose that you instead commented out the
+\item Suppose that you instead commented out the
 locking in
 \lstinline{kfree} 
 (after restoring locking in
@@ -786,7 +789,7 @@ What might now go wrong? Is lack of locks in
 less harmful than in
 \lstinline{kalloc}?
 
-3. If two CPUs call
+\item If two CPUs call
 \lstinline{kalloc}
 at the same time, one will have to wait for the other,
 which is bad for performance.
@@ -797,15 +800,17 @@ calls to
 \lstinline{kalloc}
 from different CPUs can proceed without waiting for each other.
 
-4. Write a parallel program using POSIX threads, which is supported on most
+\item Write a parallel program using POSIX threads, which is supported on most
 operating systems. For example, implement a parallel hash table and measure if
 the number of puts/gets scales with increasing number of cores.
 
-5. Implement a subset of Pthreads in xv6.  That is, implement a user-level
+\item Implement a subset of Pthreads in xv6.  That is, implement a user-level
 thread library so that a user process can have more than 1 thread and arrange
 that these threads can run in parallel on different processors.  Come up with a
 design that correctly handles a thread making a blocking system call and
 changing its shared address space.
+
+\end{enumerate}
 
 % LocalWords:  CPUs uniprocessor interruptible allocator kalloc kfree
 % LocalWords:  struct malloc sizeof listlock invariants spinlock lk
