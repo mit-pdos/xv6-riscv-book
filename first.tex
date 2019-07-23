@@ -306,7 +306,7 @@ but uses only 38 bits.  Thus, the maximum address is $2^{38}-1$ =
 0x3fffffffff, which is \lstinline{MAXVA}~\lineref{kernel/riscv.h:/MAXVA/}.
 At the top of the address space xv6 reserves a page
 for a \indextext{trampoline} and a page mapping
-the process's \indextext{trap frame}
+the process's \indextext{trapframe}
 to switch to the kernel, as we will explain in Chapter~\ref{CH:TRAP}.
 
 The xv6 kernel maintains many pieces of state for each process,
@@ -319,7 +319,7 @@ We'll use the notation
 \indexcode{p->xxx}
 to refer to elements of the
 \lstinline{proc}
-structure.  The trap frame mentioned above is \indexcode{p->tf}.
+structure.  The trapframe mentioned above is \indexcode{p->tf}.
 
 Each process has a thread of execution (or 
 \indextext{thread}
