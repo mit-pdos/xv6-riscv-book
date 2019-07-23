@@ -4,7 +4,7 @@
 \chapter{Traps, interrupts, and drivers}
 \label{CH:TRAP}
 
-When running a process, a CPU executes the normal processor loop: read an
+When running a process, a CPU executes the normal processing loop: read an
 instruction, advance the program counter, execute the instruction, repeat.  But
 there are events on which control from a user program must transfer back to the
 kernel instead of executing the next instruction.  These events include a device
@@ -12,7 +12,7 @@ signaling that it wants attention, a user program doing something illegal (e.g.,
 references a virtual address for which there is no page table entry), or a user
 program asking the kernel for a service with a system call.  There are three
 main challenges in handling these events: 1) the kernel must arrange that a
-processor switches from user mode to kernel mode (and back); 2) the kernel and
+CPU switches from user mode to kernel mode (and back); 2) the kernel and
 devices must coordinate their parallel activities; and 3) the kernel must
 understand the interface of the devices.  Addressing these 3 challenges requires
 detailed understanding of hardware and careful programming, and can result in
@@ -42,10 +42,10 @@ handling them, because in most cases only the kernel has the
 required privilege and state. For example, in order to time-slice
 among processes in response the clock interrupts, the kernel
 must be involved, if only to force uncooperative processes to
-yield the processor.
+yield the CPU.
 
 In all three cases, the operating system design must arrange for the
-following to happen.  The system must save the processor's registers for future
+following to happen.  The system must save the CPU's registers for future
 transparent resume.  The system must be set up for execution
 in the kernel.  The system must chose a place for the kernel to start
 executing. The kernel must be able to retrieve information about the
@@ -56,7 +56,7 @@ A word on terminology: this chapter uses the term \indextext{trap} to refer
 to exceptions and systems calls.  It also uses
 traps and interrupts
 interchangeably, but it is important to remember that traps are caused
-by the current process running on a processor (e.g., the process makes
+by the current process running on a CPU (e.g., the process makes
 a system call and as a result generates a trap), and interrupts are
 caused by devices and may not be related to the currently running
 process.  For example, a disk may generate an interrupt when it is
@@ -88,7 +88,7 @@ the timer hardware to generate an interrupt, say, 100 times per
 second so that the kernel can track the passage of time and so the
 kernel can time-slice among multiple running processes.  The choice of
 100 times per second allows for decent interactive performance while
-not swamping the processor with handling interrupts.
+not swamping the CPU with handling interrupts.
 
 The RISC-V processor on which xv6 is running has a \textit{Core Local
   Interruptor (CLINT)}\index{Core Local Interruptor (CLINT)}~\cite{u54}, which
@@ -113,7 +113,7 @@ itself.  The RISC-V processor has registers (\indexcode{mtvec} and
   handler} in machine mode or supervisor mode, respectively.  It also
 has registers (\indexcode{mip} and \indexcode{sip}) to specify which
 interrupts are taking in machine mode and in supervisor mode,
-respectively.  When a devices raises an interrupt, the processor sees
+respectively.  When a devices raises an interrupt, the CPU sees
 whether the interrupt must be handled in machine mode or supervisor
 mode by inspecting the \lstinline{ip} registers, switches to that
 mode, changes the program counter to the value in the mode's
@@ -121,9 +121,9 @@ mode, changes the program counter to the value in the mode's
 the time of interrupt in \indexcode{mepc} or in \indexcode{sepc}, and
 saves the previous mode in \indexcode{mstatus} or \indexcode{sstatus}.
 
-It is important that the processor performs all these steps in a
+It is important that the CPU performs all these steps in a
 single operation.  Consider if one of these steps were omitted: for
-example, the processor didn't switch program counters.  Then, an
+example, the CPU didn't switch program counters.  Then, an
 interrupt may cause a switch from user mode to kernel mode with an
 entry point chosen by the user (i.e., namely the value of the
 user-controlled program counter).  This would allow the user program
@@ -134,9 +134,9 @@ it is in kernel mode it can write the \lstinline{satp} register.  It
 is thus important that the kernel specify the entry point, and not the
 user program.
 
-Note that the processor doesn't switch page tables or stacks on an
+Note that the CPU doesn't switch page tables or stacks on an
 interrupt.  For example, an interrupt in user mode will switch the
-processor to kernel mode and change the program counter to a
+CPU to kernel mode and change the program counter to a
 kernel-specific address, but still running with the user page table.
 It is up to the kernel to complete the rest of the switch to kernel
 mode: switch page tables, switch stacks, etc.
@@ -149,7 +149,7 @@ in \lstinline{sstatus}. \lstinline{mret} performs the corresponding
 steps with m-registers.
 
 Xv6 mainly uses 2 privilege levels: supervisor and user mode.  Xv6
-programs the processor to delegate all machine-mode interrupts to
+programs the CPU to delegate all machine-mode interrupts to
 supervisor mode. Timer interrupts, however, must be handled in machine
 mode.  Thus, handling timer interrupts requires us to think about what
 the kernel must do in all three modes. xv6 has a different plan for
@@ -163,7 +163,7 @@ each mode:
   there is an interrupt pending for the kernel, and returns from the
   interrupt to whatever mode it came from (kernel or user mode).
   Because there is an interrupt pending for supervisor mode, the
-  processor immediately will take it.
+  CPU immediately will take it.
 
 \item Interrupts in supervisor/kernel mode.  This case is simple. xv6
   is already in the kernel and there is no need to switch page
@@ -207,9 +207,9 @@ registers in the scratch area.
 
 This subsection has focused on interrupts, but the plan above works
 also for exceptions and system calls: one can think off exceptions and
-system calls as interrupts induced by software.  When the processor
+system calls as interrupts induced by software.  When the CPU
 cannot execute an instruction in user space (e.g., dividing by zero),
-the processor switches to the interrupt handler in kernel mode.  To
+the CPU switches to the interrupt handler in kernel mode.  To
 switch to kernel mode for a system call, the RISC-V processor provides
 an instruction \indexcode{ecall}, which transfers control to the
 interrupt handler.  To allow the interrupt handler to tell which
@@ -230,7 +230,7 @@ address to jump to on an interrupt \lineref{kernel/start.c:/w_mtvec/}
 and enables timer interrupts in the \lstinline{mie} register
 \lineref{kernel/start.c:/w_mie/}.
 
-When the CLINT interrupts the processor, the processor switches its
+When the CLINT interrupts the CPU, the CPU switches its
 program counter to the value stored in \lstinline{mtvec} register,
 which is \lstinline{machinevec}.  \lstinline{machinevec} is defined in
 assembly \lineref{kernel/kernelvec.S:/machinevec/}.
@@ -252,17 +252,17 @@ and returning from machine mode \lineref{kernel/kernelvec.S:/mret/} to
 the mode where it came from when it was interrupted.
 
 The code that was interrupted cannot tell it was interrupted: the
-processor is in exactly the same state as before the interrupt,
+CPU is in exactly the same state as before the interrupt,
 because the \lstinline{machinevec} has restored all registers.  This
-idea of saving the processor state to run some code, and then
-restoring the processor state to resume the original code is a pattern
+idea of saving the CPU state to run some code, and then
+restoring the CPU state to resume the original code is a pattern
 we will see a few more times.
 
 \section{Code: kernel mode interrupts}
 
 Handling interrupts in supervisor/kernel mode is similar to handling
 interrupts in machine mode.  The main difference is that xv6 saves all
-processor state because it may want to switch to running a different
+CPU state because it may want to switch to running a different
 process.  In machine mode, xv6 just reprograms the CLINT and then
 resumes the interrupted code.
 
@@ -318,7 +318,7 @@ the trampoline function, passing two arguments: the address of
 
 \lstinline{trampout} \lineref{kernel/trampoline.S:/trampout/} loads
 \lstinline{satp} with the user page table.  After this instruction,
-the processor will translate virtual address with the user page table;
+the CPU will translate virtual address with the user page table;
 for example, the address of the next instruction will be translated
 with the user page table.  This address will be translated in the same
 way as with the kernel page table, because the mapping is the same in
@@ -331,7 +331,7 @@ process's trapframe \lstinline{p->tf}.  The kernel stores the new
 value for \lstinline{a0} in \lstinline{sscratch} and later restores
 \lstinline{a0} from there \lineref{kernel/trampoline.S:/csrrw a0/}.
 Now it has \lstinline{a0} is availabe, it uses it to restore all other
-processor registers from \lstinline{p->tf}
+CPU registers from \lstinline{p->tf}
 \linerefs{kernel/trampoline.S:/ld ra/,/ld t6/}.  Then, it restores
 \lstinline{a0} by switching the values of \lstinline{sscratch} and
 \lstinline{a0}. After this instruction, \lstinline{a0} contains the
@@ -343,13 +343,13 @@ which returns to the previous mode (user mode) with interrupts enabled
 and resuming at the address in \lstinline{sepc}.  We are out of the
 kernel.
 
-If a timer interrupt happens, the processor will switch to kernel mode
+If a timer interrupt happens, the CPU will switch to kernel mode
 with the program counter set to the value in \lstinline{stvec} (i.e.,
 \lstinline{trampin}) and \lstinline{sepc} containing the address of
 the instruction that was interrupted.  \lstinline{trampin} first saves
 \lstinline{a0} and loads \lstinline{p->tf} into \lstinline{a0}
 \lineref{kernel/trampoline.S:/csrrw a0/}.  Next, it saves all other
-processor registers into \lstinline{p->tf}
+CPU registers into \lstinline{p->tf}
 \linerefs{kernel/trampoline.S:/sd ra/,/sd t6/}.  Now all registers are
 saved, \lstinline{trampin} can use \lstinline{t0} to save the original
 value of \lstinline{a0}.  It switches to the kernel stack of the
@@ -402,13 +402,13 @@ We have seen all the machinery to enter and leave the kernel.
  
 \section{Code: Enabling/disabling interrupts}
 
-A processor can control if it wants to receive external and timer
+A CPU can control if it wants to receive external and timer
 interrupts through the \lstinline{SIE_SEIE}
 \index{SIE_SEIE@\lstinline{SIE_SEIE}} flag and \lstinline{SIE_STIE}
 \index{SIE_STIE@\lstinline{SIE_STIE}} flag in the \texttt{sie}
 register, respectively.  The bootloader disables interrupts during
-booting of the main cpu and the other other processors.  The scheduler on
-each processor enables interrupts \lineref{kernel/proc.c:/intr_on/}.  To
+booting of the main cpu and the other other CPUs.  The scheduler on
+each CPU enables interrupts \lineref{kernel/proc.c:/intr_on/}.  To
 control that certain code fragments are not interrupted, xv6 disables
 interrupts during these code fragments.  For example,
 \lstinline{usertrapret} above clears interrupts
@@ -431,7 +431,7 @@ The system call numbers match the entries in the syscalls array,
 a table of function pointers
 \lineref{kernel/syscall.c:/syscalls/}.
 The \lstinline{ecall} instruction
-switches the processor from user mode to kernel mode, and will
+switches the CPU from user mode to kernel mode, and will
 cause the kernel to call \lstinline{syscall}, as we saw above.
 
 \indexcode{Syscall}
@@ -668,7 +668,7 @@ up one queue for disk requests \linerefs{kernel/virtio\_disk.c:/QUEUE_SEL/,/free
 \lstinline{NUM} outstanding requests to the disk.
 
 Disk accesses typically take milliseconds, a long time for a
-processor.  Therefore, xv6 lets another process run on the CPU after a
+CPU.  Therefore, xv6 lets another process run on the CPU after a
 disk I/O request and arranges to receive an interrupt when the disk
 operation has completed.  
 \indexcode{plic_init}, which is called from \lstinline{main}, programs
@@ -758,15 +758,15 @@ and frees up the descriptors that were used for request.
 Freeing up a descriptor also wakes up processes
 waiting for free descriptors.
 
-The PLIC routes interrupts to the first processor that claims it.
+The PLIC routes interrupts to the first CPU that claims it.
 Thus, cores can process different disk interrupts concurrently.  In
 some operating systems, this routing can get sophisticated.  For
 example, a network driver might arrange to deliver interrupts for
-packets of one network connection to the processor that is managing
+packets of one network connection to the CPU that is managing
 that connection, while interrupts for packets of another connection
-are delivered to another processor.  If some network connections are
+are delivered to another CPU.  If some network connections are
 short lived while others are long lived and the operating system wants
-to keep all processors busy to achieve high throughput, this routing
+to keep all CPUs busy to achieve high throughput, this routing
 becomes quite complex.
 
 \section{Real world}
