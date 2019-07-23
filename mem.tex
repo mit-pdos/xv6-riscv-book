@@ -443,9 +443,10 @@ different processes' page tables translate user addresses to different
 pages of physical memory, so that each process has private user
 memory.  Second, each process sees its memory as having contiguous
 virtual addresses starting at zero, while the process's physical
-memory can be non-contiguous.  Third, the kernel maps the page with
-trampoline code also at the top of address space of user processes,
-thus a single page of physical memory shows up in all address spaces.
+memory can be non-contiguous.  Third, the kernel maps a page with
+trampoline code and a page mapping the trapframe also at the top of
+address space of user processes, thus a single page of physical memory
+shows up in all address spaces.
 
 \begin{figure}[t]
 \center
@@ -714,7 +715,7 @@ paging from disk, copy-on-write fork, shared memory,
 lazily-allocated pages,
 and automatically extending stacks.
 
-The RISC-V support physical memory protection, but xv6 doesn't use it.
+The RISC-V support physical memory protection in machine mode, but xv6 doesn't use it.
 
 On machines with lots of memory
 it might make sense to use
