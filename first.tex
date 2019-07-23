@@ -47,7 +47,7 @@ creation of the first process when xv6 starts running.
 
 Xv6 runs on a RISC-V development board, and much of its low-level
 functionality (for example, its process implementation) is specific to
-RISC-V.  RISC-V is a 64-bit processor, and xv6 is written in ``LP64'' C,
+RISC-V.  RISC-V is a 64-bit CPU, and xv6 is written in ``LP64'' C,
 which means long (L) and pointers (P) in the C programming language
 are 64 bits, but int is 32-bit.  This book assumes the reader has done
 a bit of machine-level programming on some architecture, and will
@@ -143,7 +143,7 @@ read) the operating system's data structures and instructions and that
 applications cannot access other process's memory.
 
 Processors provide hardware support for strong isolation.   For
-example, a RISC-V processor has three modes in which
+example, RISC-V has three modes in which
 the processor can execute instructions:
 \indextext{machine mode},
 \indextext{kernel mode} 
@@ -181,8 +181,8 @@ An application that wants to invoke a kernel function (e.g., the
 system call in xv6) must to
 transition to the kernel.  Processors provide a special instruction that switches the
 processor from user mode to kernel mode and enters the kernel at an entry point
-specified by the kernel.  (The RISC-V
-processor provides the 
+specified by the kernel.  (RISC-V
+provides the 
 \indexcode{ecall}
 instruction for this purpose.)  Once the processor has switched to kernel mode,
 the kernel can then validate the arguments of the system call, decide whether
@@ -301,7 +301,7 @@ starting at virtual address zero. Instructions come first,
 followed by global variables, then the stack,
 and finally a ``heap'' area (for malloc)
 that the process can expand as needed.
-Xv6 runs on a RISC-V processor with 39 bits for virtual addresses,
+Xv6 runs on RISC-V with 39 bits for virtual addresses,
 but uses only 38 bits.  Thus, the maximum address is $2^{38}-1$ =
 0x3fffffffff, which is \lstinline{MAXVA}~\lineref{kernel/riscv.h:/MAXVA/}.
 At the top of the address space xv6 reserves a page
@@ -417,7 +417,7 @@ calls into C code at
 The function
 \lstinline{mstart}
 prepares for running in kernel mode.
-To enter kernel mode, the RISC-V processor
+To enter kernel mode, RISC-V
 provides the instruction
 \lstinline{mret}.
 This instruction assumes that the processor
