@@ -373,16 +373,16 @@ addresses of the physical pages allocated to store the process's memory.
 %% 
 \section{Code: starting xv6 and the first process}
 %% 
-To make xv6 more concrete, we'll overview how the kernel starts and
+To make xv6 more concrete, we'll outline how the kernel starts and
 runs the first process. The subsequent chapters will describe the
 mechanisms that show up in this overview in more detail.
 
 When the RISC-V development board powers on, it initializes
-itself and runs a program boot loader which is stored in read-only
+itself and runs a boot loader which is stored in read-only
 memory.  The boot loader loads the xv6 kernel into memory.  Then, in
 machine mode, the CPU executes xv6 starting at
-\indexcode{start}
-\lineref{kernel/entry.S:/^_entry/}.
+\indexcode{\_entry}
+\lineref{kernel/entry.S:/^.entry:/}.
 Xv6 starts with the RISC-V paging hardware disabled:
 virtual addresses map directly to physical addresses.
 
@@ -393,7 +393,7 @@ The reason it places the kernel at
 rather than
 \texttt{0x0}
 is because the address range
-\texttt{0x0}:0x80000000
+\texttt{0x0:0x80000000}
 contains I/O devices.
 
 The instructions at
@@ -409,34 +409,33 @@ The code at
 loads the stack pointer register
 \texttt{sp}
 with the address
-\lstinline{stack0}
-+ 4096, the top of the stack, because the stack
+\lstinline{stack0+4096},
+the top of the stack, because the stack
 on RISC-V grows down.
-Now we have a stack,
+Now that we have a stack,
 \lstinline{_entry}
 calls into C code at
-\lstinline{mstart}
-\lineref{kernel/start.c:/^mstart/}.
+\lstinline{start}
+\lineref{kernel/start.c:/^start/}.
 
 The function
-\lstinline{mstart}
-prepares for running in kernel mode.
+\lstinline{start}
+performs some configuration that is only allowed in
+machine mode, and then switches to kernel mode.
 To enter kernel mode, RISC-V
 provides the instruction
 \lstinline{mret}.
-This instruction assumes that the CPU
-entered machine mode from supervisor mode.
-\lstinline{mstart}
-sets up the CPU to pretend
-that machine mode was entered
-from supervisor mode:
+This instruction is most often used to return from
+a previous call from supervisor mode to machine mode.
+\lstinline{start} isn't returning from such a call, and
+instead sets things up as if there had been one:
 it sets the previous privilege mode to
 supervisor in the register
 \lstinline{mstatus},
 it sets the return address to
 \lstinline{main}
 by writing
-\lstinline{main} 's
+\lstinline{main}'s
 address into
 the register
 \lstinline{mepc},
@@ -449,11 +448,11 @@ and delegates all interrupts and exceptions
 to supervisor mode.
 
 Before jumping into supervisor mode,
-\lstinline{mstart}
+\lstinline{start}
 performs one more task: it programs the clock
-chip to generate interrupts.
+chip to generate timer interrupts.
 With this housekeeping out of the way,
-\lstinline{mstart}
+\lstinline{start}
 ``returns'' to supervisor
 mode by calling
 \lstinline{mret}.
@@ -469,33 +468,20 @@ initializes several devices and subsystems,
 it creates the first process by calling 
 \lstinline{userinit}
 \lineref{kernel/proc.c:/^userinit/}.
-The first process is executing a small program,
+The first process executes a small program,
 \indexcode{initcode.S} 
-\lineref{user/initcode.S:1}.
-The first action of 
-\lstinline{initcode.S}
-is to invoke  the
+\lineref{user/initcode.S:1},
+which re-enters the kernel by invoking the
 \lstinline{exec}
-system call to replace itself with
-\indexcode{/init},
-loaded out of the file system.
-Invoking
-\lstinline{exec}
-causes
-\lstinline{initcode.S}
-to enter the kernel and execute
-\lstinline{exec}
-\lineref{kernel/exec.c:/^exec/}.
+system call.
 As we saw in Chapter~\ref{CH:UNIX}, 
 \indexcode{exec}
 replaces the memory and registers of the
 current process with a new program (in this case,
-\lstinline{/init}),
-but it leaves the
-file descriptors, process id, and parent process unchanged.
-Once the kernel has completed the
-\lstinline{exec}
-system call, the kernel will return to user space and run
+\lstinline{/init}).
+Once the kernel has completed 
+\lstinline{exec},
+it returns to user space and runs
 \indexcode{/init}.
 \lstinline{Init}
 \lineref{user/init.c:/^main/}

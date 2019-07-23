@@ -40,7 +40,7 @@ block is ready to be retrieved.
 The kernel handles all interrupts, rather than processes
 handling them, because in most cases only the kernel has the
 required privilege and state. For example, in order to time-slice
-among processes in response the clock interrupts, the kernel
+among processes in response to timer interrupts, the kernel
 must be involved, if only to force uncooperative processes to
 yield the CPU.
 
