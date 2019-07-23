@@ -59,11 +59,11 @@
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
      inkscape:zoom="0.87885424"
-     inkscape:cx="412.87089"
+     inkscape:cx="415.14658"
      inkscape:cy="188.50142"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
-     showgrid="true"
+     showgrid="false"
      inkscape:window-width="1276"
      inkscape:window-height="1381"
      inkscape:window-x="1280"
@@ -498,5 +498,21 @@
          x="206.57521"
          y="401.68329"
          style="font-size:24px;line-height:1.25">trampoline</tspan></text>
+    <path
+       inkscape:connector-curvature="0"
+       id="path91"
+       d="m 180.81582,446.12942 c 180,0 180,0 180,0"
+       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    <text
+       id="text95"
+       y="435.81863"
+       x="206.57521"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'American Typewriter';-inkscape-font-specification:'American Typewriter';fill:#000000;fill-opacity:1;stroke:none"
+       xml:space="preserve"><tspan
+         style="font-size:24px;line-height:1.25"
+         y="435.81863"
+         x="206.57521"
+         id="tspan93"
+         sodipodi:role="line">trapframe</tspan></text>
   </g>
 </svg>

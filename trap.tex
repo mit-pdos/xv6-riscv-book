@@ -327,7 +327,7 @@ both page tables.
 To execute the remaining instructions, \lstinline{trampout} needs a
 register (\lstinline{a0}). But, it must also restore \lstinline{a0} to
 the user process's value for \lstinline{a0}, which is stored in the
-process's trap frame \lstinline{p->tf}.  The kernel stores the new
+process's trapframe \lstinline{p->tf}.  The kernel stores the new
 value for \lstinline{a0} in \lstinline{sscratch} and later restores
 \lstinline{a0} from there \lineref{kernel/trampoline.S:/csrrw a0/}.
 Now it has \lstinline{a0} is availabe, it uses it to restore all other
@@ -436,7 +436,7 @@ cause the kernel to call \lstinline{syscall}, as we saw above.
 
 \indexcode{Syscall}
 \lineref{kernel/syscall.c:/^syscall/} 
-loads the system call number from the trap frame, which
+loads the system call number from the trapframe, which
 contains the saved
 \texttt{a7},
 and indexes into the system call tables.
