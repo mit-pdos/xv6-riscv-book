@@ -322,7 +322,7 @@ register to the address the user program should be resumed at, and
 will set the \lstinline{satp} register to this process's page table
 \linerefs{kernel/trap.c:/x.=.r_sstatus/,/p->pagetable/}.
 Finally, \lstinline{usertrapret} calls
-the trampoline function, passing two arguments: the addresss
+the trampoline function \lstinline{trampout}, passing two arguments: the addresss
 \lstinline{TRAPFRAME} and the value for \lstinline{satp}.
 
 \lstinline{trampout} \lineref{kernel/trampoline.S:/trampout/} loads
@@ -338,7 +338,7 @@ use register (\lstinline{a0}), which contains the first argument to
 \lstinline{trampout}, \lstinline{TRAPFRAME}, the process's
 trapframe. But, it must also restore \lstinline{a0} to the user
 process's value for \lstinline{a0}, which is stored in the process's
-trapframe \lstinline{p->tf}.  The kernel stores the new value for
+trapframe \lstinline{p->tf}.  The kernel stores the to-be-restored value for
 \lstinline{a0} in \lstinline{sscratch} and later restores
 \lstinline{a0} from there \lineref{kernel/trampoline.S:/csrrw a0/}.
 
