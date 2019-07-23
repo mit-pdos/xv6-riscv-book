@@ -12,7 +12,7 @@ signaling that it wants attention, a user program doing something illegal (e.g.,
 references a virtual address for which there is no page table entry), or a user
 program asking the kernel for a service with a system call.  There are three
 main challenges in handling these events: 1) the kernel must arrange that a
-CPU switches from user mode to kernel mode (and back); 2) the kernel and
+CPU switches from user mode to supervisor mode (and back); 2) the kernel and
 devices must coordinate their parallel activities; and 3) the kernel must
 understand the interface of the devices.  Addressing these 3 challenges requires
 detailed understanding of hardware and careful programming, and can result in
@@ -124,19 +124,19 @@ saves the previous mode in \indexcode{mstatus} or \indexcode{sstatus}.
 It is important that the CPU performs all these steps in a
 single operation.  Consider if one of these steps were omitted: for
 example, the CPU didn't switch program counters.  Then, an
-interrupt may cause a switch from user mode to kernel mode with an
+interrupt may cause a switch from user mode to supervisor mode with an
 entry point chosen by the user (i.e., namely the value of the
 user-controlled program counter).  This would allow the user program
 to run any kernel code of its choice, which allows the user program to
 break the isolation between user and kernel. For example, the user
 program can run the code to switch to the kernel page table, because
-it is in kernel mode it can write the \lstinline{satp} register.  It
+it is in supervisor mode it can write the \lstinline{satp} register.  It
 is thus important that the kernel specify the entry point, and not the
 user program.
 
 Note that the CPU doesn't switch page tables or stacks on an
 interrupt.  For example, an interrupt in user mode will switch the
-CPU to kernel mode and change the program counter to a
+CPU to supervisor mode and change the program counter to a
 kernel-specific address, but still running with the user page table.
 It is up to the kernel to complete the rest of the switch to kernel
 mode: switch page tables, switch stacks, etc.  One reason that the
@@ -169,7 +169,7 @@ each mode:
   Because there is an interrupt pending for supervisor mode, the
   CPU immediately will take it.
 
-\item Interrupts in supervisor/kernel mode.  This case is simple. xv6
+\item Interrupts in supervisor mode.  This case is simple. xv6
   is already in the kernel and there is no need to switch page
   tables. The kernel also has a valid stack, so Xv6 can immediately
   call a C function to handle the interrupt.
@@ -218,8 +218,8 @@ This subsection has focused on interrupts, but the plan above works
 also for exceptions and system calls: one can think off exceptions and
 system calls as interrupts induced by software.  When the CPU
 cannot execute an instruction in user space (e.g., dividing by zero),
-the CPU switches to the interrupt handler in kernel mode.  To
-switch to kernel mode for a system call, RISC-V provides
+the CPU switches to the interrupt handler in supervisor mode.  To
+switch to supervisor mode for a system call, RISC-V provides
 an instruction \indexcode{ecall}, which transfers control to the
 interrupt handler.  To allow the interrupt handler to tell which
 interrupt happened, RISC-V provides a register
@@ -267,9 +267,9 @@ idea of saving the CPU state to run some code, and then
 restoring the CPU state to resume the original code is a pattern
 we will see a few more times.
 
-\section{Code: kernel mode interrupts}
+\section{Code: supervisor mode interrupts}
 
-Handling interrupts in supervisor/kernel mode is similar to handling
+Handling interrupts in supervisor mode is similar to handling
 interrupts in machine mode.  The main difference is that xv6 saves all
 CPU state because it may want to switch to running a different
 process.  In machine mode, xv6 just reprograms the CLINT and then
@@ -284,7 +284,7 @@ all registers on the current stack
 and then calls the C function \lstinline{kerneltrap}
 \lineref{kernel/kernelvec.S:/call/}.  \lstinline{kerneltrap}
 \lineref{kernel/trap.c:/kerneltrap/} performs a few sanity checks
-(e.g., it checks that it was indeed interrupted in kernel mode) and
+(e.g., it checks that it was indeed interrupted in supervisor mode) and
 then yields the core so that another process can run.  We will discuss
 the implementation of \lstinline{yield} in Chapter~\ref{CH:SCHED}.
 
@@ -362,7 +362,7 @@ entering: this is the address where xv6 will save registers.  Finally,
 previous mode (user mode) with interrupts enabled and resuming at the
 address in \lstinline{sepc}.  We are out of the kernel.
 
-If a timer interrupt happens, the CPU will switch to kernel mode with
+If a timer interrupt happens, the CPU will switch to supervisor mode with
 the program counter set to the value in \lstinline{stvec} (i.e.,
 \lstinline{trampin}) and \lstinline{sepc} containing the address of
 the instruction that was interrupted.  \lstinline{trampin} first saves
@@ -392,8 +392,8 @@ interrupts).
 \section{Code: C trap handler}
 
 The \lstinline{usertrap} function changes \lstinline{stvec} to the
-address of \lstinline{kerneltrap} because xv6 is in kernel mode and
-when xv6 enables interrupts in kernel mode, interrupts should go
+address of \lstinline{kerneltrap} because xv6 is in supervisor mode and
+when xv6 enables interrupts in supervisor mode, interrupts should go
 through \lstinline{kerneltrap}; there is no need to switch page tables
 and stacks. \lstinline{usertrap} next saves the \lstinline{sepc}
 because that register contains the instruction where the process
@@ -453,7 +453,7 @@ The system call numbers match the entries in the syscalls array,
 a table of function pointers
 \lineref{kernel/syscall.c:/syscalls/}.
 The \lstinline{ecall} instruction
-switches the CPU from user mode to kernel mode, and will
+switches the CPU from user mode to supervisor mode, and will
 cause the kernel to call \lstinline{syscall}, as we saw above.
 
 \indexcode{Syscall}
