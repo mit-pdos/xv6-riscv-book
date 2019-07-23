@@ -135,7 +135,7 @@ is not the only way to abstract resources, but it has proven to be a very good
 one.
 
 %% 
-\section{User mode, kernel mode, and system calls}
+\section{User mode, supervisor mode, and system calls}
 %% 
 
 Strong isolation requires a hard boundary between applications and the operating
@@ -150,33 +150,30 @@ CPUs provide hardware support for strong isolation.   For
 example, RISC-V has three modes in which
 the CPU can execute instructions:
 \indextext{machine mode},
-\indextext{kernel mode} 
-(called
-\indextext{supervisor mode}
-in RISC-V terminology), and
+\indextext{supervisor mode}, and
 \indextext{user mode}.
 Instructions executing in machine mode have full privilege; a
 CPU starts in machine mode.  Machine mode is mostly intended for
 configuring a computer.  Xv6 executes a few lines in machine mode and
-then changes to kernel mode.
+then changes to supervisor mode.
 
-In kernel mode the CPU is allowed to execute 
+In supervisor mode the CPU is allowed to execute 
 \indextext{privileged instructions}.
 For example, enabling and disabling interrupts,  reading and writing
 the register that holds the address of a page table, etc.
 If an application in user mode attempts to execute
 a privileged instruction, then the CPU doesn't execute the instruction, but switches
-to kernel mode so that kernel-mode code can terminate the application,
+to supervisor mode so that supervisor-mode code can terminate the application,
 because it did something it shouldn't be doing. 
 Figure~\ref{fig:os}
 in Chapter ~\ref{CH:UNIX} illustrates this organization.  An application can
 execute only user-mode instructions (e.g., adding numbers, etc.) and is said to
 be running in 
 \indextext{user space},
-while the software in kernel mode can also execute privileged instructions and
+while the software in supervisor mode can also execute privileged instructions and
 is said to be running in
 \indextext{kernel space}.
-The software running in kernel space (or in kernel mode) is called
+The software running in kernel space (or in supervisor mode) is called
 the
 \indextext{kernel}.
 
@@ -184,15 +181,15 @@ An application that wants to invoke a kernel function (e.g., the
 \lstinline{read}
 system call in xv6) must to
 transition to the kernel.  CPUs provide a special instruction that switches the
-CPU from user mode to kernel mode and enters the kernel at an entry point
+CPU from user mode to supervisor mode and enters the kernel at an entry point
 specified by the kernel.  (RISC-V
 provides the 
 \indexcode{ecall}
-instruction for this purpose.)  Once the CPU has switched to kernel mode,
+instruction for this purpose.)  Once the CPU has switched to supervisor mode,
 the kernel can then validate the arguments of the system call, decide whether
 the application is allowed to perform the requested operation, and then deny it
 or execute it.  It is important that the kernel control the entry point for
-transitions to kernel mode; if the application could decide the kernel entry
+transitions to supervisor mode; if the application could decide the kernel entry
 point, a malicious application could enter the kernel at a point where the
 validation of arguments etc. is skipped.
 %% 
@@ -200,10 +197,10 @@ validation of arguments etc. is skipped.
 %% 
 
 A key design question is what part of the operating
-system should run in kernel mode. 
+system should run in supervisor mode. 
 One possibility is that the entire operating system resides
 in the kernel, so that the implementations of all system calls
-run in kernel mode.
+run in supervisor mode.
 This organization is called a
 \indextext{monolithic kernel}.
 
@@ -218,12 +215,12 @@ A downside of the monolithic organization is that the interfaces between
 different parts of the operating system are often complex (as we will see in the
 rest of this text), and therefore it is easy for an operating system developer
 to make a mistake.  In a monolithic kernel, a mistake is fatal, because an error
-in kernel mode will often cause the kernel to fail.  If the kernel fails,
+in supervisor mode will often cause the kernel to fail.  If the kernel fails,
 the computer stops working, and thus all applications fail too.  The computer
 must reboot to start again.
 
 To reduce the risk of mistakes in the kernel, OS designers can minimize the
-amount of operating system code that runs in kernel mode, and execute the
+amount of operating system code that runs in supervisor mode, and execute the
 bulk of the operating system in user mode.
 This kernel organization is called a
 \indextext{microkernel}.
@@ -270,7 +267,7 @@ isolation mechanisms.
 The kernel must implement the process abstraction with care because
 a buggy or malicious application may trick the kernel or hardware in doing
 something bad (e.g., circumventing isolation).  The mechanisms used by
-the kernel to implement processes include the user/kernel mode flag, address spaces,
+the kernel to implement processes include the user/supervisor mode flag, address spaces,
 and time-slicing of threads.
 
 To help enforce isolation, the process abstraction provides the
@@ -421,8 +418,8 @@ calls into C code at
 The function
 \lstinline{start}
 performs some configuration that is only allowed in
-machine mode, and then switches to kernel mode.
-To enter kernel mode, RISC-V
+machine mode, and then switches to supervisor mode.
+To enter supervisor mode, RISC-V
 provides the instruction
 \lstinline{mret}.
 This instruction is most often used to return from
