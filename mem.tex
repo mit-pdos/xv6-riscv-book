@@ -420,7 +420,7 @@ allowing a process to address in principle 256 Gigabyte of memory.
 
 When a process asks xv6 for more memory,
 xv6 first finds free physical pages in the area
-labeled "Free memory", the area above the end of the data segment
+labeled ``Free memory'', the area above the end of the data segment
 of the kernel and below
 \texttt{PHYSTOP}.
 It then adds PTEs to the process's page table that point
