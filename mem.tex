@@ -19,10 +19,11 @@ of indirection provided by page tables also allows many neat tricks.
 xv6 uses page tables primarily to multiplex address spaces and to
 protect memory.  It also uses a few simple page-table tricks: mapping
 the same memory (a trampoline page) in several address spaces, and
-guarding a user stack with an unmapped page.  The rest of this chapter
-explains the page tables that the RISC-V hardware provides and how xv6
-uses them.  Compared to a real-world operating system, xv6's design is
-restrictive, but it does illustrate the key ideas.
+guarding kernel and user stacks with an unmapped page.  The rest of
+this chapter explains the page tables that the RISC-V hardware
+provides and how xv6 uses them.  Compared to a real-world operating
+system, xv6's design is restrictive, but it does illustrate the key
+ideas.
 %% 
 \section{Paging hardware}
 %% 
@@ -96,8 +97,11 @@ reads to the page.
 controls whether instructions are allowed to issue
 writes to the page.
 \indexcode{PTE_X}
-controls whether the processor may interpret the content
+controls whether the CPU may interpret the content
 of the page as instruction and execute them.
+\indexcode{PTE_u}
+controls whether instructions in user mode are allowed
+to access the page.
 Figure~\ref{fig:riscv_pagetable}
 shows how it all works.
 The flags and all other page hardware related structures are defined in
@@ -106,12 +110,12 @@ The flags and all other page hardware related structures are defined in
 To tell the hardware to use a page table, the kernel must
 write the physical address of the root page into the register
 \texttt{satp}\index{satp@\lstinline{satp}}.
-Each processor has its own
+Each CPU has its own
 \texttt{satp}.
-A processor will translate all addresses in subsequent instructions
+A CPU will translate all addresses in subsequent instructions
 using its page table.
-Each processor has its own page-table register so that one processor
-can run one process concurrently with another processor running
+Each CPU has its own page-table register so that one CPU
+can run one process concurrently with another CPU running
 another process, with their memories isolated from each other.
 
 A few notes about terms.
@@ -125,7 +129,7 @@ only virtual addresses.
 
 \begin{figure}[t]
 \center
-\includegraphics[scale=0.5]{fig/xv6_layout.pdf}
+\includegraphics[scale=0.7]{fig/xv6_layout.pdf}
 \caption{Layout of the kernel address space.}
 \label{fig:xv6_layout}
 \end{figure}
@@ -157,13 +161,36 @@ The kernel uses an identity mapping for most virtual addresses.  For,
 example, the kernel itself is located at
 \lstinline{KERNBASE}
 in the virtual address space and in physical memory.  Same for all
-devices.  The one exception is the page holding trampoline code, which
-is mapped at the top of virtual address space; user page tables have
-this same mapping.  In chapter~\ref{CH:TRAP}, we will discuss the role
-of the trampoline page, but we see here an interesting use case of
-page tables; a physical page (holding the trampoline code) is
-mapped twice in the virtual address space of the kernel: once at top
-of the virtual address space and once in the kernel text.
+devices.   The exceptions are:
+
+\begin{itemize}
+  
+\item The trampoline page. It is mapped at the top of virtual
+  address space; user page tables have this same mapping.  In
+  chapter~\ref{CH:TRAP}, we will discuss the role of the trampoline
+  page, but we see here an interesting use case of page tables; a
+  physical page (holding the trampoline code) is mapped twice in the
+  virtual address space of the kernel: once at top of the virtual
+  address space and once in the kernel text.
+
+\item The kernel stack pages.  Each process has its own kernel stack,
+  which is mapped high so that below it xv6 can map a \indextext{guard
+    page}.  The guard page's mapping is invalid (i.e.,
+  \lstinline{PTE_V} is not set), which ensures that if the kernel runs
+  off a kernel stack, it will cause a fault and the kernel will panic.
+  Without a guard page the stack could grow down into kernel data,
+  which could result in strange bugs that are difficult to track down.
+
+\end{itemize}
+
+The kernel stacks themselves are located in kernel memory and also
+accessible to the kernel through a direct-mapped address.  We see
+another example of a page mapped into two locations in the kernel
+virtual address space.  You might wonder why not unmap the page below
+stack in kernel memory in Figure~\ref{fig:xv6_layout}, instead of
+doing it in high memory. The reason is that unmapping a kernel-memory
+page would result in wasting one page of physical memory for each
+kernel stack.
 
 The kernel maps the pages for the trampoline and the kernel text with
 the permissions
@@ -176,6 +203,8 @@ The kernel maps the other pages with the permissions
 and
 \lstinline{PTE_W},
 so that it read and write the memory in those pages.
+The mappings for the guard pages are invalid.
+
 
 %% 
 \section{Code: creating an address space}
@@ -247,13 +276,21 @@ to install the kernel page table.
 It writes the physical address of the root page
 into the register
 \texttt{satp}.
-After this the processor will translate addresses using the kernel
+After this the CPU will translate addresses using the kernel
 page table.  Since the kernel uses an identity mapping, the now
 virtual address of the next instruction will map to the right physical
 memory address.
-%% 
+
+\indexcode{procinit} \lineref{kernel/proc.c:/^procinit/}, which is
+called from \lstinline{main}, invokes \lstinline{mapkstack}
+\lineref{kernel/vm.c:/^mapkstack/} to allocate a kernel stack for each
+process and to map it at \lstinline{KSTACK(p)}
+\lineref{kernel/memlayout.h:/KSTACK/}.  \lstinline{mapkstack} calls
+\lstinline{kvminithart} to reload the kernel page table into
+\texttt{satp} so that the hardware knows about the update to the
+kernel page table.
+
 \section{Physical memory allocation}
-%% 
 
 The kernel must allocate and free physical memory at run-time for
 page tables,
@@ -383,7 +420,7 @@ allowing a process to address in principle 256 Gigabyte of memory.
 
 When a process asks xv6 for more memory,
 xv6 first finds free physical pages in the area
-labeled "Free memory", the area above the end of the data segment
+labeled ``Free memory'', the area above the end of the data segment
 of the kernel and below
 \texttt{PHYSTOP}.
 It then adds PTEs to the process's page table that point

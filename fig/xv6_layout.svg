@@ -442,16 +442,16 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="1.91"
-     inkscape:cx="304.37345"
-     inkscape:cy="259.51857"
+     inkscape:zoom="1.1"
+     inkscape:cx="407.96295"
+     inkscape:cy="378.16264"
      inkscape:document-units="mm"
      inkscape:current-layer="layer1"
      showgrid="false"
      units="mm"
-     inkscape:window-width="2556"
+     inkscape:window-width="1276"
      inkscape:window-height="1381"
-     inkscape:window-x="0"
+     inkscape:window-x="1280"
      inkscape:window-y="28"
      inkscape:window-maximized="0"
      showguides="true"
@@ -504,7 +504,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title />
+        <dc:title></dc:title>
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -716,13 +716,13 @@
     <text
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;line-height:0%;font-family:'Bitstream Vera Sans';text-align:start;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
-       x="339.62366"
-       y="427.18958"
+       x="334.91162"
+       y="358.07962"
        id="text4921"><tspan
          sodipodi:role="line"
          id="tspan4923"
-         x="339.62366"
-         y="427.18958"
+         x="334.91162"
+         y="358.07962"
          style="font-size:14px;line-height:1.25;text-align:start;text-anchor:start">R-X</tspan></text>
     <text
        xml:space="preserve"
@@ -857,13 +857,13 @@
     <text
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;line-height:0%;font-family:'Bitstream Vera Sans';fill:#000000;fill-opacity:1;stroke:none"
-       x="568.91571"
-       y="265.67496"
+       x="575.27936"
+       y="274.76587"
        id="text4502"><tspan
          sodipodi:role="line"
          id="tspan4504"
-         x="568.91571"
-         y="265.67496"
+         x="575.27936"
+         y="274.76587"
          style="font-size:18px;line-height:1.25">Physical</tspan></text>
     <path
        style="fill:none;stroke:#000000;stroke-width:0.99921262;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#Arrow1Mend)"
@@ -1390,15 +1390,15 @@
        d="m 332.61417,749.54342 c 194.88189,0 194.88189,0 194.88189,0 v 0"
        style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:1, 3;stroke-dashoffset:0;stroke-opacity:1;marker-end:url(#marker4791)" />
     <path
-       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:1.11940241;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:1.11940239, 2.23880476;stroke-dashoffset:0;stroke-opacity:1;marker-end:url(#marker13584)"
-       d="M 334.04513,422.71626 C 527.3737,524.222 527.3737,524.222 527.3737,524.222 v 0 0 0"
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:1.04113424;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:1.04113426, 2.08226849;stroke-dashoffset:0;stroke-opacity:1;marker-end:url(#marker13584)"
+       d="m 332.47623,406.62799 c 193.60175,87.6836 193.60175,87.6836 193.60175,87.6836 v 0 0 0"
        id="path13310"
        inkscape:connector-curvature="0" />
     <path
        inkscape:connector-curvature="0"
        id="path13658"
-       d="m 334.32147,407.82768 c 193.12548,103.55168 193.12548,103.55168 193.12548,103.55168 v 0 0 0"
-       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:1.13003325;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:1.13003331, 2.26006663;stroke-dashoffset:0;stroke-opacity:1;marker-end:url(#marker13662)" />
+       d="m 332.61417,421.867 c 193.12548,86.25169 193.12548,86.25169 193.12548,86.25169 v 0 0 0"
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:1.03132713;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:1.03132723, 2.06265447;stroke-dashoffset:0;stroke-opacity:1;marker-end:url(#marker13662)" />
     <path
        inkscape:connector-curvature="0"
        id="path226"
@@ -1423,7 +1423,7 @@
     <path
        inkscape:connector-curvature="0"
        id="path238"
-       d="m 334.16167,450.9555 c 194.88189,0 194.88189,0 194.88189,0 v 0"
+       d="m 332.61417,451.90562 c 194.88189,0 194.88189,0 194.88189,0 v 0"
        style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:1, 3;stroke-dashoffset:0;stroke-opacity:1;marker-end:url(#Arrow1Lend)" />
     <text
        id="text242"
@@ -1484,5 +1484,57 @@
        id="path1136"
        d="M 134.99815,422.56701 H 334.61417"
        style="fill:none;stroke:#000000;stroke-width:0.99999994px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    <text
+       inkscape:transform-center-y="-104.34783"
+       inkscape:transform-center-x="-14.130435"
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;line-height:0%;font-family:'Bitstream Vera Sans';text-align:start;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
+       x="335.12369"
+       y="402.11911"
+       id="text241"><tspan
+         sodipodi:role="line"
+         id="tspan239"
+         x="335.12369"
+         y="402.11911"
+         style="font-size:14px;line-height:1.25;text-align:start;text-anchor:start">---</tspan></text>
+    <text
+       inkscape:transform-center-y="-104.34783"
+       inkscape:transform-center-x="-14.130435"
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;line-height:0%;font-family:'Bitstream Vera Sans';text-align:start;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
+       x="335.64725"
+       y="370.70551"
+       id="text252"><tspan
+         sodipodi:role="line"
+         id="tspan250"
+         x="335.64725"
+         y="370.70551"
+         style="font-size:14px;line-height:1.25;text-align:start;text-anchor:start">---</tspan></text>
+    <text
+       inkscape:transform-center-y="-104.34783"
+       inkscape:transform-center-x="-14.130435"
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;line-height:0%;font-family:'Bitstream Vera Sans';text-align:start;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
+       x="333.6149"
+       y="386.9726"
+       id="text256"><tspan
+         sodipodi:role="line"
+         id="tspan254"
+         x="333.6149"
+         y="386.9726"
+         style="font-size:14px;line-height:1.25;text-align:start;text-anchor:start">RW-</tspan></text>
+    <text
+       id="text260"
+       y="417.33908"
+       x="334.13846"
+       style="font-style:normal;font-weight:normal;line-height:0%;font-family:'Bitstream Vera Sans';text-align:start;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
+       xml:space="preserve"
+       inkscape:transform-center-x="-14.130435"
+       inkscape:transform-center-y="-104.34783"><tspan
+         style="font-size:14px;line-height:1.25;text-align:start;text-anchor:start"
+         y="417.33908"
+         x="334.13846"
+         id="tspan258"
+         sodipodi:role="line">RW-</tspan></text>
   </g>
 </svg>
