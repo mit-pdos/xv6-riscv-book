@@ -32,13 +32,13 @@ between the processes.
 That is, if one process has a bug and fails, it shouldn't affect processes that
 don't depend on the failed process.
 Complete isolation, however, is too strong, since it should be possible for
-processes to interact; pipelines are an example.
+processes to intentionally interact; pipelines are an example.
 Thus
 an operating system must fulfill three requirements: multiplexing, isolation,
 and interaction.
 
 This chapter provides an overview of how operating systems are
-organized to achieve these 3 requirements.  It turns out there are
+organized to achieve these three requirements.  It turns out there are
 many ways to do so, but this text focuses on mainstream designs
 centered around a \indextext{monolithic kernel}, which is used by many
 Unix operating systems.  This chapter also provides an overview of an
@@ -47,7 +47,7 @@ creation of the first process when xv6 starts running.
 
 Xv6 runs on a RISC-V development board, and much of its low-level
 functionality (for example, its process implementation) is specific to
-RISC-V.  RISC-V is a 64-bit processor, and Xv6 is written in ``LP64'' C,
+RISC-V.  RISC-V is a 64-bit processor, and xv6 is written in ``LP64'' C,
 which means long (L) and pointers (P) in the C programming language
 are 64 bits, but int is 32-bit.  This book assumes the reader has done
 a bit of machine-level programming on some architecture, and will
@@ -143,7 +143,7 @@ read) the operating system's data structures and instructions and that
 applications cannot access other process's memory.
 
 Processors provide hardware support for strong isolation.   For
-example, a RISC-V processor, has three modes in which
+example, a RISC-V processor has three modes in which
 the processor can execute instructions:
 \indextext{machine mode},
 \indextext{kernel mode} 
@@ -151,10 +151,10 @@ the processor can execute instructions:
 \indextext{supervisor mode}
 in RISC-V terminology), and
 \indextext{user mode}.
-Instructions executing in machine mode have full privilege and a
+Instructions executing in machine mode have full privilege; a
 processor starts in machine mode.  Machine mode is mostly intended for
-configuring a computer.  Xv6 executes a few lines of machine mode and
-then jumps into kernel mode.
+configuring a computer.  Xv6 executes a few lines in machine mode and
+then changes to kernel mode.
 
 In kernel mode the processor is allowed to execute 
 \indextext{privileged instructions}.
@@ -162,7 +162,7 @@ For example, enabling and disabling interrupts,  reading and writing
 the register that holds the address of a page table, etc.
 If an application in user mode attempts to execute
 a privileged instruction, then the processor doesn't execute the instruction, but switches
-to kernel mode so that the software in kernel mode can clean up the application,
+to kernel mode so that kernel-mode code can terminate the application,
 because it did something it shouldn't be doing. 
 Figure~\ref{fig:os}
 in Chapter ~\ref{CH:UNIX} illustrates this organization.  An application can
@@ -187,7 +187,7 @@ processor provides the
 instruction for this purpose.)  Once the processor has switched to kernel mode,
 the kernel can then validate the arguments of the system call, decide whether
 the application is allowed to perform the requested operation, and then deny it
-or execute it.  It is important that the kernel sets the entry point for
+or execute it.  It is important that the kernel control the entry point for
 transitions to kernel mode; if the application could decide the kernel entry
 point, a malicious application could enter the kernel at a point where the
 validation of arguments etc. is skipped.
@@ -214,7 +214,7 @@ A downside of the monolithic organization is that the interfaces between
 different parts of the operating system are often complex (as we will see in the
 rest of this text), and therefore it is easy for an operating system developer
 to make a mistake.  In a monolithic kernel, a mistake is fatal, because an error
-in kernel mode will often result in the kernel to fail.  If the kernel fails,
+in kernel mode will often cause the kernel to fail.  If the kernel fails,
 the computer stops working, and thus all applications fail too.  The computer
 must reboot to start again.
 
@@ -248,11 +248,11 @@ relatively simple, as most of the operating system
 resides in user-level servers.
 
 Xv6 is
-implemented as a monolithic kernel, following most Unix operating systems.
-Thus, in xv6, the kernel interface corresponds to the operating system
+implemented as a monolithic kernel, like most Unix operating systems.
+Thus, the xv6 kernel interface corresponds to the operating system
 interface, and the kernel implements the complete operating system.  Since 
 xv6 doesn't provide many services, its kernel is smaller than some
-microkernels.
+microkernels, but conceptually xv6 is monolithic.
 %% 
 \section{Process overview}
 %% 
