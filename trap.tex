@@ -112,7 +112,7 @@ itself.   RISC-V has registers (\indexcode{mtvec} and
 \indexcode{stvec}) to specify the address of the \indextext{interrupt
   handler} in machine mode or supervisor mode, respectively.  It also
 has registers (\indexcode{mip} and \indexcode{sip}) to specify which
-interrupts are taking in machine mode and in supervisor mode,
+interrupts are taken in machine mode and in supervisor mode,
 respectively.  When a devices raises an interrupt, the CPU sees
 whether the interrupt must be handled in machine mode or supervisor
 mode by inspecting the \lstinline{ip} registers, switches to that
@@ -139,7 +139,11 @@ interrupt.  For example, an interrupt in user mode will switch the
 CPU to kernel mode and change the program counter to a
 kernel-specific address, but still running with the user page table.
 It is up to the kernel to complete the rest of the switch to kernel
-mode: switch page tables, switch stacks, etc.
+mode: switch page tables, switch stacks, etc.  One reason that the
+CPU provides minimal mechanisms for switching modes is that
+provides flexibility to software; for example, for certain code path
+it might not be necessary to switch page tables, and its performance
+can be avoided.
 
 To return from an interrupt to the original mode, RISC-V
 provides the instructions \indexcode{mret} and
@@ -181,13 +185,18 @@ each mode:
 
   To addresses these challenges, xv6 uses a \indextext{trampoline}
   page.  It maps a page with code to enter and exit the kernel in
-  every process's address space and in the kernel address space (as we
-  saw in Figure~\ref{fig:as} and in Figure~\ref{fig:xv6_layout}).
-  This page is mapped at the same address in each address space.  This
-  page contains the code that switches page tables, and because the
-  page is mapped identically in each page table, the instruction right
-  after the page table switch will translate identically.  The
-  trampoline also switches from a user stack to a valid kernel stack.
+  every process's address space and in the kernel address space at the
+  address \indexcode{TRAMPOLINE} (as we saw in Figure~\ref{fig:as} and
+  in Figure~\ref{fig:xv6_layout}).  This page is mapped at the same
+  address in each address space.  This page contains the code that
+  switches page tables, and because the page is mapped identically in
+  each page table, the instruction right after the page table switch
+  will translate identically.  The trampoline code for entering needs
+  access to some area to save and restore CPU state, and therefore xv6
+  also conveniently maps the process's trapframe (\lstinline{p->tf})
+  in each process address space at \indexcode{TRAPFRAME}, right below
+  \lstinline{TRAMPOLINE}.  The trampoline also switches from a user
+  stack to a valid kernel stack.
 
 \end{itemize}
 
@@ -195,7 +204,7 @@ A small hurdle in all three modes is that the interrupt handler often
 needs some scratch space. When the interrupt handler starts it cannot
 use any register because those contain values of the interrupted code
 and they must be saved before the interrupt handler can use them. But,
-to save them, it needs a register.  To handle this conundrum, the
+to save them, it needs a register.  To handle this conundrum,
 RISC-V provides a scratch register for machine and kernel
 mode: \indexcode{mscratch} and \indexcode{sscratch}, respectively.
 RISC-V also has an instruction to exchange the content
@@ -220,7 +229,7 @@ timer interrupt, illegal instruction, system call).
 
 \section{Code: machine mode interrupts}
 
-By default all interrupts trap into machine mode.  xv6 programs the
+By default all interrupts trap into machine mode.  xv6 programs
 RISC-V to delegate all interrupts and exceptions to supervisor mode
 \linerefs{kernel/start.c:/w_medeleg/,/w_mideleg/}.
 Timer interrupts, however, must be received in machine
@@ -242,7 +251,7 @@ address \lstinline{mscratch0}, which points to an area of
 core's \lstinline{CLINT_MTIME} and the new value
 \linerefs{kernel/start.c:/scratch.4/,/scratch.5/}.
 \lstinline{machinevec} saves registers \lstinline{a1} through
-\lstinline{a4} in the scratch area so that it can use them for its own
+\lstinline{a3} in the scratch area so that it can use them for its own
 computation.  Then, it reprograms \lstinline{CLINT_MTIMECMP} to
 generate an interrupt in 10ms and sets the interrupt bit in the kernel
 \lstinline{sip} register.  Setting this bit will cause the kernel to
@@ -313,8 +322,8 @@ register to the address the user program should be resumed at, and
 will set the \lstinline{satp} register to this process's page table
 \linerefs{kernel/trap.c:/x.=.r_sstatus/,/p->pagetable/}.
 Finally, \lstinline{usertrapret} calls
-the trampoline function, passing two arguments: the address of
-\lstinline{trampout} and the value for \lstinline{satp}.
+the trampoline function \lstinline{trampout}, passing two arguments: the addresss
+\lstinline{TRAPFRAME} and the value for \lstinline{satp}.
 
 \lstinline{trampout} \lineref{kernel/trampoline.S:/trampout/} loads
 \lstinline{satp} with the user page table.  After this instruction,
@@ -324,41 +333,54 @@ with the user page table.  This address will be translated in the same
 way as with the kernel page table, because the mapping is the same in
 both page tables.
 
-To execute the remaining instructions, \lstinline{trampout} needs a
-register (\lstinline{a0}). But, it must also restore \lstinline{a0} to
-the user process's value for \lstinline{a0}, which is stored in the
-process's trapframe \lstinline{p->tf}.  The kernel stores the new
-value for \lstinline{a0} in \lstinline{sscratch} and later restores
+To execute the remaining instructions, \lstinline{trampout} wants to
+use register (\lstinline{a0}), which contains the first argument to
+\lstinline{trampout}, \lstinline{TRAPFRAME}, the process's
+trapframe. But, it must also restore \lstinline{a0} to the user
+process's value for \lstinline{a0}, which is stored in the process's
+trapframe \lstinline{p->tf}.  The kernel stores the to-be-restored value for
+\lstinline{a0} in \lstinline{sscratch} and later restores
 \lstinline{a0} from there \lineref{kernel/trampoline.S:/csrrw a0/}.
-Now it has \lstinline{a0} is availabe, it uses it to restore all other
-CPU registers from \lstinline{p->tf}
-\linerefs{kernel/trampoline.S:/ld ra/,/ld t6/}.  Then, it restores
-\lstinline{a0} by switching the values of \lstinline{sscratch} and
-\lstinline{a0}. After this instruction, \lstinline{a0} contains the
-user process's \lstinline{a0} and \lstinline{sscratch} contains
-\lstinline{p->tf}.  Having \lstinline{p->tf} in \lstinline{sscratch}
-will be convenient when entering: this is the address where xv6 will
-save registers.  Finally, \lstinline{trampout} calls \lstinline{sret},
-which returns to the previous mode (user mode) with interrupts enabled
-and resuming at the address in \lstinline{sepc}.  We are out of the
-kernel.
 
-If a timer interrupt happens, the CPU will switch to kernel mode
-with the program counter set to the value in \lstinline{stvec} (i.e.,
+Now \lstinline{a0} is availabe, it uses it to restore all other CPU
+registers from TRAPFRAME \linerefs{kernel/trampoline.S:/ld ra/,/ld t6/}.
+Note that the user page table, which we just installed, maps
+TRAPFRAME to \lstinline{p->tf}.  Thus, even though \lstinline{a0}
+contains \lstinline{TRAPFRAME}, we are loading values from
+\lstinline{p->tf}.  To make sure that user code cannot read/write
+\lstinline{p->tf} through \lstinline{TRAPFRAME}, xv6 maps
+\lstinline{TRAPFRAME} with the \lstinline{PTE_U} bit clear
+\linerefs{kernel/proc.c:/TRAPFRAME/,/./}.
+
+Then, \lstinline{trampout} restores \lstinline{a0} by switching the
+values of \lstinline{sscratch} and \lstinline{a0}. After this
+instruction, \lstinline{a0} contains the user process's \lstinline{a0}
+and \lstinline{sscratch} contains \lstinline{p->tf}.  Having
+\lstinline{p->tf} in \lstinline{sscratch} will be convenient when
+entering: this is the address where xv6 will save registers.  Finally,
+\lstinline{trampout} calls \lstinline{sret}, which returns to the
+previous mode (user mode) with interrupts enabled and resuming at the
+address in \lstinline{sepc}.  We are out of the kernel.
+
+If a timer interrupt happens, the CPU will switch to kernel mode with
+the program counter set to the value in \lstinline{stvec} (i.e.,
 \lstinline{trampin}) and \lstinline{sepc} containing the address of
 the instruction that was interrupted.  \lstinline{trampin} first saves
-\lstinline{a0} and loads \lstinline{p->tf} into \lstinline{a0}
-\lineref{kernel/trampoline.S:/csrrw a0/}.  Next, it saves all other
+\lstinline{a0} and loads \lstinline{TRAPFRAME}, which maps to
+\lstinline{p->tf}, into \lstinline{a0}
+\lineref{kernel/trampoline.S:/csrrw a0/}.
+Next, it saves all other
 CPU registers into \lstinline{p->tf}
-\linerefs{kernel/trampoline.S:/sd ra/,/sd t6/}.  Now all registers are
-saved, \lstinline{trampin} can use \lstinline{t0} to save the original
-value of \lstinline{a0}.  It switches to the kernel stack of the
-process, because the user stack may not be valid.  It switches to the
-kernel page table; again, this works out because trampoline page is
-mapped identically in the user and kernel address space.  Finally, it
-calls \lstinline{usertrap} (its address is in \lstinline{t0}).  We are
-back in the kernel with a kernel page table and on a kernel stack,
-running C code.
+\linerefs{kernel/trampoline.S:/sd ra/,/sd t6/}.
+
+Now all registers are saved, \lstinline{trampin} can
+use \lstinline{t0} to save the original value of \lstinline{a0}.  It
+switches to the kernel stack of the process, because the user stack
+may not be valid.  It switches to the kernel page table; again, this
+works out because trampoline page is mapped identically in the user
+and kernel address space.  Finally, it calls \lstinline{usertrap} (its
+address is in \lstinline{t0}).  We are back in the kernel with a
+kernel page table and on a kernel stack, running C code.
 
 One good property of the code above is that it also works for system
 calls and exceptions.  If the user process wants to call a system call

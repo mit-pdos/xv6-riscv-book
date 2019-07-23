@@ -7,18 +7,18 @@
 \label{CH:SCHED}
 
 Any operating system is likely to run with more processes than the
-computer has processors, so a plan is needed to time-share the
-processors among the processes. Ideally the sharing would be transparent to user
+computer has CPUs, so a plan is needed to time-share the
+CPUs among the processes. Ideally the sharing would be transparent to user
 processes.  A common approach is to provide each process
-with the illusion that it has its own virtual processor by
+with the illusion that it has its own virtual CPU by
 \indextext{multiplexing}
-the processes onto the hardware processors.
+the processes onto the hardware CPUs.
 This chapter explains how xv6 achieves this multiplexing.
 %% 
 \section{Multiplexing}
 %% 
 
-Xv6 multiplexes by switching each processor from one process to
+Xv6 multiplexes by switching each CPU from one process to
 another in two situations. First, xv6's
 \lstinline{sleep}
 and
@@ -293,7 +293,7 @@ The result would be two CPUs running on the same stack,
 which cannot be right.
 
 A kernel thread always gives up its
-processor in
+CPU in
 \lstinline{sched} 
 and always switches to the same location in the scheduler, which
 (almost) always switches to some kernel thread that previously called
@@ -438,18 +438,18 @@ per-core information.
 
 Xv6 maintains a
 \indexcode{struct cpu}
-for each processor
+for each CPU
 \lineref{kernel/proc.h:/^struct.cpu/},
 which records
 the process currently running
-on that processor (if any),
-saved registers for the processor's scheduler thread,
+on that CPU (if any),
+saved registers for the CPU's scheduler thread,
 and the count of nested spinlocks needed to manage
 interrupt disabling.
 The function
 \indexcode{mycpu}
 \lineref{kernel/proc.c:/^mycpu/}
-returns a pointer to the current processor's
+returns a pointer to the current CPU's
 \lstinline{struct cpu}.
 RISC-V numbers its CPUs, giving each
 a ``hartid''.
@@ -479,7 +479,7 @@ The return values of
 and
 \lstinline{mycpu}
 are fragile: if the timer were to interrupt and cause
-the thread to yield and then move to a different processor, the
+the thread to yield and then move to a different CPU, the
 return value would no longer be correct.
 To avoid this problem, xv6 requires that callers 
 disable interrupts, and only enable
@@ -492,7 +492,7 @@ The function
 returns the
 \lstinline{struct proc}
 pointer
-for the process that is running on the current processor.
+for the process that is running on the current CPU.
 \lstinline{myproc}
 disables interrupts, invokes
 \lstinline{mycpu},
@@ -505,7 +505,7 @@ The return value of
 \lstinline{myproc}
 is safe to use even if interrupts are enabled:
 if a timer interrupt moves the calling process to a
-different processor, its
+different CPU, its
 \lstinline{struct proc}
 pointer will stay the same.
 %% 
@@ -795,7 +795,7 @@ mark the current process as
 \indexcode{SLEEPING}
 and then call
 \indexcode{sched}
-to release the processor;
+to release the CPU;
 \lstinline{wakeup}
 looks for a process sleeping on the given wait channel
 and marks it as 

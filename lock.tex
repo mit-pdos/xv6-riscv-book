@@ -530,19 +530,19 @@ can release it, but
 will not continue running until
 \lstinline{clockintr}
 returns.
-So the processor will deadlock, and any code
+So the CPU will deadlock, and any code
 that needs either lock will also freeze.
 
 To avoid this situation, if a spin-lock is used by an interrupt handler,
-a processor must never hold that lock with interrupts enabled.
-Xv6 is more conservative: when a processor acquires any
-lock, xv6 always disables interrupts on that processor.
-Interrupts may still occur on other processors, so 
+a CPU must never hold that lock with interrupts enabled.
+Xv6 is more conservative: when a CPU acquires any
+lock, xv6 always disables interrupts on that CPU.
+Interrupts may still occur on other CPUs, so 
 an interrupt's
 \lstinline{acquire}
-can wait for a thread to release a spin-lock; just not on the same processor.
+can wait for a thread to release a spin-lock; just not on the same CPU.
 
-xv6 re-enables interrupts when a processor holds no spin-locks; it must
+xv6 re-enables interrupts when a CPU holds no spin-locks; it must
 do a little book-keeping to cope with nested critical sections.
 \lstinline{acquire}
 calls
@@ -553,7 +553,7 @@ and
 calls
 \indexcode{pop_off}
 \lineref{kernel/spinlock.c:/^pop_off/}
-to track the nesting level of locks on the current processor.
+to track the nesting level of locks on the current CPU.
 When that count reaches zero,
 \lstinline{pop_off} 
 restores the interrupt enable state that existed 
@@ -590,21 +590,21 @@ releasing the lock
 It is natural to think of programs executing in the order
 in which source code statements appear.
 Many
-compilers and processors, however, execute code out of order
+compilers and CPUs, however, execute code out of order
 to achieve
 higher performance.  If an instruction takes many cycles to complete,
-a processor may issue the instruction early so that it can
-overlap with other instructions and avoid processor stalls. For
-example, a processor may notice that in a serial sequence of
+a CPU may issue the instruction early so that it can
+overlap with other instructions and avoid CPU stalls. For
+example, a CPU may notice that in a serial sequence of
 instructions A and B are not dependent on each other.
-The processor may start instruction B first, either because its
+The CPU may start instruction B first, either because its
 inputs are ready before A's inputs, or in order to overlap
 execution of A and B.
 A compiler may perform a similar re-ordering by emitting instructions
 for one statement before the instructions for a statement that precedes it
 in the source.
 
-Compilers and processors follow rules when they re-order to
+Compilers and CPUs follow rules when they re-order to
 ensure that they don't change the results of correctly-written
 serial code.
 However, the rules do allow re-ordering that
@@ -613,7 +613,7 @@ and can easily lead to incorrect behavior on multiprocessors.
 
 For example, in this code for
 \lstinline{push},
-it would be a disaster if the compiler or processor moved the
+it would be a disaster if the compiler or CPU moved the
 store corresponding to
 line~\ref{line:next2} to a point after the
 \lstinline{release}
@@ -627,7 +627,7 @@ on line~\ref{line:release}:
       release(&listlock);  (*@\label{line:release}@*)
 \end{lstlisting}
 If such a re-ordering occurred, there would be a window during
-which another processor could acquire the lock,
+which another CPU could acquire the lock,
 observe the updated
 \lstinline{list},
 but see an uninitialized
@@ -657,16 +657,16 @@ themselves).
 Sometimes xv6 code needs to hold a lock for a long time. For example,
 the file system (Chapter~\ref{CH:FS}) keeps a file locked while reading
 and writing its content on the disk, and these disk operations can
-take tens of milliseconds. Efficiency demands that the processor be
+take tens of milliseconds. Efficiency demands that the CPU be
 yielded while waiting so that other threads can make
 progress, and this in turn means that xv6 needs locks that 
 work well when held across context switches.
 Xv6 provides such locks in the form of
 \indextext{sleep-locks}.
 
-Xv6 sleep-locks support yielding the processor during their critical
+Xv6 sleep-locks support yielding the CPU during their critical
 sections. This property poses a design challenge: if thread T1 holds
-lock L1 and has yielded the processor, and thread T2 wishes to acquire
+lock L1 and has yielded the CPU, and thread T2 wishes to acquire
 L1, we have to ensure that T1 can execute while T2 is waiting so
 that T1 can release L1. T2 can't use the spin-lock acquire
 function here: it
@@ -675,7 +675,7 @@ from running. To avoid this deadlock, the sleep-lock acquire
 routine
 (called
 \lstinline{acquiresleep})
-yields the processor while waiting, and does not disable
+yields the CPU while waiting, and does not disable
 interrupts.
 
 \lstinline{acquiresleep}
@@ -697,7 +697,7 @@ Because sleep-locks leave interrupts enabled, they cannot be
 used in interrupt handlers.
 Because
 \lstinline{acquiresleep}
-may yield the processor,
+may yield the CPU,
 sleep-locks cannot be used inside spin-lock critical
 sections (though spin-locks can be used inside sleep-lock
 critical sections).
@@ -721,28 +721,28 @@ identify race conditions, because it is easy to miss an invariant that requires
 a lock.
 
 Most operating systems support POSIX threads (Pthreads), which allow a user
-process to have several threads running concurrently on different processors.
+process to have several threads running concurrently on different CPUs.
 Pthreads has support for user-level locks, barriers, etc.  Supporting Pthreads requires
 support from the operating system. For example, it should be the case that if
 one pthread blocks in a system call, another pthread of the same process should
-be able to run on that processor.  As another example, if a pthread changes its
+be able to run on that CPU.  As another example, if a pthread changes its
 process's address space (e.g., maps or unmaps memory), the kernel must arrange that
-other processors that run threads of the same process update their hardware page
+other CPUs that run threads of the same process update their hardware page
 tables to reflect the change in the address space.  On the x86, this involves
 shooting down the
 \indextext{Translation Look-aside Buffer (TLB)}
-of other processors using inter-processor interrupts (IPIs).
+of other CPUs using inter-CPU interrupts (IPIs).
 
 It is possible to implement locks without atomic instructions, but it is
 expensive, and most operating systems use atomic instructions.
 
-Locks can be expensive if many processors try to acquire the same lock
-at the same time.  If one processor has a lock
-cached in its local cache, and another processor must acquire the lock, then the
+Locks can be expensive if many CPUs try to acquire the same lock
+at the same time.  If one CPU has a lock
+cached in its local cache, and another CPU must acquire the lock, then the
 atomic instruction to update the cache line that holds the lock must move the line
-from the one processor's cache to the other processor's cache, and perhaps
+from the one CPU's cache to the other CPU's cache, and perhaps
 invalidate any other copies of the cache line.  Fetching a cache line from
-another processor's cache can be orders of magnitude more expensive than
+another CPU's cache can be orders of magnitude more expensive than
 fetching a line from a local cache.
 
 To avoid the expenses associated with locks, many operating systems use
@@ -753,11 +753,14 @@ item in a list.  Lock-free programming is more complicated, however, than
 programming locks; for example, one must worry about instruction and memory
 reordering.  Programming with locks is already hard, so xv6 avoids the
 additional complexity of lock-free programming.
+
 %% 
 \section{Exercises}
 %% 
 
-1. Comment out the calls to
+\begin{enumerate}
+  
+\item Comment out the calls to
 \lstinline{acquire}
 and
 \lstinline{release}
@@ -776,7 +779,7 @@ See if you can provoke a problem by inserting
 dummy loops into the critical section of
 \lstinline{kalloc}.
 
-2. Suppose that you instead commented out the
+\item Suppose that you instead commented out the
 locking in
 \lstinline{kfree} 
 (after restoring locking in
@@ -786,7 +789,7 @@ What might now go wrong? Is lack of locks in
 less harmful than in
 \lstinline{kalloc}?
 
-3. If two CPUs call
+\item If two CPUs call
 \lstinline{kalloc}
 at the same time, one will have to wait for the other,
 which is bad for performance.
@@ -797,15 +800,17 @@ calls to
 \lstinline{kalloc}
 from different CPUs can proceed without waiting for each other.
 
-4. Write a parallel program using POSIX threads, which is supported on most
+\item Write a parallel program using POSIX threads, which is supported on most
 operating systems. For example, implement a parallel hash table and measure if
 the number of puts/gets scales with increasing number of cores.
 
-5. Implement a subset of Pthreads in xv6.  That is, implement a user-level
+\item Implement a subset of Pthreads in xv6.  That is, implement a user-level
 thread library so that a user process can have more than 1 thread and arrange
-that these threads can run in parallel on different processors.  Come up with a
+that these threads can run in parallel on different CPUs.  Come up with a
 design that correctly handles a thread making a blocking system call and
 changing its shared address space.
+
+\end{enumerate}
 
 % LocalWords:  CPUs uniprocessor interruptible allocator kalloc kfree
 % LocalWords:  struct malloc sizeof listlock invariants spinlock lk
