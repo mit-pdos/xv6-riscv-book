@@ -175,13 +175,13 @@ devices.   The exceptions are:
 
 \item The kernel stack pages.  Each process has its own kernel stack,
   which is mapped high so that below it xv6 can map a \indextext{guard
-    page}.  The guard page is not mapped and it ensures that if the
-  kernel runs of a kernel stack, it will cause a fault.  Without a
-  guard page the stack could grow down into kernel data, which could
-  result in strange bugs that are difficult to track down.
+    page}.  The guard page's mapping is invalid (i.e.,
+  \lstinline{PTE_V} is not set), which ensures that if the kernel runs
+  off a kernel stack, it will cause a fault and the kernel will panic.
+  Without a guard page the stack could grow down into kernel data,
+  which could result in strange bugs that are difficult to track down.
 
 \end{itemize}
-
 
 The kernel stacks themselves are located in kernel memory and also
 accessible to the kernel through a direct-mapped address.  We see
@@ -280,9 +280,17 @@ After this the CPU will translate addresses using the kernel
 page table.  Since the kernel uses an identity mapping, the now
 virtual address of the next instruction will map to the right physical
 memory address.
-%% 
+
+\indexcode{procinit} \lineref{kernel/proc.c:/^procinit/}, which is
+called from \lstinline{main}, invokes \lstinline{mapkstack}
+\lineref{kernel/vm.c:/^mapkstack/} to allocate a kernel stack for each
+process and to map it at \lstinline{KSTACK(p)}
+\lineref{kernel/memlayout.h:/KSTACK/}.  \lstinline{mapkstack} calls
+\lstinline{kvminithart} to reload the kernel page table into
+\texttt{satp} so that the hardware knows about the update to the
+kernel page table.
+
 \section{Physical memory allocation}
-%% 
 
 The kernel must allocate and free physical memory at run-time for
 page tables,
