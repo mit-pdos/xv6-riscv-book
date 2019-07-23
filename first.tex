@@ -24,7 +24,7 @@ The operating system must
 \indextext{time-share} 
 the resources of the computer among these processes.
 For example, even if there are more processes
-than there are hardware processors, the operating
+than there are hardware CPUs, the operating
 system must ensure that all of the processes
 make progress.  The operating system must also arrange for
 \indextext{isolation} 
@@ -57,9 +57,12 @@ Atlas''~\cite{riscv}.
 The user-level ISA~\cite{riscv:user} and the privileged
 architecture~\cite{riscv:priv} are the official specifications.
 
-\mfk{Should we straighten out our terminology?  We use CPU, core, and
-  processor interchangeably; maybe here the place to explain this. Or
-  perhaps cleanup our terms?}
+This text generally refers to the hardware element that executes a
+computation with the term \indextext{CPU}.  Other documentation (e.g.,
+RISC-V specifications) also uses the words processor, core, and hart
+instead of CPU.  Related terms are multicore processor (a chip with
+several CPUs on it) and multiprocessor (a computer board with several
+processor chips).
 
 %% 
 \section{Abstracting physical resources}
@@ -78,7 +81,7 @@ embedded devices or real-time systems are organized in this way.
 The downside of this library approach is that, if there is more than one
 application running, the applications must be well-behaved.
 For example, each application must periodically give up the
-processor so that other applications can run.
+CPU so that other applications can run.
 Such a 
 \textit{cooperative} 
 time-sharing scheme may be OK if all applications trust each
@@ -100,11 +103,11 @@ instead of read and writing raw disk sectors.
 This provides the application with the convenience of pathnames, and it allows
 the operating system (as the implementer of the interface) to manage the disk. 
 
-Similarly, Unix transparently switches hardware processors among processes,
+Similarly, Unix transparently switches hardware CPUs among processes,
 saving and restoring register state as necessary,
 so that applications don't have to be
 aware of time sharing.  This transparency allows the operating system to share
-processors even if some applications are in infinite loops.
+CPUs even if some applications are in infinite loops.
 
 As another example, Unix processes use 
 \lstinline{exec}
@@ -142,9 +145,9 @@ To achieve strong isolation, the operating system must arrange that applications
 read) the operating system's data structures and instructions and that
 applications cannot access other process's memory.
 
-Processors provide hardware support for strong isolation.   For
+CPUs provide hardware support for strong isolation.   For
 example, RISC-V has three modes in which
-the processor can execute instructions:
+the CPU can execute instructions:
 \indextext{machine mode},
 \indextext{kernel mode} 
 (called
@@ -152,16 +155,16 @@ the processor can execute instructions:
 in RISC-V terminology), and
 \indextext{user mode}.
 Instructions executing in machine mode have full privilege; a
-processor starts in machine mode.  Machine mode is mostly intended for
+CPU starts in machine mode.  Machine mode is mostly intended for
 configuring a computer.  Xv6 executes a few lines in machine mode and
 then changes to kernel mode.
 
-In kernel mode the processor is allowed to execute 
+In kernel mode the CPU is allowed to execute 
 \indextext{privileged instructions}.
 For example, enabling and disabling interrupts,  reading and writing
 the register that holds the address of a page table, etc.
 If an application in user mode attempts to execute
-a privileged instruction, then the processor doesn't execute the instruction, but switches
+a privileged instruction, then the CPU doesn't execute the instruction, but switches
 to kernel mode so that kernel-mode code can terminate the application,
 because it did something it shouldn't be doing. 
 Figure~\ref{fig:os}
@@ -179,12 +182,12 @@ the
 An application that wants to invoke a kernel function (e.g., the
 \lstinline{read}
 system call in xv6) must to
-transition to the kernel.  Processors provide a special instruction that switches the
-processor from user mode to kernel mode and enters the kernel at an entry point
+transition to the kernel.  CPUs provide a special instruction that switches the
+CPU from user mode to kernel mode and enters the kernel at an entry point
 specified by the kernel.  (RISC-V
 provides the 
 \indexcode{ecall}
-instruction for this purpose.)  Once the processor has switched to kernel mode,
+instruction for this purpose.)  Once the CPU has switched to kernel mode,
 the kernel can then validate the arguments of the system call, decide whether
 the application is allowed to perform the requested operation, and then deny it
 or execute it.  It is important that the kernel control the entry point for
@@ -283,7 +286,7 @@ translates (or ``maps'') a
 \indextext{virtual address}
 (the address that an RISC-V instruction manipulates) to a
 \indextext{physical address}
-(an address that the processor chip sends to main memory).
+(an address that the CPU chip sends to main memory).
 
 \begin{figure}[t]
 \center
@@ -376,7 +379,7 @@ mechanisms that show up in this overview in more detail.
 When the RISC-V development board powers on, it initializes
 itself and runs a program boot loader which is stored in read-only
 memory.  The boot loader loads the xv6 kernel into memory.  Then, in
-machine mode, the processor executes xv6 starting at
+machine mode, the CPU executes xv6 starting at
 \indexcode{start}
 \lineref{kernel/entry.S:/^_entry/}.
 Xv6 starts with the RISC-V paging hardware disabled:
@@ -420,10 +423,10 @@ prepares for running in kernel mode.
 To enter kernel mode, RISC-V
 provides the instruction
 \lstinline{mret}.
-This instruction assumes that the processor
+This instruction assumes that the CPU
 entered machine mode from supervisor mode.
 \lstinline{mstart}
-sets up the processor to pretend
+sets up the CPU to pretend
 that machine mode was entered
 from supervisor mode:
 it sets the previous privilege mode to
@@ -516,7 +519,7 @@ servers, and have seen wide deployment in embedded settings.
 Most operating systems have adopted the process concept, and most
 processes look similar to xv6's.  Modern operating systems, however,
 support several threads within a process, to allow a single process to
-exploit multicore processors.  Supporting multiple threads in a
+exploit multiple CPUs.  Supporting multiple threads in a
 process involves quite a bit of machinery that xv6 doesn't have,
 including potential interface changes (e.g., Linux's
 \lstinline{clone},
