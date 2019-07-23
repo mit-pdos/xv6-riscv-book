@@ -90,7 +90,7 @@ kernel can time-slice among multiple running processes.  The choice of
 100 times per second allows for decent interactive performance while
 not swamping the CPU with handling interrupts.
 
-The RISC-V processor on which xv6 is running has a \textit{Core Local
+RISC-V on which xv6 is running has a \textit{Core Local
   Interruptor (CLINT)}\index{Core Local Interruptor (CLINT)}~\cite{u54}, which
 can be programmed to generate timer interrupts.  The CLINT is a
 memory-mapped device located at \lstinline{0x02000000} (see
@@ -106,9 +106,9 @@ the clock value will be as large as the value in
 
 \section{Entering and exiting the kernel}
 
-The RISC-V processor has minimal mechanism for handling interrupts,
+RISC-V has minimal mechanism for handling interrupts,
 and much of the work of entering and leaving the kernel is done by the kernel
-itself.  The RISC-V processor has registers (\indexcode{mtvec} and
+itself.   RISC-V has registers (\indexcode{mtvec} and
 \indexcode{stvec}) to specify the address of the \indextext{interrupt
   handler} in machine mode or supervisor mode, respectively.  It also
 has registers (\indexcode{mip} and \indexcode{sip}) to specify which
@@ -141,7 +141,7 @@ kernel-specific address, but still running with the user page table.
 It is up to the kernel to complete the rest of the switch to kernel
 mode: switch page tables, switch stacks, etc.
 
-To return from an interrupt to the original mode, the RISC-V processor
+To return from an interrupt to the original mode, RISC-V
 provides the instructions \indexcode{mret} and
 \indexcode{sret}. \lstinline{sret} sets the program counter to the
 value stored in \lstinline{sepc} and the mode to previous mode stored
@@ -196,9 +196,9 @@ needs some scratch space. When the interrupt handler starts it cannot
 use any register because those contain values of the interrupted code
 and they must be saved before the interrupt handler can use them. But,
 to save them, it needs a register.  To handle this conundrum, the
-RISC-V processor provides a scratch register for machine and kernel
+RISC-V provides a scratch register for machine and kernel
 mode: \indexcode{mscratch} and \indexcode{sscratch}, respectively.
-The RISC-V processor also has an instruction to exchange the content
+RISC-V also has an instruction to exchange the content
 of a register with the content of the scratch register. After
 executing this instruction, the register will contain the address of
 the scratch area and the scratch register the content of the
@@ -210,10 +210,10 @@ also for exceptions and system calls: one can think off exceptions and
 system calls as interrupts induced by software.  When the CPU
 cannot execute an instruction in user space (e.g., dividing by zero),
 the CPU switches to the interrupt handler in kernel mode.  To
-switch to kernel mode for a system call, the RISC-V processor provides
+switch to kernel mode for a system call, RISC-V provides
 an instruction \indexcode{ecall}, which transfers control to the
 interrupt handler.  To allow the interrupt handler to tell which
-interrupt happened, the RISC-V processor provides a register
+interrupt happened, RISC-V provides a register
 \indexcode{scause}, which specifies the cause of the interrupt (e.g.,
 timer interrupt, illegal instruction, system call).
 
