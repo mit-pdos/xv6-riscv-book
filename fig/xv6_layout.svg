@@ -504,7 +504,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title />
+        <dc:title></dc:title>
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -1520,5 +1520,15 @@
          x="334.13846"
          id="tspan258"
          sodipodi:role="line">RW-</tspan></text>
+    <path
+       inkscape:connector-curvature="0"
+       id="path266"
+       d="M 333.3791,344.90872 C 525.54226,517.843 525.54226,517.843 525.54226,517.843 v 0 0 0"
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:1.4566946;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:1.45669465, 2.91338928;stroke-dashoffset:0;stroke-opacity:1;marker-end:url(#marker13584)" />
+    <path
+       inkscape:connector-curvature="0"
+       id="path268"
+       d="m 333.29426,359.55156 c 192.25438,166.26492 192.25438,166.26492 192.25438,166.26492 v 0 0 0"
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:1.42866802;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:1.42866808, 2.85733611;stroke-dashoffset:0;stroke-opacity:1;marker-end:url(#marker13584)" />
   </g>
 </svg>
