@@ -305,6 +305,21 @@ table, and the call to \lstinline{kvminithart} reloads the kernel page
 table into \texttt{satp} so that the hardware knows about the new
 PTEs.
 
+The RISC-V hardware caches page table entries in a
+\indextext{Translation Look-aside Buffer (TLB)}, and when xv6 changes
+a page table, it must tell the CPU to invalidate corresponding
+cached TLB entries.  If it didn't,
+then at some point later the TLB might
+use an old cached mapping, pointing to a physical page that in the meantime
+has been allocated to another process, and as a result, a process
+might be able to scribble on some other process's memory.  The RISC-V
+has an instruction \indexcode{sfence.vma} that causes subsequent memory
+references to observe any previously modified PTEs.
+xv6 executes {\tt sfence.vma} in {\tt kvminithart}  before reloading the 
+\texttt{satp} register, and in the trampoline code that
+switches to a user page table before returning to user space
+\lineref{kernel/trampoline.S:/sfence.vma/}.
+
 \section{Physical memory allocation}
 
 The kernel must allocate and free physical memory at run-time for
@@ -324,6 +339,7 @@ freed page to the list.
 \section{Code: Physical memory allocator}
 %% 
 
+The allocator resides in {\tt kalloc.c} \lineref{kernel/kalloc.c:1}.
 The allocator's data structure is a
 \textit{free list}
 of physical memory pages that are available
@@ -357,17 +373,13 @@ calls
 to initialize the allocator
 \lineref{kernel/kalloc.c:/^kinit/}.
 \lstinline{kinit}
-enables locking and arranges for more memory to be allocatable.
-\lstinline{main}
+initializes the free list to hold
+every page between the end of the kernel and {\tt PHYSTOP}.
+\lstinline{xv6}
 ought to determine how much physical
 memory is available by parsing configuration information.
 Instead xv6 assumes that the machine has
-224 megabytes
-(\lstinline{PHYSTOP})
-of physical memory, and uses all the memory between the end of the kernel
-and
-\indexcode{PHYSTOP}
-as the initial pool of free memory.
+128 megabytes of RAM.
 \lstinline{kinit}
 calls
 \indexcode{freerange}
@@ -409,8 +421,9 @@ to read garbage instead of the old valid contents;
 hopefully that will cause such code to break faster.
 Then
 \lstinline{kfree}
-casts
-\lstinline{v}
+prepends the page to the free list:
+it casts
+\lstinline{pa}
 to a pointer to
 \lstinline{struct}
 \lstinline{run},
@@ -424,7 +437,7 @@ removes and returns the first element in the free list.
 \section{Process address space}
 
 Each process has a separate page table, and when xv6 switches between
-processes, xv6 also changes page tables.
+processes, it also changes page tables.
 As shown in
 Figure~\ref{fig:as},
 a process's user memory starts at virtual address
@@ -433,11 +446,8 @@ zero and can grow up to
 \lineref{kernel/riscv.h:/MAXVA/},
 allowing a process to address in principle 256 Gigabyte of memory.
 
-When a process asks xv6 for more memory,
-xv6 first finds free physical pages in the area
-labeled ``Free memory'', the area above the end of the data segment
-of the kernel and below
-\texttt{PHYSTOP}.
+When a process asks xv6 for more user memory,
+xv6 first uses {\tt kalloc} to allocate physical pages.
 It then adds PTEs to the process's page table that point
 to the new physical pages.
 xv6 sets the
@@ -459,8 +469,8 @@ pages of physical memory, so that each process has private user
 memory.  Second, each process sees its memory as having contiguous
 virtual addresses starting at zero, while the process's physical
 memory can be non-contiguous.  Third, the kernel maps a page with
-trampoline code and a page mapping the trapframe also at the top of
-address space of user processes, thus a single page of physical memory
+trampoline code at the top of
+the user address space, thus a single page of physical memory
 shows up in all address spaces.
 
 \begin{figure}[t]
@@ -476,8 +486,8 @@ page, and is shown with the initial contents as created by exec.
 Strings containing the command-line arguments, as well as an array of
 pointers to them, are at the very top of the stack.  Just under that
 are values that allow a program to start at \lstinline{main} as if the
-function call \lstinline{main(argc}, \lstinline{argv)} had just
-started.
+function \lstinline{main(argc}, \lstinline{argv)} had just
+been called.
 
 To detect a user stack overflowing the allocated stack memory, xv6
 places an invalid guard page right below the stack. If the user stack
@@ -493,37 +503,24 @@ is the system call for a process to shrink or grow its memory. The system
 call is implemented by the function
 \lstinline{growproc}
 \lineref{kernel/proc.c:/^growproc/}.
-If
-\lstinline{n}
-is postive,
-\lstinline{growproc}
-allocates one or more physical pages and maps them at the top of the process's
-address space.  If
-\lstinline{n}
-is negative,
-\lstinline{growproc}
-unmaps one or more pages from the process's address space and frees the corresponding
-physical pages.
-To make these changes,
-xv6 modifies the process's page table.  The process's page table is stored in
-memory, and so the kernel can update the table with ordinary assignment
-statements, which is what
-\lstinline{allocuvm}
-and
-\lstinline{deallocuvm}
-do.
+\lstinline{growproc} calls \lstinline{uvmalloc} or
+\lstinline{uvmdealloc}, depending on whether \lstinline{n} is postive
+or negative.
+\lstinline{uvmalloc}
+\lineref{kernel/vm.c:/^uvmalloc/}
+allocates physical memory with {\tt kalloc},
+and adds PTEs to the user page table with {\tt mappages}.
+\lstinline{uvmdealloc} calls
+{\tt unmappages}
+\lineref{kernel/vm.c:/^unmappages/},
+which uses {\tt walk} to find PTEs and
+{\tt kfree} to free the physical memory they refer to.
 
-The RISC-V hardware caches page table entries in a
-\indextext{Translation Look-aside Buffer (TLB)}, and when xv6 changes
-the page tables, it must invalidate the cached entries.  If it didn't
-invalidate the cached entries, then at some point later the TLB might
-use an old mapping, pointing to a physical page that in the mean time
-has been allocated to another process, and as a result, a process
-might be able to scribble on some other process's memory.  The RISC-V
-has an instruction \indexcode{sfence.vma} that promises that memory
-references after this instruction will observe the new translations.
-xv6 calls this instruction before reloading the register
-\texttt{satp}.
+xv6 uses a process's page table not just to tell the hardware how to
+map user virtual addresses, but also as the only record of which
+physical memory pages are allocated to that process. That is the
+reason why freeing user memory (in {\tt unmappages}) requires
+examination of the user page table.
 
 %% 
 \section{Code: exec}
@@ -728,9 +725,10 @@ Most operating systems make far more sophisticated
 use of paging than xv6; for example, xv6 lacks demand
 paging from disk, copy-on-write fork, shared memory,
 lazily-allocated pages,
-and automatically extending stacks.
+automatically extending stacks, and memory-mapped files.
 
-The RISC-V support physical memory protection in machine mode, but xv6 doesn't use it.
+RISC-V supports protection at the level of physical addresses,
+but xv6 doesn't use that feature.
 
 On machines with lots of memory
 it might make sense to use
@@ -739,9 +737,14 @@ Small pages make sense
 when physical memory is small, to allow allocation and page-out to disk
 with fine granularity.
 For example, if a program
-uses only 8 kilobytes of memory, giving it a 4 megabytes physical page is wasteful.
+uses only 8 kilobytes of memory, giving it a whole 4-megabyte super-page
+of physical memory is wasteful.
 Larger pages make sense on machines with lots of RAM,
 and may reduce overhead for page-table manipulation.
+
+The xv6 kernel's lack of a {\tt malloc}-like allocator that can
+provide memory for small objects prevents the kernel from using
+sophisticated data structures that would require dynamic allocation.
 
 Memory allocation was a hot topic a long time ago, the basic problems being
 efficient use of limited memory and
@@ -761,7 +764,7 @@ ones.
 \item Parse RISC-V's device tree to find the amount of physical memory
 the computer has.
 
-\item Write a user program that grows its address space with 1 byte by calling
+\item Write a user program that grows its address space by one byte by calling
 \lstinline{sbrk(1)}.
 Run the  program and investigate the page table for the program before the call
 to
