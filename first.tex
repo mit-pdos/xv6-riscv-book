@@ -259,6 +259,49 @@ Thus, the xv6 kernel interface corresponds to the operating system
 interface, and the kernel implements the complete operating system.  Since 
 xv6 doesn't provide many services, its kernel is smaller than some
 microkernels, but conceptually xv6 is monolithic.
+
+\section{Code: xv6 organization}
+
+\begin{figure}[t]
+\center
+\begin{tabular}{l|l}
+{\bf File} & {\bf Description} \\
+\midrule
+bio.c & Disk block cache for the file system. \\
+console.c & Formatted console I/O. \\
+entry.S & Very first boot instructions. \\
+exec.c & exec() system call. \\
+file.c & File descriptor support. \\
+fs.c & File system. \\
+kalloc.c & Physical page allocator. \\
+kernelvec.S & Handle traps from kernel, and timer interrupts. \\
+log.c & File system logging and crash recovery. \\
+main.c & Control initialization of other modules during boot. \\
+pipe.c & Pipes. \\
+plic.c & RISC-V interrupt controller. \\
+proc.c & Processes and scheduling. \\
+sleeplock.c & Locks that yield the CPU. \\
+spinlock.c & Locks that don't yield the CPU. \\
+start.c & Early machine-mode boot code. \\
+string.c & C string and byte-array library. \\
+swtch.S & Thread switching. \\
+syscall.c & Dispatch system calls to handling function. \\
+sysfile.c & File-related system calls. \\
+sysproc.c & Process-related system calls. \\
+trampoline.S & Assembly code to switch between user and kernel. \\
+trap.c & C code to handle and return from traps and interrupts. \\
+uart.c & Low-level serial-port console code. \\
+virtio\_disk.c & Disk device driver. \\
+vm.c & Manage page tables and address spaces. \\
+\end{tabular}
+\caption{Xv6 kernel source files.}
+\label{fig:source}
+\end{figure}
+
+The xv6 kernel source is in the {\tt kernel/} sub-directory. The
+source is divided into files, following a rough notion of modularity;
+Figure~\ref{fig:source} lists the files.
+
 %% 
 \section{Process overview}
 %% 
