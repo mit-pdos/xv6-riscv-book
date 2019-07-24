@@ -10,20 +10,16 @@
 \label{CH:MEM}
 
 Page tables are the mechanism through which the operating system
-provides each process with its own private memory.  Page tables
-determine what memory addresses mean.  They allow xv6 to multiplex
-the address spaces of different processes onto a single physical
-memory, and to protect the memories of different processes.  The level
-of indirection provided by page tables also allows many neat tricks.
+provides each process with its own private address space and memory.
+Page tables determine what memory addresses mean, and what parts of
+physical memory can be accessed. They allow xv6 to isolate different
+process's address spaces and to multiplex them onto a single physical
+memory. Page tables also provide a level of indirection that allows xv6 to
+perform a few tricks: mapping the same memory (a trampoline page) in
+several address spaces, and guarding kernel and user stacks with an
+unmapped page. The rest of this chapter explains the page tables that
+the RISC-V hardware provides and how xv6 uses them.
 
-xv6 uses page tables primarily to multiplex address spaces and to
-protect memory.  It also uses a few simple page-table tricks: mapping
-the same memory (a trampoline page) in several address spaces, and
-guarding kernel and user stacks with an unmapped page.  The rest of
-this chapter explains the page tables that the RISC-V hardware
-provides and how xv6 uses them.  Compared to a real-world operating
-system, xv6's design is restrictive, but it does illustrate the key
-ideas.
 %% 
 \section{Paging hardware}
 %% 
@@ -73,11 +69,12 @@ Figure~\ref{fig:riscv_pagetable},
 the actual translation happens in three steps.  A page table is stored
 in physical memory as a three-level tree.
 The root of the tree is a
-4096-byte page that contains 512 PTEs, which contain the physical
-addresses for pages in the next level of the tree.  Each of those
+4096-byte page-table page that contains 512 PTEs, which contain the physical
+addresses for page-table pages in the next level of the tree.  Each of those
 pages contains 512 PTEs for the final level in the tree.  The paging
 hardware uses the top 9 bits of the 27 bits to select a PTE in the
-root page, the middle 9 bits to select a PTE in next level of the
+root ptable-table page, the middle 9 bits to select a PTE in a page-table page in the
+next level of the
 tree, and the bottom 9 bits to select the final PTE.
 
 If any of the three PTEs required to translate an address
@@ -110,7 +107,7 @@ The flags and all other page hardware related structures are defined in
 \fileref{kernel/riscv.h}
 
 To tell the hardware to use a page table, the kernel must
-write the physical address of the root page into the 
+write the physical address of the root page-table page into the 
 \texttt{satp}\index{satp@\lstinline{satp}} register.
 Each CPU has its own
 \texttt{satp}.
@@ -133,7 +130,8 @@ addresses.
 \begin{figure}[t]
 \center
 \includegraphics[scale=0.7]{fig/xv6_layout.pdf}
-\caption{Layout of the kernel address space.}
+\caption{Layout of the kernel address space. {\sf \small{RWX}}
+refer to PTE read, write, and execute permissions.}
 \label{fig:xv6_layout}
 \end{figure}
 %% 
@@ -160,40 +158,42 @@ memory locations, and the board routes those reads and writes to the
 appropriate devices.  Chapter~\ref{CH:TRAP} explains
 how xv6 interacts with devices.
 
-The kernel uses an identity mapping for most virtual addresses.  For,
-example, the kernel itself is located at
-\lstinline{KERNBASE}
-in the virtual address space and in physical memory.  Same for all
-devices.   The exceptions are:
+The kernel uses an identity mapping for most virtual addresses; that
+is, most of the kernel's address space is ``direct-mapped.'' For
+example, the kernel itself is located at \lstinline{KERNBASE} in both
+the virtual address space and in physical memory. This direct mapping
+simplifies kernel code that needs to both read or write a page (with
+its virtual address) and also manipulate a PTE that refers to the same
+page (with its physical address). There are a couple of virtual
+addresses that aren't direct-mapped:
 
 \begin{itemize}
   
-\item The trampoline page. It is mapped at the top of virtual
+\item The trampoline page. It is mapped at the top of the virtual
   address space; user page tables have this same mapping.  In
-  chapter~\ref{CH:TRAP}, we will discuss the role of the trampoline
+  Chapter~\ref{CH:TRAP}, we will discuss the role of the trampoline
   page, but we see here an interesting use case of page tables; a
   physical page (holding the trampoline code) is mapped twice in the
   virtual address space of the kernel: once at top of the virtual
   address space and once in the kernel text.
 
 \item The kernel stack pages.  Each process has its own kernel stack,
-  which is mapped high so that below it xv6 can map a \indextext{guard
-    page}.  The guard page's mapping is invalid (i.e.,
-  \lstinline{PTE_V} is not set), which ensures that if the kernel runs
-  off a kernel stack, it will cause a fault and the kernel will panic.
-  Without a guard page the stack could grow down into kernel data,
-  which could result in strange bugs that are difficult to track down.
+  which is mapped high so that below it xv6 can leave an unmapped \indextext{guard
+    page}.  The guard page's PTE is invalid (i.e.,
+  \lstinline{PTE_V} is not set), which ensures that if the kernel overflows
+  a kernel stack, it will likely cause a fault and the kernel will panic.
+  Without a guard page an overflowing stack would overwrite other kernel memory,
+  resulting in incorrect operation. A panic crash is preferable.
 
 \end{itemize}
 
-The kernel stacks themselves are located in kernel memory and also
-accessible to the kernel through a direct-mapped address.  We see
-another example of a page mapped into two locations in the kernel
-virtual address space.  You might wonder why not unmap the page below
-stack in kernel memory in Figure~\ref{fig:xv6_layout}, instead of
-doing it in high memory. The reason is that unmapping a kernel-memory
-page would result in wasting one page of physical memory for each
-kernel stack.
+While the kernel uses its stacks via the high-memory mappings, they
+are also accessible to the kernel through a direct-mapped address. An
+alternate design might have just the direct mapping, and use the
+stacks at the direct-mapped address. In that arrangement, however,
+providing guard pages would involve unmapping virtual addresses that
+would otherwise refer to physical memory, which would then be hard to
+use.
 
 The kernel maps the pages for the trampoline and the kernel text with
 the permissions
@@ -205,7 +205,7 @@ The kernel maps the other pages with the permissions
 \lstinline{PTE_R}
 and
 \lstinline{PTE_W},
-so that it read and write the memory in those pages.
+so that it can read and write the memory in those pages.
 The mappings for the guard pages are invalid.
 
 
@@ -219,7 +219,7 @@ calls
 \lineref{kernel/vm.c:/^kvminit/}
 to create the kernel page table.
 \lstinline{Kvminit}
-first allocates a page of memory to hold the page directory.
+first allocates a page of memory to hold the root page-table page.
 Then it calls
 \indexcode{kmap}
 to install the translations that the kernel needs.
@@ -245,8 +245,8 @@ calls
 \indexcode{walk}
 to find the address of the PTE for that address.
 It then initializes the PTE to hold the relevant physical page
-number, the desired permissions (e.g.,
-\lstinline{PTE_W}
+number, the desired permissions 
+(\lstinline{PTE_W},
 \lstinline{PTE_X},
 and/or
 \lstinline{PTE_R}),
@@ -257,13 +257,13 @@ to mark the PTE as valid
 
 \indexcode{walk}
 \lineref{kernel/vm.c:/^walk/}
-mimics the actions of the RISC-V paging hardware as it
+mimics the RISC-V paging hardware as it
 looks up the PTE for a virtual address (see
 Figure~\ref{fig:riscv_pagetable}).
 \lstinline{walk}
-traverses the 3-level page table down 9 bits at the time.
-It uses the level's 9 bits of the virtual address to find
-the PTE
+descends the 3-level page table 9 bits at the time.
+It uses each level's 9 bits of virtual address to find
+the PTE of either the next-level page table or the final page
 \lineref{kernel/vm.c:/pte.=..pagetable/}.
 If the PTE isn't valid, then
 the required page hasn't yet been allocated;
@@ -271,16 +271,24 @@ if the
 \lstinline{alloc}
 argument is set,
 \lstinline{walk}
-allocates it and puts its physical address in the PTE.
-It returns the PTE in lowest layer in the tree
+allocates a new page-table page and puts its physical address in the PTE.
+It returns the address of the PTE in lowest layer in the tree
 \lineref{kernel/vm.c:/return..pagetable/}.
+
+The above code depends on physical memory being direct-mapped into the
+kernel virtual address space. For example, as \lstinline{walk} descends levels
+of the page table, it pulls the (physical) address of the
+next-level-down page table from a PTE \lineref{kernel/vm.c:/pagetable.=..pa.*E2P/},
+and then uses that address as a
+virtual address to fetch the PTE at the next level down
+\lineref{kernel/vm.c:/t..pte.=..paget/}.
 
 \indexcode{main}
 calls
 \indexcode{kvminithart}
 \lineref{kernel/vm.c:/^kvminithart/}
 to install the kernel page table.
-It writes the physical address of the root page
+It writes the physical address of the root page-table page
 into the register
 \texttt{satp}.
 After this the CPU will translate addresses using the kernel
@@ -301,7 +309,7 @@ PTEs.
 
 The kernel must allocate and free physical memory at run-time for
 page tables,
-process user memory,
+user memory,
 kernel stacks,
 and pipe buffers.
 
