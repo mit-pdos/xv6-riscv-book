@@ -309,7 +309,7 @@ usages in the shell for I/O redirection.  To avoid the wastefulness of
 creating a duplicate process and then immediately replacing it,
 operating kernels optimize the implementation of
 \lstinline{fork}
-for this use case by using virtual-memory techniques such as copy-on-write.
+for this use case by using virtual memory techniques such as copy-on-write.
 
 Xv6 allocates most user-space memory
 implicitly:
@@ -1013,3 +1013,16 @@ inter-process communication.
 After studying xv6, you should be able to
 look at other, more complex operating systems
 and see the concepts underlying xv6 in those systems as well.
+
+%% 
+\section{Exercises}
+%%
+
+\begin{enumerate}
+
+\item Write a program that uses UNIX system calls to
+``ping-pong'' a byte between two processes over a pair
+of pipes, one for each direction. Measure the
+program's performance, in exchanges per second.
+
+\end{enumerate}

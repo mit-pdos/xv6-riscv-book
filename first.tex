@@ -45,7 +45,8 @@ Unix operating systems.  This chapter also provides an overview of an
 xv6 process, which is the unit of isolation in xv6, and the
 creation of the first process when xv6 starts running.
 
-Xv6 runs on a RISC-V development board, and much of its low-level
+Xv6 runs on multi-core RISC-V microprocessor,
+and much of its low-level
 functionality (for example, its process implementation) is specific to
 RISC-V.  RISC-V is a 64-bit CPU, and xv6 is written in ``LP64'' C,
 which means long (L) and pointers (P) in the C programming language
@@ -59,11 +60,15 @@ architecture~\cite{riscv:priv} are the official specifications.
 
 This text generally refers to the hardware element that executes a
 computation with the term \indextext{CPU}, an acronym for central
-processing unit.  Other documentation (e.g., RISC-V specifications)
-also uses the words processor, core, and hart instead of CPU.  Related
-terms are \indextext{multicore processor} (a single chip with several
-CPUs on it) and \indextext{multiprocessor} (a computer board with
-several processor chips).
+processing unit.  Other documentation (e.g., the RISC-V specification)
+also uses the words processor, core, and hart instead of CPU.
+Xv6 expects \indextext{multi-core} RISC-V hardware; that is,
+multiple CPUs that share memory but execute independent
+programs in parallel.
+This text sometimes uses the term
+\indextext{multiprocessor} as a synonym for multi-core,
+though the former term can also refer to a computer board with
+several distinct processor chips.
 
 %% 
 \section{Abstracting physical resources}
@@ -436,7 +441,7 @@ by writing
 address into
 the register
 \lstinline{mepc},
-disables virtual memory in supervisor mode
+disables virtual address translation in supervisor mode
 by writing
 \lstinline{0}
 into the page-table register
