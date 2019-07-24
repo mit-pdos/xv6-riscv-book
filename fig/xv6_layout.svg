@@ -443,7 +443,7 @@
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
      inkscape:zoom="1.1"
-     inkscape:cx="407.96295"
+     inkscape:cx="409.78113"
      inkscape:cy="378.16264"
      inkscape:document-units="mm"
      inkscape:current-layer="layer1"
@@ -1093,11 +1093,6 @@
        d="M 527.78269,534.95626 H 727.39871"
        style="fill:none;stroke:#000000;stroke-width:0.99999994px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
     <path
-       style="fill:none;stroke:#000000;stroke-width:0.99999994px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       d="M 529.04356,486.04322 H 728.65958"
-       id="path270"
-       inkscape:connector-curvature="0" />
-    <path
        style="fill:none;stroke:#000000;stroke-width:0.99921262;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#Arrow1Mend)"
        d="m 115.28161,451.90562 h 17.71654"
        id="path272"
@@ -1216,14 +1211,14 @@
     <text
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;line-height:0%;font-family:'Bitstream Vera Sans';fill:#000000;fill-opacity:1;stroke:none"
-       x="580.89349"
-       y="514.00696"
+       x="562.71167"
+       y="498.5524"
        id="text2181"><tspan
          sodipodi:role="line"
-         x="580.89349"
-         y="514.00696"
+         x="562.71167"
+         y="498.5524"
          id="tspan2179"
-         style="font-size:14px;line-height:1.25">Kernel</tspan></text>
+         style="font-size:14px;line-height:1.25">Physical memory</tspan></text>
     <path
        style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:1, 3;stroke-dashoffset:0;stroke-opacity:1;marker-end:url(#marker2193)"
        d="m 332.32283,639.24421 c 194.88189,0 194.88189,0 194.88189,0 v 0"
@@ -1438,17 +1433,6 @@
          x="338.32693"
          id="tspan240"
          sodipodi:role="line">RW-</tspan></text>
-    <text
-       id="text246"
-       y="473.52264"
-       x="559.97437"
-       style="font-style:normal;font-weight:normal;line-height:0%;font-family:'Bitstream Vera Sans';fill:#000000;fill-opacity:1;stroke:none"
-       xml:space="preserve"><tspan
-         style="font-size:14px;line-height:1.25"
-         id="tspan244"
-         y="473.52264"
-         x="559.97437"
-         sodipodi:role="line">Free memory</tspan></text>
     <path
        style="fill:none;stroke:#000000;stroke-width:0.99999994px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
        d="M 132.99815,360.04732 H 332.61417"
@@ -1536,5 +1520,15 @@
          x="334.13846"
          id="tspan258"
          sodipodi:role="line">RW-</tspan></text>
+    <path
+       inkscape:connector-curvature="0"
+       id="path266"
+       d="M 333.3791,344.90872 C 525.54226,517.843 525.54226,517.843 525.54226,517.843 v 0 0 0"
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:1.4566946;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:1.45669465, 2.91338928;stroke-dashoffset:0;stroke-opacity:1;marker-end:url(#marker13584)" />
+    <path
+       inkscape:connector-curvature="0"
+       id="path268"
+       d="m 333.29426,359.55156 c 192.25438,166.26492 192.25438,166.26492 192.25438,166.26492 v 0 0 0"
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:1.42866802;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:1.42866808, 2.85733611;stroke-dashoffset:0;stroke-opacity:1;marker-end:url(#marker13584)" />
   </g>
 </svg>
