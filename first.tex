@@ -516,19 +516,24 @@ a process threads share.
 %%
 
 \begin{enumerate}
-  
-\item Set a breakpoint at \lstinline{swtch}.  Single step with gdb's
-\lstinline{stepi}
-through the ret to
-\lstinline{forkret},
-then use gdb's
-\lstinline{finish}
-to proceed to
-\lstinline{usertrapret},
-then
-\lstinline{stepi}
-until you get to
-\lstinline{initcode} 
-at virtual address zero.
+
+\item You can use gdb to observe the very first kernel-to-user
+transition. Run {\tt make qemu-gdb}.
+In another window, in the same directory, run {\tt gdb}.
+Type the gdb command {\tt break *0x3ffffff07e}, which sets
+a breakpoint at the {\tt sret} instruction in the kernel
+that jumps into user space. Type the {\tt continue} gdb command.
+gdb should stop at the breakpoint, about to
+execute {\tt sret}. Type {\tt stepi}. gdb should now
+indicate that it is executing at address 0x4, which is
+in user space at the start of {\tt initcode.S}.
+
+% break *0x3ffffff000
+% disas 0x3ffffff000,+8
+% set disassemble-next-line auto
+% x/i $pc
+% break *0x3ffffff07e
+% print/x $sepc
+% print/x $pc
 
 \end{enumerate}

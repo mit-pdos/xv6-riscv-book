@@ -165,7 +165,7 @@ each mode:
   machine mode and Xv6 does as little as possible: it resets the
   timer, sets a bit in the \lstinline{sip} register to indicate that
   there is an interrupt pending for the kernel, and returns from the
-  interrupt to whatever mode it came from (kernel or user mode).
+  interrupt to whatever mode it came from (supervisor or user mode).
   Because there is an interrupt pending for supervisor mode, the
   CPU immediately will take it.
 
@@ -275,7 +275,7 @@ CPU state because it may want to switch to running a different
 process.  In machine mode, xv6 just reprograms the CLINT and then
 resumes the interrupted code.
 
-The details are as follows. During start up xv6 stores the address of
+The details are as follows. During start-up xv6 stores the address of
 \lstinline{kernelvec} in the trap vector register for supervisor mode
 (the \lstinline{stvec} register)
 \lineref{kernel/trap.c:/trapinithart/}.  \lstinline{kernelvec} saves
