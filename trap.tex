@@ -1,15 +1,15 @@
 %    Sidebar about panic:
 % 	panic is the kernel's last resort: the impossible has happened and the
 % 	kernel does not know how to proceed.  In xv6, panic does ...
-\chapter{Traps, interrupts, and drivers}
+\chapter{Traps and device drivers}
 \label{CH:TRAP}
 
 There are three situations in which some event causes the CPU to set
 aside its ordinary sequential execution of instructions and forces a
 transfer of control to special code that handles the event. One
-situation is a system call, when a user program intentionally
-executes an instruction indicating that it wishes the kernel to
-perform a task for it. Another situation is an \indextext{exception}:
+situation is a system call, when a user program 
+executes the {\tt ecall} instruction to ask the kernel to do 
+something for it. Another situation is an \indextext{exception}:
 an instruction (user or kernel) does something illegal, such as divide
 by zero or use an invalid virtual address. The third situation is a
 device \indextext{interrupt}, when a device signals that it needs
@@ -32,7 +32,8 @@ from the trap; and the original code resumes where it left off.
 % device interrupts. The xv6 source does the same
 % (e.g. trap.c handles all three), as does the RISC-V
 % documentation (the stvec is supervisor trap vector,
-% and handles all three).
+% and handles all three). I'm using "interrupt" to refer
+% just to device interrupts.
 
 The xv6 kernel handles all traps. This is natural for system calls; it
 makes sense for interrupts since isolation demands that user processes
@@ -45,66 +46,26 @@ While commonality among the three trap types suggests that a kernel
 could handle all traps with a single code path, it turns out to be
 convenient to have a couple of distinct cases. As we will see, xv6 has
 separate paths for three cases: timer interrupts, non-timer traps from
-user space, and non-timer traps from kernel space.
+kernel space, and non-timer traps from user space.
 
 This chapter ends with a discussion of device drivers. Device handling
 is a different topic than traps, but is included here because the
 kernel's interaction with device hardware is often driven by
 interrupts.
 
-\section{RISC-V Interrupts}
-
-Devices on the RISC-V development board can generate interrupts, and
-xv6 must set up the hardware to handle these interrupts.  Devices
-usually interrupt in order to tell the kernel that some hardware event
-has occured, such as I/O completion.  Interrupts are usually optional
-in the sense that the kernel could instead periodically check (or
-\indextext{poll}) the device hardware to check for new
-events.  Interrupts are preferable to polling if the events are
-relatively rare, so that polling would waste CPU time.
-
-Devices can generate interrupts
-at any time.  There is hardware on the board to signal the CPU
-when a device needs attention (e.g., the user has typed a character on
-the keyboard). We must program the device to generate an interrupt, and
-arrange that a CPU receives the interrupt. 
-
-Let's look at the timer device and timer interrupts.  We would like
-the timer hardware to generate an interrupt, say, 10 times per
-second so that the kernel can track the passage of time and so the
-kernel can time-slice among multiple running processes.  The choice of
-10 times per second allows for decent interactive performance while
-not swamping the CPU with handling interrupts.
-
-RISC-V on which xv6 is running has a \textit{Core Local
-  Interruptor (CLINT)}\index{Core Local Interruptor (CLINT)}~\cite{u54}, which
-can be programmed to generate timer interrupts.  The CLINT is a
-memory-mapped device located at \lstinline{0x02000000} (see
-Fig.~\ref{fig:xv6_layout}), and can thus be programmed with ordinary
-load and store instructions. The CLINT exposes two registers relating
-to timer interrupts: {\tt MTIME} is a running count of the number of
-cycles (at a machine-dependent rate) since boot, and {\tt MTIMECMP}
-holds, per CPU, the future {\tt MTIME} value at which the CPU
-would like a timer interrupt.
-xv6 configures the CLINT in {\tt start.c}
-\lineref{kernel/start.c:/MTIMECMP/}
-to generate a timer interrupt
-every million cycles, which turns out to be about ten times
-per second. In a bit we'll discuss what happens when those
-interrupts arrive.
-
 \section{Entering and exiting the kernel}
 
-RISC-V has minimal mechanism for handling interrupts,
+The RISC-V hardware has minimal mechanism for handling traps,
 and much of the work of entering and leaving the kernel is done by the kernel
-itself.   RISC-V has registers (\indexcode{mtvec} and
-\indexcode{stvec}) to specify the address of the \indextext{interrupt
-  handler} in machine mode or supervisor mode, respectively.  It also
-has registers (\indexcode{mip} and \indexcode{sip}) to specify which
-interrupts are taken in machine mode and in supervisor mode,
+software.   RISC-V has registers (\indexcode{mtvec} and
+\indexcode{stvec}) to specify the address of the \indextext{trap
+  handler} in machine mode or supervisor mode, respectively.
+It also
+has registers (\indexcode{mie} and \indexcode{sie}) to specify which
+traps are taken in machine mode and in supervisor mode,
 respectively.  When a devices raises an interrupt, the CPU sees
 whether the interrupt must be handled in machine mode or supervisor
-mode by inspecting the \lstinline{ip} registers, switches to that
+mode by inspecting the \lstinline{ie} registers, switches to that
 mode, changes the program counter to the value in the mode's
 \lstinline{tvec} register, saves the value of the program counter at
 the time of interrupt in \indexcode{mepc} or in \indexcode{sepc}, and
@@ -112,8 +73,8 @@ saves the previous mode in \indexcode{mstatus} or \indexcode{sstatus}.
 
 It is important that the CPU performs all these steps in a
 single operation.  Consider if one of these steps were omitted: for
-example, the CPU didn't switch program counters.  Then, an
-interrupt may cause a switch from user mode to supervisor mode with an
+example, the CPU didn't switch program counters.  Then, a
+trap may cause a switch from user mode to supervisor mode with an
 entry point chosen by the user (i.e., namely the value of the
 user-controlled program counter).  This would allow the user program
 to run any kernel code of its choice, which allows the user program to
@@ -123,8 +84,8 @@ it is in supervisor mode it can write the \lstinline{satp} register.  It
 is thus important that the kernel specify the entry point, and not the
 user program.
 
-Note that the CPU doesn't switch page tables or stacks on an
-interrupt.  For example, an interrupt in user mode will switch the
+Note that the CPU doesn't switch page tables or stacks on a
+trap.  For example, a trap in user mode will switch the
 CPU to supervisor mode and change the program counter to a
 kernel-specific address, but still running with the user page table.
 It is up to the kernel to complete the rest of the switch to kernel
@@ -134,37 +95,39 @@ provides flexibility to software; for example, for certain code path
 it might not be necessary to switch page tables, and its performance
 can be avoided.
 
-To return from an interrupt to the original mode, RISC-V
+To return from a trap to the original mode, RISC-V
 provides the instructions \indexcode{mret} and
 \indexcode{sret}. \lstinline{sret} sets the program counter to the
 value stored in \lstinline{sepc} and the mode to previous mode stored
 in \lstinline{sstatus}. \lstinline{mret} performs the corresponding
 steps with m-registers.
 
-Xv6 mainly uses 2 privilege levels: supervisor and user mode.  Xv6
-programs the CPU to delegate all machine-mode interrupts to
+Xv6 mainly uses two privilege levels: supervisor and user mode.  Xv6
+programs the CPU to delegate all machine-mode traps to
 supervisor mode. Timer interrupts, however, must be handled in machine
-mode.  Thus, handling timer interrupts requires us to think about what
-the kernel must do in all three modes. xv6 has a different plan for
-each mode:
+mode.  Thus xv6 has three plans for traps:
 
 \begin{itemize}
   
-\item Interrupts in machine mode.  Only timer interrupts can happen in
-  machine mode and Xv6 does as little as possible: it resets the
-  timer, sets a bit in the \lstinline{sip} register to indicate that
-  there is an interrupt pending for the kernel, and returns from the
+\item Timer interrupts.  Timer interrupts can occur in user
+  or supervisor mode, and always switch to machine mode.
+  Because machine mode does not use the paging hardware,
+  xv6 restricts itself to a very simple timer interrupt handler.
+  It resets the
+  timer, sets a bit in the \lstinline{sip} register to ask
+  for a software interrupt to be delivered in supervisor mode,
+  and returns from the
   interrupt to whatever mode it came from (supervisor or user mode).
   Because there is an interrupt pending for supervisor mode, the
-  CPU immediately will take it.
+  CPU immediately will take it unless interrupts are disabled.
 
-\item Interrupts in supervisor mode.  This case is simple. xv6
+\item Traps in supervisor mode.  This case is simple. xv6
   is already in the kernel and there is no need to switch page
   tables. The kernel also has a valid stack, so Xv6 can immediately
-  call a C function to handle the interrupt.
+  call a C function to handle the trap.
 
-\item Interrupts in user mode. This case is challenging.  At the time
-  of the interrupt, the user program is running with user-level page
+\item Traps in user mode. This case is challenging.  At the time
+  of the trap, the user program is running with user-level page
   table and it will enter the kernel with that page table at a
   \textit{kernel-specified} virtual address. Furthermore, the kernel
   cannot use the stack of the user process to call a C function,
@@ -189,10 +152,10 @@ each mode:
 
 \end{itemize}
 
-A small hurdle in all three modes is that the interrupt handler often
-needs some scratch space. When the interrupt handler starts it cannot
+A small hurdle for trap handlers is that they often
+need some scratch space. When the trap handler starts it cannot
 use any register because those contain values of the interrupted code
-and they must be saved before the interrupt handler can use them. But,
+and they must be saved before the trap handler can use them. But,
 to save them, it needs a register.  To handle this conundrum,
 RISC-V provides a scratch register for machine and kernel
 mode: \indexcode{mscratch} and \indexcode{sscratch}, respectively.
@@ -200,29 +163,21 @@ RISC-V also has an instruction to exchange the content
 of a register with the content of the scratch register. After
 executing this instruction, the register will contain the address of
 the scratch area and the scratch register the content of the
-register. The interrupt handler can now use the register to save other
+register. The trap handler can now use the register to save other
 registers in the scratch area.
 
-This subsection has focused on interrupts, but the plan above works
-also for exceptions and system calls: one can think off exceptions and
-system calls as interrupts induced by software.  When the CPU
-cannot execute an instruction in user space (e.g., dividing by zero),
-the CPU switches to the interrupt handler in supervisor mode.  To
-switch to supervisor mode for a system call, RISC-V provides
-an instruction \indexcode{ecall}, which transfers control to the
-interrupt handler.  To allow the interrupt handler to tell which
-interrupt happened, RISC-V provides a register
-\indexcode{scause}, which specifies the cause of the interrupt (e.g.,
+The trap handling code needs to know why the trap occured.
+RISC-V provides a register
+\indexcode{scause}, which specifies the cause of the trap (e.g.,
 timer interrupt, illegal instruction, system call).
 
+\section{Code: timer interrupts}
 
-\section{Code: machine mode interrupts}
-
-By default all interrupts trap into machine mode.  xv6 programs
+By default the RISC-V executes all trap handlers in machine mode.  xv6 programs
 RISC-V to delegate all interrupts and exceptions to supervisor mode
 \linerefs{kernel/start.c:/w_medeleg/,/w_mideleg/}.
 Timer interrupts, however, must be received in machine
-mode. Therefore, xv6 programs the hardware to receive interrupts in
+mode. Therefore, xv6 programs the hardware to receive timer interrupts in
 machine mode: it stores into the \lstinline{mtvec} register the
 address to jump to on an interrupt \lineref{kernel/start.c:/w_mtvec/}
 and enables timer interrupts in the \lstinline{mie} register
@@ -256,13 +211,14 @@ idea of saving the CPU state to run some code, and then
 restoring the CPU state to resume the original code is a pattern
 we will see a few more times.
 
-\section{Code: supervisor mode interrupts}
+\section{Code: traps from supervisor mode}
 
-Handling interrupts in supervisor mode is similar to handling
-interrupts in machine mode.  The main difference is that xv6 saves all
-CPU state because it may want to switch to running a different
-process.  In machine mode, xv6 just reprograms the CLINT and then
-resumes the interrupted code.
+Exceptions and interrupts (other than the timer) can occur while
+executing in the kernel in supervisor mode. The hardware reacts by
+saving the {\tt pc} in {\tt sepc}, and jumping to an xv6 trap handler
+addressed by {\tt stvec}. At a high level, xv6 then pushes the current
+registers onto the current (kernel) stack, handles the trap, restores
+registers by popping them from the stack, and uses {\tt sret} to resume.
 
 The details are as follows. During start-up xv6 stores the address of
 \lstinline{kernelvec} in the trap vector register for supervisor mode
@@ -286,7 +242,7 @@ restores \lstinline{sepc} register and \lstinline{sstatus} register.
 pointer, and resumes at the addresses stored in \lstinline{sepc},
 which is the address of the instruction that was interrupted.
 
-\section{Code: user mode interrupts}
+\section{Code: traps from user mode}
 
 The function \lstinline{usertrapret}
 \lineref{kernel/trap.c:/usertrapret/} sets up the trampoline to leave
@@ -371,13 +327,6 @@ and kernel address space.  Finally, it calls \lstinline{usertrap} (its
 address is in \lstinline{t0}).  We are back in the kernel with a
 kernel page table and on a kernel stack, running C code.
 
-One good property of the code above is that it also works for system
-calls and exceptions.  If the user process wants to call a system call
-or executes an illegal instruction (e.g., dividing by zero), xv6 uses
-\lstinline{trampin} to enter the kernel, and \lstinline{usertrap} will
-be invoked in all three cases (i.e., for system calls, exceptions, and
-interrupts).
-
 \section{Code: C trap handler}
 
 The \lstinline{usertrap} function changes \lstinline{stvec} to the
@@ -386,8 +335,8 @@ when xv6 enables interrupts in supervisor mode, interrupts should go
 through \lstinline{kerneltrap}; there is no need to switch page tables
 and stacks. \lstinline{usertrap} next saves the \lstinline{sepc}
 because that register contains the instruction where the process
-should be resumed after completing the interrupt, exception, or system
-call.  If the user process entered the kernel to execute a system
+should be resumed after completing the trap.
+If the user process entered the kernel to execute a system
 call, the register \lstinline{scause} contains 8.  In that case, xv6
 adds 4 to \lstinline{p->tf->epc}, to skip the instruction that entered
 the kernel (\lstinline{ecall}) so that on return to user space the
@@ -405,8 +354,8 @@ variable \lineref{kernel/trap.c:/ticks\+\+/}, and call
 \indexcode{wakeup}.  The latter, as
 we will see in Chapter~\ref{CH:SCHED}, may make a process runnable.
 
-After completing the system call or handling an interrupt, xv6 yields
-the core to another process if the interrupt was a timer interrupt.
+After handling the trap, xv6 yields
+the core to another process if the trap was a timer interrupt.
 Otherwise, \lstinline{usertrap} exits the kernel and returns back to
 user space using \lstinline{usertrapret}, which was explained above.
 We have seen all the machinery to enter and leave the kernel.
@@ -577,6 +526,47 @@ and then call the real implementations.
 In Chapter~\ref{CH:MEM},
 \lstinline{sys_exec}
 uses these functions to get at its arguments.
+
+\section{RISC-V Device Interrupts}
+
+Devices on the RISC-V development board can generate interrupts, and
+xv6 must set up the hardware to handle these interrupts.  Devices
+usually interrupt in order to tell the kernel that some hardware event
+has occured, such as I/O completion.  Interrupts are usually optional
+in the sense that the kernel could instead periodically check (or
+\indextext{poll}) the device hardware to check for new
+events.  Interrupts are preferable to polling if the events are
+relatively rare, so that polling would waste CPU time.
+
+Devices can generate interrupts
+at any time.  There is hardware on the board to signal the CPU
+when a device needs attention (e.g., the user has typed a character on
+the keyboard). We must program the device to generate an interrupt, and
+arrange that a CPU receives the interrupt. 
+
+Let's look at the timer device and timer interrupts.  We would like
+the timer hardware to generate an interrupt, say, 10 times per
+second so that the kernel can track the passage of time and so the
+kernel can time-slice among multiple running processes.  The choice of
+10 times per second allows for decent interactive performance while
+not swamping the CPU with handling interrupts.
+
+RISC-V on which xv6 is running has a \textit{Core Local
+  Interruptor (CLINT)}\index{Core Local Interruptor (CLINT)}~\cite{u54}, which
+can be programmed to generate timer interrupts.  The CLINT is a
+memory-mapped device located at \lstinline{0x02000000} (see
+Fig.~\ref{fig:xv6_layout}), and can thus be programmed with ordinary
+load and store instructions. The CLINT exposes two registers relating
+to timer interrupts: {\tt MTIME} is a running count of the number of
+cycles (at a machine-dependent rate) since boot, and {\tt MTIMECMP}
+holds, per CPU, the future {\tt MTIME} value at which the CPU
+would like a timer interrupt.
+xv6 configures the CLINT in {\tt start.c}
+\lineref{kernel/start.c:/MTIMECMP/}
+to generate a timer interrupt
+every million cycles, which turns out to be about ten times
+per second. In a bit we'll discuss what happens when those
+interrupts arrive.
 
 \section{Drivers}
 
