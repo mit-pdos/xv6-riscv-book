@@ -28,13 +28,6 @@ executes appropriate handler code (e.g. a system call implementation
 or device driver); the kernel restores the saved state and returns
 from the trap; and the original code resumes where it left off.
 
-% I'm using "trap" to include system calls, exceptions, and
-% device interrupts. The xv6 source does the same
-% (e.g. trap.c handles all three), as does the RISC-V
-% documentation (the stvec is supervisor trap vector,
-% and handles all three). I'm using "interrupt" to refer
-% just to device interrupts.
-
 The xv6 kernel handles all traps. This is natural for system calls; it
 makes sense for interrupts since isolation demands that user processes
 not directly use devices, and because only the kernel has the state
@@ -45,44 +38,83 @@ offending program.
 While commonality among the three trap types suggests that a kernel
 could handle all traps with a single code path, it turns out to be
 convenient to have a couple of distinct cases. As we will see, xv6 has
-separate paths for three cases: timer interrupts, non-timer traps from
-kernel space, and non-timer traps from user space.
+separate paths for three cases: traps from kernel space, traps from
+user space, and timer interrupts.
 
 This chapter ends with a discussion of device drivers. Device handling
 is a different topic than traps, but is included here because the
 kernel's interaction with device hardware is often driven by
 interrupts.
 
-\section{Entering and exiting the kernel}
+\section{RISC-V trap machinery}
 
-The RISC-V hardware has minimal mechanism for handling traps,
-and much of the work of entering and leaving the kernel is done by the kernel
-software.   RISC-V has registers (\indexcode{mtvec} and
-\indexcode{stvec}) to specify the address of the \indextext{trap
-  handler} in machine mode or supervisor mode, respectively.
-It also
-has registers (\indexcode{mie} and \indexcode{sie}) to specify which
-traps are taken in machine mode and in supervisor mode,
-respectively.  When a devices raises an interrupt, the CPU sees
-whether the interrupt must be handled in machine mode or supervisor
-mode by inspecting the \lstinline{ie} registers, switches to that
-mode, changes the program counter to the value in the mode's
-\lstinline{tvec} register, saves the value of the program counter at
-the time of interrupt in \indexcode{mepc} or in \indexcode{sepc}, and
-saves the previous mode in \indexcode{mstatus} or \indexcode{sstatus}.
+RISC-V supports a number of control registers that the kernel uses to
+tell the CPU how to handle interrupts, and that the kernel can query
+to find out about an interrupt that has occured. The RISC-V documents
+contain the full story~\cite{riscv:priv}. {\tt riscv.h}
+\lineref{kernel/riscv.h:1} contains definitions that xv6 uses. Here's
+an outline of the most important registers:
 
-It is important that the CPU performs all these steps in a
-single operation.  Consider if one of these steps were omitted: for
-example, the CPU didn't switch program counters.  Then, a
-trap may cause a switch from user mode to supervisor mode with an
-entry point chosen by the user (i.e., namely the value of the
-user-controlled program counter).  This would allow the user program
-to run any kernel code of its choice, which allows the user program to
-break the isolation between user and kernel. For example, the user
-program can run the code to switch to the kernel page table, because
-it is in supervisor mode it can write the \lstinline{satp} register.  It
-is thus important that the kernel specify the entry point, and not the
-user program.
+\begin{itemize}
+
+\item {\bf stvec}: The kernel writes the address of its trap handler
+  here; the RISC-V jumps here to handle a trap.
+
+\item {\bf sepc}: When a trap occurs, RISC-V saves the program counter
+  here (since the {\tt pc} is then replaced with {\tt stvec}). The
+  {\tt sret} (return from trap) instruction copies {\tt sepc} to the
+  {\tt pc}. The kernel can write to {\tt sepc} to control where {\tt
+    sret} goes.
+
+\item {\bf scause}: The RISC-V puts a number here that describes
+the reason for the trap.
+
+\item {\bf sscratch}: The kernel places a value here that comes in
+  handy at the very start of a trap handler.
+
+\item {\bf sstatus}: The SIE bit controls whether device interrupts
+  are enabled. If the kernel clears SIE, the RISC-V will defer
+  device interrupts until the kernel sets SIE. The SPP bit
+  indicates whether a trap came from user mode or supervisor
+  mode, and controls to what mode {\tt sret} returns.
+
+\end{itemize}
+
+The above relate to interrupts handled in supervisor mode, and they
+cannot be read or written in user mode. There is an equivalent set of
+control registers for interrupts handled in machine mode; xv6 uses
+them only for the special case of timer interrupts.
+
+When it needs to raise a trap, the RISC-V hardware does the
+following:
+
+\begin{enumerate}
+
+\item If the trap is a device interrupt, and the {\tt sstatus} SIE bit
+  is clear, don't do anything.
+
+\item Copy the {\tt pc} to {\tt pc}.
+
+\item Save the current mode in the SPP bit in {\tt sstatus}.
+
+\item Set {\tt scause} to reflect the interrupt's cause.
+
+\item Set the mode to supervisor.
+
+\item Copy {\tt stvec} to the {\tt pc}.
+
+\item Start executing.
+
+\end{enumerate}
+
+It is important that the CPU performs all these steps atomically.
+Consider if one of these steps were omitted: for example, the CPU
+didn't switch program counters. Then, a trap could switch to
+supervisor mode while still running user instructions. Those user
+instructions could break the user/kernel isolation, for example by
+modifying the {\tt satp} register to point to a page table that
+allowed accessing all of physical memory. It is thus important that
+the kernel specify the trap entry point, and not the user program.
 
 Note that the CPU doesn't switch page tables or stacks on a
 trap.  For example, a trap in user mode will switch the
@@ -95,45 +127,27 @@ provides flexibility to software; for example, for certain code path
 it might not be necessary to switch page tables, and its performance
 can be avoided.
 
-To return from a trap to the original mode, RISC-V
-provides the instructions \indexcode{mret} and
-\indexcode{sret}. \lstinline{sret} sets the program counter to the
-value stored in \lstinline{sepc} and the mode to previous mode stored
-in \lstinline{sstatus}. \lstinline{mret} performs the corresponding
-steps with m-registers.
+\section{Low-level kernel trap handling}
 
-Xv6 mainly uses two privilege levels: supervisor and user mode.  Xv6
-programs the CPU to delegate all machine-mode traps to
-supervisor mode. Timer interrupts, however, must be handled in machine
-mode.  Thus xv6 has three plans for traps:
+Because the RISC-V hardware has minimal mechanism for handling traps,
+much of the work of entering and leaving the kernel is done by kernel
+software. The first stage of trap handling is done in assembly code to
+set up an environment in which it is safe to run C code, and then the
+assembly code jumps to C code that figures how how to react to the
+trap. There are two main cases (again ignoring timer interrupts):
 
 \begin{itemize}
-  
-\item Timer interrupts.  Timer interrupts can occur in user
-  or supervisor mode, and always switch to machine mode.
-  Because machine mode does not use the paging hardware,
-  xv6 restricts itself to a very simple timer interrupt handler.
-  It resets the
-  timer, sets a bit in the \lstinline{sip} register to ask
-  for a software interrupt to be delivered in supervisor mode,
-  and returns from the
-  interrupt to whatever mode it came from (supervisor or user mode).
-  Because there is an interrupt pending for supervisor mode, the
-  CPU immediately will take it unless interrupts are disabled.
 
-\item Traps in supervisor mode.  This case is simple. xv6
-  is already in the kernel and there is no need to switch page
-  tables. The kernel also has a valid stack, so Xv6 can immediately
-  call a C function to handle the trap.
+\item Traps from supervisor mode. These are traps that occur while the
+  xv6 kernel is executing. In this case the trap handler can rely on
+  {\tt satp} already being set to the kernel page table, and the stack
+  pointer already pointing to a valid stack in the kernel. The
+  assembly handler code needs to push the current registers onto the
+  stack, and jump to C code.
 
-\item Traps in user mode. This case is challenging.  At the time
-  of the trap, the user program is running with user-level page
-  table and it will enter the kernel with that page table at a
-  \textit{kernel-specified} virtual address. Furthermore, the kernel
-  cannot use the stack of the user process to call a C function,
-  because it may not be valid.  The user process may be malicious or
-  contain an error that causes the user \texttt{sp} to contain an
-  address that is not part of the process's user memory.
+\item Traps from user mode. This case is challenging, since {\tt satp}
+  points to a user page table that has no mappings for the kernel, and
+  the stack pointer may contain an invalid or even malicious value.
 
   To addresses these challenges, xv6 uses a \indextext{trampoline}
   page.  It maps a page with code to enter and exit the kernel in
@@ -149,6 +163,18 @@ mode.  Thus xv6 has three plans for traps:
   in each process address space at \indexcode{TRAPFRAME}, right below
   \lstinline{TRAMPOLINE}.  The trampoline also switches from a user
   stack to a valid kernel stack.
+  
+\item Timer interrupts.  Timer interrupts can occur in user
+  or supervisor mode, and always switch to machine mode.
+  Because machine mode does not use the paging hardware,
+  xv6 restricts itself to a very simple timer interrupt handler.
+  It resets the
+  timer, sets a bit in the \lstinline{sip} register to ask
+  for a software interrupt to be delivered in supervisor mode,
+  and returns from the
+  interrupt to whatever mode it came from (supervisor or user mode).
+  Because there is an interrupt pending for supervisor mode, the
+  CPU immediately will take it unless interrupts are disabled.
 
 \end{itemize}
 
