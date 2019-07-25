@@ -1136,28 +1136,22 @@ will see the condition is still false and sleep again.
 and
 \lstinline{wakeup}
 can be used for many kinds of waiting.
-An interesting example, seen in Chapter~\ref{CH:UNIX},
-is the
-\indexcode{wait}
-system call that a parent process uses to wait for a child to exit.
-When a child exits, it does not die immediately.
-Instead, it switches to the
-\indexcode{ZOMBIE}
-state until the parent calls
-\lstinline{wait}
-to learn of the exit.
-The parent is then responsible for freeing the
-the child's kernel stack
-and preparing the
-\indexcode{struct proc}
-for reuse.
-\lstinline{Exit} cannot free the exiting process's
-kernel stack because \lstinline{exit} is using
-that stack; thus the parent does it.
+An interesting example, introduced in Chapter~\ref{CH:UNIX},
+is the interaction between a child's {\tt exit}
+and its parent's {\tt wait}.
+At the time of the child's death, the parent may already
+be sleeping in {\tt wait}, or may be doing something else;
+in the latter case, a subsequent call to {\tt wait} must
+observe the child's death, perhaps long after it calls {\tt exit}.
+The way that xv6 records the child's demise until {\tt wait}
+observes it is for {\tt exit} to put the caller into the {\tt ZOMBIE}
+state, where it stays until the parent's {\tt wait} notices it, changes
+the child's state to {\tt UNUSED},
+and returns the child's process ID to the parent.
 If the parent exits before the child, the 
 parent gives the child to the
 \lstinline{init}
-process, which perpetually waits;
+process, which perpetually calls {\tt wait};
 thus
 every child has a parent to clean up after it.
 The main implementation challenge is
@@ -1172,10 +1166,11 @@ and
 \lstinline{exit}.
 
 \lstinline{Wait}
-uses its own
+uses the current process's
 \lstinline{p->lock}
 as the condition lock to avoid lost wakeups,
-and it acquires that lock at the start.
+and it acquires that lock at the start
+\lineref{kernel/proc.c:/^wait/}.
 Then it scans the process table.
 If it finds a child in zombie state,
 it frees that child's resources and
@@ -1222,7 +1217,8 @@ waking the parent up, since the parent's lock
 is the condition lock
 that guards against lost wakeups in \lstinline{wait}. The child must also
 holds its own \lstinline{p->lock}, since otherwise the parent
-might see it in state \lstinline{ZOMBIE} and prematurely free it.
+might see it in state \lstinline{ZOMBIE} and free it while
+it is still running.
 The lock acquisition order is important to avoid deadlock: since \lstinline{wait}
 acquires the parent's lock before the child's lock,
 \lstinline{exit} must use the same order.
@@ -1236,21 +1232,17 @@ It may look incorrect for the child to wake up the parent
 before setting its state to \lstinline{ZOMBIE}, 
 but that is safe:
 although
-\lstinline{wakeup}
+\lstinline{wakeup1}
 may cause the parent to run,
 the loop in
 \lstinline{wait}
 cannot examine the child until the child's
-\lstinline{exit}
-releases its
 \lstinline{p->lock}
-by calling
-\lstinline{sched}
-to enter the scheduler,
+is released by {\tt scheduler},
 so
 \lstinline{wait}
 can't look at
-the exiting process until after
+the exiting process until well after
 \lstinline{exit}
 has set its state to
 \lstinline{ZOMBIE}
