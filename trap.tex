@@ -4,67 +4,53 @@
 \chapter{Traps, interrupts, and drivers}
 \label{CH:TRAP}
 
-When running a process, a CPU executes the normal processing loop: read an
-instruction, advance the program counter, execute the instruction, repeat.  But
-there are events on which control from a user program must transfer back to the
-kernel instead of executing the next instruction.  These events include a device
-signaling that it wants attention, a user program doing something illegal (e.g.,
-references a virtual address for which there is no page table entry), or a user
-program asking the kernel for a service with a system call.  There are three
-main challenges in handling these events: 1) the kernel must arrange that a
-CPU switches from user mode to supervisor mode (and back); 2) the kernel and
-devices must coordinate their parallel activities; and 3) the kernel must
-understand the interface of the devices.  Addressing these 3 challenges requires
-detailed understanding of hardware and careful programming, and can result in
-opaque kernel code.  This chapter explains how xv6 addresses these three
-challenges.
+There are three situations in which some event causes the CPU to set
+aside its ordinary sequential execution of instructions and forces a
+transfer of control to special code that handles the event. One
+situation is a system call, when a user program intentionally
+executes an instruction indicating that it wishes the kernel to
+perform a task for it. Another situation is an \indextext{exception}:
+an instruction (user or kernel) does something illegal, such as divide
+by zero or use an invalid virtual address. The third situation is a
+device \indextext{interrupt}, when a device signals that it needs
+attention, for example when the disk hardware finishes a read or write
+request.
 
-\section{System calls, exceptions, and interrupts}
+This book uses \indextext{trap} as a generic term for these
+situations. Typically whatever code was executing at the time of the
+trap will later need to resume, and shouldn't need to be aware that
+anything special happened. That is, we often want traps to be
+transparent; this is particularly important for interrupts, which the
+interrupted code typically doesn't expect. Thus the usual sequence is that
+a trap forces a transfer of control into the kernel; the kernel saves
+registers and other state so that execution can be resumed; the kernel
+executes appropriate handler code (e.g. a system call implementation
+or device driver); the kernel restores the saved state and returns
+from the trap; and the original code resumes where it left off.
 
-There are three cases when control must be transferred from a user program to
-the kernel. First, a system call: when a user program asks for an operating
-system service.
-Second, an
-\indextext{exception}:
-when a program performs an illegal action. Examples of illegal actions include
-divide by zero, attempt to access memory for a page-table entry that is not
-present, and so on.  Third, an
-\indextext{interrupt}:
-when a device generates a signal to indicate that
-it needs attention from the operating system.  For example, a clock chip may
-generate an interrupt every 10 ms to allow the kernel to implement
-time sharing.  As another example, when the disk has read a block from
-disk, it generates an interrupt to alert the operating system that the
-block is ready to be retrieved.
+% I'm using "trap" to include system calls, exceptions, and
+% device interrupts. The xv6 source does the same
+% (e.g. trap.c handles all three), as does the RISC-V
+% documentation (the stvec is supervisor trap vector,
+% and handles all three).
 
-The kernel handles all interrupts, rather than processes
-handling them, because in most cases only the kernel has the
-required privilege and state. For example, in order to time-slice
-among processes in response to timer interrupts, the kernel
-must be involved, if only to force uncooperative processes to
-yield the CPU.
+The xv6 kernel handles all traps. This is natural for system calls; it
+makes sense for interrupts since isolation demands that user processes
+not directly use devices, and because only the kernel has the state
+needed for device handling; and it makes sense for exceptions since
+xv6 responds to all exceptions from user space by killing the
+offending program.
 
-In all three cases, the operating system design must arrange for the
-following to happen.  The system must save the CPU's registers for future
-transparent resume.  The system must be set up for execution
-in the kernel.  The system must chose a place for the kernel to start
-executing. The kernel must be able to retrieve information about the
-event, e.g., system call arguments.  It must all be done securely; the system
-must maintain isolation of user processes and the kernel.
+While commonality among the three trap types suggests that a kernel
+could handle all traps with a single code path, it turns out to be
+convenient to have a couple of distinct cases. As we will see, xv6 has
+separate paths for three cases: timer interrupts, non-timer traps from
+user space, and non-timer traps from kernel space.
 
-A word on terminology: this chapter uses the term \indextext{trap} to refer
-to exceptions and system calls.  It also uses
-traps and interrupts
-interchangeably, but it is important to remember that traps are caused
-by the current process running on a CPU (e.g., the process makes
-a system call and as a result generates a trap), and interrupts are
-caused by devices and may not be related to the currently running
-process.  For example, a disk may generate an interrupt when it is
-done retrieving a block for one process, but at the time of the
-interrupt some other process may be running.  This property of
-interrupts makes thinking about interrupts more difficult than
-thinking about traps, because interrupts happen concurrently with
-other activities.
+This chapter ends with a discussion of device drivers. Device handling
+is a different topic than traps, but is included here because the
+kernel's interaction with device hardware is often driven by
+interrupts.
 
 \section{RISC-V Interrupts}
 
