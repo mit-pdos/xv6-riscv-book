@@ -19,11 +19,11 @@ detailed understanding of hardware and careful programming, and can result in
 opaque kernel code.  This chapter explains how xv6 addresses these three
 challenges.
 
-\section{Systems calls, exceptions, and interrupts}
+\section{System calls, exceptions, and interrupts}
 
 There are three cases when control must be transferred from a user program to
 the kernel. First, a system call: when a user program asks for an operating
-system service, as we saw at the end of the last chapter.
+system service.
 Second, an
 \indextext{exception}:
 when a program performs an illegal action. Examples of illegal actions include
@@ -53,7 +53,7 @@ event, e.g., system call arguments.  It must all be done securely; the system
 must maintain isolation of user processes and the kernel.
 
 A word on terminology: this chapter uses the term \indextext{trap} to refer
-to exceptions and systems calls.  It also uses
+to exceptions and system calls.  It also uses
 traps and interrupts
 interchangeably, but it is important to remember that traps are caused
 by the current process running on a CPU (e.g., the process makes
@@ -84,10 +84,10 @@ the keyboard). We must program the device to generate an interrupt, and
 arrange that a CPU receives the interrupt. 
 
 Let's look at the timer device and timer interrupts.  We would like
-the timer hardware to generate an interrupt, say, 100 times per
+the timer hardware to generate an interrupt, say, 10 times per
 second so that the kernel can track the passage of time and so the
 kernel can time-slice among multiple running processes.  The choice of
-100 times per second allows for decent interactive performance while
+10 times per second allows for decent interactive performance while
 not swamping the CPU with handling interrupts.
 
 RISC-V on which xv6 is running has a \textit{Core Local
@@ -95,14 +95,17 @@ RISC-V on which xv6 is running has a \textit{Core Local
 can be programmed to generate timer interrupts.  The CLINT is a
 memory-mapped device located at \lstinline{0x02000000} (see
 Fig.~\ref{fig:xv6_layout}), and can thus be programmed with ordinary
-load and store instructions.  xv6 programs the CLINT during start
-\lineref{kernel/start.c:/CLINT/}: it reads the clock from address
-\lstinline{CLINT_MTIME}, adds 10,000 cycles to it, and stores that
-value in this core's \lstinline{CLINT_MTIMECMP(id)} timer register.
-The hardware clock runs at 1Mhz and after 10,000 cycles (i.e., 10ms)
-the clock value will be as large as the value in
-\lstinline{CLINT_MTIMECMP}, and the CLINT will interrupt core
-\lstinline{id}.
+load and store instructions. The CLINT exposes two registers relating
+to timer interrupts: {\tt MTIME} is a running count of the number of
+cycles (at a machine-dependent rate) since boot, and {\tt MTIMECMP}
+holds, per CPU, the future {\tt MTIME} value at which the CPU
+would like a timer interrupt.
+xv6 configures the CLINT in {\tt start.c}
+\lineref{kernel/start.c:/MTIMECMP/}
+to generate a timer interrupt
+every million cycles, which turns out to be about ten times
+per second. In a bit we'll discuss what happens when those
+interrupts arrive.
 
 \section{Entering and exiting the kernel}
 
