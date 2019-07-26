@@ -35,15 +35,15 @@ needed for device handling; and it makes sense for exceptions since
 xv6 responds to all exceptions from user space by killing the
 offending program.
 
-While commonality among the three trap types suggests that a kernel
-could handle all traps with a single code path, it turns out to be
-convenient to have a couple of distinct cases. As we will see, xv6 has
-separate paths for three cases: traps from kernel space, traps from
-user space, and timer interrupts. In each case, trap handling
-has four parts: hardware actions taken by the RISC-V CPU,
-an assembly ``vector'' that prepares the way for kernel C code,
-a C trap handler that decides what to do with the trap,
-and the system call or device service routine.
+Xv6 trap handling proceeds in four stages: hardware actions taken by
+the RISC-V CPU, an assembly ``vector'' that prepares the way for
+kernel C code, a C trap handler that decides what to do with the trap,
+and the system call or device driver service routine. While
+commonality among the three trap types suggests that a kernel could
+handle all traps with a single code path, it turns out to be
+convenient to have separate assembly vectors and C trap handlers for
+three distinct cases: traps from kernel space, traps from user space,
+and timer interrupts.
 
 This chapter ends with a discussion of device drivers. Device handling
 is a different topic than traps, but is included here because the
@@ -52,8 +52,8 @@ interrupts.
 
 \section{RISC-V trap machinery}
 
-RISC-V supports a number of control registers that the kernel uses to
-tell the CPU how to handle interrupts, and that the kernel can query
+RISC-V supports a number of control registers that the kernel writes to
+tell the CPU how to handle interrupts, and that the kernel can read
 to find out about an interrupt that has occured. The RISC-V documents
 contain the full story~\cite{riscv:priv}. {\tt riscv.h}
 \lineref{kernel/riscv.h:1} contains definitions that xv6 uses. Here's
@@ -89,17 +89,17 @@ cannot be read or written in user mode. There is an equivalent set of
 control registers for interrupts handled in machine mode; xv6 uses
 them only for the special case of timer interrupts.
 
-When it needs to raise a trap, the RISC-V hardware does the
+When it needs to force a trap, the RISC-V hardware does the
 following:
 
 \begin{enumerate}
 
 \item If the trap is a device interrupt, and the {\tt sstatus} SIE bit
-  is clear, don't do anything.
+  is clear, don't do any of the following.
 
-\item Copy the {\tt pc} to {\tt pc}.
+\item Copy the {\tt pc} to {\tt sepc}.
 
-\item Save the current mode in the SPP bit in {\tt sstatus}.
+\item Save the current mode (user or supervisor) in the SPP bit in {\tt sstatus}.
 
 \item Set {\tt scause} to reflect the interrupt's cause.
 
@@ -107,11 +107,12 @@ following:
 
 \item Copy {\tt stvec} to the {\tt pc}.
 
-\item Start executing.
+\item Start executing at the new {\tt pc}.
 
 \end{enumerate}
 
-It is important that the CPU performs all these steps atomically.
+It is important that the CPU performs all these steps as
+a single operation.
 Consider if one of these steps were omitted: for example, the CPU
 didn't switch program counters. Then, a trap could switch to
 supervisor mode while still running user instructions. Those user
@@ -120,25 +121,21 @@ modifying the {\tt satp} register to point to a page table that
 allowed accessing all of physical memory. It is thus important that
 the kernel specify the trap entry point, and not the user program.
 
-Note that the CPU doesn't switch page tables or stacks on a
-trap.  For example, a trap in user mode will switch the
-CPU to supervisor mode and change the program counter to a
-kernel-specific address, but still running with the user page table.
-It is up to the kernel to complete the rest of the switch to kernel
-mode: switch page tables, switch stacks, etc.  One reason that the
-CPU provides minimal mechanisms for switching modes is that
-provides flexibility to software; for example, for certain code path
-it might not be necessary to switch page tables, and its performance
-can be avoided.
+Note that the CPU doesn't switch to the kernel page table, doesn't
+switch to a stack in the kernel, and doesn't save any registers other
+than the {\tt pc}. The kernel must perform these tasks if necessary.
+One reason that the CPU does minimal work during a trap is to provide
+flexibility to software; for example, in some situations no page table
+switch is needed, which may increase performance.
 
-\section{Low-level kernel trap handling}
+\section{Kernel trap vectors}
 
 Because the RISC-V hardware has minimal mechanism for handling traps,
 much of the work of entering and leaving the kernel is done by kernel
-software. The first stage of trap handling is done in assembly code to
-set up an environment in which it is safe to run C code, and then the
-assembly code jumps to C code that figures how how to react to the
-trap. There are two main cases (again ignoring timer interrupts):
+software. The next stage of trap handling is done in assembly code to
+set up an environment in which it is safe to run C code; then the
+assembly code jumps to C trap handling code. There are two main cases
+(again ignoring timer interrupts):
 
 \begin{itemize}
 
@@ -146,8 +143,8 @@ trap. There are two main cases (again ignoring timer interrupts):
   xv6 kernel is executing. In this case the trap handler can rely on
   {\tt satp} already being set to the kernel page table, and the stack
   pointer already pointing to a valid stack in the kernel. The
-  assembly handler code needs to push the current registers onto the
-  stack, and jump to C code.
+  assembly handler code pushes the current registers onto the
+  stack, and jumps to C code.
 
 \item Traps from user mode. This case is challenging, since {\tt satp}
   points to a user page table that has no mappings for the kernel, and
@@ -200,46 +197,6 @@ The trap handling code needs to know why the trap occured.
 RISC-V provides a register
 \indexcode{scause}, which specifies the cause of the trap (e.g.,
 timer interrupt, illegal instruction, system call).
-
-\section{Code: timer interrupts}
-
-By default the RISC-V executes all trap handlers in machine mode.  xv6 programs
-RISC-V to delegate all interrupts and exceptions to supervisor mode
-\linerefs{kernel/start.c:/w_medeleg/,/w_mideleg/}.
-Timer interrupts, however, must be received in machine
-mode. Therefore, xv6 programs the hardware to receive timer interrupts in
-machine mode: it stores into the \lstinline{mtvec} register the
-address to jump to on an interrupt \lineref{kernel/start.c:/w_mtvec/}
-and enables timer interrupts in the \lstinline{mie} register
-\lineref{kernel/start.c:/w_mie/}.
-
-When the CLINT interrupts the CPU, the CPU switches its
-program counter to the value stored in \lstinline{mtvec} register,
-which is \lstinline{machinevec}.  \lstinline{machinevec} is defined in
-assembly \lineref{kernel/kernelvec.S:/machinevec/}.
-\lstinline{machinevec} starts out by exchanging \lstinline{a0} and the
-\lstinline{mscratch} register.  xv6 stored earlier in the
-\lstinline{mscratch} register \lineref{kernel/start.c:/mscratch/} the
-address \lstinline{mscratch0}, which points to an area of
-\lstinline{uint64}s.  Entries 4 and 5 contain the address of the
-core's \lstinline{CLINT_MTIME} and the new value
-\linerefs{kernel/start.c:/scratch.4/,/scratch.5/}.
-\lstinline{machinevec} saves registers \lstinline{a1} through
-\lstinline{a3} in the scratch area so that it can use them for its own
-computation.  Then, it reprograms \lstinline{CLINT_MTIMECMP} to
-generate an interrupt in 10ms and sets the interrupt bit in the kernel
-\lstinline{sip} register.  Setting this bit will cause the kernel to
-receive an interrupt after \lstinline{machinevec} completes.
-\lstinline{machinevec} completes by restoring the registers it used
-and returning from machine mode \lineref{kernel/kernelvec.S:/mret/} to
-the mode where it came from when it was interrupted.
-
-The code that was interrupted cannot tell it was interrupted: the
-CPU is in exactly the same state as before the interrupt,
-because the \lstinline{machinevec} has restored all registers.  This
-idea of saving the CPU state to run some code, and then
-restoring the CPU state to resume the original code is a pattern
-we will see a few more times.
 
 \section{Code: traps from supervisor mode}
 
@@ -389,6 +346,46 @@ the core to another process if the trap was a timer interrupt.
 Otherwise, \lstinline{usertrap} exits the kernel and returns back to
 user space using \lstinline{usertrapret}, which was explained above.
 We have seen all the machinery to enter and leave the kernel.
+
+\section{Code: timer interrupts}
+
+By default the RISC-V executes all trap handlers in machine mode.  xv6 programs
+RISC-V to delegate all interrupts and exceptions to supervisor mode
+\linerefs{kernel/start.c:/w_medeleg/,/w_mideleg/}.
+Timer interrupts, however, must be received in machine
+mode. Therefore, xv6 programs the hardware to receive timer interrupts in
+machine mode: it stores into the \lstinline{mtvec} register the
+address to jump to on an interrupt \lineref{kernel/start.c:/w_mtvec/}
+and enables timer interrupts in the \lstinline{mie} register
+\lineref{kernel/start.c:/w_mie/}.
+
+When the CLINT interrupts the CPU, the CPU switches its
+program counter to the value stored in \lstinline{mtvec} register,
+which is \lstinline{machinevec}.  \lstinline{machinevec} is defined in
+assembly \lineref{kernel/kernelvec.S:/machinevec/}.
+\lstinline{machinevec} starts out by exchanging \lstinline{a0} and the
+\lstinline{mscratch} register.  xv6 stored earlier in the
+\lstinline{mscratch} register \lineref{kernel/start.c:/mscratch/} the
+address \lstinline{mscratch0}, which points to an area of
+\lstinline{uint64}s.  Entries 4 and 5 contain the address of the
+core's \lstinline{CLINT_MTIME} and the new value
+\linerefs{kernel/start.c:/scratch.4/,/scratch.5/}.
+\lstinline{machinevec} saves registers \lstinline{a1} through
+\lstinline{a3} in the scratch area so that it can use them for its own
+computation.  Then, it reprograms \lstinline{CLINT_MTIMECMP} to
+generate an interrupt in 10ms and sets the interrupt bit in the kernel
+\lstinline{sip} register.  Setting this bit will cause the kernel to
+receive an interrupt after \lstinline{machinevec} completes.
+\lstinline{machinevec} completes by restoring the registers it used
+and returning from machine mode \lineref{kernel/kernelvec.S:/mret/} to
+the mode where it came from when it was interrupted.
+
+The code that was interrupted cannot tell it was interrupted: the
+CPU is in exactly the same state as before the interrupt,
+because the \lstinline{machinevec} has restored all registers.  This
+idea of saving the CPU state to run some code, and then
+restoring the CPU state to resume the original code is a pattern
+we will see a few more times.
  
 \section{Code: Enabling/disabling interrupts}
 
