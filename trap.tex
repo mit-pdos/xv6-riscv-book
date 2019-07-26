@@ -167,6 +167,7 @@ process's kernel thread is running (rather than a scheduler thread),
 {\tt kerneltrap} calls {\tt yield} to give other threads a chance to
 run. At some point one of those threads will yield, and let our thread
 and its {\tt kerneltrap} resume again.
+Chapter~\ref{CH:SCHED} explains what happens in {\tt yield}.
 
 When {\tt kerneltrap}'s work is done, it needs to return to whatever
 code was interrupted by the trap. Because a {\tt yield} may have
@@ -193,6 +194,10 @@ after it sets {\tt stvec}.
 
 \section{Traps from user space}
 
+A trap may occur while executing in user space if the
+user program makes a
+system call ({\tt ecall} instruction), does something
+illegal, or if a device interrupts.
 The high-level path of a trap from user space is
 {\tt uservec}
 \lineref{kernel/trampoline.S:/^uservec/},
@@ -310,6 +315,12 @@ and uses {\tt sret} to return to user space.
 
 \section{Timer interrupts}
 
+Xv6 uses timer interrupts to maintain its clock and to enable it to
+switch among compute-bound processes; the {\tt yield} calls in {\tt
+  usertrap} and {\tt kerneltrap} cause this switching. Timer
+interrupts come from special hardware attached to the RISC-V that xv6
+programs to interrupt periodically.
+
 RISC-V requires that timer interrupts be taken in machine mode, not
 supervisor mode. RISC-V machine mode executes without paging, and with
 a separate set of control registers, so it's not practical to run
@@ -346,22 +357,8 @@ tells the CLINT when to generate the next timer interrupt,
 asks the RISC-V to raise a software interrupt,
 restores registers, and returns.
 There's no C code involved in a timer interrupt.
- 
-\section{Code: Enabling/disabling interrupts}
 
-A CPU can control if it wants to receive external and timer
-interrupts through the \lstinline{SIE_SEIE}
-\index{SIE_SEIE@\lstinline{SIE_SEIE}} flag and \lstinline{SIE_STIE}
-\index{SIE_STIE@\lstinline{SIE_STIE}} flag in the \texttt{sie}
-register, respectively.  The bootloader disables interrupts during
-booting of the main cpu and the other other CPUs.  The scheduler on
-each CPU enables interrupts \lineref{kernel/proc.c:/intr_on/}.  To
-control that certain code fragments are not interrupted, xv6 disables
-interrupts during these code fragments.  For example,
-\lstinline{usertrapret} above clears interrupts
-\lineref{kernel/trap.c:/intr_off/}.
-
-\section{Code: System calls}
+\section{Code: Calling system calls}
 
 Chapter~\ref{CH:FIRST} ended with 
 \indexcode{initcode.S}
@@ -377,16 +374,16 @@ system call number in
 The system call numbers match the entries in the syscalls array,
 a table of function pointers
 \lineref{kernel/syscall.c:/syscalls/}.
-The \lstinline{ecall} instruction
-switches the CPU from user mode to supervisor mode, and will
-cause the kernel to call \lstinline{syscall}, as we saw above.
+The \lstinline{ecall} instruction traps into the kernel
+and executes {\tt uservec},
+{\tt usertrap}, and then {\tt syscall}, as we saw above.
 
 \indexcode{Syscall}
 \lineref{kernel/syscall.c:/^syscall/} 
 loads the system call number from the trapframe, which
 contains the saved
 \texttt{a7},
-and indexes into the system call tables.
+and indexes into the system call table.
 For the first system call, 
 \texttt{a7}
 contains the value 
@@ -394,18 +391,17 @@ contains the value
 \lineref{kernel/syscall.h:/SYS_exec/},
 and
 \lstinline{syscall}
-will invoke the 
-\lstinline{SYS_exec} 'th 
-entry of the system call table, which corresponds to invoking
+will call the 
+\lstinline{SYS_exec}'th 
+entry of the system call table, which corresponds to calling
 \lstinline{sys_exec}.
 
 \lstinline{Syscall}
 records the return value of the system call function in
 \lstinline{p->tf->a0}.
 When the system call returns to user space,
-\lstinline{usertrapret}
-will load the values
-from
+\lstinline{userret}
+will load the values from
 \indexcode{p->tf}
 into the machine registers
 and return to user space
@@ -413,14 +409,14 @@ using
 \lstinline{sret}.
 Thus, when 
 \lstinline{exec}
-returns, it will return in \lstinline{a0} the value
+returns in user space, it will return in \lstinline{a0} the value
 that the system call handler returned
 \lineref{kernel/syscall.c:/a0 = syscalls/}.
 System calls conventionally return negative numbers to indicate
-errors, positive numbers for success.
+errors, and zero or positive numbers for success.
 If the system call number is invalid,
 \indexcode{syscall}
-prints an error and returns \-1.
+prints an error and returns $-1$.
 
 \section{Code: System call arguments}
 
@@ -428,91 +424,63 @@ Later chapters will examine the implementation of
 particular system calls.
 This chapter is concerned with the mechanisms for system calls.
 There is one bit of mechanism left: finding the system call arguments.
+
+The arguments themselves are relatively easy to find, since the
+C calling convention on RISC-V specifies that arguments be
+passed in registers.
+During a system call, these registers (the saved user registers)
+are available in the trapframe, {\tt p->tf}.
 The helper functions
 \lstinline{argint},
 \lstinline{argaddr},
 \lstinline{argptr},
-\lstinline{argstr},
 and
 \lstinline{argfd}
 retrieve the 
 \textit{n} 'th 
 system call
 argument, as either an integer, pointer, a string, or a file descriptor.
-\indexcode{argint}
-and
-\indexcode{argaddr}
-use the function
-\lstinline{fetcharg}
-to locate the
-\textit{n}'th 
-argument. The C calling conventions specify that argument 0 is passed
-through
-\texttt{a0},
-argument 1 through
-\texttt{a1}, ...,
-argument 6 through
-\texttt{a6}.
+They all call {\tt fetcharg} to retrieve one of the saved
+user registers
+\lineref{kernel/syscall.c:/^fetcharg/}.
 
-\lstinline{argint} calls \indexcode{fetchint} to read the value at
-that address from user memory and write it to \lstinline{*ip}.
-\lstinline{fetchint} cannot simply cast the address to a pointer,
-because the user and the kernel don't share the same page
-table. Instead, \lstinline{fetchint} calls \lstinline{copyin} to copy
-the value at the address from the process's address space to the
-kernel address space.  Before calling \lstinline{copyin},
-\lstinline{fetchint} verifies that the address lies in the process's
-addres space: it checks that the address is below \indexcode{p->sz}.
+Some system calls pass pointers as arguments, and the kernel must use
+those pointers to read or write user memory. The {\tt exec} system
+call, for example, passes the kernel an array of pointers
+referring to string arguments in user space.
+These pointers pose
+two challenges. First, the user program may be buggy or malicious, and
+may pass the kernel an invalid pointer or a pointer intended to trick
+the kernel into accessing kernel memory instead of user memory.
+Second, the xv6 kernel page table mappings are not the same as the
+user page table mappings, so the kernel cannot use ordinary
+instructions to load or store from user-supplied addresses.
 
-\indexcode{copyin}
-\lineref{kernel/vm.c:/^copyin/} copies \lstinline{len} bytes to
+A number of kernel functions need to perform safe reads from user space; {\tt
+  fetchstr} is an example \lineref{kernel/syscall.c:/^fetchstr/}.
+File system calls such as
+{\tt exec} use {\tt fetchstr} to retrieve string arguments from user
+space.
+\lstinline{fetchstr} calls \lstinline{copyinstr},
+which knows how to look up virtual addresses in a user page
+table and turn them into addresses the kernel can use.
+
+\indexcode{copyinstr}
+\lineref{kernel/vm.c:/^copyinstr/} copies up to \lstinline{max} bytes to
 \lstinline{dst} from virtual address \lstinline{srcva} in the page
-table \lstinline{pagetable}.  It walks the page table in software to
+table \lstinline{pagetable}.  It uses {\tt walkaddr}
+(which calls {\tt walk}) to walk the page table in software to
 determine the physical address \lstinline{pa0} for \lstinline{srcva}.
-Since the kernel maps virtual address one-to-one on physical
-addresses and maps all physical addresses, the kernel can use
-\lstinline{pa0} as a virtual address and copy the bytes at
-\lstinline{pa0} using \lstinline{memmove}.
-
-\indexcode{fetchaddr},
-is like
-\lstinline{fetchint},
-but retrieves 64-bit value instead of a 32-bit int.
-
-\indexcode{argptr}
-fetches the
-\textit{n}'th 
-system call argument and checks that this argument is a valid
-user-space pointer.
-
-\indexcode{argstr} 
-interprets the
-\textit{n}'th 
-argument as a pointer.  It ensures that the pointer points at a
-NUL-terminated string and that the complete string is located below
-the end of the user part of the address space.
-
-Finally,
-\indexcode{argfd}
-\lineref{kernel/sysfile.c:/^argfd/}
-uses
-\lstinline{argint}
-to retrieve a file descriptor number, checks if it is valid
-file descriptor, and returns the corresponding
-\lstinline{struct}
-\lstinline{file}.
-
-The system call implementations (for example, in sysproc.c and sysfile.c)
-are typically wrappers: they decode the arguments using 
-\lstinline{argint},
-\lstinline{argaddr},
-\lstinline{argptr}, 
-and 
-\lstinline{argstr}
-and then call the real implementations.
-In Chapter~\ref{CH:MEM},
-\lstinline{sys_exec}
-uses these functions to get at its arguments.
+Since the kernel maps all physical RAM addresses to the same
+kernel virtual address,
+{\tt copyinstr} can directly copy string bytes from {\tt pa0} to {\tt dst}.
+{\tt walkaddr} 
+\lineref{kernel/vm.c:/^walkaddr/}
+validates that the user-supplied virtual address is part of
+the process's valid address space, so user programs
+cannot trick the kernel into reading other memory.
+A similar function, {\tt copyout}, copies data from the
+kernel to a user-supplied address.
 
 \section{RISC-V Device Interrupts}
 
