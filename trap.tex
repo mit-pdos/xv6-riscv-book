@@ -482,48 +482,7 @@ cannot trick the kernel into reading other memory.
 A similar function, {\tt copyout}, copies data from the
 kernel to a user-supplied address.
 
-\section{RISC-V Device Interrupts}
-
-Devices on the RISC-V development board can generate interrupts, and
-xv6 must set up the hardware to handle these interrupts.  Devices
-usually interrupt in order to tell the kernel that some hardware event
-has occured, such as I/O completion.  Interrupts are usually optional
-in the sense that the kernel could instead periodically check (or
-\indextext{poll}) the device hardware to check for new
-events.  Interrupts are preferable to polling if the events are
-relatively rare, so that polling would waste CPU time.
-
-Devices can generate interrupts
-at any time.  There is hardware on the board to signal the CPU
-when a device needs attention (e.g., the user has typed a character on
-the keyboard). We must program the device to generate an interrupt, and
-arrange that a CPU receives the interrupt. 
-
-Let's look at the timer device and timer interrupts.  We would like
-the timer hardware to generate an interrupt, say, 10 times per
-second so that the kernel can track the passage of time and so the
-kernel can time-slice among multiple running processes.  The choice of
-10 times per second allows for decent interactive performance while
-not swamping the CPU with handling interrupts.
-
-RISC-V on which xv6 is running has a \textit{Core Local
-  Interruptor (CLINT)}\index{Core Local Interruptor (CLINT)}~\cite{u54}, which
-can be programmed to generate timer interrupts.  The CLINT is a
-memory-mapped device located at \lstinline{0x02000000} (see
-Fig.~\ref{fig:xv6_layout}), and can thus be programmed with ordinary
-load and store instructions. The CLINT exposes two registers relating
-to timer interrupts: {\tt MTIME} is a running count of the number of
-cycles (at a machine-dependent rate) since boot, and {\tt MTIMECMP}
-holds, per CPU, the future {\tt MTIME} value at which the CPU
-would like a timer interrupt.
-xv6 configures the CLINT in {\tt start.c}
-\lineref{kernel/start.c:/MTIMECMP/}
-to generate a timer interrupt
-every million cycles, which turns out to be about ten times
-per second. In a bit we'll discuss what happens when those
-interrupts arrive.
-
-\section{Drivers}
+\section{Device drivers}
 
 A
 \indextext{driver}
@@ -536,8 +495,19 @@ because a driver executes concurrently with the device that it manages.  In
 addition, the driver must understand the device's interface (e.g., which I/O
 ports do what), and that interface can be complex and poorly documented.
 
+Devices that need attention from the operating system can usually be
+configured to generate interrupts, one of types of trap. Typically the
+device driver's initialization code will tell the hardware that the
+driver wants interrupts. On the RISC-V, there is also a hardware unit
+called the PLIC that the driver must configure to forward interrupt
+requests to the RISC-V CPUs. A final piece of glue is that the
+kernel trap handling code must be able to recognize when the device
+has raised an interrupt and call the driver's interrupt handler;
+in xv6, this dispatch happens in {\tt devintr} \lineref{kernel/trap.c:/^devintr/}.
+
 The disk driver provides a good example.  The disk driver copies data
-from and back to the disk.  Disk hardware traditionally presents the data on the
+from and to the disk, as requested by the file system.
+Disk hardware traditionally presents the data on the
 disk as a numbered sequence of 512-byte 
 \textit{blocks} 
 \index{block}
@@ -547,71 +517,69 @@ disk as a numbered sequence of 512-byte
 sector 0 is the first 512 bytes, sector 1 is the next, and so on. The block size
 that an operating system uses for its file system maybe different than the
 sector size that a disk uses, but typically the block size is a multiple of the
-sector size. To
-represent a block xv6 has a structure
+sector size. Xv6 holds copies of blocks that it has read into memory
+in objects of type
 \lstinline{struct buf}
 \lineref{kernel/buf.h:/^struct.buf/}.
 The
-data stored in this structure is often out of sync with the disk: it might have
+data stored in this structure is sometimes out of sync with the disk: it might have
 not yet been read in from disk (the disk is working on it but hasn't returned
-the sector's content yet), or it might have been updated but not yet written
-out.  The driver must ensure that the rest of xv6 doesn't get confused when the
-structure is out of sync with the disk.
+the sector's content yet), or it might have been updated by software
+but not yet written to the disk.
+The driver must ensure that the rest of xv6 doesn't get confused when
+a {\tt struct buf}
+is out of sync with the disk.
 
 \section{Code: Disk driver}
 
 Xv6 has a disk driver for \indextext{virtio} disks. The
 virtio standard is a standard for devices for kernels that run on a
-virtual machine~\cite{virtio}.  It defines the interactions between a guest kernel
+virtual machine~\cite{virtio}.
+It defines the interactions between a guest kernel
 and the virtual machine monitor for virtual devices emulating network
 devices, disk devices, etc.  Xv6 runs on \texttt{qemu} and
-\texttt{qemu} supports a virtio disk device for RISC-V platforms.  The
-base development board that xv6 targets (SiFive's HiFive) doesn't
-provide a disk.
+\texttt{qemu} supports a virtio disk device.
 
-Xv6 represent file system blocks using
-\indexcode{struct buf}
-\lineref{kernel/buf.h:/^struct.buf/}.
-\lstinline{BSIZE}
-\lineref{kernel/fs.h:/BSIZE/}
-is twice the virtio disk's sector size and thus
-each buffer represents the contents of two sectors on a particular
-disk device.  The
+The xv6 file system uses blocks of 1024 bytes,
+or \lstinline{BSIZE}
+\lineref{kernel/fs.h:/BSIZE/},
+which is twice the virtio disk's sector size.
+Each {\tt struct buf}
+\lineref{kernel/buf.h:1}
+contains BSIZE bytes,
+and the driver always reads and writes the disk in these units.
+The
 \lstinline{dev}
 and
 \lstinline{blockno}
-fields give the device and block
-number and the
+fields of {\tt struct buf} indicate which disk
+device and block number the buffer refers to. The
 \lstinline{data}
-field is an in-memory copy of the disk sectors that correspond to block.
-Operating systems often use
-bigger blocks than 1,024 bytes to obtain higher disk throughput.
-
+field is an in-memory copy of the disk sectors that correspond to that block.
 The
-\lstinline{flags}
-track the relationship between memory and disk:
+\lstinline{flags} field
+tracks the relationship between memory and disk:
 the
 \indexcode{B_VALID}
 flag means that
 \lstinline{data}
-has been read in, and
-the 
+has been read from the disk, and
 \indexcode{B_DIRTY} 
-flag means that
+means that
 \lstinline{data}
 needs to be written out.
 
-Like programming the CLINT, programming the virtio disk is done
-through memory-mapped I/O.  The virtio disk is at address
-\lstinline{0x10001000} in the kernel adddres space (see
+Xv6 talks to the virtio disk controller
+through memory-mapped registers.  These registers start at address
+\lstinline{0x10001000} in the kernel adddress space (see
 Figure~\ref{fig:xv6_layout}).  The driver uses ordinary load and
-stores instructions to interact with the device, but the addresses
+store instructions to interact with the device, but the addresses
 have special meaning.  For example, reading from the address
 \lstinline{0x10001000 + VIRTIO_MMIO_VERSION}
 \lineref{kernel/virtio.h:/VERSION/} returns the version of the virtio
 standard that the device supports
 \lineref{kernel/virtio\_disk.c:/MMIO_VERSION/}.  The driver uses the
-macro \lstinline{R} to read/write registers on the disk
+macro \lstinline{R} to read/write registers on the disk controller
 \lineref{kernel/virtio\_disk.c:/R/}.
 
 The kernel initializes the disk driver at boot time by calling
@@ -731,8 +699,8 @@ Supporting all the devices on a typical computer in its full glory is
 much work, because there are many devices, the devices have many
 features, and the protocol between device and driver can be complex
 and badly documented.
-In many operating systems, the drivers together account for more code
-in the operating system than the core kernel.
+In many operating systems, the drivers account for more code
+than the core kernel.
 
 Actual device drivers are far more complex than the disk driver in this chapter,
 but the basic ideas are the same:
@@ -757,7 +725,7 @@ solid-state disk.
 Other hardware is surprisingly similar to disks: network device
 buffers hold packets, audio device buffers hold sound samples,
 graphics card buffers hold video data and command sequences.
-High-bandwidth graphics cards, and network cards—often use DMA
+High-bandwidth graphics cards, and network cards often use DMA
 as the virtio disk does.
 
 Some drivers dynamically switch between polling and interrupts, because using
