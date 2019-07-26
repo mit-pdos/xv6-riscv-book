@@ -206,7 +206,7 @@ and then
 \lineref{kernel/trampoline.S:/^uservec/}.
 
 Traps from user code are more challenging than from the kernel, since
-{\tt satp} points to a user page table that has no mappings for the
+{\tt satp} points to a user page table that doesn't map the 
 kernel, and the stack pointer may contain an invalid or even malicious
 value.
 
@@ -252,177 +252,100 @@ through the kernel page table.
 
 Thus after swapping {\tt a0} and {\tt sscratch}, {\tt a0}
 holds a pointer to the current process's trapframe.
-{\tt uservec} now proceeds to save all user registers there,
-including (after another swap) the user's {\tt a0}.
+{\tt uservec} now saves all user registers there,
+including the user's {\tt a0}, read from {\tt sscratch}.
 
-The {\tt trapframe} also contains a pointer to the current process's
+The {\tt trapframe} contains pointers to the current process's
 kernel stack, the current CPU's hartid, the address of {\tt usertrap},
 and the address of the kernel page table. {\tt uservec}
 retrieves these values, switches {\tt satp} to the kernel page table,
-and calls {\tt usertrap} \lineref{kernel/trap.c:/^usertrap/}.
+and calls {\tt usertrap}.
 
-XXX usertrap...
+The job of {\tt usertrap}, like {\tt kerneltrap} is to determine
+the cause of the trap, process it, and return
+\lineref{kernel/trap.c:/^usertrap/}.
+As mentioned above, it first changes {\tt stvec} to process
+traps from kernel mode in {\tt kernelvec}.
+It saves the {\tt sepc}, again because there might be a
+process switch in {\tt usertrap} that could cause {\tt sepc}
+to be overwritten.
+If the trap is a system call, {\tt syscall} handles it;
+if a device interrupt, {\tt devintr};
+otherwise it's an exception, and the kernel kills the
+faulting process.
+The system call path adds four to the saved user {\tt pc}
+because RISC-V, in the case of a system call,
+leaves the program pointer pointing to the {\tt ecall} instruction.
+On the way out, {\tt usertrap} checks if the process has been
+killed or should yield the CPU (if this trap is a timer interrupt).
 
-XXX where is the trampoline stuff set up.
+The first step in returning to user space is the call to {\tt usertrapret}
+\lineref{kernel/trap.c:/^usertrapret/}.
+This function sets up the RISC-V control registers to prepare for a
+future trap from user space. This involves changing {\tt stvec}
+to refer to {\tt uservec}, preparing the trapframe fields that
+{\tt uservec} relies on, and setting {\tt sepc} to the previously
+saved user program counter. At the end, {\tt usertrapret}
+calls {\tt userret} on the trampoline page that is mapped in
+both user and kernel page tables; the reason is that assembly
+code in {\tt userret} will switch page tables.
 
-XXX
+{\tt usertrapret}'s call to {\tt userret} passes a pointer to the process's user
+page table in {\tt a0} and {\tt TRAPFRAME} in {\tt a1}
+\lineref{kernel/trampoline.S:/^userret/}.
+{\tt userret} switches {\tt satp} to the process's user page table.
+Recall that the user page table maps both the trampoline page
+and {\tt TRAPFRAME}, but nothing else from the kernel.
+Again, the fact that the trampoline page is mapped at the same
+virtual address in user and kernel page tables is what allows
+{\tt uservec} to keep executing after changing {\tt satp}.
+{\tt trapret} copies the trapframe's saved user {\tt a0} to {\tt sscratch}
+in preparation for a later swap with with TRAPFRAME.
+From this point on, the only data {\tt userret} can use is
+the register contents and the content of the trapframe.
+Next {\tt userret} restores saved user registers from the trapframe,
+does a final swap of {\tt a0} and {\tt sscratch} to restore the
+user {\tt a0} and save {\tt TRAPFRAME} for the next trap,
+and uses {\tt sret} to return to user space.
 
+\section{Timer interrupts}
 
-The function \lstinline{usertrapret}
-\lineref{kernel/trap.c:/usertrapret/} sets up the trampoline to leave
-and enter the kernel.  It starts out by disabling interrupts
-\lineref{kernel/trap.c:/intr_off/}; xv6 is switching from taking
-interrupts from \lstinline{kerneltrap} to \lstinline{usertrap} and
-during this switch xv6 is not ready to take interrupts.
+RISC-V requires that timer interrupts be taken in machine mode, not
+supervisor mode. RISC-V machine mode executes without paging, and with
+a separate set of control registers, so it's not practical to run
+ordinary xv6 kernel code in machine mode. As a result, xv6 handles
+timer interrupts completely separately from the trap mechanism laid out
+above.
 
-Next, \lstinline{usertrapret} sets the address where to enter the
-kernel (by writing \lstinline{uservec} into \lstinline{stvec}) and it
-sets up the values the trampoline needs when entering the kernel: the
-kernel page table, the kernel stack of this process, the function to
-call, and the hartid
-\linerefs{kernel/trap.c:/kernel_satp.=.r_satp/,/r_tp/}.  We will see
-how these values are used when entering the kernel.
+Code in {\tt start}
+\lineref{kernel/start.c:/receive.timer/}
+sets up to receive timer interrupts.
+Part of the job is to program the CLINT hardware (core-local interruptor)
+to generate an interrupt after a certain delay.
+Another part is to set up a scratch area, analogous to trapframe,
+for the timer interrupt handler to save registers in and find
+the address of the CLINT registers.
+Finally, {\tt start} sets {\tt mtvec} to {\tt timervec} and
+enables timer interrupts.
 
-Then, \lstinline{usertrapret} sets up values the trampoline needs to
-exit the kernel and return to user space.  It will set the
-previous mode in the \lstinline{sstatus} register to user mode (0) and
-enable user interrupts in user mode, it will set the \lstinline{sepc}
-register to the address the user program should be resumed at, and
-will set the \lstinline{satp} register to this process's page table
-\linerefs{kernel/trap.c:/x.=.r_sstatus/,/p->pagetable/}.
-Finally, \lstinline{usertrapret} calls
-the trampoline function \lstinline{userret}, passing two arguments: the addresss
-\lstinline{TRAPFRAME} and the value for \lstinline{satp}.
+A timer interrupt can occur at any point when user or kernel code is
+executing; there's no way for the kernel to disable timer interrupts
+during critical operations. Thus the timer interrupt handler must do
+its job in a way guaranteed not to disturb interrupted kernel code.
+The basic strategy is for the timer interrupt to ask the RISC-V to
+raise a ``software interrupt'' and immediately return. The RISC-V
+delivers software interrupts to the kernel with the ordinary trap
+mechanism, and allows the kernel to disable them. The code to
+handle the software interrupt generated by a timer interrupt can be
+seen in {\tt devintr} \lineref{kernel/trap.c:/machine-mode.timer/}.
 
-\lstinline{userret} \lineref{kernel/trampoline.S:/userret/} loads
-\lstinline{satp} with the user page table.  After this instruction,
-the CPU will translate virtual address with the user page table;
-for example, the address of the next instruction will be translated
-with the user page table.  This address will be translated in the same
-way as with the kernel page table, because the mapping is the same in
-both page tables.
-
-To execute the remaining instructions, \lstinline{userret} wants to
-use register (\lstinline{a0}), which contains the first argument to
-\lstinline{userret}, \lstinline{TRAPFRAME}, the process's
-trapframe. But, it must also restore \lstinline{a0} to the user
-process's value for \lstinline{a0}, which is stored in the process's
-trapframe \lstinline{p->tf}.  The kernel stores the to-be-restored value for
-\lstinline{a0} in \lstinline{sscratch} and later restores
-\lstinline{a0} from there \lineref{kernel/trampoline.S:/csrrw a0/}.
-
-Now \lstinline{a0} is availabe, it uses it to restore all other CPU
-registers from TRAPFRAME \linerefs{kernel/trampoline.S:/ld ra/,/ld t6/}.
-Note that the user page table, which we just installed, maps
-TRAPFRAME to \lstinline{p->tf}.  Thus, even though \lstinline{a0}
-contains \lstinline{TRAPFRAME}, we are loading values from
-\lstinline{p->tf}.  To make sure that user code cannot read/write
-\lstinline{p->tf} through \lstinline{TRAPFRAME}, xv6 maps
-\lstinline{TRAPFRAME} with the \lstinline{PTE_U} bit clear
-\linerefs{kernel/proc.c:/TRAPFRAME/,/./}.
-
-Then, \lstinline{userret} restores \lstinline{a0} by switching the
-values of \lstinline{sscratch} and \lstinline{a0}. After this
-instruction, \lstinline{a0} contains the user process's \lstinline{a0}
-and \lstinline{sscratch} contains \lstinline{p->tf}.  Having
-\lstinline{p->tf} in \lstinline{sscratch} will be convenient when
-entering: this is the address where xv6 will save registers.  Finally,
-\lstinline{userret} calls \lstinline{sret}, which returns to the
-previous mode (user mode) with interrupts enabled and resuming at the
-address in \lstinline{sepc}.  We are out of the kernel.
-
-If a timer interrupt happens, the CPU will switch to supervisor mode with
-the program counter set to the value in \lstinline{stvec} (i.e.,
-\lstinline{uservec}) and \lstinline{sepc} containing the address of
-the instruction that was interrupted.  \lstinline{uservec} first saves
-\lstinline{a0} and loads \lstinline{TRAPFRAME}, which maps to
-\lstinline{p->tf}, into \lstinline{a0}
-\lineref{kernel/trampoline.S:/csrrw a0/}.
-Next, it saves all other
-CPU registers into \lstinline{p->tf}
-\linerefs{kernel/trampoline.S:/sd ra/,/sd t6/}.
-
-Now all registers are saved, \lstinline{uservec} can
-use \lstinline{t0} to save the original value of \lstinline{a0}.  It
-switches to the kernel stack of the process, because the user stack
-may not be valid.  It switches to the kernel page table; again, this
-works out because trampoline page is mapped identically in the user
-and kernel address space.  Finally, it calls \lstinline{usertrap} (its
-address is in \lstinline{t0}).  We are back in the kernel with a
-kernel page table and on a kernel stack, running C code.
-
-\section{Code: C trap handler}
-
-The \lstinline{usertrap} function changes \lstinline{stvec} to the
-address of \lstinline{kerneltrap} because xv6 is in supervisor mode and
-when xv6 enables interrupts in supervisor mode, interrupts should go
-through \lstinline{kerneltrap}; there is no need to switch page tables
-and stacks. \lstinline{usertrap} next saves the \lstinline{sepc}
-because that register contains the instruction where the process
-should be resumed after completing the trap.
-If the user process entered the kernel to execute a system
-call, the register \lstinline{scause} contains 8.  In that case, xv6
-adds 4 to \lstinline{p->tf->epc}, to skip the instruction that entered
-the kernel (\lstinline{ecall}) so that on return to user space the
-process will resume at the instruction after \lstinline{ecall}.
-\lstinline{usertrap} then enables interrupts and calls
-\lstinline{syscall}.
-
-If an exception causes the kernel/user transition, then xv6 records
-that the user process must be killed and will call \lstinline{exit}.
-(We will look at how xv6 does this cleanup in Chapter~\ref{CH:SCHED}.)
-Otherwise, the cause was an interrupt, which are dealt with by
-\indexcode{devintr}.  For a timer
-interrupt, \lstinline{devintr} just do two things: increment the ticks
-variable \lineref{kernel/trap.c:/ticks\+\+/}, and call
-\indexcode{wakeup}.  The latter, as
-we will see in Chapter~\ref{CH:SCHED}, may make a process runnable.
-
-After handling the trap, xv6 yields
-the core to another process if the trap was a timer interrupt.
-Otherwise, \lstinline{usertrap} exits the kernel and returns back to
-user space using \lstinline{usertrapret}, which was explained above.
-We have seen all the machinery to enter and leave the kernel.
-
-\section{Code: timer interrupts}
-
-By default the RISC-V executes all trap handlers in machine mode.  xv6 programs
-RISC-V to delegate all interrupts and exceptions to supervisor mode
-\linerefs{kernel/start.c:/w_medeleg/,/w_mideleg/}.
-Timer interrupts, however, must be received in machine
-mode. Therefore, xv6 programs the hardware to receive timer interrupts in
-machine mode: it stores into the \lstinline{mtvec} register the
-address to jump to on an interrupt \lineref{kernel/start.c:/w_mtvec/}
-and enables timer interrupts in the \lstinline{mie} register
-\lineref{kernel/start.c:/w_mie/}.
-
-When the CLINT interrupts the CPU, the CPU switches its
-program counter to the value stored in \lstinline{mtvec} register,
-which is \lstinline{machinevec}.  \lstinline{machinevec} is defined in
-assembly \lineref{kernel/kernelvec.S:/machinevec/}.
-\lstinline{machinevec} starts out by exchanging \lstinline{a0} and the
-\lstinline{mscratch} register.  xv6 stored earlier in the
-\lstinline{mscratch} register \lineref{kernel/start.c:/mscratch/} the
-address \lstinline{mscratch0}, which points to an area of
-\lstinline{uint64}s.  Entries 4 and 5 contain the address of the
-core's \lstinline{CLINT_MTIME} and the new value
-\linerefs{kernel/start.c:/scratch.4/,/scratch.5/}.
-\lstinline{machinevec} saves registers \lstinline{a1} through
-\lstinline{a3} in the scratch area so that it can use them for its own
-computation.  Then, it reprograms \lstinline{CLINT_MTIMECMP} to
-generate an interrupt in 10ms and sets the interrupt bit in the kernel
-\lstinline{sip} register.  Setting this bit will cause the kernel to
-receive an interrupt after \lstinline{machinevec} completes.
-\lstinline{machinevec} completes by restoring the registers it used
-and returning from machine mode \lineref{kernel/kernelvec.S:/mret/} to
-the mode where it came from when it was interrupted.
-
-The code that was interrupted cannot tell it was interrupted: the
-CPU is in exactly the same state as before the interrupt,
-because the \lstinline{machinevec} has restored all registers.  This
-idea of saving the CPU state to run some code, and then
-restoring the CPU state to resume the original code is a pattern
-we will see a few more times.
+The machine-mode timer interrupt vector is {\tt timervec} 
+\lineref{kernel/kernelvec.S:/^timervec/}.
+It saves a few registers in the scratch area prepared by {\tt start},
+tells the CLINT when to generate the next timer interrupt,
+asks the RISC-V to raise a software interrupt,
+restores registers, and returns.
+There's no C code involved in a timer interrupt.
  
 \section{Code: Enabling/disabling interrupts}
 
