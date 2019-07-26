@@ -39,7 +39,11 @@ While commonality among the three trap types suggests that a kernel
 could handle all traps with a single code path, it turns out to be
 convenient to have a couple of distinct cases. As we will see, xv6 has
 separate paths for three cases: traps from kernel space, traps from
-user space, and timer interrupts.
+user space, and timer interrupts. In each case, trap handling
+has four parts: hardware actions taken by the RISC-V CPU,
+an assembly ``vector'' that prepares the way for kernel C code,
+a C trap handler that decides what to do with the trap,
+and the system call or device service routine.
 
 This chapter ends with a discussion of device drivers. Device handling
 is a different topic than traps, but is included here because the
@@ -278,7 +282,7 @@ interrupts from \lstinline{kerneltrap} to \lstinline{usertrap} and
 during this switch xv6 is not ready to take interrupts.
 
 Next, \lstinline{usertrapret} sets the address where to enter the
-kernel (by writing \lstinline{trampin} into \lstinline{stvec}) and it
+kernel (by writing \lstinline{uservec} into \lstinline{stvec}) and it
 sets up the values the trampoline needs when entering the kernel: the
 kernel page table, the kernel stack of this process, the function to
 call, and the hartid
@@ -293,10 +297,10 @@ register to the address the user program should be resumed at, and
 will set the \lstinline{satp} register to this process's page table
 \linerefs{kernel/trap.c:/x.=.r_sstatus/,/p->pagetable/}.
 Finally, \lstinline{usertrapret} calls
-the trampoline function \lstinline{trampout}, passing two arguments: the addresss
+the trampoline function \lstinline{userret}, passing two arguments: the addresss
 \lstinline{TRAPFRAME} and the value for \lstinline{satp}.
 
-\lstinline{trampout} \lineref{kernel/trampoline.S:/trampout/} loads
+\lstinline{userret} \lineref{kernel/trampoline.S:/userret/} loads
 \lstinline{satp} with the user page table.  After this instruction,
 the CPU will translate virtual address with the user page table;
 for example, the address of the next instruction will be translated
@@ -304,9 +308,9 @@ with the user page table.  This address will be translated in the same
 way as with the kernel page table, because the mapping is the same in
 both page tables.
 
-To execute the remaining instructions, \lstinline{trampout} wants to
+To execute the remaining instructions, \lstinline{userret} wants to
 use register (\lstinline{a0}), which contains the first argument to
-\lstinline{trampout}, \lstinline{TRAPFRAME}, the process's
+\lstinline{userret}, \lstinline{TRAPFRAME}, the process's
 trapframe. But, it must also restore \lstinline{a0} to the user
 process's value for \lstinline{a0}, which is stored in the process's
 trapframe \lstinline{p->tf}.  The kernel stores the to-be-restored value for
@@ -323,20 +327,20 @@ contains \lstinline{TRAPFRAME}, we are loading values from
 \lstinline{TRAPFRAME} with the \lstinline{PTE_U} bit clear
 \linerefs{kernel/proc.c:/TRAPFRAME/,/./}.
 
-Then, \lstinline{trampout} restores \lstinline{a0} by switching the
+Then, \lstinline{userret} restores \lstinline{a0} by switching the
 values of \lstinline{sscratch} and \lstinline{a0}. After this
 instruction, \lstinline{a0} contains the user process's \lstinline{a0}
 and \lstinline{sscratch} contains \lstinline{p->tf}.  Having
 \lstinline{p->tf} in \lstinline{sscratch} will be convenient when
 entering: this is the address where xv6 will save registers.  Finally,
-\lstinline{trampout} calls \lstinline{sret}, which returns to the
+\lstinline{userret} calls \lstinline{sret}, which returns to the
 previous mode (user mode) with interrupts enabled and resuming at the
 address in \lstinline{sepc}.  We are out of the kernel.
 
 If a timer interrupt happens, the CPU will switch to supervisor mode with
 the program counter set to the value in \lstinline{stvec} (i.e.,
-\lstinline{trampin}) and \lstinline{sepc} containing the address of
-the instruction that was interrupted.  \lstinline{trampin} first saves
+\lstinline{uservec}) and \lstinline{sepc} containing the address of
+the instruction that was interrupted.  \lstinline{uservec} first saves
 \lstinline{a0} and loads \lstinline{TRAPFRAME}, which maps to
 \lstinline{p->tf}, into \lstinline{a0}
 \lineref{kernel/trampoline.S:/csrrw a0/}.
@@ -344,7 +348,7 @@ Next, it saves all other
 CPU registers into \lstinline{p->tf}
 \linerefs{kernel/trampoline.S:/sd ra/,/sd t6/}.
 
-Now all registers are saved, \lstinline{trampin} can
+Now all registers are saved, \lstinline{uservec} can
 use \lstinline{t0} to save the original value of \lstinline{a0}.  It
 switches to the kernel stack of the process, because the user stack
 may not be valid.  It switches to the kernel page table; again, this

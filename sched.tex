@@ -465,7 +465,7 @@ register early in the CPU's boot sequence, while still in machine mode
 \lineref{kernel/start.c:/w_tp/}.
 \lstinline{usertrapret} saves \lstinline{tp} in the trampoline
 page, because the user process might modify \lstinline{tp}.
-Finally, \lstinline{trampin} restores that saved \lstinline{tp}
+Finally, \lstinline{uservec} restores that saved \lstinline{tp}
 when entering the kernel from user space
 \lineref{kernel/trampoline.S:/make tp hold/}.
 The compiler guarantees never to use the \lstinline{tp}
