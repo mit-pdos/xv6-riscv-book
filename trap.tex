@@ -173,7 +173,7 @@ code was interrupted by the trap. Because a {\tt yield} may have
 disturbed the saved {\tt sepc} and the saved previous mode in {\tt sstatus},
 {\tt kerneltrap} saves them when it starts. It now restores those
 control registers and returns to {\tt kernelvec}
-\lineref{kernel/kernelvec.S:/call.kerneltrap/}.
+\lineref{kernel/kernelvec.S:/call.kerneltrap$/}.
 {\tt kernelvec} pops the saved registers from the stack and
 executes {\tt sret}, which copies {\tt sepc} to {\tt pc}
 and resumes the interrupted kernel code.
@@ -191,102 +191,82 @@ Luckily the RISC-V always disables interrupts when it starts
 to take a trap, and xv6 doesn't enable them again until
 after it sets {\tt stvec}.
 
-\section{Kernel trap vectors}
+\section{Traps from user space}
 
-Because the RISC-V hardware has minimal mechanism for handling traps,
-much of the work of entering and leaving the kernel is done by kernel
-software. The next stage of trap handling is done in assembly code to
-set up an environment in which it is safe to run C code; then the
-assembly code jumps to C trap handling code. There are two main cases
-(again ignoring timer interrupts):
+The high-level path of a trap from user space is
+{\tt uservec}
+\lineref{kernel/trampoline.S:/^uservec/},
+then {\tt usertrap}
+\lineref{kernel/trap.c:/^usertrap/};
+and when returning,
+{\tt usertrapret}
+\lineref{kernel/trap.c:/^usertrapret/}
+and then
+{\tt userret}
+\lineref{kernel/trampoline.S:/^uservec/}.
 
-\begin{itemize}
+Traps from user code are more challenging than from the kernel, since
+{\tt satp} points to a user page table that has no mappings for the
+kernel, and the stack pointer may contain an invalid or even malicious
+value.
 
+Because the RISC-V hardware doesn't switch page tables during a trap,
+we need the user page table to include a mapping for the trap vector
+that {\tt stvec} points to. Further, the trap vector must switch {\tt
+  satp} to point to the kernel page table, and in order to avoid a
+crash, the vector code must be mapped at the same address in the
+kernel page table as in the user page table.
 
-\item Traps from user mode. This case is challenging, since {\tt satp}
-  points to a user page table that has no mappings for the kernel, and
-  the stack pointer may contain an invalid or even malicious value.
+Xv6 satisfies these constraints with a \indextext{trampoline} page
+that contains the trap vector code. Xv6 maps the trampoline page at
+the same virtual address in the kernel page table and in every user
+page table. This virtual address is \indexcode{TRAMPOLINE} (as we saw
+in Figure~\ref{fig:as} and in Figure~\ref{fig:xv6_layout}). The
+trampoline contents are set in {\tt trampoline.S},
+and (when executing user code) {\tt stvec} is set to
+{\tt uservec}
+\lineref{kernel/trampoline.S:/^uservec/}.
 
-  To addresses these challenges, xv6 uses a \indextext{trampoline}
-  page.  It maps a page with code to enter and exit the kernel in
-  every process's address space and in the kernel address space at the
-  address \indexcode{TRAMPOLINE} (as we saw in Figure~\ref{fig:as} and
-  in Figure~\ref{fig:xv6_layout}).  This page is mapped at the same
-  address in each address space.  This page contains the code that
-  switches page tables, and because the page is mapped identically in
-  each page table, the instruction right after the page table switch
-  will translate identically.  The trampoline code for entering needs
-  access to some area to save and restore CPU state, and therefore xv6
-  also conveniently maps the process's trapframe (\lstinline{p->tf})
-  in each process address space at \indexcode{TRAPFRAME}, right below
-  \lstinline{TRAMPOLINE}.  The trampoline also switches from a user
-  stack to a valid kernel stack.
-  
-\item Timer interrupts.  Timer interrupts can occur in user
-  or supervisor mode, and always switch to machine mode.
-  Because machine mode does not use the paging hardware,
-  xv6 restricts itself to a very simple timer interrupt handler.
-  It resets the
-  timer, sets a bit in the \lstinline{sip} register to ask
-  for a software interrupt to be delivered in supervisor mode,
-  and returns from the
-  interrupt to whatever mode it came from (supervisor or user mode).
-  Because there is an interrupt pending for supervisor mode, the
-  CPU immediately will take it unless interrupts are disabled.
+When {\tt uservec} starts, every register contains a value owned by
+the interrupting code. But {\tt uservec} needs to be able to modify
+some registers in order to set {\tt satp} and generate addresses at
+which to save the registers. RISC-V provides a helping hand in the
+form of the {\tt sscratch} register. The {\tt csrrw} instruction at
+the start of {\tt uservec} swaps the contents of {\tt a0} and {\tt
+  sscratch}. Now the user code's {\tt a0} is saved; {\tt uservec} has
+one register ({\tt a0}) to play with; and {\tt a0} contains whatever
+value the kernel previously placed in {\tt sscratch}.
 
-\end{itemize}
+{\tt uservec}'s next task is to save the user registers. Before
+entering user space, the kernel sets {\tt sscratch} to point to a
+per-process {\tt trapframe} that (among other things) has space to
+save all the user registers
+\lineref{kernel/proc.h:/^struct.trapframe/}. Because {\tt satp} still
+refers to the user page table, {\tt uservec} needs the trapframe to be
+mapped in the user address space. When creating each process, xv6
+allocates a page for the process's trapframe, and arranges for it
+always to be mapped at user virtual address {\tt TRAPFRAME}, which is
+just below {\tt TRAMPOLINE}. The process's {\tt p->tf} points to the
+trapframe, though at its physical address where it can be accessed
+through the kernel page table.
 
-A small hurdle for trap handlers is that they often
-need some scratch space. When the trap handler starts it cannot
-use any register because those contain values of the interrupted code
-and they must be saved before the trap handler can use them. But,
-to save them, it needs a register.  To handle this conundrum,
-RISC-V provides a scratch register for machine and kernel
-mode: \indexcode{mscratch} and \indexcode{sscratch}, respectively.
-RISC-V also has an instruction to exchange the content
-of a register with the content of the scratch register. After
-executing this instruction, the register will contain the address of
-the scratch area and the scratch register the content of the
-register. The trap handler can now use the register to save other
-registers in the scratch area.
+Thus after swapping {\tt a0} and {\tt sscratch}, {\tt a0}
+holds a pointer to the current process's trapframe.
+{\tt uservec} now proceeds to save all user registers there,
+including (after another swap) the user's {\tt a0}.
 
-The trap handling code needs to know why the trap occured.
-RISC-V provides a register
-\indexcode{scause}, which specifies the cause of the trap (e.g.,
-timer interrupt, illegal instruction, system call).
+The {\tt trapframe} also contains a pointer to the current process's
+kernel stack, the current CPU's hartid, the address of {\tt usertrap},
+and the address of the kernel page table. {\tt uservec}
+retrieves these values, switches {\tt satp} to the kernel page table,
+and calls {\tt usertrap} \lineref{kernel/trap.c:/^usertrap/}.
 
-\section{Code: traps from supervisor mode}
+XXX usertrap...
 
-Exceptions and interrupts (other than the timer) can occur while
-executing in the kernel in supervisor mode. The hardware reacts by
-saving the {\tt pc} in {\tt sepc}, and jumping to an xv6 trap handler
-addressed by {\tt stvec}. At a high level, xv6 then pushes the current
-registers onto the current (kernel) stack, handles the trap, restores
-registers by popping them from the stack, and uses {\tt sret} to resume.
+XXX where is the trampoline stuff set up.
 
-The details are as follows. During start-up xv6 stores the address of
-\lstinline{kernelvec} in the trap vector register for supervisor mode
-(the \lstinline{stvec} register)
-\lineref{kernel/trap.c:/trapinithart/}.  \lstinline{kernelvec} saves
-all registers on the current stack
-\linerefs{kernel/kernelvec.S:/sd ra/,/sd t6/}
-and then calls the C function \lstinline{kerneltrap}
-\lineref{kernel/kernelvec.S:/call/}.  \lstinline{kerneltrap}
-\lineref{kernel/trap.c:/kerneltrap/} performs a few sanity checks
-(e.g., it checks that it was indeed interrupted in supervisor mode) and
-then yields the core so that another process can run.  We will discuss
-the implementation of \lstinline{yield} in Chapter~\ref{CH:SCHED}.
+XXX
 
-At some point later, the scheduler may decide to resume the process
-that was interrupted by the timer interrupt. The process returns from
-\lstinline{yield}, perhaps running now on a different core.  It
-restores \lstinline{sepc} register and \lstinline{sstatus} register.
-\lstinline{kerneltrap} returns and restores all the saved registers
-\linerefs{kernel/kernelvec.S:/ld ra/,/ld t6/}, adjusts the stack
-pointer, and resumes at the addresses stored in \lstinline{sepc},
-which is the address of the instruction that was interrupted.
-
-\section{Code: traps from user mode}
 
 The function \lstinline{usertrapret}
 \lineref{kernel/trap.c:/usertrapret/} sets up the trampoline to leave
