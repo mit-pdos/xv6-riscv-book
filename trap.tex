@@ -90,12 +90,14 @@ control registers for interrupts handled in machine mode; xv6 uses
 them only for the special case of timer interrupts.
 
 When it needs to force a trap, the RISC-V hardware does the
-following:
+following for all trap types (other than timer interrupts):
 
 \begin{enumerate}
 
 \item If the trap is a device interrupt, and the {\tt sstatus} SIE bit
   is clear, don't do any of the following.
+
+\item Disable interrupts by clearing SIE.
 
 \item Copy the {\tt pc} to {\tt sepc}.
 
@@ -128,6 +130,67 @@ One reason that the CPU does minimal work during a trap is to provide
 flexibility to software; for example, in some situations no page table
 switch is needed, which may increase performance.
 
+\section{Traps from kernel space}
+
+When the xv6 kernel is executing on a CPU, two types of traps can
+occur: exceptions and device interrupts. The previous section outlined
+the CPU's response to such traps.
+
+When the kernel is executing, it arranges that {\tt stvec} point
+to the assembler code at {\tt kernelvec}
+\lineref{kernel/kernelvec.S:/^kernelvec/}.
+Since xv6 is already in the kernel, {\tt kernelvec} can rely
+on {\tt satp} being set to the kernel page table, and on the
+stack pointer referring to a valid kernel stack.
+{\tt kernelvec} saves all registers so that we can
+eventually resume the interrupted code without disturbing it.
+
+{\tt kernelvec} saves the registers on the stack of the interrupted
+kernel thread, which makes sense because the register values belong to
+that thread. This is particularly important if the trap causes a
+switch to a different thread -- in that case the trap will actually
+return on the stack of the new thread, leaving the interrupted
+thread's saved registers safely on its stack.
+
+{\tt kernelvec} jumps to {\tt kerneltrap}
+\lineref{kernel/trap.c:/^kerneltrap/} after saving registers.
+{\tt kerneltrap} is prepared for two types of traps:
+device interrrupts and exceptions. It calls
+{\tt devintr}
+\lineref{kernel/trap.c:/^devintr/}
+to check for and handle the former.
+If the trap isn't a device interrupt, it is an exception,
+and that is always a fatal error if it occurs in the kernel.
+
+If {\tt kerneltrap} was called due to a timer interrupt, and a
+process's kernel thread is running (rather than a scheduler thread),
+{\tt kerneltrap} calls {\tt yield} to give other threads a chance to
+run. At some point one of those threads will yield, and let our thread
+and its {\tt kerneltrap} resume again.
+
+When {\tt kerneltrap}'s work is done, it needs to return to whatever
+code was interrupted by the trap. Because a {\tt yield} may have
+disturbed the saved {\tt sepc} and the saved previous mode in {\tt sstatus},
+{\tt kerneltrap} saves them when it starts. It now restores those
+control registers and returns to {\tt kernelvec}
+\lineref{kernel/kernelvec.S:/call.kerneltrap/}.
+{\tt kernelvec} pops the saved registers from the stack and
+executes {\tt sret}, which copies {\tt sepc} to {\tt pc}
+and resumes the interrupted kernel code.
+
+It's worth thinking through how the trap return happens if
+{\tt kerneltrap} called {\tt yield} due to a timer interrupt.
+
+Xv6 sets a CPU's {\tt stvec} to {\tt kernelvec} when that CPU
+enters the kernel from user space; you can see this in {\tt usertrap}
+\lineref{kernel/trap.c:/stvec.*kernelvec/}.
+There's a window of time when the kernel is executing
+but {\tt stvec} has the wrong value, and it's crucial that device
+interrupts be disabled during that window.
+Luckily the RISC-V always disables interrupts when it starts
+to take a trap, and xv6 doesn't enable them again until
+after it sets {\tt stvec}.
+
 \section{Kernel trap vectors}
 
 Because the RISC-V hardware has minimal mechanism for handling traps,
@@ -139,12 +202,6 @@ assembly code jumps to C trap handling code. There are two main cases
 
 \begin{itemize}
 
-\item Traps from supervisor mode. These are traps that occur while the
-  xv6 kernel is executing. In this case the trap handler can rely on
-  {\tt satp} already being set to the kernel page table, and the stack
-  pointer already pointing to a valid stack in the kernel. The
-  assembly handler code pushes the current registers onto the
-  stack, and jumps to C code.
 
 \item Traps from user mode. This case is challenging, since {\tt satp}
   points to a user page table that has no mappings for the kernel, and
