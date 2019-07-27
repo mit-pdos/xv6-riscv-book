@@ -362,16 +362,18 @@ There's no C code involved in a timer interrupt.
 
 Chapter~\ref{CH:FIRST} ended with 
 \indexcode{initcode.S}
-invoking a system call.
-Let's look at that again
+invoking the {\tt exec} system call
 \lineref{user/initcode.S:/SYS_exec/}.
-The process pushed the arguments
-for an 
+Let's look at how the user call
+makes its way to the {\tt exec} system call's
+implementation in the kernel.
+
+The user code places the arguments for
 \indexcode{exec}
-call on the process's stack, and put the
+in registers {\tt a0} and {\tt a1}, and puts the
 system call number in
 \texttt{a7}.
-The system call numbers match the entries in the syscalls array,
+System call numbers match the entries in the syscalls array,
 a table of function pointers
 \lineref{kernel/syscall.c:/syscalls/}.
 The \lstinline{ecall} instruction traps into the kernel
@@ -422,11 +424,10 @@ prints an error and returns $-1$.
 
 Later chapters will examine the implementation of
 particular system calls.
-This chapter is concerned with the mechanisms for system calls.
+This chapter is concerned with the system call mechanism.
 There is one bit of mechanism left: finding the system call arguments.
 
-The arguments themselves are relatively easy to find, since the
-C calling convention on RISC-V specifies that arguments be
+The C calling convention on RISC-V specifies that arguments are
 passed in registers.
 During a system call, these registers (the saved user registers)
 are available in the trapframe, {\tt p->tf}.
@@ -462,12 +463,13 @@ File system calls such as
 {\tt exec} use {\tt fetchstr} to retrieve string arguments from user
 space.
 \lstinline{fetchstr} calls \lstinline{copyinstr},
-which knows how to look up virtual addresses in a user page
-table and turn them into addresses the kernel can use.
+which looks up a virtual address in a user page
+table, turn it into an address the kernel can use,
+and copies a string from the address into the kernel.
 
 \indexcode{copyinstr}
 \lineref{kernel/vm.c:/^copyinstr/} copies up to \lstinline{max} bytes to
-\lstinline{dst} from virtual address \lstinline{srcva} in the page
+\lstinline{dst} from virtual address \lstinline{srcva} in the user page
 table \lstinline{pagetable}.  It uses {\tt walkaddr}
 (which calls {\tt walk}) to walk the page table in software to
 determine the physical address \lstinline{pa0} for \lstinline{srcva}.
@@ -476,8 +478,8 @@ kernel virtual address,
 {\tt copyinstr} can directly copy string bytes from {\tt pa0} to {\tt dst}.
 {\tt walkaddr} 
 \lineref{kernel/vm.c:/^walkaddr/}
-validates that the user-supplied virtual address is part of
-the process's valid address space, so user programs
+checks that the user-supplied virtual address is part of
+the process's user address space, so programs
 cannot trick the kernel into reading other memory.
 A similar function, {\tt copyout}, copies data from the
 kernel to a user-supplied address.
@@ -489,209 +491,94 @@ A
 is the code in an operating system that manages a particular device:
 it tells the device hardware to perform operations,
 configures the device to generate interrupts when done,
-and handles the resulting interrupts.
-Driver code can be tricky to write
+handles the resulting interrupts,
+and interacts with processes that may be waiting
+for I/O from the device.
+Driver code can be tricky
 because a driver executes concurrently with the device that it manages.  In
-addition, the driver must understand the device's interface (e.g., which I/O
-ports do what), and that interface can be complex and poorly documented.
+addition, the driver must understand the device's hardware interface,
+which can be complex and poorly documented.
 
 Devices that need attention from the operating system can usually be
-configured to generate interrupts, one of types of trap. Typically the
-device driver's initialization code will tell the hardware that the
-driver wants interrupts. On the RISC-V, there is also a hardware unit
-called the PLIC that the driver must configure to forward interrupt
-requests to the RISC-V CPUs. A final piece of glue is that the
-kernel trap handling code must be able to recognize when the device
+configured to generate interrupts, one of types of trap.
+The kernel trap handling code must be able to recognize when the device
 has raised an interrupt and call the driver's interrupt handler;
 in xv6, this dispatch happens in {\tt devintr} \lineref{kernel/trap.c:/^devintr/}.
 
-The disk driver provides a good example.  The disk driver copies data
-from and to the disk, as requested by the file system.
-Disk hardware traditionally presents the data on the
-disk as a numbered sequence of 512-byte 
-\textit{blocks} 
-\index{block}
-(also called 
-\textit{sectors}): 
-\index{sector}
-sector 0 is the first 512 bytes, sector 1 is the next, and so on. The block size
-that an operating system uses for its file system maybe different than the
-sector size that a disk uses, but typically the block size is a multiple of the
-sector size. Xv6 holds copies of blocks that it has read into memory
-in objects of type
-\lstinline{struct buf}
-\lineref{kernel/buf.h:/^struct.buf/}.
-The
-data stored in this structure is sometimes out of sync with the disk: it might have
-not yet been read in from disk (the disk is working on it but hasn't returned
-the sector's content yet), or it might have been updated by software
-but not yet written to the disk.
-The driver must ensure that the rest of xv6 doesn't get confused when
-a {\tt struct buf}
-is out of sync with the disk.
+Many device drivers have two main parts: code that runs as part of a
+process, and code that runs at interrupt time. The process-level code
+is driven by system calls such as {\tt read} and {\tt write} that want
+the device to perform I/O. This code may ask the hardware to start an
+operation (e.g. ask the disk to read a block); then the code waits for
+the operation to complete. Eventually the device completes the
+operation and raises an interrupt. The driver's interrupt handler
+figures out what operation (if any) has completed, wakes up a waiting
+process if appropriate, and perhaps tells the hardware to start work
+on any waiting next operation.
 
-\section{Code: Disk driver}
+\section{Code: The console driver}
 
-Xv6 has a disk driver for \indextext{virtio} disks. The
-virtio standard is a standard for devices for kernels that run on a
-virtual machine~\cite{virtio}.
-It defines the interactions between a guest kernel
-and the virtual machine monitor for virtual devices emulating network
-devices, disk devices, etc.  Xv6 runs on \texttt{qemu} and
-\texttt{qemu} supports a virtio disk device.
+The console driver is a simple illustration of driver structure. The
+console driver accepts characters typed by a human, via the ``UART''
+serial-port hardware attached to the RISC-V. The driver accumulates a
+line of input at a time, processing special input characters such as
+backspace and control-u. User processes, such as the shell, can use
+the {\tt read} system call to fetch lines of input from the console.
+When you type input to xv6 in qemu, your keystrokes are delivered to
+xv6 by way of qemu's simulated UART hardware.
 
-The xv6 file system uses blocks of 1024 bytes,
-or \lstinline{BSIZE}
-\lineref{kernel/fs.h:/BSIZE/},
-which is twice the virtio disk's sector size.
-Each {\tt struct buf}
-\lineref{kernel/buf.h:1}
-contains BSIZE bytes,
-and the driver always reads and writes the disk in these units.
-The
-\lstinline{dev}
-and
-\lstinline{blockno}
-fields of {\tt struct buf} indicate which disk
-device and block number the buffer refers to. The
-\lstinline{data}
-field is an in-memory copy of the disk sectors that correspond to that block.
-The
-\lstinline{flags} field
-tracks the relationship between memory and disk:
-the
-\indexcode{B_VALID}
-flag means that
-\lstinline{data}
-has been read from the disk, and
-\indexcode{B_DIRTY} 
-means that
-\lstinline{data}
-needs to be written out.
+Xv6's {\tt main} calls {\tt consoleinit}
+\lineref{kernel/console.c:/^consoleinit/} to initialize the UART
+hardware, and to configure the UART hardware to generate input
+interrupts \lineref{kernel/uart.c:/^uartinit/}.
 
-Xv6 talks to the virtio disk controller
-through memory-mapped registers.  These registers start at address
-\lstinline{0x10001000} in the kernel adddress space (see
-Figure~\ref{fig:xv6_layout}).  The driver uses ordinary load and
-store instructions to interact with the device, but the addresses
-have special meaning.  For example, reading from the address
-\lstinline{0x10001000 + VIRTIO_MMIO_VERSION}
-\lineref{kernel/virtio.h:/VERSION/} returns the version of the virtio
-standard that the device supports
-\lineref{kernel/virtio\_disk.c:/MMIO_VERSION/}.  The driver uses the
-macro \lstinline{R} to read/write registers on the disk controller
-\lineref{kernel/virtio\_disk.c:/R/}.
+The xv6 shell reads from the console by way of a file descriptor
+opened by {\tt init.c} \lineref{user/init.c:/open..console/}. Calls to
+the {\tt read} system call make their way through the kernel to {\tt
+  consoleread} \lineref{kernel/console.c:/^consoleread/}. {\tt
+  consoleread} waits for input to arrive (via interrupts) and be
+buffered in {\tt cons.buf}, copies the input to user space, and (after
+a whole line has arrived) returns to the user process. If the user
+hasn't typed a full line yet, any reading processes will wait in the
+{\tt sleep} call
+\lineref{kernel/console.c:/sleep..cons/}
+(Chapter~\ref{CH:SCHED} explains the details of {\tt sleep}).
 
-The kernel initializes the disk driver at boot time by calling
-\indexcode{virtio_disk_init}
-\lineref{kernel/virtio\_disk.c:/^virtio_disk_init/} from
-\indexcode{main} \lineref{kernel/main.c:/virtio_disk_init/}.
-\lstinline{virtio_disk_init} negotiates the simplest features with the
-disk \linerefs{kernel/virtio\_disk.c:/features/,/=.features/} and sets
-up one queue for disk requests \linerefs{kernel/virtio\_disk.c:/QUEUE_SEL/,/free\[/}.  The driver can have
-\lstinline{NUM} outstanding requests to the disk.
+When the user types a character, the UART hardware asks the RISC-V
+to raise an interrupt. The RISC-V and xv6 process the interrupt
+as described above, and xv6's trap handling code calls {\tt devintr}
+\lineref{kernel/trap.c:/^devintr/}.
+{\tt devintr} looks at the RISC-V {\tt scause} register to discover that
+the interrupt is from an external device.
+Then it asks a hardware unit called the PLIC
+\cite{riscv:priv}
+to tell it which device interrupted
+\lineref{kernel/trap.c:/plic.claim/}.
+If it was the UART, {\tt devintr} calls {\tt uartintr}.
 
-Disk accesses typically take milliseconds, a long time for a
-CPU.  Therefore, xv6 lets another process run on the CPU after a
-disk I/O request and arranges to receive an interrupt when the disk
-operation has completed.  
-\indexcode{plic_init}, which is called from \lstinline{main}, programs
-the \indextext{Platform Level Interrupt Controller (PLIC)}~\cite{riscv:priv} to
-accept interrupts from the disk.  It enables interrupts for
-\lstinline{VIRTIO0_IRQ} \lineref{kernel/plic.c:/^plicinit/}.  If the
-disk generates an interrupt, \lstinline{devintr}
-\lineref{kernel/trap.c:/^devintr/} will see that
-\lstinline{VIRTIO0_IRQ} was enabled and invoke
-\lstinline{virtio_disk_intr}.
+{\tt uartintr}
+\lineref{kernel/uart.c:/^uartintr/}
+reads any waiting input characters from the UART hardware
+and hands them to {\tt consoleintr}; it doesn't
+wait for characters, since future input will raise a new interrupt.
+The job of {\tt consoleintr} is to accumulate input characters in
+{\tt cons.buf} 
+until a whole line arrives.
+{\tt consoleintr} treats backspace and a few other characters
+specially.
+When a newline arrives, {\tt consoleintr} wakes up a
+waiting {\tt consoleread} (if there is one).
 
-After this setup, the disk is not used again until the buffer cache calls
-\indexcode{virtio_disk_rw}
-\lineref{kernel/virtio\_disk.c:/^virtio_disk_rw/},
-which updates a locked buffer
-as indicated by the flags.
-If
-\indexcode{B_DIRTY}
-is set,
-\lstinline{virtio_disk_rw}
-writes the buffer
-to the disk; if
-\indexcode{B_VALID}
-is not set,
-\indexcode{virtio_disk_rw}
-reads the buffer from the disk.
-To add a request to the queue of requests, the driver must find 3
-descriptors to describe the request.  The first descriptor
-describes the operation (e.g., read/write).  The second descriptor
-records the address of the data to be read or written. The third
-descriptor is where the device will post the result status of the
-request.  \lstinline{Virtio_Disk_Rw} starts by finding 3 free descriptors.  If
-it cannot find 3 descriptors, it means that the queue of requests is
-full, and it waits until a previously issued request completes, freeing
-up descriptors.   If it finds 3 descriptors, the drivers fills them
-in \linerefs{kernel/virtio\_disk.c:/buf0.type/,/.next.=.0/}.
+Once woken, {\tt consoleread} will observe a full line in {\tt
+  cons.buf}, copy it to user space, and return (via the system call
+machinery) to user space.
 
-The virtio disk supports \textit{Direct Memory Access
-  (DMA)}\index{DMA}, which allows the device to read/write physical
-memory.  The driver gives the device the physical address of the
-buffer's data \lineref{kernel/virtio\_disk.c:/b->data/} and the device
-copies directly to or from main memory.  DMA is faster and more
-efficient than programmed I/O and is less taxing for the CPU's memory
-caches.
-
-Once the driver has filled out the descriptors, it can alert the disk
-that a new quests is available.  It does so by writing to
-\lstinline{avail}.  The disk monitors \lstinline{avail} and reads the
-value in \lstinline{avail[1]} to find out how many new requests it
-should process.  To make sure that writes to \lstinline{avail} are not
-re-ordered, the driver inserts a memory barrier between them
-\lineref{kernel/virtio\_disk.c:/sync_synchronize/}. This guarantees
-that if the disk sees a new requests in \lstinline{avail[1]}, it will
-also see the correct index in \lstinline{avail[2 + (avail[1]%NUM)]}.
-
-Having posted the request to the disk,
-\lstinline{virtio_disk_rw}
-must wait for the result.  As discussed above,
-polling does not make efficient use of the CPU.
-Instead,
-\indexcode{virtio_disk_rw}
-yields the CPU for other processes by sleeping,
-waiting for the interrupt handler to 
-record in the buffer's flags that the operation is done
-\linerefs{kernel/virtio\_disk.c:/while.*VALID/,/sleep/}.
-While this process is sleeping,
-xv6 will schedule other processes to keep the CPU busy.
-
-Eventually, the disk will finish its operation and trigger an
-interrupt, which will result in a call to
-\indexcode{virtio_disk_intr}
-to handle it
-\lineref{kernel/trap.c:/virtio_disk_intr/}.
-The disk posts the requests that it has completed in \lstinline{used}.
-\lstinline{Virtio_Disk_Intr}
-\lineref{kernel/virtio\_disk.c:/^virtio_disk_intr/}
-reads \lstinline{used} to find the \lstinline{id} of
-the request that has completed.
-Then, \lstinline{virtio_disk_intr}
-sets 
-\indexcode{B_VALID},
-clears
-\indexcode{B_DIRTY} for the buffer in the request,
-wakes up any process sleeping on the buffer
-\linerefs{kernel/virtio\_disk.c:/info\[id\]\.b/,/wakeup/},
-and frees up the descriptors that were used for request.
-Freeing up a descriptor also wakes up processes
-waiting for free descriptors.
-
-The PLIC routes interrupts to the first CPU that claims it.
-Thus, cores can process different disk interrupts concurrently.  In
-some operating systems, this routing can get sophisticated.  For
-example, a network driver might arrange to deliver interrupts for
-packets of one network connection to the CPU that is managing
-that connection, while interrupts for packets of another connection
-are delivered to another CPU.  If some network connections are
-short lived while others are long lived and the operating system wants
-to keep all CPUs busy to achieve high throughput, this routing
-becomes quite complex.
+On a multi-core machine, the interrupt may be delivered to any of the
+CPUs; the PLIC manages this decision. The interrupt may arrive on the
+same CPU that is running the process reading from the console; or it
+may arrive on a CPU that is doing something entirely unrelated. Thus
+interrupt handlers are not allowed to think about the process or code
+that they have interrupted.
 
 \section{Real world}
 
