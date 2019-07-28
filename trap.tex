@@ -431,19 +431,18 @@ The C calling convention on RISC-V specifies that arguments are
 passed in registers.
 During a system call, these registers (the saved user registers)
 are available in the trapframe, {\tt p->tf}.
-The helper functions
+The functions
 \lstinline{argint},
 \lstinline{argaddr},
-\lstinline{argptr},
 and
 \lstinline{argfd}
 retrieve the 
 \textit{n} 'th 
 system call
-argument, as either an integer, pointer, a string, or a file descriptor.
-They all call {\tt fetcharg} to retrieve one of the saved
+argument, as either an integer, pointer, or a file descriptor.
+They all call {\tt argraw} to retrieve one of the saved
 user registers
-\lineref{kernel/syscall.c:/^fetcharg/}.
+\lineref{kernel/syscall.c:/^argraw/}.
 
 Some system calls pass pointers as arguments, and the kernel must use
 those pointers to read or write user memory. The {\tt exec} system
@@ -526,6 +525,28 @@ backspace and control-u. User processes, such as the shell, can use
 the {\tt read} system call to fetch lines of input from the console.
 When you type input to xv6 in qemu, your keystrokes are delivered to
 xv6 by way of qemu's simulated UART hardware.
+
+The UART hardware that the driver talks to is a 16550
+chip~\cite{ns16550a} emulated by qemu. On a real computer, a 16550
+would manage an RS232 serial link connecting to a terminal or other
+computer. When running qemu, it's connected to your keyboard and
+display.
+
+The UART hardware appears to software as a set of memory-mapped
+control registers. That is, there are some physical addresses that 
+RISC-V hardware connects to the UART device, so that loads and stores
+interact with the device hardware rather than RAM.
+The memory-mapped address for the UART is 0x10000000, or {\tt UART0}
+\lineref{kernel/memlayout.h:/UART0.0x/}.
+There are a handful of UART control registers, each the width
+of a byte. Their offsets from {\tt UART0} are defined in
+\lineref{kernel/uart.c:/define.RHR/}. For example, the
+{\tt LSR} register contain bits that indicate whether input
+characters are waiting to be read by the software. These
+characters (if any) are available for reading from the
+{\tt RHR} register. Each time one is read, the UART hardware
+deletes it from an internal FIFO of waiting characters, and
+clears the ``ready'' bit in {\tt LSR} when the FIFO is empty.
 
 Xv6's {\tt main} calls {\tt consoleinit}
 \lineref{kernel/console.c:/^consoleinit/} to initialize the UART
