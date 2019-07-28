@@ -603,6 +603,30 @@ that they have interrupted.
 
 \section{Real world}
 
+The need for special trampoline pages could be eliminated if kernel
+memory were mapped into every process's user page table. That would
+also eliminate the need for a page table switch when trapping from
+user space into the kernel. That in turn would allow system call
+implementations in the kernel to take advantage of the current
+process's user memory being mapped, allowing kernel code to directly
+dereference user pointers. Many operating systems use these ideas to
+increase efficiency. Xv6 avoids them in order to reduce the chances of
+security bugs in the kernel due to inadvertent use of user pointers,
+and to reduce some complexity that would be required to ensure that
+user and kernel virtual addresses don't overlap.
+
+Xv6 allows device and timer interrupts while executing in the kernel,
+as well as when executing user programs. Timer interrupts force a
+thread switch (a call to {\tt yield}) from the timer interrupt
+handler, even when executing in the kernel. The ability to time-slice
+the CPU fairly among kernel threads is useful if kernel threads
+sometimes spend a lot of time computing, without returning to user
+space. However, the need for kernel code to be mindful that it might
+be suspended (due to a timer interrupt) and later resume on a
+different CPU is the source of some complexity in xv6. The kernel
+could be made somewhat simpler if device and timer interrupts only
+occurred while executing user code.
+
 Supporting all the devices on a typical computer in its full glory is
 much work, because there are many devices, the devices have many
 features, and the protocol between device and driver can be complex
@@ -642,6 +666,10 @@ often with DMA.
 \section{Exercises}
 
 \begin{enumerate}
+
+\item {\tt uartputc} \lineref{kernel/uart.c:/^uartputc/} polls the
+  UART device to wait for it to finish with the previous output
+  character. Convert it to use interrupts intstead.
   
 \item Add a driver for an Ethernet card.
 
