@@ -136,8 +136,8 @@ When the xv6 kernel is executing on a CPU, two types of traps can
 occur: exceptions and device interrupts. The previous section outlined
 the CPU's response to such traps.
 
-When the kernel is executing, it arranges that {\tt stvec} point
-to the assembler code at {\tt kernelvec}
+When the kernel is executing, it points {\tt stvec}
+to the assembly code at {\tt kernelvec}
 \lineref{kernel/kernelvec.S:/^kernelvec/}.
 Since xv6 is already in the kernel, {\tt kernelvec} can rely
 on {\tt satp} being set to the kernel page table, and on the
@@ -217,9 +217,9 @@ value.
 
 Because the RISC-V hardware doesn't switch page tables during a trap,
 we need the user page table to include a mapping for the trap vector
-that {\tt stvec} points to. Further, the trap vector must switch {\tt
+instructions that {\tt stvec} points to. Further, the trap vector must switch {\tt
   satp} to point to the kernel page table, and in order to avoid a
-crash, the vector code must be mapped at the same address in the
+crash, the vector instructions must be mapped at the same address in the
 kernel page table as in the user page table.
 
 Xv6 satisfies these constraints with a \indextext{trampoline} page
