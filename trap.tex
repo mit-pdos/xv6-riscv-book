@@ -318,19 +318,22 @@ and uses {\tt sret} to return to user space.
 Xv6 uses timer interrupts to maintain its clock and to enable it to
 switch among compute-bound processes; the {\tt yield} calls in {\tt
   usertrap} and {\tt kerneltrap} cause this switching. Timer
-interrupts come from special hardware attached to the RISC-V that xv6
-programs to interrupt periodically.
+interrupts come from clock hardware attached to each RISC-V CPU. Xv6
+programs this clock hardware to interrupt each CPU periodically.
 
 RISC-V requires that timer interrupts be taken in machine mode, not
 supervisor mode. RISC-V machine mode executes without paging, and with
 a separate set of control registers, so it's not practical to run
 ordinary xv6 kernel code in machine mode. As a result, xv6 handles
-timer interrupts completely separately from the trap mechanism laid out
-above.
+timer interrupts completely separately from the trap mechanism laid
+out above. The xv6 timer interrupt handler asks the RISC-V hardware to
+generate a ``software interrupt;'' after the timer interrupt finishes,
+the RISC-V delivers the software interrupt in supervisor mode, using
+the ordinary trap machinery outlined above.
 
-Code in {\tt start}
-\lineref{kernel/start.c:/receive.timer/}
-sets up to receive timer interrupts.
+Code executed in machine mode in {\tt start.c}, before {\tt main},
+sets up to receive timer interrupts
+\lineref{kernel/start.c:/^timerinit/}.
 Part of the job is to program the CLINT hardware (core-local interruptor)
 to generate an interrupt after a certain delay.
 Another part is to set up a scratch area, analogous to trapframe,
