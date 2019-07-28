@@ -606,57 +606,38 @@ that they have interrupted.
 Supporting all the devices on a typical computer in its full glory is
 much work, because there are many devices, the devices have many
 features, and the protocol between device and driver can be complex
-and badly documented.
-In many operating systems, the drivers account for more code
-than the core kernel.
+and badly documented. In many operating systems, the drivers account
+for more code than the core kernel.
 
-Actual device drivers are far more complex than the disk driver in this chapter,
-but the basic ideas are the same:
-typically devices are slower than CPU, so the hardware uses
-interrupts to notify the operating system of status changes.
-Modern disk controllers typically
-accept a 
-\indextext{batch} 
-of disk requests at a time and even reorder
-them to make most efficient use of the disk arm.
-When disks were simpler, operating systems often reordered the
-request queue themselves.
+The UART driver retrieves data a byte at a time by reading the UART
+control registers; this pattern is called ``programmed I/O,'' since
+software is driving the data movement. Programmed I/O is simple, but
+too slow to be used at high data rates. Devices that need to move lots
+of data at high speed typically use ``DMA'', or direct memory access.
+DMA device hardware directly writes incoming data to RAM, and reads
+outgoing data from RAM. Modern disk and network devices use DMA. A
+driver for a DMA device would prepare data in RAM, and then use a
+single write to a control register to tell the device to process the
+prepared data.
 
-Many operating systems have drivers for solid-state disks because they
-provide much faster access to data.  But, although a solid-state disk
-works very differently from a traditional mechanical disk, both
-devices provide block-based interfaces and reading/writing blocks on a
-solid-state disk is still more expensive than reading/writing RAM.
-The virtio disk makes no distinction between a mechanical disk and
-solid-state disk.
+Interrupts make sense when a device needs attention at unpredictable
+times, and not too often. But interrupts have high CPU overhead. Thus
+high speed devices, such networks and disk controllers, use tricks
+that reduce the need for interrupts. One trick is to raise a single
+interrupt for a whole batch of incoming or outgoing requests. Another
+trick is for the driver to disable interrupts entirely, and to check
+the device periodically to see if it needs attention. This technique
+is called ``polling.'' Polling makes sense if the device performs
+operations very quickly, but it wastes CPU time if the device is mostly
+idle. Some drivers dynamically switch between polling and interrupts
+depending on the current device load.
 
-Other hardware is surprisingly similar to disks: network device
-buffers hold packets, audio device buffers hold sound samples,
-graphics card buffers hold video data and command sequences.
-High-bandwidth graphics cards, and network cards often use DMA
-as the virtio disk does.
-
-Some drivers dynamically switch between polling and interrupts, because using
-interrupts can be expensive, but using polling can introduce delay until the
-driver processes an event.  For example, a network driver that receives a
-burst of packets may switch from interrupts to polling since it knows that more
-packets must be processed and it is less expensive to process them using polling.
-Once no more packets need to be processed, the driver may switch back to
-interrupts, so that it will be alerted immediately when a new packet arrives.
-
-If a program reads a file, the data for that file is copied twice.  First, it
-is copied from the disk to kernel memory by the driver, and then later it is
-copied from kernel space to user space by the 
-\lstinline{read}
-system call.  If the program then sends the data over the network, 
-the data is copied twice more: from user space to kernel space and from
-kernel space to the network device.  To support applications for which 
-efficiency is important (e.g., serving popular images on the Web), operating systems
-use special code paths to avoid copies.  As one example,
-in real-world operating systems, 
-buffers typically match the hardware page size, so that
-read-only copies can be mapped into a process's address space
-using the paging hardware, without any copying.
+The UART driver copies incoming data first to a buffer in the kernel,
+and then to user space. This makes sense at low data rates, but such a
+double copy can significantly reduce performance for devices that
+generate or consume data very quickly. Some operating systems are able
+to directly move data between user-space buffers and device hardware,
+often with DMA.
 
 \section{Exercises}
 
