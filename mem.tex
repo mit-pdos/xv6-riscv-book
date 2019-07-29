@@ -148,14 +148,16 @@ virtual addresses to physical addresses.  The file
 \fileref{kernel/memlayout.h}
 declares the constants for xv6's kernel memory layout.
 
-The RISC-V development board has a number of
+Qemu simulates a computer that includes I/O devices
+such as a disk interface.
+Qemu exposes the device interfaces to software as
 \indextext{memory-mapped}
-devices that sit below
+control registers that sit below
 \texttt{0x80000000}
-in physical memory. The particular addresses are chosen by the board's
-manufacturer.  The kernel can interact with devices by reading/writing
-memory locations, and the board routes those reads and writes to the
-appropriate devices.  Chapter~\ref{CH:TRAP} explains
+in physical memory.
+The kernel can interact with the devices by reading/writing
+these memory locations.
+Chapter~\ref{CH:TRAP} explains
 how xv6 interacts with devices.
 
 The kernel uses an identity mapping for most virtual addresses; that

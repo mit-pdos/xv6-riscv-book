@@ -70,6 +70,12 @@ This text sometimes uses the term
 though the former term can also refer to a computer board with
 several distinct processor chips.
 
+The CPU in a complete computer is surrounded by support hardware, much
+of it in the form of I/O interfaces. Xv6 is written for the support
+hardware simulated by qemu's ``-machine virt'' option. This includes
+RAM, a ROM containing boot code, a serial connection to the user's
+keyboard/screen, and a disk for storage.
+
 %% 
 \section{Abstracting physical resources}
 %% 
@@ -268,7 +274,7 @@ microkernels, but conceptually xv6 is monolithic.
 {\bf File} & {\bf Description} \\
 \midrule
 bio.c & Disk block cache for the file system. \\
-console.c & Formatted console I/O. \\
+console.c & Connect to the user keyboard and screen. \\
 entry.S & Very first boot instructions. \\
 exec.c & exec() system call. \\
 file.c & File descriptor support. \\
@@ -279,6 +285,7 @@ log.c & File system logging and crash recovery. \\
 main.c & Control initialization of other modules during boot. \\
 pipe.c & Pipes. \\
 plic.c & RISC-V interrupt controller. \\
+printf.c & Formatted output to the console. \\
 proc.c & Processes and scheduling. \\
 sleeplock.c & Locks that yield the CPU. \\
 spinlock.c & Locks that don't yield the CPU. \\
@@ -290,7 +297,7 @@ sysfile.c & File-related system calls. \\
 sysproc.c & Process-related system calls. \\
 trampoline.S & Assembly code to switch between user and kernel. \\
 trap.c & C code to handle and return from traps and interrupts. \\
-uart.c & Low-level serial-port console code. \\
+uart.c & Serial-port console device driver. \\
 virtio\_disk.c & Disk device driver. \\
 vm.c & Manage page tables and address spaces. \\
 \end{tabular}
@@ -422,7 +429,7 @@ To make xv6 more concrete, we'll outline how the kernel starts and
 runs the first process. The subsequent chapters will describe the
 mechanisms that show up in this overview in more detail.
 
-When the RISC-V development board powers on, it initializes
+When the RISC-V computer powers on, it initializes
 itself and runs a boot loader which is stored in read-only
 memory.  The boot loader loads the xv6 kernel into memory.  Then, in
 machine mode, the CPU executes xv6 starting at
