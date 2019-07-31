@@ -459,8 +459,8 @@ Second, the xv6 kernel page table mappings are not the same as the
 user page table mappings, so the kernel cannot use ordinary
 instructions to load or store from user-supplied addresses.
 
-A number of kernel functions need to perform safe reads from user space; {\tt
-  fetchstr} is an example \lineref{kernel/syscall.c:/^fetchstr/}.
+A number of kernel functions need to perform safe reads from user space;
+{\tt fetchstr} is an example \lineref{kernel/syscall.c:/^fetchstr/}.
 File system calls such as
 {\tt exec} use {\tt fetchstr} to retrieve string arguments from user
 space.

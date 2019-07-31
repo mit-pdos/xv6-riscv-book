@@ -1,8 +1,11 @@
 \chapter{Locking}
 \label{CH:LOCK}
 
-Xv6 runs on multiprocessors: computers with
-multiple CPUs executing independently.
+Most kernels, including xv6, interleave the execution
+of multiple activities.
+One source of interleaving is multiprocessor hardware:
+computers with
+multiple CPUs executing independently, such as xv6's RISC-V.
 These multiple CPUs share physical RAM,
 and xv6 exploits the sharing to maintain
 data structures that all CPUs read and write.
@@ -12,25 +15,31 @@ CPU is mid-way through updating it, or even
 multiple CPUs updating the same data simultaneously;
 without careful design such parallel access is likely
 to yield incorrect results or a broken data structure.
-Even on a uniprocessor, an interrupt routine that uses
+Even on a uniprocessor, the kernel may switch the CPU among
+a number of threads, causing their execution to be interleaved.
+Finally, a device interrupt handler that modifies
 the same data as some interruptible code could damage
 the data if the interrupt occurs at just the wrong time.
 The word 
 \indextext{concurrency}
 refers to situations in which
 multiple instruction streams are interleaved,
-due to multiprocessor parallelism, interrupts,
-or thread switching.
+due to multiprocessor parallelism,
+thread switching, or interrupts.
 
-In any situation where a shared data item may be
-accessed concurrently, there must be a
-\indextext{concurrency control}
-strategy to maintain correctness.
-xv6 uses a handful of simple concurrency control
-strategies; much more sophistication is possible.
-This chapter focuses on one of the strategies used extensively
-in xv6 and many other systems: the 
-\indextext{lock}.
+Kernels are full of concurrently-accessed data. For example, two CPUs
+could simultaneously call {\tt kalloc}, thereby concurrently
+popping from the head of the free list. Kernel designers like to allow
+for lots of concurrency, since it can yield increased performance
+though parallelism, and increased responsiveness. But, as a result,
+kernel designers spend a lot of effort convincing themselves of
+correctness despite such concurrency. There are many ways to arrive at
+correct code, some easier to reason about than others. Strategies
+aimed at correctness under concurrency, and abstractions that support
+them, are called \indextext{concurrency control} techniques. Xv6 uses
+a number of concurrency control techniques, depending on the
+situation; many more are possible. This chapter focuses on a widely
+used technique: the \indextext{lock}.
 
 A lock provides mutual exclusion, ensuring that only one CPU at a time can hold
 the lock. If the programmer associates a lock with each shared data item,
@@ -38,18 +47,24 @@ and the code always holds the associated lock when using an item,
 then the item will be used by only one CPU at a time.
 In this situation, we say that the lock protects the data item.
 
-The rest of this chapter explains why xv6 needs locks, how xv6 implements them, and how
-it uses them.  A key observation will be that if you look at some code in
-xv6, you must ask yourself if concurrent code could change
-the intended behavior of the code by modifying data (or hardware resources)
-it depends on.
-You must keep in mind that the compiler may turn a
-single C statement into several machine instructions,
-and that those instructions may execute in a way that is
-interleaved with instructions executing on other CPUs.
-That is, you cannot assume that lines of C code
-on the page are executed atomically.
-Concurrency makes reasoning about correctness difficult.
+The rest of this chapter explains why xv6 needs locks, how xv6
+implements them, and how it uses them.
+
+
+% The following is most relevant to lock-free code:
+% 
+% A key observation will be that if you look at some code in
+% xv6, you must ask yourself if concurrent code could change
+% the intended behavior of the code by modifying data (or hardware resources)
+% it depends on.
+% You must keep in mind that the compiler may turn a
+% single C statement into several machine instructions,
+% and that those instructions may execute in a way that is
+% interleaved with instructions executing on other CPUs.
+% That is, you cannot assume that lines of C code
+% on the page are executed atomically.
+% Concurrency makes reasoning about correctness difficult.
+
 %% 
 \section{Race conditions}
 %% 
@@ -167,8 +182,8 @@ The sequence of instructions between
 and
 \lstinline{release}
 is often called a
-\indextext{critical section},
-and the lock protects
+\indextext{critical section}.
+The lock is typically said to be protecting
 \lstinline{list}.
 
 When we say that a lock protects data, we really mean
@@ -248,7 +263,7 @@ and non-zero when it is held.
 Logically, xv6 should acquire a lock by executing code like
 \begin{lstlisting}[numbers=left,firstnumber=21]
    void
-   acquire(struct spinlock *lk)
+   acquire(struct spinlock *lk) // does not work!
    {
      for(;;) {
        if(lk->locked == 0) {  (*@\label{line:test}@*)
@@ -273,14 +288,14 @@ make lines \ref{line:test} and \ref{line:assign} execute as an
 
 Because locks are widely used,
 multi-core processors usually provide instructions that
-can be used to implement an atomic version of
+implement an atomic version of
 lines~\ref{line:test} and \ref{line:assign}.
 On the RISC-V this instruction is
-\lstinline{amoswap register, address}.
+\lstinline{amoswap r, a}.
 \lstinline{amoswap}
-reads the value at the memory address,
-writes the contents of the register to that address,
-and puts the value it read into the register.
+reads the value at the memory address {\tt a},
+writes the contents of register {\tt r} to that address,
+and puts the value it read into {\tt r}.
 That is, it swaps the contents of the register and the memory address.
 It performs this sequence atomically, using special
 hardware to prevent any
@@ -308,7 +323,7 @@ lock, and the swap will have set
 \lstinline{lk->locked}
 to one.
 If the previous value is one, then some other CPU
-holds the lock, and the fact that we swapped one into
+holds the lock, and the fact that we atomically swapped one into
 \lstinline{lk->locked}
 didn't change its value.
 
@@ -332,7 +347,7 @@ field
 and then releases the lock.
 Conceptually, the release just requires assigning zero to
 \lstinline{lk->locked}.
-The C standard allows compilers to implement assignment
+The C standard allows compilers to implement an assignment
 with multiple store instructions,
 so a C assignment might be non-atomic with respect
 to concurrent code.
@@ -360,7 +375,7 @@ and
 Try Exercises 1 and 2 to see what happens if those
 functions omit the locks.
 You'll likely find that it's difficult to trigger incorrect
-behavior, suggesting that it's hard to ensure that code
+behavior, suggesting that it's hard to reliably test whether code
 is free from locking errors and races.
 It is not unlikely that xv6 has some races.
 
@@ -369,7 +384,7 @@ to use and which data and invariants each lock should protect.
 There are a few basic principles.
 First, any time a variable can be written by one CPU
 at the same time that another CPU can read or write it,
-a lock should be introduced to keep the two
+a lock should be used to keep the two
 operations from overlapping.
 Second, remember that locks protect invariants:
 if an invariant involves multiple memory locations,
@@ -401,9 +416,9 @@ its own lock, to allow truly parallel allocation.
 As an example of relatively fine-grained locking, xv6
 has a separate lock for each file, so that processes that
 manipulate different files can often proceed without waiting
-for each others' locks. On the other hand, this locking
-scheme could be made even more fine-grained, if one wanted
-to have good performance for processes that simultaneously
+for each others' locks. The file locking
+scheme could be made even more fine-grained if one wanted
+to allow processes to simultaneously
 write different areas of the same file.
 Ultimately lock granularity decisions need to be driven
 by performance measurements as well as complexity considerations.
@@ -427,7 +442,7 @@ icache.lock & Protects allocation of inode cache entries \\
 vdisk\_lock & Serializes access to disk hardware and queue of DMA descriptors \\
 kmem.lock & Serializes allocation of memory \\
 log.lock & Serializes operations on the transaction log \\
-pipe's p->lock & Serializes operations on each pipe \\
+pipe's pi->lock & Serializes operations on each pipe \\
 pid\_lock & Serializes increments of next\_pid \\
 proc's p->lock & Serializes changes to process's state \\
 tickslock & Serializes operations on the ticks counter \\
@@ -487,9 +502,9 @@ The file system code contains xv6's longest lock chains.
 For example, creating a file requires simultaneously
 holding a lock on the directory, a lock on the new file's inode,
 a lock on a disk block buffer, 
-\lstinline{vdisk\_lock},
+the disk driver's \lstinline{vdisk_lock},
 and
-\lstinline{p->lock}.
+the calling process's \lstinline{p->lock}.
 To avoid deadlock, file system code always acquires locks in the order 
 mentioned in the previous sentence.
 \section{Locks and interrupt handlers}
