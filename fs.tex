@@ -169,12 +169,14 @@ not the
 \lstinline{buf}
 array.
 
-A buffer has two state bits associated with it.
-\indexcode{B_VALID}
+A buffer has two state fields associated with it.
+The field
+\indexcode{valid}
 indicates that the buffer contains a copy of the block.
-\indexcode{B_DIRTY}
-indicates that the buffer content has been modified and needs
-to be written to the disk.
+The field \indexcode{disk}
+indicates that the buffer content has been handed to
+the disk, which may change the buffer (e.g., write
+data from the disk into \lstinline{data}. 
 
 \lstinline{Bread}
 \lineref{kernel/bio.c:/^bread/}
@@ -203,16 +205,14 @@ If there is no cached buffer for the given sector,
 must make one, possibly reusing a buffer that held
 a different sector.
 It scans the buffer list a second time, looking for a buffer
-that is not locked and not dirty:
+that is not in use (\lstinline{b->refcnt = 0}):
 any such buffer can be used.
 \lstinline{Bget}
 edits the buffer metadata to record the new device and sector number
 and acquires its sleep-lock.
 Note that the assignment to
-\lstinline{flags}
-clears
-\indexcode{B_VALID},
-thus ensuring that
+\lstinline{b->valid = 0}
+ensures that
 \lstinline{bread}
 will read the block data from disk
 rather than incorrectly using the buffer's previous contents.
@@ -266,11 +266,7 @@ to write the changed data to disk before releasing the buffer.
 \lineref{kernel/bio.c:/^bwrite/}
 calls
 \indexcode{virtio_disk_rw}
-to talk to the disk hardware, after setting
-\indexcode{B_DIRTY}
-to indicate that
-\lstinline{virtio_disk_rw}
-should write (rather than read).
+to talk to the disk hardware.
 
 When the caller is done with a buffer,
 it must call
@@ -473,8 +469,7 @@ acts as a proxy for
 \indexcode{bwrite}.
 It records the block's sector number in memory,
 reserving it a slot in the log on disk,
-and marks the buffer
-\lstinline{B_DIRTY}
+and pins the buffer in the block cache
 to prevent the block cache from evicting it.
 The block must stay in the cache until committed:
 until then, the cached copy is the only record
