@@ -756,10 +756,7 @@ one pthread blocks in a system call, another pthread of the same process should
 be able to run on that CPU.  As another example, if a pthread changes its
 process's address space (e.g., maps or unmaps memory), the kernel must arrange that
 other CPUs that run threads of the same process update their hardware page
-tables to reflect the change in the address space.  On the x86, this involves
-shooting down the
-\indextext{Translation Look-aside Buffer (TLB)}
-of other CPUs using inter-CPU interrupts (IPIs).
+tables to reflect the change in the address space. 
 
 It is possible to implement locks without atomic instructions, but it is
 expensive, and most operating systems use atomic instructions.
