@@ -452,12 +452,13 @@ buf's b->lock & Serializes operations on each block buffer \\
 \caption{Locks in xv6}
 \label{fig:locktable}
 \end{figure}
+
 %% 
 \section{Deadlock and lock ordering}
 %% 
 If a code path through the kernel must hold several locks at the same time, it is
 important that all code paths acquire those locks in the same order.  If
-they don't, there is a risk of deadlock.  Let's say two code paths in
+they don't, there is a risk of \indextext{deadlock}.  Let's say two code paths in
 xv6 need locks A and B, but code path 1 acquires locks in the order A
 then B, and the other path acquires them in the order B then A.
 Suppose thread T1 executes code path 1 and acquires lock A,
@@ -507,7 +508,24 @@ and
 the calling process's \lstinline{p->lock}.
 To avoid deadlock, file system code always acquires locks in the order 
 mentioned in the previous sentence.
+
+Honoring a global deadlock-avoiding order can be surprisingly
+difficult. Sometimes the lock order conflicts with logical program
+structure, i.e. perhaps code module M1 calls module M2, but the lock
+order requires that a lock in M2 be acquired before a lock in M1.
+Sometimes the identities of locks aren't known in advance, perhaps
+because one lock must be held in order to discover the identity
+of the lock to be acquired next. This kind of situation arises in the
+file system as it looks up successive components in a path name, and
+in the code for {\tt wait} and {\tt exit} as they search the table of
+processes looking for child processes. Finally, the danger of deadlock
+is often a constraint on how fine-grained one can make a locking
+scheme, since more locks often means more opportunity for deadlock.
+The need to avoid deadlock is often a major factor in kernel
+implementation.
+
 \section{Locks and interrupt handlers}
+
 %% 
 Some xv6 spin-locks protect data that is used by
 both threads and interrupt handlers.
@@ -598,6 +616,7 @@ call
 only after 
 releasing the lock
 \lineref{kernel/spinlock.c:/sync_lock_release/}.
+
 %% 
 \section{Instruction and memory ordering}
 %% 
