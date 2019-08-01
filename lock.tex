@@ -251,9 +251,9 @@ invocations.
 %% 
 \section{Code: Locks}
 %% 
-Xv6 has two types of locks: spin-locks and sleep-locks.
-We'll start with spin-locks.
-Xv6 represents a spin-lock as a
+Xv6 has two types of locks: spinlocks and sleep-locks.
+We'll start with spinlocks.
+Xv6 represents a spinlock as a
 \indexcode{struct spinlock}
 \lineref{kernel/spinlock.h:/struct.spinlock/}.
 The important field in the structure is
@@ -527,7 +527,7 @@ implementation.
 \section{Locks and interrupt handlers}
 
 %% 
-Some xv6 spin-locks protect data that is used by
+Some xv6 spinlocks protect data that is used by
 both threads and interrupt handlers.
 For example, the
 \lstinline{clockintr}
@@ -544,7 +544,7 @@ The lock
 \indexcode{tickslock}
 serializes the two accesses.
 
-The interaction of spin-locks and interrupts raises a potential danger.
+The interaction of spinlocks and interrupts raises a potential danger.
 Suppose
 \indexcode{sys_sleep}
 holds
@@ -566,16 +566,16 @@ returns.
 So the CPU will deadlock, and any code
 that needs either lock will also freeze.
 
-To avoid this situation, if a spin-lock is used by an interrupt handler,
+To avoid this situation, if a spinlock is used by an interrupt handler,
 a CPU must never hold that lock with interrupts enabled.
 Xv6 is more conservative: when a CPU acquires any
 lock, xv6 always disables interrupts on that CPU.
 Interrupts may still occur on other CPUs, so 
 an interrupt's
 \lstinline{acquire}
-can wait for a thread to release a spin-lock; just not on the same CPU.
+can wait for a thread to release a spinlock; just not on the same CPU.
 
-xv6 re-enables interrupts when a CPU holds no spin-locks; it must
+xv6 re-enables interrupts when a CPU holds no spinlocks; it must
 do a little book-keeping to cope with nested critical sections.
 \lstinline{acquire}
 calls
@@ -684,37 +684,34 @@ and
 \lstinline{release},
 because it uses locks to guard all accesses to shared data (other than locks
 themselves).
+
 %% 
 \section{Sleep locks}
 %% 
 
-Sometimes xv6 code needs to hold a lock for a long time. For example,
-the file system (Chapter~\ref{CH:FS}) keeps a file locked while reading
+% this material refers a lot to sleep, yield, etc, so maybe it should
+% be later, after sleep/wakeup in sched.tex.
+
+Sometimes xv6 needs to hold a lock for a long time. For example, the
+file system (Chapter~\ref{CH:FS}) keeps a file locked while reading
 and writing its content on the disk, and these disk operations can
-take tens of milliseconds. Efficiency demands that the CPU be
-yielded while waiting so that other threads can make
-progress, and this in turn means that xv6 needs locks that 
-work well when held across context switches.
+take tens of milliseconds. Holding a spinlock that long would lead to
+waste if another process wanted to acquire it, since the acquiring
+process would waste CPU for a long time while spinning. Another
+drawback of spinlocks is that a process cannot yield the CPU while
+retaining a spinlock; we'd like to do this so that other processes can
+use the CPU while the process with the lock waits for the disk.
+Yielding while holding a spinlock is illegal because it would violate
+the property that interrupts must be off while a spinlock is held.
+Thus we'd like a type of lock that yields the CPU while waiting to
+acquire, and allows yields (and interrupts) while the lock is held.
+
 Xv6 provides such locks in the form of
 \indextext{sleep-locks}.
-
-Xv6 sleep-locks support yielding the CPU during their critical
-sections. This property poses a design challenge: if thread T1 holds
-lock L1 and has yielded the CPU, and thread T2 wishes to acquire
-L1, we have to ensure that T1 can execute while T2 is waiting so
-that T1 can release L1. T2 can't use the spin-lock acquire
-function here: it
-spins with interrupts turned off, and that would prevent T1
-from running. To avoid this deadlock, the sleep-lock acquire
-routine
-(called
-\lstinline{acquiresleep})
-yields the CPU while waiting, and does not disable
-interrupts.
-
 \lstinline{acquiresleep}
 \lineref{kernel/sleeplock.c:/^acquiresleep/}
-uses techniques that will be explained in
+yields the CPU while waiting,
+using techniques that will be explained in
 Chapter~\ref{CH:SCHED}.
 At a high level, a sleep-lock has a
 \lstinline{locked}
@@ -722,7 +719,7 @@ field that is protected by a spinlock, and
 \lstinline{acquiresleep} 's
 call to
 \lstinline{sleep}
-atomically yields the CPU and releases the spin-lock.
+atomically yields the CPU and releases the spinlock.
 The result is that other threads can execute while
 \lstinline{acquiresleep}
 waits.
@@ -732,17 +729,14 @@ used in interrupt handlers.
 Because
 \lstinline{acquiresleep}
 may yield the CPU,
-sleep-locks cannot be used inside spin-lock critical
-sections (though spin-locks can be used inside sleep-lock
+sleep-locks cannot be used inside spinlock critical
+sections (though spinlocks can be used inside sleep-lock
 critical sections).
 
-Spin-locks have low overhead, but they waste CPU time if they
-are held for long periods when other CPUs are waiting
-for them.
-Thus they are best suited to short critical sections.
-Xv6 uses sleep-locks in the file system,
-where it is convenient to
-be able to hold locks across lengthy disk operations.
+Spin-locks are best suited to short critical sections,
+since waiting for them wastes CPU time;
+sleep-locks work well for lengthy operations.
+
 %% 
 \section{Real world}
 %% 
