@@ -644,6 +644,8 @@ serial code.
 However, the rules do allow re-ordering that
 changes the results of concurrent code,
 and can easily lead to incorrect behavior on multiprocessors.
+The CPU ordering rules are called the \indextext{memory model},
+and are explained in the RISC-V documentation~\cite{riscv:user}.
 
 For example, in this code for
 \lstinline{push},
@@ -671,11 +673,11 @@ To tell the hardware and compiler not to perform such re-orderings,
 xv6 uses
 \lstinline{__sync_synchronize()} 
 in both
-\lstinline{acquire}
+\lstinline{acquire} \lineref{kernel/spinlock.c:/^acquire/}
 and
-\lstinline{release}.
+\lstinline{release} \lineref{kernel/spinlock.c:/^release/}.
 \lstinline{__sync_synchronize()}
-is a memory barrier:
+is a \indextext{memory barrier}:
 it tells the compiler and CPU to not reorder loads or stores across the
 barrier.
 Xv6 worries about ordering only in

@@ -119,18 +119,21 @@ view the RISC-V atomic instructions as relying on locks implemented in
 hardware. Another is the {\tt started} variable in {\tt main.c}
 \lineref{kernel/main.c:/^volatile/}, used to prevent other CPUs from
 running until CPU zero has finished initializing xv6.
+A third are some uses of {\tt p->parent} in {\tt proc.c}
+\lineref{kernel/proc.c:/^wait/} \lineref{kernel/proc.c:/^reparent/}
+where proper locking could deadlock, but it seems clear that
+no other process could be simultaneously modifying {\tt p->parent}.
 
-% add fences to volatile starting in main!
-% and explain it here.
-% explain why child sees e.g. pages written by parent.
-
-% \section{Other stuff}
-% 
-% p->parent is used without a lock.
-% 
-% we are leaky about memory model stuff. it's distinct from locking,
-% even though they are often coupled. there are a few places where we
-% deal with concurrency only via memory model reasoning. the spinlock
-% implementation is one. the ``started'' variable in main.c is another.
-% 
-% are there other lock-free things?
+Xv6 contains cases in which one CPU or thread writes some data, and
+another CPU or thread reads the data, but there is no specific lock
+dedicated to protecting that data. For example, in {\tt fork}, the
+parent writes the child's user memory pages, and the child (a
+different thread, perhaps on a different CPU) reads those pages; no
+lock explicitly protects those pages. This is not strictly a locking
+problem, since the child doesn't start executing before the parent has
+completely finished writing. It is a potential memory ordering problem
+(see Chapter~\ref{CH:LOCK}), since without a memory barrier there's no
+reason to expect one CPU to see another CPU's writes. However, since
+the parent releases locks, and the child acquires locks as it starts
+up, the memory barriers in the {\tt acquire} and {\tt release}
+functions ensure that the child's CPU sees the parent's writes.
