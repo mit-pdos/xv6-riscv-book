@@ -433,7 +433,7 @@ When the RISC-V computer powers on, it initializes
 itself and runs a boot loader which is stored in read-only
 memory.  The boot loader loads the xv6 kernel into memory.  Then, in
 machine mode, the CPU executes xv6 starting at
-\indexcode{\_entry}
+\indexcode{_entry}
 \lineref{kernel/entry.S:/^.entry:/}.
 Xv6 starts with the RISC-V paging hardware disabled:
 virtual addresses map directly to physical addresses.
