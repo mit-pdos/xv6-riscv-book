@@ -1,0 +1,136 @@
+\chapter{Concurrency revisited}
+\label{CH:LOCK2}
+
+In the authors' opinion, simultaneously achieving reasonable parallel
+performance, correctness despite concurrency, and understandable code
+is one of biggest cross-cutting challenges in kernel design.
+Straightforward use of locks is often enough, but not always. This
+chapter highlights some examples in which xv6 uses locks in an
+involved way, and some where xv6 uses lock-like techniques but not
+locks.
+
+\section{Locking patterns}
+
+The filesystem's block cache \lineref{kernel/bio.c:/^struct/} stores
+copies of a handful of disk blocks, but only has space for a few ({\tt
+  NBUF}) at a time. It's vital that a given disk block have at most
+one copy in the cache; otherwise, different processes might make
+conflicting changes to different copies of what ought to be the same
+block. Each cached block is stored in a {\tt struct buf}
+\lineref{kernel/buf.h:1}. A {\tt struct buf} has a lock field which
+helps ensure that only one process uses a given disk block at a time.
+However, that lock is not enough: what if a block is not present in
+the cache at all, and two processes want to use it at the same time?
+There is no {\tt struct buf} (since the block isn't yet cached), and
+thus there is nothing to lock. Xv6 deals with this situation by
+associating an additional lock ({\tt bcache.lock}) with the set of
+identities of cached blocks. Code that needs to check if a block is
+cached (e.g. {\tt bget} \lineref{kernel/bio.c:/^bget/}), or change the
+set of cached blocks, must hold {\tt bcache.lock}; after that code has
+found the block and {\tt struct buf} it needs, it can release {\tt
+  bcache.lock} and lock just the specific block. This is a common
+pattern: one lock for the set of items, plus one lock per item.
+
+Ordinarily the same function that acquires a lock will release it. But
+a more precise way to view things is that a lock is acquired at the
+start of a sequence that must appear atomic, and released when that
+sequence ends. If the sequence starts and ends in different functions,
+or different threads, or on different CPUs, then the lock acquire and
+release must do the same. The function of the lock is to deter
+observers, not to pin a piece of data to a particular agent. One
+example is the {\tt acquire} in {\tt yield}
+\lineref{kernel/proc.c:/^yield/}, which is released in the scheduler
+thread rather than in the acquiring process. Another example is the
+{\tt acquiresleep} in {\tt ilock} \lineref{kernel/fs.c:/^ilock/}; this
+code often sleeps while reading the disk; it may wake up on a
+different CPU than it started, which means the lock may be acquired
+and released on different CPUs.
+
+Freeing an object that is protected by a lock embedded in the object
+is a delicate business. In particular, mere ownership of the lock is
+not enough to guarantee that freeing would be correct. The problem
+case arises when some other thread is waiting in {\tt acquire} to use
+the object; freeing the object implicitly frees the lock, which will
+cause the waiting thread to malfunction. One solution is to track how
+many references to the object exist, so that it is only freed when the
+last reference disappears. See {\tt pipeclose}
+\lineref{kernel/pipe.c:/^pipeclose/} for an example;
+{\tt pi->readopen} and {\tt pi->writeopen} track whether
+the pipe has file descriptors referring to it.
+
+% sleep locks.
+% hand-over-hand locking in namei.
+%   namei's use of refcount to prevent changing underfoot,
+%     and lock when actually using it.
+% example of where deadlock is avoided? namei?
+% spawn a thread to evade a lock order problem?
+
+\section{Lock-like patterns}
+
+In many places xv6 uses a reference count or a flag as a kind of soft
+lock to indicate that an object is allocated and should not be freed
+or re-used. A process's {\tt p->state} acts in this way, as do the
+reference counts in {\tt file}, {\tt inode}, and {\tt buf} structures.
+While in each case a lock protects the flag or reference count, it is
+the latter that prevents the object from being freed.
+
+The file system uses {\tt struct inode} reference counts as a kind of
+shared lock that can be held by multiple processes, in order to avoid
+deadlocks that would occur if the code used ordinary locks. For
+example, the loop in {\tt namex} \lineref{kernel/fs.c:/^namex/} locks
+the directory named by each pathname component in turn. {\tt namex}
+must release each lock at the end of the loop, however, since if it
+held multiple locks it could deadlock against itself if the pathname
+included a dot (e.g. {\tt a/./b}). It might also deadlock against a
+concurrent lookup involving the directory and {\tt ..}. As
+Chapter~\ref{CH:FS} explains, the solution is for the loop to carry
+the directory inode over to the next iteration with its reference
+count incremented, but not locked.
+
+Some data items are protected by different mechanisms at different
+times, and may at times be protected from concurrent access implicitly
+by the structure of the xv6 code rather than by explicit locks. For
+example, when a physical page is free, it is protected by {\tt
+  kmem.lock} \lineref{kernel/kalloc.c:/^. kmem;/}. If a page is
+allocated as a pipe \lineref{kernel/pipe.c:/^pipealloc/}, it is then
+protected by a different lock (the embedded {\tt pi->lock}). If a page
+is allocated for a new process's user memory, it is not protected by a
+lock at all. Instead, the fact that the allocator won't give that page
+to any other process (until it is freed) protects it from concurrent
+access. The page's implicit ownership is complex: first the parent
+manipulates it in {\tt fork}, then the child uses it, and (after the
+child exits) the parent again owns the page and passes it to {\tt
+  kfree}. There are two lessons here: a data object may be protected
+from concurrency in different ways at different points in its
+lifetime, and the protection may take the form of implicit structure
+rather than explicit locks.
+
+A final lock-like example is the need to disable interrupts around
+calls to {\tt mycpu()} \lineref{kernel/proc.c:/^myproc/}. Disabling
+interrupts causes the calling code to be atomic with respect to timer
+interrupts that could force a context switch, and thus move the
+process to a different CPU.
+
+\section{No locks at all}
+
+There are a few places where xv6 shares mutable data with no locks at
+all. One is in the implementation of spinlocks, although one could
+view the RISC-V atomic instructions as relying on locks implemented in
+hardware. Another is the {\tt started} variable in {\tt main.c}
+\lineref{kernel/main.c:/^volatile/}, used to prevent other CPUs from
+running until CPU zero has finished initializing xv6.
+
+% add fences to volatile starting in main!
+% and explain it here.
+% explain why child sees e.g. pages written by parent.
+
+% \section{Other stuff}
+% 
+% p->parent is used without a lock.
+% 
+% we are leaky about memory model stuff. it's distinct from locking,
+% even though they are often coupled. there are a few places where we
+% deal with concurrency only via memory model reasoning. the spinlock
+% implementation is one. the ``started'' variable in main.c is another.
+% 
+% are there other lock-free things?

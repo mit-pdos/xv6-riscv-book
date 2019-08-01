@@ -11,6 +11,7 @@ TEX=\
 	$(T)/lock.tex\
 	$(T)/sched.tex\
 	$(T)/fs.tex\
+	$(T)/lock2.tex\
 	$(T)/sum.tex\
 
 all: book.pdf
