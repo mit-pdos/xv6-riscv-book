@@ -936,13 +936,13 @@ but in a data block called the
 The last entry in the
 \lstinline{addrs}
 array gives the address of the indirect block.
-Thus the first 6 kB (
+Thus the first 12 kB (
 \lstinline{NDIRECT} 
 \lstinline{x}
 \indexcode{BSIZE})
 bytes of a file can be loaded from blocks listed in the inode,
 while the next
-\lstinline{64} kB (
+\lstinline{256} kB (
 \lstinline{NINDIRECT}
 \lstinline{x}
 \lstinline{BSIZE})
