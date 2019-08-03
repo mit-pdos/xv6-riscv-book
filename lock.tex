@@ -643,9 +643,10 @@ ensure that they don't change the results of correctly-written
 serial code.
 However, the rules do allow re-ordering that
 changes the results of concurrent code,
-and can easily lead to incorrect behavior on multiprocessors.
-The CPU ordering rules are called the \indextext{memory model},
-and are explained in the RISC-V documentation~\cite{riscv:user}.
+and can easily lead to incorrect behavior on
+multiprocessors~\cite{riscv:user,boehm04}.
+The CPU ordering rules are called the \indextext{memory model}.
+% actually it doesn't say much.
 
 For example, in this code for
 \lstinline{push},
@@ -680,12 +681,13 @@ and
 is a \indextext{memory barrier}:
 it tells the compiler and CPU to not reorder loads or stores across the
 barrier.
-Xv6 worries about ordering only in
+The barriers in xv6's 
 \lstinline{acquire}
 and
-\lstinline{release},
-because it uses locks to guard all accesses to shared data (other than locks
-themselves).
+\lstinline{release}
+force order in almost all cases where it matters,
+since xv6 uses locks around accesses to shared data.
+Chapter~\ref{CH:LOCK2} discusses a few exceptions.
 
 %% 
 \section{Sleep locks}
