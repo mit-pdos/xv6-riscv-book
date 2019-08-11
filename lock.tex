@@ -695,6 +695,7 @@ Chapter~\ref{CH:LOCK2} discusses a few exceptions.
 
 % this material refers a lot to sleep, yield, etc, so maybe it should
 % be later, after sleep/wakeup in sched.tex.
+% maybe in lock2.tex
 
 Sometimes xv6 needs to hold a lock for a long time. For example, the
 file system (Chapter~\ref{CH:FS}) keeps a file locked while reading
@@ -705,8 +706,19 @@ process would waste CPU for a long time while spinning. Another
 drawback of spinlocks is that a process cannot yield the CPU while
 retaining a spinlock; we'd like to do this so that other processes can
 use the CPU while the process with the lock waits for the disk.
-Yielding while holding a spinlock is illegal because it would violate
-the property that interrupts must be off while a spinlock is held.
+Yielding while holding a spinlock is illegal because it might
+lead to deadlock if a second thread then tried to acquire the spinlock;
+since {\tt acquire} doesn't yield the CPU, the second thread's
+spinning might
+prevent the first thread from running and releasing the lock.
+% it's true that timer interrupts might force a switch from the
+% second back to the first thread -- but not if the second
+% already holds one or more locks.
+% it's also true that the danger is most obvious on a uniprocessor,
+% but it can also arise with a longer chain of threads on
+% a multiprocessor.
+Yielding while holding a lock would also violate
+the requirement that interrupts must be off while a spinlock is held.
 Thus we'd like a type of lock that yields the CPU while waiting to
 acquire, and allows yields (and interrupts) while the lock is held.
 

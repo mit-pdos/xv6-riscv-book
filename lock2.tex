@@ -1,7 +1,7 @@
 \chapter{Concurrency revisited}
 \label{CH:LOCK2}
 
-In the authors' opinion, simultaneously achieving reasonable parallel
+Simultaneously achieving good parallel
 performance, correctness despite concurrency, and understandable code
 is one of biggest cross-cutting challenges in kernel design.
 Straightforward use of locks is often enough, but not always. This
@@ -118,7 +118,9 @@ all. One is in the implementation of spinlocks, although one could
 view the RISC-V atomic instructions as relying on locks implemented in
 hardware. Another is the {\tt started} variable in {\tt main.c}
 \lineref{kernel/main.c:/^volatile/}, used to prevent other CPUs from
-running until CPU zero has finished initializing xv6.
+running until CPU zero has finished initializing xv6;
+the {\tt volatile} ensures that the compiler actually generates
+load and store instructions.
 A third are some uses of {\tt p->parent} in {\tt proc.c}
 \lineref{kernel/proc.c:/^wait/} \lineref{kernel/proc.c:/^reparent/}
 where proper locking could deadlock, but it seems clear that
@@ -130,10 +132,30 @@ dedicated to protecting that data. For example, in {\tt fork}, the
 parent writes the child's user memory pages, and the child (a
 different thread, perhaps on a different CPU) reads those pages; no
 lock explicitly protects those pages. This is not strictly a locking
-problem, since the child doesn't start executing before the parent has
-completely finished writing. It is a potential memory ordering problem
+problem, since the child doesn't start executing until after the parent has
+finished writing. It is a potential memory ordering problem
 (see Chapter~\ref{CH:LOCK}), since without a memory barrier there's no
 reason to expect one CPU to see another CPU's writes. However, since
 the parent releases locks, and the child acquires locks as it starts
-up, the memory barriers in the {\tt acquire} and {\tt release}
-functions ensure that the child's CPU sees the parent's writes.
+up, the memory barriers in {\tt acquire} and {\tt release}
+ensure that the child's CPU sees the parent's writes.
+
+\section{Parallelism}
+
+Locking strategies are often partially driven by a desire to allow as
+much parallel execution or I/O concurrency as possible, in order to
+obtain high performance.
+
+fork
+exit and wait
+sleep and wakeup
+pipes
+files
+
+OTOH sometimes locking is forced on us, we're not looking to exploit
+concurrency particularly, but it is there anyway.
+
+examples where we are probably sacrificing parallelism.
+
+but is there not already text about parallelism and granularity, mentioning
+e.g. files vs file content?
