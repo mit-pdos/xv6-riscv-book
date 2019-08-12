@@ -142,20 +142,45 @@ ensure that the child's CPU sees the parent's writes.
 
 \section{Parallelism}
 
-Locking strategies are often partially driven by a desire to allow as
-much parallel execution or I/O concurrency as possible, in order to
-obtain high performance.
+Locking is primarily about suppressing parallelism in the interests of
+correctness. Because performance is also important, kernel designers
+often have to think about how to use locks in a way that achieves both
+correctness and good parallelism. While xv6 is not systematically
+designed for high performance, it's still worth considering which xv6
+operations can execute in parallel, and which might conflict on locks.
 
-fork
-exit and wait
-sleep and wakeup
-pipes
-files
+Pipes in xv6 are an example of fairly good parallelism. Each pipe has
+its own lock, so that different processes can read and write to
+different pipes fully in parallel on different CPUs. For a given pipe,
+however, the writer and reader must wait for each other to release the
+lock; they can't read/write the same pipe at the same time. It's also
+the case that a read from an empty pipe (or a write to a full pipe)
+must block, but this is not due to the locking scheme.
 
-OTOH sometimes locking is forced on us, we're not looking to exploit
-concurrency particularly, but it is there anyway.
+Context switch is a more complex example. Two kernel threads, each
+executing on its own CPU, can call {\tt yield}, {\tt sched}, and {\tt
+  swtch} at the same time, and the calls will execute in parallel. The
+threads each hold a lock, but they are different locks, so they don't
+have to wait for each other. Once in {\tt scheduler}, however, the two
+CPUs may conflict on locks while searching the table of processes for
+one that is {\tt RUNNABLE}. That is, xv6 is likely to get a
+performance benefit from multiple CPUs during context switch, but
+perhaps not as much as it could.
 
-examples where we are probably sacrificing parallelism.
+Another example is concurrent calls to {\tt fork} from different
+processes on different CPUs. The calls may have to wait for each other
+for {\tt pid\_lock} and {\tt kmem.lock}, and for per-process locks
+needed to search the process table for an {\tt UNUSED} process. On the
+other hand, the two forking processes can copy user memory pages and
+format page-table pages fully in parallel.
 
-but is there not already text about parallelism and granularity, mentioning
-e.g. files vs file content?
+The locking scheme in each of the above examples sacrifices parallel
+performance in certain cases. In each case it's possible to obtain
+more parallelism using a more elaborate design. Whether it's
+worthwhile depends on details: how often the relevant operations are
+invoked, how long the code spends with a contended lock held, how many
+CPUs might be running conflicting operations at the same time, whether
+other parts of the code are more restrictive bottlenecks. It can be
+difficult to guess whether a given locking scheme might cause
+performance problems, or whether a new design is significantly better,
+so measurement on realistic workloads is often required.

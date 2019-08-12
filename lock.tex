@@ -231,6 +231,9 @@ atomic with respect to each other,
 so that each sees only the complete set of
 changes from earlier critical sections, and never sees
 partially-completed updates.
+We say that multiple processes \indextext{conflict} if they
+want the same lock at the same time, or that the
+lock experiences \indextext{contention}.
 
 Note that it would be correct to move
 \lstinline{acquire}
@@ -407,21 +410,23 @@ computation, it would be more efficient to use a larger set of more
 fine-grained locks, so that the kernel could execute on multiple CPUs
 simultaneously.
 
-As an example of relatively coarse-grained locking, xv6's
-\lstinline{kalloc.c}
-allocator has a single free list protected by a single
-lock. If concurrent allocation were a performance bottleneck,
-it might be helpful to have multiple free lists, each with
-its own lock, to allow truly parallel allocation.
-As an example of relatively fine-grained locking, xv6
-has a separate lock for each file, so that processes that
-manipulate different files can often proceed without waiting
-for each others' locks. The file locking
-scheme could be made even more fine-grained if one wanted
-to allow processes to simultaneously
-write different areas of the same file.
-Ultimately lock granularity decisions need to be driven
-by performance measurements as well as complexity considerations.
+As an example of coarse-grained locking, xv6's \lstinline{kalloc.c}
+allocator has a single free list protected by a single lock. If
+multiple processes on different CPUs try to allocate pages at the same
+time, each will have to wait for its turn by spinning in {\tt
+  acquire}. Spinning reduces performance, since it's not useful work.
+If contention for the lock wasted a significant fraction of CPU time,
+perhaps performance could be improved by changing the allocator design
+to have multiple free lists, each with its own lock, to allow truly
+parallel allocation.
+
+As an example of fine-grained locking, xv6 has a separate lock for
+each file, so that processes that manipulate different files can often
+proceed without waiting for each others' locks. The file locking
+scheme could be made even more fine-grained if one wanted to allow
+processes to simultaneously write different areas of the same file.
+Ultimately lock granularity decisions need to be driven by performance
+measurements as well as complexity considerations.
 
 As subsequent chapters explain each part of xv6, they
 will mention examples of xv6's use of locks
