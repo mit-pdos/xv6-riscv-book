@@ -521,8 +521,8 @@ logged blocks.
 is called from 
 \indexcode{initlog}
 \lineref{kernel/log.c:/^initlog/},
-which is called during boot before the first user process runs.
-\lineref{kernel/proc.c:/initlog/}
+which is called from \indexcode{fsinit}\lineref{kernel/fs.c:/^fsinit/} during boot before the first user process runs
+\lineref{kernel/proc.c:/fsinit/}.
 It reads the log header, and mimics the actions of
 \lstinline{end_op}
 if the header indicates that the log contains a committed transaction.
