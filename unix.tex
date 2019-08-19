@@ -796,7 +796,6 @@ The first fragment changes the process's current directory to
 \lstinline{/a/b};
 the second neither refers to nor changes the process's current directory.
 
-
 There are multiple system calls to create a new file or directory:
 \lstinline{mkdir}
 creates a new directory,
@@ -830,7 +829,7 @@ and
 system calls to the kernel device implementation
 instead of passing them to the file system.
 
-\lstinline{fstat}
+\lstinline{Fstat}
 retrieves information about the object a file
 descriptor refers to.
 It fills in a
