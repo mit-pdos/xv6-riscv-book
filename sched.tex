@@ -46,25 +46,17 @@ locking plan is necessary to avoid races. Fourth, a process's
 memory and other resources must be freed when the process exits,
 but it cannot do all of this itself
 because (for example) it can't free its own kernel stack while still using it.
-Finally, each core of a multi-core machine must remember which
+Fifth, each core of a multi-core machine must remember which
 process it is executing so that system calls affect the correct
 process's kernel state.
+Finally,  \lstinline{sleep} and \lstinline{wakeup} allow a process to give up
+the CPU and sleep waiting for an event, and allows another process to
+wake the first process up. Care is needed to avoid races that result in
+the loss of wakeup notifications.
 Xv6 tries to solve these problems as
 simply as possible, but nevertheless the resulting code is
 tricky.
 
-\mfk{Is this a sixth challenge?}
-xv6 must provide
-ways for processes to coordinate among themselves. For example,
-a parent process may need to wait for one of its children to
-exit, or a process reading a pipe may need to wait for
-some other process to write the pipe.
-Rather than make the waiting process waste CPU by repeatedly checking
-whether the desired event has happened, xv6 allows a process to give
-up the CPU and sleep
-waiting for an event, and allows another process to wake the first
-process up. Care is needed to avoid races that result in
-the loss of event notifications.
 %% 
 \section{Code: Context switching}
 %% 
@@ -89,7 +81,8 @@ per CPU because
 it is sometimes not safe for it execute on
 any process's kernel stack;
 we'll see an example in
-\lstinline{exit}.
+\lstinline{exit}\mfk{since xv6 doesn't free kernel stacks anymore, this
+  point is less obvious now and we don't spell it out in 6.8.}. 
 In this section we'll examine the mechanics of switching
 between a kernel thread and a scheduler thread.
 
@@ -413,7 +406,7 @@ the interplay between
 \indexcode{exit}
 and
 \indexcode{wait},
-the machinery to avoid lost wakeups (see next section),
+the machinery to avoid lost wakeups (see Section~\ref{sec:sleep}),
 and avoidance of races between a process exiting and other processes
 reading or writing its state (e.g. the \lstinline{exit}
 system call looking at \lstinline{p->pid} and
@@ -452,7 +445,7 @@ The function
 returns a pointer to the current CPU's
 \lstinline{struct cpu}.
 RISC-V numbers its CPUs, giving each
-a ``hartid''.
+a \indextext{hartid}.
 Xv6 ensures that each CPU's hartid is stored in that CPU's \lstinline{tp} register
 while in the kernel.
 This allows
@@ -510,6 +503,7 @@ different CPU, its
 pointer will stay the same.
 %% 
 \section{Sleep and wakeup}
+\label{sec:sleep}
 %% 
 
 Scheduling and locks help conceal the existence of one process
@@ -527,7 +521,8 @@ or
 mechanisms.
 
 To illustrate what we mean, let's consider a
-simple producer/consumer mechanism called a semaphore~\cite{dijkstra65}.
+simple synchronization mechanism called a \indextext{semaphore}~\cite{dijkstra65} to
+coordinate a producer and a consumer.
 A semaphore maintains a count and provides two operations.
 The ``V'' operation (for the producer) increments the count.
 The ``P'' operation (for the consumer) waits until the count is non-zero,
@@ -536,29 +531,29 @@ If there were only one producer thread and one consumer thread,
 and they executed on different CPUs,
 and the compiler didn't optimize too aggressively,
 this implementation would be correct:
-\begin{lstlisting}[]
-  100   struct semaphore {
-  101     struct spinlock lock;
-  102     int count;
-  103   };
-  104   
-  105   void
-  106   V(struct semaphore *s)
-  107   {
-  108     acquire(&s->lock);
-  109     s->count += 1;
-  110     release(&s->lock);
-  111   }
-  112   
-  113   void
-  114   P(struct semaphore *s)
-  115   {
-  116     while(s->count == 0)
-  117       ;
-  118     acquire(&s->lock);
-  119     s->count -= 1;
-  120     release(&s->lock);
-  121   }
+\begin{lstlisting}[numbers=left,firstnumber=100]
+  struct semaphore {
+    struct spinlock lock;
+    int count;
+  };
+
+  void
+  V(struct semaphore *s)
+  {
+     acquire(&s->lock);
+     s->count += 1;
+     release(&s->lock);
+  }
+
+  void
+  P(struct semaphore *s)
+  {
+     while(s->count == 0)
+       ;
+     acquire(&s->lock);
+     s->count -= 1;
+     release(&s->lock);
+  }
 \end{lstlisting}
 
 The implementation above 
@@ -606,26 +601,26 @@ does nothing.
 We can change the semaphore implementation to use
 \lstinline{sleep}
 and
-\lstinline{wakeup}:
-\begin{lstlisting}[]
-  200   void
-  201   V(struct semaphore *s)
-  202   {
-  203     acquire(&s->lock);
-  204     s->count += 1;
-  205     wakeup(s);         // new
-  206     release(&s->lock);
-  207   }
-  208   
-  209   void
-  210   P(struct semaphore *s)
-  211   {
-  212     while(s->count == 0)
-  213       sleep(s);        // new
-  214     acquire(&s->lock);
-  215     s->count -= 1;
-  216     release(&s->lock);
-  217   }
+\lstinline{wakeup} (changes highlighted in yellow):
+\begin{lstlisting}[numbers=left,firstnumber=200]
+  void
+  V(struct semaphore *s)
+  {
+     acquire(&s->lock);
+     s->count += 1;
+     (*@\hl{wakeup(s);}@*)
+     release(&s->lock);
+  }
+  
+  void
+  P(struct semaphore *s)
+  {
+    while(s->count == 0)    (*@\label{line:test}@*)
+      (*@\hl{sleep(s);}@*)  (*@\label{line:sleep}@*)
+    acquire(&s->lock);
+    s->count -= 1;
+    release(&s->lock);
+  }
 \end{lstlisting}
 
 % \begin{figure}[t]
@@ -651,10 +646,10 @@ finds that
 \lstinline{s->count}
 \lstinline{==}
 \lstinline{0} 
-on line 212.
+on line~\ref{line:test}.
 While
 \lstinline{P}
-is between lines 212 and 213,
+is between lines~\ref{line:test} and~\ref{line:sleep},
 \lstinline{V}
 runs on another CPU:
 it changes
@@ -664,7 +659,7 @@ to be nonzero and calls
 which finds no processes sleeping and thus does nothing.
 Now
 \lstinline{P}
-continues executing at line 213:
+continues executing at line~\ref{line:sleep}:
 it calls
 \lstinline{sleep}
 and goes to sleep.
@@ -688,35 +683,35 @@ is violated by
 \lstinline{V}
 running at just the wrong moment.
 An incorrect way to protect the invariant would be to 
-move the lock acquisition in
+move the lock acquisition (highlighted in yellow below) in
 \lstinline{P}
 so that its check of the count and its call to \lstinline{sleep}
 are atomic:
-\begin{lstlisting}[]
-  300   void
-  301   V(struct semaphore *s)
-  302   {
-  303     acquire(&s->lock);
-  304     s->count += 1;
-  305     wakeup(s);
-  306     release(&s->lock);
-  307   }
-  308   
-  309   void
-  310   P(struct semaphore *s)
-  311   {
-  312     acquire(&s->lock);   // moved
-  313     while(s->count == 0)
-  314       sleep(s);
-  315     s->count -= 1;
-  316     release(&s->lock);
-  317   }
+\begin{lstlisting}[numbers=left,firstnumber=300]
+  void
+  V(struct semaphore *s)
+  {
+    acquire(&s->lock);
+    s->count += 1;
+    wakeup(s);
+    release(&s->lock);
+  }
+  
+  void
+  P(struct semaphore *s)
+  {
+    (*@\hl{acquire(\&s->lock);}@*)
+    while(s->count == 0)    (*@\label{line:test1}@*)
+      sleep(s);             (*@\label{line:sleep1}@*)
+    s->count -= 1;
+    release(&s->lock);
+  }
 \end{lstlisting}
 One might hope that this version of
 \lstinline{P}
 would avoid the lost wakeup because the lock prevents
 \lstinline{V}
-from executing between lines 313 and 314.
+from executing between lines~\ref{line:test1} and~\ref{line:sleep1}.
 It does that, but it also deadlocks:
 \lstinline{P}
 holds the lock while it sleeps,
@@ -739,26 +734,27 @@ will find the sleeping consumer and wake it up.
 Once the consumer is awake again
 \indexcode{sleep}
 reacquires the lock before returning.
-Our new correct sleep/wakeup scheme is usable as follows:
-\begin{lstlisting}[]
-  400   void
-  401   V(struct semaphore *s)
-  402   {
-  403     acquire(&s->lock);
-  404     s->count += 1;
-  405     wakeup(s);
-  406     release(&s->lock);
-  407   }
-  408   
-  409   void
-  410   P(struct semaphore *s)
-  411   {
-  412     acquire(&s->lock);
-  413     while(s->count == 0)
-  414       sleep(s, &s->lock);   // changed
-  415     s->count -= 1;
-  416     release(&s->lock);
-  417   }
+Our new correct sleep/wakeup scheme is usable as follows (change
+highlighted in yellow):
+\begin{lstlisting}[numbers=left,firstnumber=400]
+  void
+  V(struct semaphore *s)
+  {
+    acquire(&s->lock);
+    s->count += 1;
+    wakeup(s);
+    release(&s->lock);
+  }
+
+  void
+  P(struct semaphore *s)
+  {
+    acquire(&s->lock);
+    while(s->count == 0)
+       (*@\hl{sleep(s, \&s->lock);}@*)
+    s->count -= 1;
+    release(&s->lock);
+  }
 \end{lstlisting}
 
 The fact that
