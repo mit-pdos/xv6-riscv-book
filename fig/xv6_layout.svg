@@ -14,7 +14,7 @@
    id="svg3255"
    version="1.1"
    inkscape:version="0.92.4 5da689c313, 2019-01-14"
-   sodipodi:docname="xv6_layout1.svg">
+   sodipodi:docname="xv6_layout.svg">
   <defs
      id="defs3257">
     <marker
@@ -578,16 +578,16 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="1.1"
-     inkscape:cx="920.69022"
-     inkscape:cy="378.09663"
+     inkscape:zoom="1.5556349"
+     inkscape:cx="197.99895"
+     inkscape:cy="439.36289"
      inkscape:document-units="mm"
      inkscape:current-layer="layer1"
      showgrid="false"
      units="in"
-     inkscape:window-width="1276"
+     inkscape:window-width="849"
      inkscape:window-height="1384"
-     inkscape:window-x="0"
+     inkscape:window-x="854"
      inkscape:window-y="26"
      inkscape:window-maximized="0"
      showguides="true"
@@ -640,7 +640,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -1157,36 +1157,51 @@
     <text
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;line-height:0%;font-family:'Bitstream Vera Sans';text-align:start;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
-       x="14.672169"
+       x="16.672169"
        y="657.35199"
        id="text245"><tspan
          sodipodi:role="line"
          id="tspan243"
-         x="14.672169"
+         x="16.672169"
          y="657.35199"
          style="font-size:14px;line-height:1.25;text-align:start;text-anchor:start">0x10000000</tspan></text>
     <text
        id="text249"
        y="638.79828"
-       x="14.152706"
+       x="17.366827"
        style="font-style:normal;font-weight:normal;line-height:0%;font-family:'Bitstream Vera Sans';text-align:start;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
        xml:space="preserve"><tspan
          style="font-size:14px;line-height:1.25;text-align:start;text-anchor:start"
          y="638.79828"
-         x="14.152706"
+         x="17.366827"
          id="tspan247"
          sodipodi:role="line">0x10001000</tspan></text>
     <text
        id="text253"
-       y="546.75476"
-       x="15.196182"
+       y="527.37866"
+       x="21.670109"
        style="font-style:normal;font-weight:normal;line-height:0%;font-family:'Bitstream Vera Sans';text-align:start;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
        xml:space="preserve"><tspan
          style="font-size:14px;line-height:1.25;text-align:start;text-anchor:start"
-         y="546.75476"
-         x="15.196182"
+         y="530.49585"
+         x="21.670109"
          id="tspan251"
-         sodipodi:role="line">0x80000000</tspan></text>
+         sodipodi:role="line" /><tspan
+         style="font-size:14px;line-height:1.25;text-align:start;text-anchor:start"
+         y="539.76538"
+         x="21.670109"
+         sodipodi:role="line"
+         id="tspan1187">KERNBASE </tspan><tspan
+         style="font-size:14px;line-height:1.25;text-align:start;text-anchor:start"
+         y="557.26538"
+         x="21.670109"
+         sodipodi:role="line"
+         id="tspan1193">(0x80000000)</tspan><tspan
+         style="font-size:14px;line-height:1.25;text-align:start;text-anchor:start"
+         y="565.49585"
+         x="21.670109"
+         sodipodi:role="line"
+         id="tspan1185" /></text>
     <path
        style="fill:none;stroke:#000000;stroke-width:0.99921262;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#Arrow1Mend)"
        d="m 113.15748,639.24421 h 17.71654"
@@ -1213,14 +1228,24 @@
     <text
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;line-height:0%;font-family:'Bitstream Vera Sans';text-align:start;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
-       x="43.246456"
-       y="286.08582"
+       x="25.8902"
+       y="283.51453"
        id="text276"><tspan
          sodipodi:role="line"
          id="tspan274"
-         x="43.246456"
-         y="286.08582"
-         style="font-size:14px;line-height:1.25;text-align:start;text-anchor:start">PHYSTOP</tspan></text>
+         x="25.8902"
+         y="283.51453"
+         style="font-size:14px;line-height:1.25;text-align:start;text-anchor:start">PHYSTOP </tspan><tspan
+         sodipodi:role="line"
+         x="25.8902"
+         y="301.01453"
+         style="font-size:14px;line-height:1.25;text-align:start;text-anchor:start"
+         id="tspan1191">(0x86400000)</tspan><tspan
+         sodipodi:role="line"
+         x="25.8902"
+         y="309.245"
+         style="font-size:14px;line-height:1.25;text-align:start;text-anchor:start"
+         id="tspan1189" /></text>
     <rect
        ry="0"
        y="136.57524"
