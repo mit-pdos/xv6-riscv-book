@@ -521,7 +521,7 @@ on any waiting next operation.
 \section{Code: The console driver}
 
 The console driver is a simple illustration of driver structure. The
-console driver accepts characters typed by a human, via the ``UART''
+console driver accepts characters typed by a human, via the \indextext{UART}
 serial-port hardware attached to the RISC-V. The driver accumulates a
 line of input at a time, processing special input characters such as
 backspace and control-u. User processes, such as the shell, can use
@@ -637,10 +637,10 @@ and badly documented. In many operating systems, the drivers account
 for more code than the core kernel.
 
 The UART driver retrieves data a byte at a time by reading the UART
-control registers; this pattern is called ``programmed I/O,'' since
+control registers; this pattern is called \indextext{programmed I/O}, since
 software is driving the data movement. Programmed I/O is simple, but
 too slow to be used at high data rates. Devices that need to move lots
-of data at high speed typically use ``DMA'', or direct memory access.
+of data at high speed typically use \indextext{direct memory access (DMA)}.
 DMA device hardware directly writes incoming data to RAM, and reads
 outgoing data from RAM. Modern disk and network devices use DMA. A
 driver for a DMA device would prepare data in RAM, and then use a
@@ -654,7 +654,7 @@ that reduce the need for interrupts. One trick is to raise a single
 interrupt for a whole batch of incoming or outgoing requests. Another
 trick is for the driver to disable interrupts entirely, and to check
 the device periodically to see if it needs attention. This technique
-is called ``polling.'' Polling makes sense if the device performs
+is called \indextext{polling}. Polling makes sense if the device performs
 operations very quickly, but it wastes CPU time if the device is mostly
 idle. Some drivers dynamically switch between polling and interrupts
 depending on the current device load.
