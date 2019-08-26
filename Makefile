@@ -23,7 +23,7 @@ $(T)/%.tex: %.tex
 
 src:
 	if [ ! -d $(SRC) ]; then \
-		git clone git@github.com:kaashoek/xv6-risc-v.git $(SRC) ; \
+		git clone git@github.com:mit-pdos/xv6-riscv.git $(SRC) ; \
 	fi; \
 	cd $(SRC); git pull; true
 
