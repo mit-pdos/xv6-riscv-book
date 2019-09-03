@@ -24,16 +24,16 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="1.03"
-     inkscape:cx="392.16108"
+     inkscape:zoom="1.1"
+     inkscape:cx="394.10283"
      inkscape:cy="473.77203"
      inkscape:document-units="mm"
      inkscape:current-layer="layer1"
      showgrid="false"
      inkscape:window-width="1276"
-     inkscape:window-height="1381"
+     inkscape:window-height="1384"
      inkscape:window-x="1280"
-     inkscape:window-y="28"
+     inkscape:window-y="26"
      inkscape:window-maximized="0"
      inkscape:snap-grids="true"
      showguides="false"
@@ -309,7 +309,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -511,7 +511,7 @@
          y="204.96516"
          x="393.82056"
          id="tspan13451"
-         sodipodi:role="line">12</tspan></text>
+         sodipodi:role="line">10</tspan></text>
     <path
        style="fill:none;stroke:#0000ff;stroke-width:0.99921262;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#Arrow2Lendo)"
        d="m 268.27238,187.42494 v 227.65748 h 24.80315"
@@ -566,14 +566,14 @@
     <text
        xml:space="preserve"
        style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'Bitstream Vera Sans';-inkscape-font-specification:'Bitstream Vera Sans, Normal';text-align:end;writing-mode:lr-tb;text-anchor:end;fill:#000000;fill-opacity:1;stroke:none"
-       x="488.89468"
-       y="211.12535"
+       x="474.40604"
+       y="210.27307"
        id="text3734"><tspan
-         y="211.12535"
-         x="488.89468"
+         y="210.27307"
+         x="474.40604"
          sodipodi:role="line"
          id="tspan3736"
-         style="font-size:15px;line-height:1.25">$2^27$</tspan></text>
+         style="font-size:15px;line-height:1.25">2^27</tspan></text>
     <text
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;line-height:0%;font-family:'Bitstream Vera Sans';fill:#000000;fill-opacity:1;stroke:none"
