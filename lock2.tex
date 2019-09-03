@@ -11,9 +11,11 @@ locks.
 
 \section{Locking patterns}
 
-The filesystem's block cache \lineref{kernel/bio.c:/^struct/} stores
-copies of a handful of disk blocks, but only has space for a few ({\tt
-  NBUF}) at a time. It's vital that a given disk block have at most
+Cached items are often a challenge to lock.
+For example,
+the filesystem's block cache \lineref{kernel/bio.c:/^struct/} stores
+copies of up to {\tt NBUF} disk blocks.
+It's vital that a given disk block have at most
 one copy in the cache; otherwise, different processes might make
 conflicting changes to different copies of what ought to be the same
 block. Each cached block is stored in a {\tt struct buf}
@@ -72,7 +74,7 @@ lock to indicate that an object is allocated and should not be freed
 or re-used. A process's {\tt p->state} acts in this way, as do the
 reference counts in {\tt file}, {\tt inode}, and {\tt buf} structures.
 While in each case a lock protects the flag or reference count, it is
-the latter that prevents the object from being freed.
+the latter that prevents the object from being prematurely freed.
 
 The file system uses {\tt struct inode} reference counts as a kind of
 shared lock that can be held by multiple processes, in order to avoid
