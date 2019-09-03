@@ -45,7 +45,7 @@ RISC-V page table is logically an array of $2^{27}$ (134,217,728)
 physical page number (PPN) and some flags. The paging hardware
 translates a virtual address by using the top 27 bits of the 39 bits
 to index into the page table to find a PTE, and making a 56-bit
-physical address whose top 44 vits come from the PPN in the PTE
+physical address whose top 44 bits come from the PPN in the PTE
 and whose bottom 12 bits are copied from the original virtual address.
 Thus a page table
 gives the operating system control over virtual-to-physical address
