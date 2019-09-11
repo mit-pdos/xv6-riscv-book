@@ -1142,7 +1142,7 @@ observe the child's death, perhaps long after it calls {\tt exit}.
 The way that xv6 records the child's demise until {\tt wait}
 observes it is for {\tt exit} to put the caller into the {\tt ZOMBIE}
 state, where it stays until the parent's {\tt wait} notices it, changes
-the child's state to {\tt UNUSED},
+the child's state to {\tt UNUSED}, copies the child's exit status,
 and returns the child's process ID to the parent.
 If the parent exits before the child, the 
 parent gives the child to the
@@ -1170,7 +1170,10 @@ and it acquires that lock at the start
 Then it scans the process table.
 If it finds a child in zombie state,
 it frees that child's resources and
-its \lstinline{proc} structure and returns the child's process ID.
+its \lstinline{proc} structure, copies
+the child's exit's status to the address supplied to \lstinline{wait}
+(if it is not 0),
+and returns the child's process ID.
 If 
 \lstinline{wait}
 finds children but none have exited,
@@ -1200,6 +1203,7 @@ is true, the value can't change unless the current process changes it.
 
 \lstinline{Exit}
 \lineref{kernel/proc.c:/^exit/}
+record its exit status,
 frees some resources,
 re-parents any children so that their parent is
 the \lstinline{init} process,
@@ -1208,7 +1212,7 @@ marks itself as a zombie, and permanently
 yields the CPU.
 The final sequence is a little tricky.
 The exiting process must hold its parent's lock when
-setting its state to \lstinline{ZOMBIE} and
+setting its state to \lstinline{ZOMBIE}, and
 waking the parent up, since the parent's lock
 is the condition lock
 that guards against lost wakeups in \lstinline{wait}. The child must also
