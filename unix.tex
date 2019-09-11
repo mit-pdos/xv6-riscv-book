@@ -127,7 +127,7 @@ with each process.
 \midrule
 fork() & Create a process \\
 exit(xstatus) & Terminate the current process with xstatus indicating success of failure \\
-wait(xstatus) & Wait for a child process to exit and copy the child's exit status to xstatus \\
+wait(*xstatus) & Wait for a child process to exit and copy the child's exit status to xstatus \\
 kill(pid) & Terminate process pid \\
 getpid() & Return the current process's pid \\
 sleep(n) & Sleep for n clock ticks \\
@@ -183,10 +183,9 @@ if(pid > 0){
 The
 \indexcode{exit}
 system call causes the calling process to stop executing and
-to release resources such as memory and open files.  The calling
-process passes an exit status to indicate success (in
-which case it passes 0) of failure (in which case it
-returns a -1).
+to release resources such as memory and open files.
+Exit takes an integer status argument,
+conventionally 0 to indicate success and 1 to indicate failure.
 The
 \indexcode{wait}
 system call returns the pid of an exited child of the
