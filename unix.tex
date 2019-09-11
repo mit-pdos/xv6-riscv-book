@@ -126,8 +126,8 @@ with each process.
 {\bf System call} & {\bf Description} \\
 \midrule
 fork() & Create a process \\
-exit(n) & Terminate the current process and return n to parent \\
-wait(xstatus) & Wait for a child process to exit and receive its exit status \\
+exit(xstatus) & Terminate the current process with xstatus indicating success of failure \\
+wait(xstatus) & Wait for a child process to exit and copy the child's exit status to xstatus \\
 kill(pid) & Terminate process pid \\
 getpid() & Return the current process's pid \\
 sleep(n) & Sleep for n clock ticks \\
@@ -184,20 +184,19 @@ The
 \indexcode{exit}
 system call causes the calling process to stop executing and
 to release resources such as memory and open files.  The calling
-process passes an exit status to
-\lstinline{exit} that the kernel passes to the parent.  The convention is
-to use the exit status to indicate if the child completed successfully (in
-which case it returns 0) or if it failed to complete (in which case it
+process passes an exit status to indicate success (in
+which case it passes 0) of failure (in which case it
 returns a -1).
 The
 \indexcode{wait}
 system call returns the pid of an exited child of the
-current process and its exit status; if none of the caller's children
+current process and copies the exit status of the child to the address
+passed to wait; if none of the caller's children
 has exited,
 \indexcode{wait}
 waits for one to do so.
 If the parent doesn't care about the exit status of a child, it can
-pass 0 (a null pointer) to
+pass a 0 address to
 \lstinline{wait}.
 
 In the example, the output lines
