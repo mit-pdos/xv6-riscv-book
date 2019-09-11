@@ -126,8 +126,8 @@ with each process.
 {\bf System call} & {\bf Description} \\
 \midrule
 fork() & Create a process \\
-exit() & Terminate the current process \\
-wait() & Wait for a child process to exit \\
+exit(n) & Terminate the current process and return n to parent \\
+wait(xstatus) & Wait for a child process to exit and receive its exit status \\
 kill(pid) & Terminate process pid \\
 getpid() & Return the current process's pid \\
 sleep(n) & Sleep for n clock ticks \\
@@ -171,11 +171,11 @@ programming language~\cite{kernighan}:
 int pid = fork();
 if(pid > 0){
   printf("parent: child=%d\en", pid);
-  pid = wait();
+  pid = wait(0);
   printf("child %d is done\en", pid);
 } else if(pid == 0){
   printf("child: exiting\en");
-  exit();
+  exit(0);
 } else {
   printf("fork error\en");
 }
@@ -183,14 +183,23 @@ if(pid > 0){
 The
 \indexcode{exit}
 system call causes the calling process to stop executing and
-to release resources such as memory and open files.
+to release resources such as memory and open files.  The calling
+process passes an exit status to
+\lstinline{exit} that the kernel passes to the parent.  The convention is
+to use the exit status to indicate if the child completed successfully (in
+which case it returns 0) or if it failed to complete (in which case it
+returns a -1).
 The
 \indexcode{wait}
 system call returns the pid of an exited child of the
-current process; if none of the caller's children
+current process and its exit status; if none of the caller's children
 has exited,
 \indexcode{wait}
 waits for one to do so.
+If the parent doesn't care about the exit status of a child, it can
+pass 0 (a null pointer) to
+\lstinline{wait}.
+
 In the example, the output lines
 \begin{lstlisting}[]
 parent: child=1234
@@ -540,9 +549,9 @@ Consider this example:
 \begin{lstlisting}[]
 if(fork() == 0) {
   write(1, "hello ", 6);
-  exit();
+  exit(0);
 } else {
-  wait();
+  wait(0);
   write(1, "world\en", 6);
 }
 \end{lstlisting}
