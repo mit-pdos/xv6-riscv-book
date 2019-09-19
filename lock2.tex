@@ -97,7 +97,7 @@ by the structure of the xv6 code rather than by explicit locks. For
 example, when a physical page is free, it is protected by \texttt{
   kmem.lock} \lineref{kernel/kalloc.c:/^. kmem;/}. If the page is then
 allocated as a pipe \lineref{kernel/pipe.c:/^pipealloc/}, it is
-protected by a different lock (the embedded {\tt pi->lock}). If the page
+protected by a different lock (the embedded \texttt{pi->lock}). If the page
 is re-allocated for a new process's user memory, it is not protected by a
 lock at all. Instead, the fact that the allocator won't give that page
 to any other process (until it is freed) protects it from concurrent
