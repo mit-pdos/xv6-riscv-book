@@ -1262,7 +1262,7 @@ while midway through updating kernel data structures.
 To address these challenges, 
 \lstinline{kill}
 does very little: it just sets the victim's
-\lstinline{p->killed}
+\indexcode{p->killed}
 and, if it is sleeping, wakes it up.
 Eventually the victim will enter or leave the kernel,
 at which point code in
@@ -1563,8 +1563,11 @@ benefit of avoiding one context switch.
 to use the
 RISC-V
 \lstinline{WFI}
+(wait for interrupt)
 instruction
 when no processes are runnable.
+Try to ensure that, any time there are runnable processes waiting
+to run, no cores are pausing in \texttt{WFI}.
 
 \item The lock
 \lstinline{p->lock}

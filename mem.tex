@@ -130,8 +130,11 @@ addresses.
 \begin{figure}[h]
 \centering
  \includegraphics[scale=0.65]{fig/xv6_layout.pdf}
-\caption{Layout of the kernel address space. {\sf \small{RWX}}
-refer to PTE read, write, and execute permissions.}
+\caption{On the left, xv6's kernel address space.
+{\sf \small{RWX}}
+refer to PTE read, write, and execute permissions.
+On the right, the RISC-V physical address space that
+xv6 expects to see.}
 \label{fig:xv6_layout}
 \end{figure}
 
@@ -502,7 +505,7 @@ shows up in all address spaces.
 \begin{figure}[t]
 \center
 \includegraphics[scale=0.5]{fig/processlayout.pdf}
-\caption{Memory layout of a user process with its initial stack.}
+\caption{A process's user address space, with its initial stack.}
 \label{fig:processlayout}
 \end{figure}
 

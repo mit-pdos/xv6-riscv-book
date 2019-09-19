@@ -1,12 +1,14 @@
 \chapter{Concurrency revisited}
 \label{CH:LOCK2}
 
-Simultaneously achieving good parallel
+Simultaneously obtaining good parallel
 performance, correctness despite concurrency, and understandable code
-is one of biggest cross-cutting challenges in kernel design.
-Straightforward use of locks is often enough, but not always. This
-chapter highlights some examples in which xv6 uses locks in an
-involved way, and some where xv6 uses lock-like techniques but not
+is a big challenge in kernel design.
+Straightforward use of locks is the best path to correctness,
+but is not always possible.
+This
+chapter highlights examples in which xv6 is forced to use locks in an
+involved way, and examples where xv6 uses lock-like techniques but not
 locks.
 
 \section{Locking patterns}
@@ -38,21 +40,21 @@ a more precise way to view things is that a lock is acquired at the
 start of a sequence that must appear atomic, and released when that
 sequence ends. If the sequence starts and ends in different functions,
 or different threads, or on different CPUs, then the lock acquire and
-release must do the same. The function of the lock is to deter
-observers, not to pin a piece of data to a particular agent. One
+release must do the same. The function of the lock is to force
+other uses to wait, not to pin a piece of data to a particular agent. One
 example is the {\tt acquire} in {\tt yield}
 \lineref{kernel/proc.c:/^yield/}, which is released in the scheduler
 thread rather than in the acquiring process. Another example is the
 {\tt acquiresleep} in {\tt ilock} \lineref{kernel/fs.c:/^ilock/}; this
 code often sleeps while reading the disk; it may wake up on a
-different CPU than it started, which means the lock may be acquired
+different CPU, which means the lock may be acquired
 and released on different CPUs.
 
 Freeing an object that is protected by a lock embedded in the object
-is a delicate business. In particular, mere ownership of the lock is
+is a delicate business, since owning the lock is
 not enough to guarantee that freeing would be correct. The problem
 case arises when some other thread is waiting in {\tt acquire} to use
-the object; freeing the object implicitly frees the lock, which will
+the object; freeing the object implicitly frees the embedded lock, which will
 cause the waiting thread to malfunction. One solution is to track how
 many references to the object exist, so that it is only freed when the
 last reference disappears. See {\tt pipeclose}
@@ -92,16 +94,18 @@ count incremented, but not locked.
 Some data items are protected by different mechanisms at different
 times, and may at times be protected from concurrent access implicitly
 by the structure of the xv6 code rather than by explicit locks. For
-example, when a physical page is free, it is protected by {\tt
-  kmem.lock} \lineref{kernel/kalloc.c:/^. kmem;/}. If a page is
-allocated as a pipe \lineref{kernel/pipe.c:/^pipealloc/}, it is then
-protected by a different lock (the embedded {\tt pi->lock}). If a page
-is allocated for a new process's user memory, it is not protected by a
+example, when a physical page is free, it is protected by \texttt{
+  kmem.lock} \lineref{kernel/kalloc.c:/^. kmem;/}. If the page is then
+allocated as a pipe \lineref{kernel/pipe.c:/^pipealloc/}, it is
+protected by a different lock (the embedded {\tt pi->lock}). If the page
+is re-allocated for a new process's user memory, it is not protected by a
 lock at all. Instead, the fact that the allocator won't give that page
 to any other process (until it is freed) protects it from concurrent
-access. The page's implicit ownership is complex: first the parent
+access. 
+The ownership of a new process's memory is complex:
+first the parent allocates and
 manipulates it in {\tt fork}, then the child uses it, and (after the
-child exits) the parent again owns the page and passes it to {\tt
+child exits) the parent again owns the memory and passes it to {\tt
   kfree}. There are two lessons here: a data object may be protected
 from concurrency in different ways at different points in its
 lifetime, and the protection may take the form of implicit structure
@@ -127,6 +131,9 @@ A third are some uses of {\tt p->parent} in {\tt proc.c}
 \lineref{kernel/proc.c:/^wait/} \lineref{kernel/proc.c:/^reparent/}
 where proper locking could deadlock, but it seems clear that
 no other process could be simultaneously modifying {\tt p->parent}.
+A fourth example is \indexcode{p->killed}, which is set while holding
+\texttt{p->lock} \lineref{kernel/proc.c:/^kill/},
+but checked without a holding lock \lineref{kernel/trap.c:/p->killed/}.
 
 Xv6 contains cases in which one CPU or thread writes some data, and
 another CPU or thread reads the data, but there is no specific lock
@@ -152,8 +159,8 @@ designed for high performance, it's still worth considering which xv6
 operations can execute in parallel, and which might conflict on locks.
 
 Pipes in xv6 are an example of fairly good parallelism. Each pipe has
-its own lock, so that different processes can read and write to
-different pipes fully in parallel on different CPUs. For a given pipe,
+its own lock, so that different processes can read and write 
+different pipes in parallel on different CPUs. For a given pipe,
 however, the writer and reader must wait for each other to release the
 lock; they can't read/write the same pipe at the same time. It's also
 the case that a read from an empty pipe (or a write to a full pipe)
@@ -186,3 +193,19 @@ other parts of the code are more restrictive bottlenecks. It can be
 difficult to guess whether a given locking scheme might cause
 performance problems, or whether a new design is significantly better,
 so measurement on realistic workloads is often required.
+
+\section{Exercises}
+
+\begin{enumerate}
+
+\item Modify xv6's pipe implementation to allow a read and
+  a write to the same pipe to proceed in parallel on different cores.
+
+\item Modify xv6's \texttt{scheduler()} to increase parallelism,
+  so that different cores can look for runnable processes at the same time.
+
+\item Eliminate some of the serialization in xv6's \texttt{fork()}.
+
+\end{enumerate}
+
+% is p->killed another example of cutting locking corners?
