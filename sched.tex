@@ -365,7 +365,7 @@ an idle CPU's
 to run it;
 this means that 
 \indexcode{p->context}
-must hold the process's registers (i.e. they are
+must hold the process's registers (i.e., they are
 not actually in the real registers),
 that no CPU is executing on the process's kernel stack,
 and that no CPU's
@@ -397,7 +397,7 @@ starts to convert a runnable process to
 the lock cannot be released until the kernel thread
 is completely running (after the
 \lstinline{swtch},
-e.g. in
+for example in
 \lstinline{yield}).
 
 \indexcode{p->lock}
@@ -408,7 +408,7 @@ and
 \indexcode{wait},
 the machinery to avoid lost wakeups (see Section~\ref{sec:sleep}),
 and avoidance of races between a process exiting and other processes
-reading or writing its state (e.g. the \lstinline{exit}
+reading or writing its state (e.g., the \lstinline{exit}
 system call looking at \lstinline{p->pid} and
 setting \lstinline{p->killed}
 \lineref{kernel/proc.c:/^kill/}).
@@ -562,7 +562,7 @@ rarely, the consumer will spend most
 of its time spinning in the 
 \lstinline{while}
 loop hoping for a non-zero count.
-The consumer's CPU could find more productive work than
+The consumer's CPU could find more productive work than with
 \indextext{busy waiting}
 by repeatedly 
 \indextext{polling}
@@ -669,7 +669,8 @@ is asleep waiting for a \lstinline{V} call
 that has already happened.
 Unless we get lucky and the producer calls
 \lstinline{V} again, the consumer will wait
-forever even though the count is non-zero.
+forever (it is \emph{deadlocked}\index{deadlock}) even
+though the count is non-zero.
 
 The root of this problem is that the
 invariant that
@@ -901,7 +902,7 @@ see that the process is ready to be run.
 
 Xv6 code always calls
 \lstinline{wakeup}
-while holding the ``condition lock;''
+while holding the ``condition lock'';
 in the semaphore example that lock is
 \lstinline{s->lock}.
 Strictly speaking it is sufficient if
@@ -923,7 +924,7 @@ the condition lock or its own
 or both from a point before it checks the condition
 to a point after it is marked as sleeping.
 If a concurrent thread causes the condition to be true,
-that thread must either hold condition lock before the
+that thread must either hold the condition lock before the
 sleeping thread acquired it, or after the sleeping
 thread released it in
 \lstinline{sleep}.
@@ -1170,7 +1171,7 @@ Then it scans the process table.
 If it finds a child in \texttt{ZOMBIE} state,
 it frees that child's resources and
 its \lstinline{proc} structure, copies
-the child's exit's status to the address supplied to \lstinline{wait}
+the child's exit status to the address supplied to \lstinline{wait}
 (if it is not 0),
 and returns the child's process ID.
 If 
@@ -1335,7 +1336,8 @@ and
 \indextext{convoys}.
 Priority inversion can happen when a low-priority and high-priority process
 share a lock, which when acquired by the low-priority process can prevent the
-high-priority process from making progress.  A long convoy can form when many
+high-priority process from making progress.  A long convoy of waiting processes
+can form when many
 high-priority processes are waiting for a low-priority process that acquires a
 shared lock; once a convoy has formed it can persist for long time.
 To avoid these kinds of problems additional mechanisms are necessary in
@@ -1363,7 +1365,7 @@ Plan 9's
 \lstinline{sleep}
 uses a callback function that runs with the scheduling
 lock held just before going to sleep;
-the function serves as a last minute check
+the function serves as a last-minute check
 of the sleep condition, to avoid lost wakeups.
 The Linux kernel's
 \lstinline{sleep}
@@ -1544,7 +1546,7 @@ results in the victim abandoning the current system call.
 \item Design a plan so that every sleep loop checks 
 \lstinline{p->killed}
 so that, for example, a process that is in the virtio driver can return quickly from the while loop
-if another kills that process.
+if it is killed by another process.
 % Answer: this is difficult.  Moderns Unixes do this with setjmp and longjmp and very carefully programming to clean any partial state that the interrupted systems call may have built up.
 
 \item Design a plan that uses only one context switch when switching from one user

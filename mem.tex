@@ -103,7 +103,7 @@ to access the page;
 if \indexcode{PTE_U} is not set, the PTE can be used only in supervisor mode.
 Figure~\ref{fig:riscv_pagetable}
 shows how it all works.
-The flags and all other page hardware related structures are defined in
+The flags and all other page hardware-related structures are defined in
 \fileref{kernel/riscv.h}
 
 To tell the hardware to use a page table, the kernel must
@@ -152,9 +152,9 @@ virtual addresses to physical addresses.  The file
 \fileref{kernel/memlayout.h}
 declares the constants for xv6's kernel memory layout.
 
-Qemu simulates a computer that includes I/O devices
+QEMU simulates a computer that includes I/O devices
 such as a disk interface.
-Qemu exposes the device interfaces to software as
+QEMU exposes the device interfaces to software as
 \indextext{memory-mapped}
 control registers that sit below
 \texttt{0x80000000}
@@ -301,7 +301,7 @@ if the
 argument is set,
 \lstinline{walk}
 allocates a new page-table page and puts its physical address in the PTE.
-It returns the address of the PTE in lowest layer in the tree
+It returns the address of the PTE in the lowest layer in the tree
 \lineref{kernel/vm.c:/return..pagetable/}.
 
 The above code depends on physical memory being direct-mapped into the
@@ -473,13 +473,13 @@ a process's user memory starts at virtual address
 zero and can grow up to
 \texttt{MAXVA}
 \lineref{kernel/riscv.h:/MAXVA/},
-allowing a process to address in principle 256 Gigabyte of memory.
+allowing a process to address in principle 256 Gigabytes of memory.
 
 When a process asks xv6 for more user memory,
 xv6 first uses {\tt kalloc} to allocate physical pages.
 It then adds PTEs to the process's page table that point
 to the new physical pages.
-xv6 sets the
+Xv6 sets the
 \lstinline{PTE_W},
 \lstinline{PTE_X},
 \lstinline{PTE_R},
@@ -778,7 +778,7 @@ sophisticated data structures that would require dynamic allocation.
 Memory allocation was a hot topic a long time ago, the basic problems being
 efficient use of limited memory and
 preparing for unknown future requests~\cite{knuth}.  Today people care more about speed than
-space-efficiency.  In addition, a more elaborate kernel
+space efficiency.  In addition, a more elaborate kernel
 would likely allocate many different sizes of small blocks,
 rather than (as in xv6) just 4096-byte blocks;
 a real kernel
@@ -836,7 +836,7 @@ with command line
 \lstinline{arg1}.
 Implement support for this convention in xv6.
 
-\item Implement address space randomization for the kernel
+\item Implement address space randomization for the kernel.
 
 \end{enumerate}
 

@@ -24,7 +24,7 @@ transparent; this is particularly important for interrupts, which the
 interrupted code typically doesn't expect. Thus the usual sequence is that
 a trap forces a transfer of control into the kernel; the kernel saves
 registers and other state so that execution can be resumed; the kernel
-executes appropriate handler code (e.g. a system call implementation
+executes appropriate handler code (e.g., a system call implementation
 or device driver); the kernel restores the saved state and returns
 from the trap; and the original code resumes where it left off.
 
@@ -38,7 +38,7 @@ offending program.
 Xv6 trap handling proceeds in four stages: hardware actions taken by
 the RISC-V CPU, an assembly ``vector'' that prepares the way for
 kernel C code, a C trap handler that decides what to do with the trap,
-and the system call or device driver service routine. While
+and the system call or device-driver service routine. While
 commonality among the three trap types suggests that a kernel could
 handle all traps with a single code path, it turns out to be
 convenient to have separate assembly vectors and C trap handlers for
@@ -336,12 +336,13 @@ sets up to receive timer interrupts
 \lineref{kernel/start.c:/^timerinit/}.
 Part of the job is to program the CLINT hardware (core-local interruptor)
 to generate an interrupt after a certain delay.
-Another part is to set up a scratch area, analogous to trapframe,
+Another part is to set up a scratch area, analogous to the trapframe,
 for the timer interrupt handler to save registers in and find
 the address of the CLINT registers.
 Finally, {\tt start} sets {\tt mtvec} to {\tt timervec} and
 enables timer interrupts.
 
+%% XXX: this duplicates two paragraphs above
 A timer interrupt can occur at any point when user or kernel code is
 executing; there's no way for the kernel to disable timer interrupts
 during critical operations. Thus the timer interrupt handler must do
@@ -502,7 +503,7 @@ addition, the driver must understand the device's hardware interface,
 which can be complex and poorly documented.
 
 Devices that need attention from the operating system can usually be
-configured to generate interrupts, one of types of trap.
+configured to generate interrupts, which are one type of trap.
 The kernel trap handling code must be able to recognize when the device
 has raised an interrupt and call the driver's interrupt handler;
 in xv6, this dispatch happens in {\tt devintr} \lineref{kernel/trap.c:/^devintr/}.
@@ -511,7 +512,7 @@ Many device drivers have two main parts: code that runs as part of a
 process, and code that runs at interrupt time. The process-level code
 is driven by system calls such as {\tt read} and {\tt write} that want
 the device to perform I/O. This code may ask the hardware to start an
-operation (e.g. ask the disk to read a block); then the code waits for
+operation (e.g., ask the disk to read a block); then the code waits for
 the operation to complete. Eventually the device completes the
 operation and raises an interrupt. The driver's interrupt handler
 figures out what operation (if any) has completed, wakes up a waiting
@@ -526,13 +527,13 @@ serial-port hardware attached to the RISC-V. The driver accumulates a
 line of input at a time, processing special input characters such as
 backspace and control-u. User processes, such as the shell, can use
 the {\tt read} system call to fetch lines of input from the console.
-When you type input to xv6 in qemu, your keystrokes are delivered to
-xv6 by way of qemu's simulated UART hardware.
+When you type input to xv6 in QEMU, your keystrokes are delivered to
+xv6 by way of QEMU's simulated UART hardware.
 
 The UART hardware that the driver talks to is a 16550
-chip~\cite{ns16550a} emulated by qemu. On a real computer, a 16550
+chip~\cite{ns16550a} emulated by QEMU. On a real computer, a 16550
 would manage an RS232 serial link connecting to a terminal or other
-computer. When running qemu, it's connected to your keyboard and
+computer. When running QEMU, it's connected to your keyboard and
 display.
 
 The UART hardware appears to software as a set of memory-mapped
@@ -633,7 +634,7 @@ occurred while executing user code.
 Supporting all the devices on a typical computer in its full glory is
 much work, because there are many devices, the devices have many
 features, and the protocol between device and driver can be complex
-and badly documented. In many operating systems, the drivers account
+and poorly documented. In many operating systems, the drivers account
 for more code than the core kernel.
 
 The UART driver retrieves data a byte at a time by reading the UART

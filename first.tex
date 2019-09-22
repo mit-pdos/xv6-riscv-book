@@ -111,7 +111,7 @@ only through
 and
 \lstinline{close}
 system calls,
-instead of read and writing raw disk sectors. 
+instead of reading and writing raw disk sectors. 
 This provides the application with the convenience of pathnames, and it allows
 the operating system (as the implementer of the interface) to manage the disk. 
 
@@ -133,12 +133,12 @@ users with the convenience of a file system to store executable program images.
 
 Many forms of interaction among Unix processes occur via file descriptors.
 Not only do file descriptors abstract away many details (e.g.,
-where data in a pipe or file is stored), they also are defined in a
+where data in a pipe or file is stored), they are also defined in a
 way that simplifies interaction.
 For example, if one application in a pipeline fails, the kernel
-generates end-of-file for the next process in the pipeline.
+generates an end-of-file signal for the next process in the pipeline.
 
-As you can see, the system call interface in
+As you can see, the system-call interface in
 Figure~\ref{fig:api}
 is carefully designed to provide both programmer convenience and
 the possibility of strong isolation.  The Unix interface
@@ -155,7 +155,7 @@ to fail or other applications to fail. Instead, the operating system should be
 able to clean up the failed application and continue running other applications.
 To achieve strong isolation, the operating system must arrange that applications cannot modify (or even
 read) the operating system's data structures and instructions and that
-applications cannot access other process's memory.
+applications cannot access other processes' memory.
 
 CPUs provide hardware support for strong isolation.   For
 example, RISC-V has three modes in which
@@ -169,15 +169,15 @@ configuring a computer.  Xv6 executes a few lines in machine mode and
 then changes to supervisor mode.
 
 In supervisor mode the CPU is allowed to execute 
-\indextext{privileged instructions}.
-For example, enabling and disabling interrupts,  reading and writing
+\indextext{privileged instructions}:
+for example, enabling and disabling interrupts,  reading and writing
 the register that holds the address of a page table, etc.
 If an application in user mode attempts to execute
 a privileged instruction, then the CPU doesn't execute the instruction, but switches
 to supervisor mode so that supervisor-mode code can terminate the application,
 because it did something it shouldn't be doing. 
 Figure~\ref{fig:os}
-in Chapter ~\ref{CH:UNIX} illustrates this organization.  An application can
+in Chapter~\ref{CH:UNIX} illustrates this organization.  An application can
 execute only user-mode instructions (e.g., adding numbers, etc.) and is said to
 be running in 
 \indextext{user space},
@@ -190,7 +190,7 @@ the
 
 An application that wants to invoke a kernel function (e.g., the
 \lstinline{read}
-system call in xv6) must to
+system call in xv6) must 
 transition to the kernel.  CPUs provide a special instruction that switches the
 CPU from user mode to supervisor mode and enters the kernel at an entry point
 specified by the kernel.  (RISC-V
@@ -201,8 +201,8 @@ the kernel can then validate the arguments of the system call, decide whether
 the application is allowed to perform the requested operation, and then deny it
 or execute it.  It is important that the kernel control the entry point for
 transitions to supervisor mode; if the application could decide the kernel entry
-point, a malicious application could enter the kernel at a point where the
-validation of arguments etc. is skipped.
+point, a malicious application could, for example, enter the kernel at a point where the
+validation of arguments is skipped.
 %% 
 \section{Kernel organization}
 %% 
@@ -239,7 +239,7 @@ This kernel organization is called a
 \begin{figure}[t]
 \center
 \includegraphics[scale=0.5]{fig/mkernel.pdf}
-\caption{A microkernel with a file system server}
+\caption{A microkernel with a file-system server}
 \label{fig:mkernel}
 \end{figure}
 
@@ -321,7 +321,7 @@ another process's memory, CPU, file descriptors, etc.  It also prevents a proces
 from wrecking the kernel itself, so that a process can't subvert the kernel's
 isolation mechanisms.
 The kernel must implement the process abstraction with care because
-a buggy or malicious application may trick the kernel or hardware in doing
+a buggy or malicious application may trick the kernel or hardware into doing
 something bad (e.g., circumventing isolation).  The mechanisms used by
 the kernel to implement processes include the user/supervisor mode flag, address spaces,
 and time-slicing of threads.
@@ -452,7 +452,7 @@ contains I/O devices.
 The instructions at
 \lstinline{_entry}
 set up a stack so that xv6 can run C code.
-xv6 declares space for an initial stack,
+Xv6 declares space for an initial stack,
 \lstinline{stack0},
 in the file
 \lstinline{start.c}
@@ -553,7 +553,7 @@ The system is up.
 In the real world, one can find both monolithic kernels and microkernels. Many
 Unix kernels are monolithic. For example, Linux has a monolithic kernel,
 although some OS functions run as user-level servers (e.g., the windowing
-system).  Kernels such as L4, Minix, QNX are organized as a microkernel with
+system).  Kernels such as L4, Minix, and QNX are organized as a microkernel with
 servers, and have seen wide deployment in embedded settings.
 
 Most operating systems have adopted the process concept, and most

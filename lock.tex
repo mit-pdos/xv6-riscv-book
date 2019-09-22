@@ -31,7 +31,7 @@ Kernels are full of concurrently-accessed data. For example, two CPUs
 could simultaneously call {\tt kalloc}, thereby concurrently
 popping from the head of the free list. Kernel designers like to allow
 for lots of concurrency, since it can yield increased performance
-though parallelism, and increased responsiveness. But, as a result,
+though parallelism, and increased responsiveness. However, as a result
 kernel designers spend a lot of effort convincing themselves of
 correctness despite such concurrency. There are many ways to arrive at
 correct code, some easier to reason about than others. Strategies
@@ -403,7 +403,7 @@ acquired on entering the kernel and released on exiting the kernel (though
 system calls such as pipe reads or
 \lstinline{wait}
 would pose a problem).  Many uniprocessor operating systems have been converted to
-run on multiprocessors using this approach, sometimes called a ``giant
+run on multiprocessors using this approach, sometimes called a ``big
 kernel lock,'' but the approach sacrifices parallelism: only one
 CPU can execute in the kernel at a time.  If the kernel does any heavy
 computation, it would be more efficient to use a larger set of more
@@ -422,7 +422,7 @@ parallel allocation.
 
 As an example of fine-grained locking, xv6 has a separate lock for
 each file, so that processes that manipulate different files can often
-proceed without waiting for each others' locks. The file locking
+proceed without waiting for each other's locks. The file locking
 scheme could be made even more fine-grained if one wanted to allow
 processes to simultaneously write different areas of the same file.
 Ultimately lock granularity decisions need to be driven by performance
@@ -503,19 +503,19 @@ In consequence, the global deadlock-avoiding
 lock order includes the rule that
 \lstinline{cons.lock}
 must be acquired before any process lock.
-The file system code contains xv6's longest lock chains.
+The file-system code contains xv6's longest lock chains.
 For example, creating a file requires simultaneously
 holding a lock on the directory, a lock on the new file's inode,
 a lock on a disk block buffer, 
 the disk driver's \lstinline{vdisk_lock},
 and
 the calling process's \lstinline{p->lock}.
-To avoid deadlock, file system code always acquires locks in the order 
+To avoid deadlock, file-system code always acquires locks in the order
 mentioned in the previous sentence.
 
 Honoring a global deadlock-avoiding order can be surprisingly
 difficult. Sometimes the lock order conflicts with logical program
-structure, i.e. perhaps code module M1 calls module M2, but the lock
+structure, e.g., perhaps code module M1 calls module M2, but the lock
 order requires that a lock in M2 be acquired before a lock in M1.
 Sometimes the identities of locks aren't known in advance, perhaps
 because one lock must be held in order to discover the identity
@@ -649,7 +649,7 @@ However, the rules do allow re-ordering that
 changes the results of concurrent code,
 and can easily lead to incorrect behavior on
 multiprocessors~\cite{riscv:user,boehm04}.
-The CPU ordering rules are called the \indextext{memory model}.
+The CPU's ordering rules are called the \indextext{memory model}.
 % actually it doesn't say much.
 
 For example, in this code for
@@ -668,7 +668,7 @@ on line~\ref{line:release}:
       release(&listlock);  (*@\label{line:release}@*)
 \end{lstlisting}
 If such a re-ordering occurred, there would be a window during
-which another CPU could acquire the lock,
+which another CPU could acquire the lock and
 observe the updated
 \lstinline{list},
 but see an uninitialized

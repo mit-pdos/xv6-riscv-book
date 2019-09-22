@@ -34,7 +34,7 @@ still work correctly after a restart. The risk is that a crash might
 interrupt a sequence of updates and leave inconsistent on-disk data
 structures (e.g., a block that is both used in a file and marked free).
 \item Different processes may operate on the file system at the same time,
-so the file system code must coordinate to maintain invariants.
+so the file-system code must coordinate to maintain invariants.
 \item Accessing a disk is orders of magnitude slower than accessing
 memory, so the file system must maintain an in-memory cache of
 popular blocks.
@@ -176,7 +176,7 @@ indicates that the buffer contains a copy of the block.
 The field \indexcode{disk}
 indicates that the buffer content has been handed to
 the disk, which may change the buffer (e.g., write
-data from the disk into \lstinline{data}. 
+data from the disk into \lstinline{data}).
 
 \lstinline{Bread}
 \lineref{kernel/bio.c:/^bread/}
@@ -197,7 +197,7 @@ scans the buffer list for a buffer with the given device and sector numbers
 If there is such a buffer,
 \indexcode{bget}
 acquires the sleep-lock for the buffer.
-\lstinline{bget}
+\lstinline{Bget}
 then returns the locked buffer.
 
 If there is no cached buffer for the given sector,
@@ -205,12 +205,12 @@ If there is no cached buffer for the given sector,
 must make one, possibly reusing a buffer that held
 a different sector.
 It scans the buffer list a second time, looking for a buffer
-that is not in use (\lstinline{b->refcnt = 0}):
+that is not in use (\lstinline{b->refcnt = 0});
 any such buffer can be used.
 \lstinline{Bget}
 edits the buffer metadata to record the new device and sector number
 and acquires its sleep-lock.
-Note that the assignment to
+Note that the assignment
 \lstinline{b->valid = 0}
 ensures that
 \lstinline{bread}
@@ -220,7 +220,7 @@ rather than incorrectly using the buffer's previous contents.
 It is important that there is at most one cached buffer per
 disk sector, to ensure that readers see writes, and because the
 file system uses locks on buffers for synchronization.
-\lstinline{bget}
+\lstinline{Bget}
 ensures this invariant by holding the
 \lstinline{bache.lock}
 continuously from the first loop's check of whether the
@@ -309,7 +309,7 @@ pointers).
 \section{Logging layer}
 
 One of the most interesting problems in file system design is crash
-recovery. The problem arises because many file system operations
+recovery. The problem arises because many file-system operations
 involve multiple writes to the disk, and a crash after a subset of the
 writes may leave the on-disk file system in an inconsistent state. For
 example, suppose a crash occurs during file truncation (setting
@@ -327,7 +327,7 @@ multiple users, this situation could be a security problem, since the
 old file's owner would be able to read and write blocks in the
 new file, owned by a different user.
 
-Xv6 solves the problem of crashes during file system operations with a
+Xv6 solves the problem of crashes during file-system operations with a
 simple form of logging. An xv6 system call does not directly write
 the on-disk file system data structures. Instead, it places a
 description of all the disk writes it wishes to make in a 
@@ -340,7 +340,7 @@ a complete operation. At that point the system call copies the writes
 to the on-disk file system data structures. After those writes have
 completed, the system call erases the log on disk.
 
-If the system should crash and reboot, the file system code recovers
+If the system should crash and reboot, the file-system code recovers
 from the crash as follows, before running any processes. If the log is
 marked as containing a complete operation, then the recovery code
 copies the writes to where they belong in the on-disk file system. If
@@ -382,14 +382,14 @@ will result in a non-zero count.
 
 Each system call's code indicates the start and end of the sequence of
 writes that must be atomic with respect to crashes.
-To allow concurrent execution of file system operations
+To allow concurrent execution of file-system operations
 by different processes,
 the logging system can accumulate the writes
 of multiple system calls into one transaction.
 Thus a single commit may involve the writes of multiple
 complete system calls.
 To avoid splitting a system call across transactions, the logging system
-only commits when no file system system calls are underway.
+only commits when no file-system system calls are underway.
 
 The idea of committing several transactions together is known as 
 \indextext{group commit}.
@@ -707,7 +707,7 @@ by the pointer won't be re-used for a different inode.
 \lstinline{iget()}
 provides non-exclusive access to an inode, so that
 there can be many pointers to the same inode.
-Many parts of the file system code depend on this behavior of
+Many parts of the file-system code depend on this behavior of
 \lstinline{iget()},
 both to hold long-term references to inodes (as open files
 and current directories) and to prevent races while avoiding
@@ -835,8 +835,8 @@ The locking protocol in
 in the case in which it frees the inode deserves a closer look.
 One danger is that a concurrent thread might be waiting in
 \lstinline{ilock}
-to use this inode (e.g. to read a file or list a directory),
-and won't be prepared to find the inode is not longer
+to use this inode (e.g., to read a file or list a directory),
+and won't be prepared to find that the inode is not longer
 allocated. This can't happen because there is no way for
 a system call to get a pointer to a cached inode if it has
 no links to it and 
@@ -884,7 +884,7 @@ drops to zero, because some process might still hold a reference to the inode in
 memory: a process might still be reading and writing to the file, because it
 successfully opened it. But, if a crash happens before the last process closes
 the file descriptor for the file, then the file will be marked allocated on disk
-but no directory entry points to it.
+but no directory entry will point to it.
 
 File systems handle this case in one of two ways. The simple solution is that on
 recovery, after reboot, the file system scans the whole file system for files
@@ -958,7 +958,7 @@ and
 which we will see shortly.
 \lstinline{Bmap}
 returns the disk block number of the
-\lstinline{bn} 'th
+\lstinline{bn}'th
 data block for the inode
 \lstinline{ip}.
 If
@@ -1243,9 +1243,9 @@ read inodes and directory blocks for the directories traversed in the pathname
 (if they are not in the buffer cache).  Xv6 is carefully designed so that if an
 invocation of
 \lstinline{namex}
-by one kernel thread is blocked on a disk I/O, another kernel thread looking up
+by one kernel thread is blocked on a disk i/o, another kernel thread looking up
 a different pathname can proceed concurrently.
-\lstinline{namex}
+\lstinline{Namex}
 locks each directory in the path separately so that lookups in different
 directories can proceed in parallel.
 
@@ -1263,7 +1263,7 @@ the lookup thread holds the lock on the directory and
 \lstinline{dirlookup}
 returns an inode that was obtained using
 \lstinline{iget}.
-\lstinline{iget}
+\lstinline{Iget}
 increases the reference count of the inode.  Only after receiving the
 inode from
 \lstinline{dirlookup}
@@ -1343,14 +1343,14 @@ All the open files in the system are kept in a global file table,
 the 
 \indexcode{ftable}.
 The file table
-has a function to allocate a file
+has functions to allocate a file
 (\indexcode{filealloc}),
 create a duplicate reference
 (\indexcode{filedup}),
 release a reference
 (\indexcode{fileclose}),
 and read and write data
-\indexcode{fileread} "" (
+(\indexcode{fileread}
 and 
 \indexcode{filewrite}).
 
@@ -1358,7 +1358,7 @@ The first three follow the now-familiar form.
 \lstinline{Filealloc}
 \lineref{kernel/file.c:/^filealloc/}
 scans the file table for an unreferenced file
-\lstinline{f->ref} "" (
+(\lstinline{f->ref}
 \lstinline{==}
 \lstinline{0})
 and returns a new reference;
@@ -1504,7 +1504,7 @@ It then calls
 to check whether the name already exists
 \lineref{kernel/sysfile.c:/dirlookup.*[^=]=.0/}.
 If the name does exist, 
-\lstinline{create} 's
+\lstinline{create}'s
 behavior depends on which system call it is being used for:
 \lstinline{open}
 has different semantics from 
@@ -1515,7 +1515,7 @@ If
 \lstinline{create}
 is being used on behalf of
 \lstinline{open}
-\lstinline{type} "" (
+(\lstinline{type}
 \lstinline{==}
 \indexcode{T_FILE})
 and the name that exists is itself
@@ -1626,7 +1626,7 @@ Modern buffer caches are typically integrated with the
 virtual memory system to support memory-mapped files.
 
 Xv6's logging system is inefficient.
-A commit cannot occur concurrently with file system system calls.
+A commit cannot occur concurrently with file-system system calls.
 The system logs entire blocks, even if
 only a few bytes in a block are changed. It performs synchronous
 log writes, a block at a time, each of which is likely to require an
@@ -1797,7 +1797,7 @@ operators work in the shell.
 
 \item Modify the file system to support symbolic links.
 
-\item Modify the file system to support names pipes.
+\item Modify the file system to support named pipes.
 
 \item Modify the file and VM system to support mmap.
 

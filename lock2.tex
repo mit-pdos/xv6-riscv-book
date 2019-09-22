@@ -29,7 +29,7 @@ There is no {\tt struct buf} (since the block isn't yet cached), and
 thus there is nothing to lock. Xv6 deals with this situation by
 associating an additional lock ({\tt bcache.lock}) with the set of
 identities of cached blocks. Code that needs to check if a block is
-cached (e.g. {\tt bget} \lineref{kernel/bio.c:/^bget/}), or change the
+cached (e.g., {\tt bget} \lineref{kernel/bio.c:/^bget/}), or change the
 set of cached blocks, must hold {\tt bcache.lock}; after that code has
 found the block and {\tt struct buf} it needs, it can release {\tt
   bcache.lock} and lock just the specific block. This is a common
@@ -82,10 +82,10 @@ The file system uses {\tt struct inode} reference counts as a kind of
 shared lock that can be held by multiple processes, in order to avoid
 deadlocks that would occur if the code used ordinary locks. For
 example, the loop in {\tt namex} \lineref{kernel/fs.c:/^namex/} locks
-the directory named by each pathname component in turn. {\tt namex}
-must release each lock at the end of the loop, however, since if it
-held multiple locks it could deadlock against itself if the pathname
-included a dot (e.g. {\tt a/./b}). It might also deadlock against a
+the directory named by each pathname component in turn. However, {\tt namex}
+must release each lock at the end of the loop, since if it
+held multiple locks it could deadlock with itself if the pathname
+included a dot (e.g., {\tt a/./b}). It might also deadlock with a
 concurrent lookup involving the directory and {\tt ..}. As
 Chapter~\ref{CH:FS} explains, the solution is for the loop to carry
 the directory inode over to the next iteration with its reference
@@ -163,11 +163,11 @@ Pipes in xv6 are an example of fairly good parallelism. Each pipe has
 its own lock, so that different processes can read and write 
 different pipes in parallel on different CPUs. For a given pipe,
 however, the writer and reader must wait for each other to release the
-lock; they can't read/write the same pipe at the same time. It's also
+lock; they can't read/write the same pipe at the same time. It is also
 the case that a read from an empty pipe (or a write to a full pipe)
 must block, but this is not due to the locking scheme.
 
-Context switch is a more complex example. Two kernel threads, each
+Context switching is a more complex example. Two kernel threads, each
 executing on its own CPU, can call {\tt yield}, {\tt sched}, and {\tt
   swtch} at the same time, and the calls will execute in parallel. The
 threads each hold a lock, but they are different locks, so they don't
