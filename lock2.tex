@@ -128,7 +128,8 @@ running until CPU zero has finished initializing xv6;
 the {\tt volatile} ensures that the compiler actually generates
 load and store instructions.
 A third are some uses of {\tt p->parent} in {\tt proc.c}
-\lineref{kernel/proc.c:/^wait/} \lineref{kernel/proc.c:/^reparent/}
+\lineref{kernel/proc.c:/^wait/}
+\lineref{kernel/proc.c:/^reparent/}
 where proper locking could deadlock, but it seems clear that
 no other process could be simultaneously modifying {\tt p->parent}.
 A fourth example is \indexcode{p->killed}, which is set while holding

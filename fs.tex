@@ -1049,11 +1049,11 @@ writes that start at or cross the end of the file
 grow the file, up to the maximum file size
 \linerefs{kernel/fs.c:/^..if.off.\+.n.>.MAXFILE/,/./};
 the loop copies data into the buffers instead of out
-\lineref{kernel/fs.c:/memmove.bp->data/};
+\lineref{kernel/fs.c:/memmove.*bp->data/};
 and if the write has extended the file,
 \indexcode{writei}
 must update its size
-\lineref{kernel/fs.c:/^..if.n.>.0.*off.>.ip->size/,/^..}/}.
+\linerefs{kernel/fs.c:/^..if.n.>.0.*off.>.ip->size/,/^..}/}.
 
 Both
 \indexcode{readi}
