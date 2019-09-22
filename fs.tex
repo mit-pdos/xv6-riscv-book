@@ -6,7 +6,7 @@
 %         knows a fair amount about how inodes and directories work,
 %         but they are introduced later.
 % 
-% 	have to decide on processor vs CPU, i/o vs I/O.
+% 	have to decide on processor vs CPU.
 % 	
 % 	be sure to say buffer, not block 
 % 
@@ -1243,7 +1243,7 @@ read inodes and directory blocks for the directories traversed in the pathname
 (if they are not in the buffer cache).  Xv6 is carefully designed so that if an
 invocation of
 \lstinline{namex}
-by one kernel thread is blocked on a disk i/o, another kernel thread looking up
+by one kernel thread is blocked on a disk I/O, another kernel thread looking up
 a different pathname can proceed concurrently.
 \lstinline{Namex}
 locks each directory in the path separately so that lookups in different
@@ -1309,14 +1309,14 @@ Each open file is represented by a
 \indexcode{struct file}
 \lineref{kernel/file.h:/^struct.file/},
 which is a wrapper around either an inode or a pipe,
-plus an i/o offset.
+plus an I/O offset.
 Each call to 
 \indexcode{open}
 creates a new open file (a new
 \lstinline{struct}
 \lstinline{file}):
 if multiple processes open the same file independently,
-the different instances will have different i/o offsets.
+the different instances will have different I/O offsets.
 On the other hand, a single open file
 (the same
 \lstinline{struct}
@@ -1400,7 +1400,7 @@ If the file represents an inode,
 \lstinline{fileread}
 and
 \lstinline{filewrite}
-use the i/o offset as the offset for the operation
+use the I/O offset as the offset for the operation
 and then advance it
 \linerefs{kernel/file.c:/readi/,/./}
 \linerefs{kernel/file.c:/writei/,/./}.
