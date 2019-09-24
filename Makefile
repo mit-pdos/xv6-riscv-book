@@ -27,7 +27,7 @@ src:
 	fi; \
 	cd $(SRC); git pull; true
 
-book.pdf: book.tex $(TEX) src
+book.pdf: src book.tex $(TEX)
 	pdflatex book.tex
 	bibtex book
 	pdflatex book.tex
