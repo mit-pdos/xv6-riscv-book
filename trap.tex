@@ -326,10 +326,12 @@ supervisor mode. RISC-V machine mode executes without paging, and with
 a separate set of control registers, so it's not practical to run
 ordinary xv6 kernel code in machine mode. As a result, xv6 handles
 timer interrupts completely separately from the trap mechanism laid
-out above. The xv6 timer interrupt handler asks the RISC-V hardware to
-generate a ``software interrupt;'' after the timer interrupt finishes,
-the RISC-V delivers the software interrupt in supervisor mode, using
-the ordinary trap machinery outlined above.
+out above.
+
+%% The xv6 timer interrupt handler asks the RISC-V hardware to
+%% generate a ``software interrupt;'' after the timer interrupt finishes,
+%% the RISC-V delivers the software interrupt in supervisor mode, using
+%% the ordinary trap machinery outlined above.
 
 Code executed in machine mode in {\tt start.c}, before {\tt main},
 sets up to receive timer interrupts
@@ -342,7 +344,6 @@ the address of the CLINT registers.
 Finally, {\tt start} sets {\tt mtvec} to {\tt timervec} and
 enables timer interrupts.
 
-%% XXX: this duplicates two paragraphs above
 A timer interrupt can occur at any point when user or kernel code is
 executing; there's no way for the kernel to disable timer interrupts
 during critical operations. Thus the timer interrupt handler must do
