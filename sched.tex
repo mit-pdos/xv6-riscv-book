@@ -223,9 +223,9 @@ and then call
 \lstinline{Yield}
 \lineref{kernel/proc.c:/^yield/}
 follows this convention, as do
-\indexcode{sleep}
+\texttt{sleep}
 and
-\indexcode{exit},
+\texttt{exit},
 which we will examine later.
 \lstinline{Sched}
 double-checks those conditions
@@ -637,7 +637,7 @@ However, it turns out not to be straightforward to design
 and 
 \lstinline{wakeup}
 with this interface without suffering
-from what is known as the ``lost wake-up'' problem.
+from what is known as the \indextext{lost wake-up} problem.
 % (see 
 % Figure~\ref{fig:deadlock}).
 Suppose that
@@ -670,7 +670,6 @@ that has already happened.
 Unless we get lucky and the producer calls
 \lstinline{V} again, the consumer will wait
 forever even though the count is non-zero.
-\indextext{deadlocked}.
 
 The root of this problem is that the
 invariant that
@@ -1133,8 +1132,8 @@ and
 \lstinline{wakeup}
 can be used for many kinds of waiting.
 An interesting example, introduced in Chapter~\ref{CH:UNIX},
-is the interaction between a child's {\tt exit}
-and its parent's {\tt wait}.
+is the interaction between a child's \indexcode{exit}
+and its parent's \indexcode{wait}.
 At the time of the child's death, the parent may already
 be sleeping in {\tt wait}, or may be doing something else;
 in the latter case, a subsequent call to {\tt wait} must
@@ -1151,7 +1150,7 @@ process, which perpetually calls {\tt wait};
 thus
 every child has a parent to clean up after it.
 The main implementation challenge is
-the possibility of races between
+the possibility of races and deadlock between
 parent and child
 \lstinline{wait}
 and
@@ -1162,13 +1161,13 @@ and
 \lstinline{exit}.
 
 \lstinline{Wait}
-uses the current process's
+uses the calling process's
 \lstinline{p->lock}
 as the condition lock to avoid lost wakeups,
 and it acquires that lock at the start
 \lineref{kernel/proc.c:/^wait/}.
 Then it scans the process table.
-If it finds a child in zombie state,
+If it finds a child in \texttt{ZOMBIE} state,
 it frees that child's resources and
 its \lstinline{proc} structure, copies
 the child's exit's status to the address supplied to \lstinline{wait}
@@ -1203,20 +1202,18 @@ is true, the value can't change unless the current process changes it.
 
 \lstinline{Exit}
 \lineref{kernel/proc.c:/^exit/}
-record its exit status,
-frees some resources,
-re-parents any children so that their parent is
-the \lstinline{init} process,
-wakes up its parent in case it is in \lstinline{wait},
-marks itself as a zombie, and permanently
+records the exit status, frees some resources,
+gives any children to the \lstinline{init} process,
+wakes up the parent in case it is in \lstinline{wait},
+marks the caller as a zombie, and permanently
 yields the CPU.
 The final sequence is a little tricky.
-The exiting process must hold its parent's lock when
-setting its state to \lstinline{ZOMBIE}, and
-waking the parent up, since the parent's lock
+The exiting process must hold its parent's lock while
+it sets its state to \lstinline{ZOMBIE} and
+wakes the parent up, since the parent's lock
 is the condition lock
 that guards against lost wakeups in \lstinline{wait}. The child must also
-holds its own \lstinline{p->lock}, since otherwise the parent
+hold its own \lstinline{p->lock}, since otherwise the parent
 might see it in state \lstinline{ZOMBIE} and free it while
 it is still running.
 The lock acquisition order is important to avoid deadlock: since \lstinline{wait}
@@ -1257,8 +1254,8 @@ lets one process request that another terminate.
 It would be too complex for
 \lstinline{kill}
 to directly destroy the victim process, since the victim
-might be executing on another CPU or sleeping
-while midway through updating kernel data structures.
+might be executing on another CPU, perhaps
+in the middle of a sensitive sequence of updates to kernel data structures.
 To address these challenges, 
 \lstinline{kill}
 does very little: it just sets the victim's
@@ -1577,7 +1574,7 @@ is protected by
 it can be difficult to figure out which invariant is being enforced.  Design a
 plan that is more clean by splitting
 \lstinline{p->lock}
-in several locks.
+into several locks.
 % Answer: don't know.
 
 \end{enumerate}

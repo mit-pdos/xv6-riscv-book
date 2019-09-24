@@ -201,8 +201,8 @@ so measurement on realistic workloads is often required.
 \item Modify xv6's pipe implementation to allow a read and
   a write to the same pipe to proceed in parallel on different cores.
 
-\item Modify xv6's \texttt{scheduler()} to increase parallelism,
-  so that different cores can look for runnable processes at the same time.
+\item Modify xv6's \texttt{scheduler()} to reduce lock contention
+  when different cores are looking for runnable processes at the same time.
 
 \item Eliminate some of the serialization in xv6's \texttt{fork()}.
 
