@@ -78,11 +78,20 @@ switch to a new process's kernel thread, and a trap return
 to the user-level process.
 The xv6 scheduler has a dedicated thread (saved registers and stack)
 per CPU because
-it is sometimes not safe for it execute on
-any process's kernel stack;
-we'll see an example in
-\lstinline{exit}\mfk{since xv6 doesn't free kernel stacks anymore, this
-  point is less obvious now and we don't spell it out in 6.8.}. 
+it is not safe for the scheduler execute on
+the old process's kernel stack: some other core might
+wake the process up and run it, and it would be a disaster
+to use the same stack on two different cores.
+%
+% I think it may never be safe. if the old process is a ZOMBIE, the
+% parent may mark it UNUSED and another core may allocate it in
+% fork(). if the old process is SLEEPING or RUNNABLE, another core may
+% wake it up and run it.
+%
+% what has changed is that, if we deleted wait(), it would 
+% be safe for an exit()ing process to set its state to UNUSED
+% directly (no ZOMBIE, no need for parent cleanup).
+%
 In this section we'll examine the mechanics of switching
 between a kernel thread and a scheduler thread.
 
@@ -95,7 +104,7 @@ switch what code it is executing.
 
 The function
 \indexcode{swtch}
-performs the saves and restores for a thread switch.
+performs the saves and restores for a kernel thread switch.
 \lstinline{swtch}
 doesn't directly know about threads; it just saves and
 restores register sets, called 
@@ -206,7 +215,8 @@ The last section looked at the low-level details of
 now let's take 
 \lstinline{swtch}
 as a given and examine 
-switching from a process through the scheduler to another process.
+switching from one process's kernel thread
+through the scheduler to another process.
 The scheduler exists in the form of a special thread per CPU, each running the
 \lstinline{scheduler}
 function.
@@ -392,7 +402,7 @@ clears
 \lstinline{c->proc}.
 Similarly, once 
 \lstinline{scheduler}
-starts to convert a runnable process to
+starts to convert a \lstinline{RUNNABLE} process to
 \lstinline{RUNNING},
 the lock cannot be released until the kernel thread
 is completely running (after the
@@ -472,8 +482,8 @@ The return values of
 and
 \lstinline{mycpu}
 are fragile: if the timer were to interrupt and cause
-the thread to yield and then move to a different CPU, the
-return value would no longer be correct.
+the thread to yield and then move to a different CPU,
+a previously returned value would no longer be correct.
 To avoid this problem, xv6 requires that callers 
 disable interrupts, and only enable
 them after they finish using the returned
@@ -520,9 +530,9 @@ or
 \indextext{conditional synchronization}
 mechanisms.
 
-To illustrate what we mean, let's consider a
-simple synchronization mechanism called a \indextext{semaphore}~\cite{dijkstra65} to
-coordinate a producer and a consumer.
+To illustrate, let's consider a
+synchronization mechanism called a \indextext{semaphore}~\cite{dijkstra65} that
+coordinates producers and consumers.
 A semaphore maintains a count and provides two operations.
 The ``V'' operation (for the producer) increments the count.
 The ``P'' operation (for the consumer) waits until the count is non-zero,
@@ -669,7 +679,7 @@ is asleep waiting for a \lstinline{V} call
 that has already happened.
 Unless we get lucky and the producer calls
 \lstinline{V} again, the consumer will wait
-forever (it is \emph{deadlocked}\index{deadlock}) even
+forever even
 though the count is non-zero.
 
 The root of this problem is that the
@@ -720,7 +730,7 @@ so \lstinline{V} will block forever waiting for the lock.
 We'll fix the preceding scheme by changing
 \lstinline{sleep}'s
 interface:
-the caller must pass the lock to
+the caller must pass the \indextext{condition lock} to
 \lstinline{sleep}
 so it can release the lock after
 the calling process is marked as asleep and waiting on the
@@ -769,7 +779,7 @@ check of
 \lstinline{c->count}
 and its call to
 \lstinline{sleep}.
-We need
+Note, however, that we need
 \lstinline{sleep}
 to atomically release
 \lstinline{s->lock}
@@ -870,28 +880,45 @@ holds
 and no others,
 it can put the process to sleep by recording
 the sleep channel,
-changing the process state,
+changing the process state to \texttt{SLEEPING},
 and calling
 \lstinline{sched}
 \linerefs{kernel/proc.c:/chan.=.chan/,/sched/}.
+In a moment it will be clear why it's critical that
+\lstinline{p->lock} is not released (by \lstinline{scheduler}) until after
+the process is marked \texttt{SLEEPING}.
 
-At some point later, a process will call
-\lstinline{wakeup(chan)}
-\lineref{kernel/proc.c:/^wakeup\(/}.
+At some point, a process will acquire the condition lock,
+set the condition that the sleeper is waiting for,
+and call \lstinline{wakeup(chan)}.
+It's important that \lstinline{wakeup} is called
+while holding the condition lock\footnote{%
+%
+Strictly speaking it is sufficient if
+\lstinline{wakeup}
+merely follows the
+\lstinline{acquire}
+(that is, one could call
+\lstinline{wakeup}
+after the
+\lstinline{release}).%
+%
+}.
 \lstinline{Wakeup}
-loops over the process table.
+loops over the process table
+\lineref{kernel/proc.c:/^wakeup\(/}.
 It acquires the
 \lstinline{p->lock}
 of each process it inspects,
-both because it may manipulating that process's state
-and because, as we just saw,
+both because it may manipulate that process's state
+and because
 \lstinline{p->lock}
 ensures that
 \lstinline{sleep}
 and
 \lstinline{wakeup}
 do not miss each other.
-When it finds a process in state
+When \lstinline{wakeup} finds a process in state
 \indexcode{SLEEPING}
 with a matching
 \indexcode{chan},
@@ -900,49 +927,22 @@ it changes that process's state to
 The next time the scheduler runs, it will
 see that the process is ready to be run.
 
-Xv6 code always calls
-\lstinline{wakeup}
-while holding the ``condition lock'';
-in the semaphore example that lock is
-\lstinline{s->lock}.
-Strictly speaking it is sufficient if
-\lstinline{wakeup}
-always follows the
-\lstinline{acquire}
-(that is, one could call
-\lstinline{wakeup}
-after the
-\lstinline{release}).
 Why do the locking rules for 
 \lstinline{sleep}
 and
 \lstinline{wakeup}
-ensure a sleeping process won't miss a wakeup it needs?
+ensure a sleeping process won't miss a wakeup?
 The sleeping process holds either
 the condition lock or its own
 \lstinline{p->lock} 
 or both from a point before it checks the condition
-to a point after it is marked as sleeping.
-If a concurrent thread causes the condition to be true,
-that thread must either hold the condition lock before the
-sleeping thread acquired it, or after the sleeping
-thread released it in
-\lstinline{sleep}.
-If before, the sleeping thread must have seen the new condition
-value, and decided to sleep anyway, so it doesn't matter
-if it misses the wakeup.
-If after, then the earliest the waker could acquire the
-condition lock is after
-\lstinline{sleep}
-acquires
-\lstinline{p->lock},
-so that
-\lstinline{wakeup}'s
-acquisition of
-\lstinline{p->lock}
-must wait until
-\lstinline{sleep}
-has completely finished putting the sleeper to sleep.
+to a point after it is marked \texttt{SLEEPING}.
+The process calling \texttt{wakeup} holds \textit{both}
+of those locks in \texttt{wakeup}'s loop.
+Thus the waker either makes the condition true before
+the consuming thread checks the condition;
+or the waker's \lstinline{wakeup} examines the sleeping
+thread strictly after it has been marked \texttt{SLEEPING}.
 Then 
 \lstinline{wakeup}
 will see the sleeping process and wake it up
@@ -1185,13 +1185,17 @@ then scans again.
 Here,
 the condition lock being released in 
 \lstinline{sleep}
-is \lstinline{p->lock},
+is the waiting process's \lstinline{p->lock},
 the special case mentioned above.
-Note that \lstinline{wait} often holds two locks,
-and that the deadlock-avoiding order it uses is
-parent, then child.
+Note that \lstinline{wait} often holds two locks;
+that it acquires its own lock before trying to acquire
+any child's lock;
+and that thus all of xv6 must obey the same locking order
+(parent, then child) in order to avoid deadlock.
 
-\lstinline{Wait} uses \lstinline{np->parent} without holding
+\lstinline{Wait}
+looks at every process's \lstinline{np->parent} to find
+its children. It uses \lstinline{np->parent} without holding
 \lstinline{np->lock}, which is a violation of the usual rule that
 shared variables must be protected by locks. It is possible that
 \lstinline{np} is an ancestor of the current process, in which case
@@ -1257,7 +1261,7 @@ It would be too complex for
 to directly destroy the victim process, since the victim
 might be executing on another CPU, perhaps
 in the middle of a sensitive sequence of updates to kernel data structures.
-To address these challenges, 
+Thus
 \lstinline{kill}
 does very little: it just sets the victim's
 \indexcode{p->killed}
@@ -1510,11 +1514,7 @@ How?
 \item Most process cleanup could be done by either
 \lstinline{exit}
 or
-\lstinline{wait},
-but we saw above that
-\lstinline{exit}
-must not free
-\lstinline{p->kstack}.
+\lstinline{wait}.
 It turns out that
 \lstinline{exit}
 must be the one to close the open files.
