@@ -1549,13 +1549,12 @@ so that, for example, a process that is in the virtio driver can return quickly 
 if it is killed by another process.
 % Answer: this is difficult.  Moderns Unixes do this with setjmp and longjmp and very carefully programming to clean any partial state that the interrupted systems call may have built up.
 
-\item Design a plan that uses only one context switch when switching from one user
-process to another.  This plan involves running the scheduler procedure on the
-kernel stack of the user process, instead of the dedicated scheduler stack.  The
-main challenge is to clean up a user process correctly.  Measure the performance
-benefit of avoiding one context switch.
-% Answer: maybe keep the current design but create a fast path for when there is
-% a runnable user process available.
+\item Modify xv6 to use only one context switch when switching from
+  one process's kernel thread to another, rather than switching
+  through the scheduler thread. The yielding thread will need to select
+  the next thread itself and call \texttt{swtch}. The challenges will
+  be to prevent multiple cores from executing the same thread accidentally;
+  to get the locking right; and to avoid deadlocks.
 
 \item Modify xv6's
 \lstinline{scheduler}
