@@ -269,7 +269,7 @@ Logically, xv6 should acquire a lock by executing code like
    acquire(struct spinlock *lk) // does not work!
    {
      for(;;) {
-       if(lk->locked == 0) {  (*@\label{line:test}@*)
+       if(lk->locked == 0) {  (*@\label{line:testlocked}@*)
          lk->locked = 1;      (*@\label{line:assign}@*)
          break;
        }
@@ -279,20 +279,20 @@ Logically, xv6 should acquire a lock by executing code like
 Unfortunately, this implementation does not
 guarantee mutual exclusion on a multiprocessor.
 It could happen that two CPUs simultaneously
-reach line~\ref{line:test}, see that 
+reach line~\ref{line:testlocked}, see that 
 \lstinline{lk->locked}
 is zero, and then both grab the lock by executing line~\ref{line:assign}.
 At this point, two different CPUs hold the lock,
 which violates the mutual exclusion property.
 What we need is a way to
-make lines \ref{line:test} and \ref{line:assign} execute as an
+make lines \ref{line:testlocked} and \ref{line:assign} execute as an
 \indextext{atomic}
 (i.e., indivisible) step.
 
 Because locks are widely used,
 multi-core processors usually provide instructions that
 implement an atomic version of
-lines~\ref{line:test} and \ref{line:assign}.
+lines~\ref{line:testlocked} and \ref{line:assign}.
 On the RISC-V this instruction is
 \lstinline{amoswap r, a}.
 \lstinline{amoswap}
