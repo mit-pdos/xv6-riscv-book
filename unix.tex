@@ -170,14 +170,14 @@ programming language~\cite{kernighan}:
 \begin{lstlisting}[]
 int pid = fork();
 if(pid > 0){
-  printf("parent: child=%d\en", pid);
+  printf("parent: child=%d\n", pid);
   pid = wait(0);
-  printf("child %d is done\en", pid);
+  printf("child %d is done\n", pid);
 } else if(pid == 0){
-  printf("child: exiting\en");
+  printf("child: exiting\n");
   exit(0);
 } else {
-  printf("fork error\en");
+  printf("fork error\n");
 }
 \end{lstlisting}
 The
@@ -253,7 +253,7 @@ argv[0] = "echo";
 argv[1] = "hello";
 argv[2] = 0;
 exec("/bin/echo", argv);
-printf("exec error\en");
+printf("exec error\n");
 \end{lstlisting}
 This fragment replaces the calling program with an instance
 of the program 
@@ -435,11 +435,11 @@ for(;;){
   if(n == 0)
     break;
   if(n < 0){
-    fprintf(2, "read error\en");
+    fprintf(2, "read error\n");
     exit();
   }
   if(write(1, buf, n) != n){
-    fprintf(2, "write error\en");
+    fprintf(2, "write error\n");
     exit();
   }
 }
@@ -550,7 +550,7 @@ if(fork() == 0) {
   exit(0);
 } else {
   wait(0);
-  write(1, "world\en", 6);
+  write(1, "world\n", 6);
 }
 \end{lstlisting}
 At the end of this fragment, the file attached to file descriptor 1
@@ -589,7 +589,7 @@ into a file:
 \begin{lstlisting}[]
 fd = dup(1);
 write(1, "hello ", 6);
-write(fd, "world\en", 6);
+write(fd, "world\n", 6);
 \end{lstlisting}
 
 Two file descriptors share an offset if they were derived from
@@ -657,7 +657,7 @@ if(fork() == 0) {
   exec("/bin/wc", argv);
 } else {
   close(p[0]);
-  write(p[1], "hello world\en", 12);
+  write(p[1], "hello world\n", 12);
   close(p[1]);
 }
 \end{lstlisting}
