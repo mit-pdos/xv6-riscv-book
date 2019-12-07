@@ -688,7 +688,7 @@ function that
 \lstinline{exec}
 uses to copy arguments to the stack will notice that
 the destination page is not accessible, and will
-return \-1.
+return -1.
 
 During the preparation of the new memory image,
 if
@@ -697,12 +697,12 @@ detects an error like an invalid program segment,
 it jumps to the label
 \lstinline{bad},
 frees the new image,
-and returns \-1.
+and returns -1.
 \lstinline{Exec}
 must wait to free the old image until it
 is sure that the system call will succeed:
 if the old image is gone,
-the system call cannot return \-1 to it.
+the system call cannot return -1 to it.
 The only error cases in
 \lstinline{exec}
 happen during the creation of the image.
