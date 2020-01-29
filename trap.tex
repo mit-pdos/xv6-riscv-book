@@ -304,7 +304,7 @@ and {\tt TRAPFRAME}, but nothing else from the kernel.
 Again, the fact that the trampoline page is mapped at the same
 virtual address in user and kernel page tables is what allows
 {\tt uservec} to keep executing after changing {\tt satp}.
-{\tt trapret} copies the trapframe's saved user {\tt a0} to {\tt sscratch}
+{\tt userret} copies the trapframe's saved user {\tt a0} to {\tt sscratch}
 in preparation for a later swap with with TRAPFRAME.
 From this point on, the only data {\tt userret} can use is
 the register contents and the content of the trapframe.
