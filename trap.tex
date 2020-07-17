@@ -251,7 +251,7 @@ refers to the user page table, {\tt uservec} needs the trapframe to be
 mapped in the user address space. When creating each process, xv6
 allocates a page for the process's trapframe, and arranges for it
 always to be mapped at user virtual address {\tt TRAPFRAME}, which is
-just below {\tt TRAMPOLINE}. The process's {\tt p->tf} points to the
+just below {\tt TRAMPOLINE}. The process's {\tt p->trapframe} points to the
 trapframe, though at its physical address where it can be accessed
 through the kernel page table.
 
@@ -405,11 +405,11 @@ entry of the system call table, which corresponds to calling
 
 \lstinline{Syscall}
 records the return value of the system call function in
-\lstinline{p->tf->a0}.
+\lstinline{p->trapframe->a0}.
 When the system call returns to user space,
 \lstinline{userret}
 will load the values from
-\indexcode{p->tf}
+\indexcode{p->trapframe}
 into the machine registers
 and return to user space
 using
@@ -435,7 +435,7 @@ There is one bit of mechanism left: finding the system call arguments.
 The C calling convention on RISC-V specifies that arguments are
 passed in registers.
 During a system call, these registers (the saved user registers)
-are available in the trapframe, {\tt p->tf}.
+are available in the trapframe, {\tt p->trapframe}.
 The functions
 \lstinline{argint},
 \lstinline{argaddr},
