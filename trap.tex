@@ -21,17 +21,17 @@ situations. Typically whatever code was executing at the time of the
 trap will later need to resume, and shouldn't need to be aware that
 anything special happened. That is, we often want traps to be
 transparent; this is particularly important for interrupts, which the
-interrupted code typically doesn't expect. Thus the usual sequence is that
+interrupted code typically doesn't expect. The usual sequence is that
 a trap forces a transfer of control into the kernel; the kernel saves
 registers and other state so that execution can be resumed; the kernel
 executes appropriate handler code (e.g., a system call implementation
 or device driver); the kernel restores the saved state and returns
 from the trap; and the original code resumes where it left off.
 
-The xv6 kernel handles all traps. This is natural for system calls; it
+The xv6 kernel handles all traps. This is natural for system calls. It
 makes sense for interrupts since isolation demands that user processes
 not directly use devices, and because only the kernel has the state
-needed for device handling; and it makes sense for exceptions since
+needed for device handling. It also makes sense for exceptions since
 xv6 responds to all exceptions from user space by killing the
 offending program.
 
@@ -52,9 +52,9 @@ interrupts.
 
 \section{RISC-V trap machinery}
 
-RISC-V supports a number of control registers that the kernel writes to
-tell the CPU how to handle interrupts, and that the kernel can read
-to find out about an interrupt that has occured. The RISC-V documents
+Each RISC-V CPU has a set of control registers that the kernel writes to
+tell the CPU how to handle traps, and that the kernel can read
+to find out about a trap that has occured. The RISC-V documents
 contain the full story~\cite{riscv:priv}. {\tt riscv.h}
 \lineref{kernel/riscv.h:1} contains definitions that xv6 uses. Here's
 an outline of the most important registers:
@@ -65,7 +65,7 @@ an outline of the most important registers:
   here; the RISC-V jumps here to handle a trap.
 
 \item {\bf sepc}: When a trap occurs, RISC-V saves the program counter
-  here (since the {\tt pc} is then replaced with {\tt stvec}). The
+  here (since the {\tt pc} is then overwritten with {\tt stvec}). The
   {\tt sret} (return from trap) instruction copies {\tt sepc} to the
   {\tt pc}. The kernel can write to {\tt sepc} to control where {\tt
     sret} goes.
@@ -84,10 +84,13 @@ the reason for the trap.
 
 \end{itemize}
 
-The above relate to interrupts handled in supervisor mode, and they
+The above registers relate to traps handled in supervisor mode, and they
 cannot be read or written in user mode. There is an equivalent set of
-control registers for interrupts handled in machine mode; xv6 uses
+control registers for traps handled in machine mode; xv6 uses
 them only for the special case of timer interrupts.
+
+Each CPU on a multi-core chip has its own set of these registers,
+and more than one CPU may be handling a trap at any given time.
 
 When it needs to force a trap, the RISC-V hardware does the
 following for all trap types (other than timer interrupts):
@@ -103,7 +106,7 @@ following for all trap types (other than timer interrupts):
 
 \item Save the current mode (user or supervisor) in the SPP bit in {\tt sstatus}.
 
-\item Set {\tt scause} to reflect the interrupt's cause.
+\item Set {\tt scause} to reflect the trap's cause.
 
 \item Set the mode to supervisor.
 
@@ -113,37 +116,34 @@ following for all trap types (other than timer interrupts):
 
 \end{enumerate}
 
-It is important that the CPU performs all these steps as
-a single operation.
-Consider if one of these steps were omitted: for example, the CPU
-didn't switch program counters. Then, a trap could switch to
-supervisor mode while still running user instructions. Those user
-instructions could break the user/kernel isolation, for example by
-modifying the {\tt satp} register to point to a page table that
-allowed accessing all of physical memory. It is thus important that
-the kernel specify the trap entry point, and not the user program.
-
 Note that the CPU doesn't switch to the kernel page table, doesn't
 switch to a stack in the kernel, and doesn't save any registers other
-than the {\tt pc}. The kernel must perform these tasks if necessary.
+than the {\tt pc}. Kernel software must perform these tasks if necessary.
 One reason that the CPU does minimal work during a trap is to provide
 flexibility to software; for example, in some situations no page table
 switch is needed, which may increase performance.
 
+You might wonder whether the CPU hardware's trap handling sequence
+could be further simplified. For example, suppose that the CPU didn't
+switch program counters. Then a trap could switch to supervisor mode
+while still running user instructions. Those user instructions could
+break the user/kernel isolation, for example by modifying the {\tt
+  satp} register to point to a page table that allowed accessing all
+of physical memory. It is thus important that the CPU switch to a
+kernel-specified instruction address, namely {\tt stvec}.
+
 \section{Traps from kernel space}
 
-When the xv6 kernel is executing on a CPU, two types of traps can
-occur: exceptions and device interrupts. The previous section outlined
-the CPU's response to such traps.
-
-When the kernel is executing, it points {\tt stvec}
+Xv6 configures the CPU trap registers somewhat differently depending
+on whether user or kernel code is executing.
+When the kernel is executing on a CPU, the kernel points {\tt stvec}
 to the assembly code at {\tt kernelvec}
 \lineref{kernel/kernelvec.S:/^kernelvec/}.
 Since xv6 is already in the kernel, {\tt kernelvec} can rely
 on {\tt satp} being set to the kernel page table, and on the
 stack pointer referring to a valid kernel stack.
-{\tt kernelvec} saves all registers so that we can
-eventually resume the interrupted code without disturbing it.
+{\tt kernelvec} saves all registers so that the interrupted
+code can eventually resume without disturbance.
 
 {\tt kernelvec} saves the registers on the stack of the interrupted
 kernel thread, which makes sense because the register values belong to
@@ -159,7 +159,7 @@ device interrrupts and exceptions. It calls
 {\tt devintr}
 \lineref{kernel/trap.c:/^devintr/}
 to check for and handle the former.
-If the trap isn't a device interrupt, it is an exception,
+If the trap isn't a device interrupt, it must be an exception,
 and that is always a fatal error if it occurs in the kernel.
 
 If {\tt kerneltrap} was called due to a timer interrupt, and a
@@ -196,7 +196,7 @@ after it sets {\tt stvec}.
 
 A trap may occur while executing in user space if the
 user program makes a
-system call ({\tt ecall} instruction), does something
+system call ({\tt ecall} instruction), or does something
 illegal, or if a device interrupts.
 The high-level path of a trap from user space is
 {\tt uservec}
@@ -216,14 +216,16 @@ kernel, and the stack pointer may contain an invalid or even malicious
 value.
 
 Because the RISC-V hardware doesn't switch page tables during a trap,
-we need the user page table to include a mapping for the trap vector
-instructions that {\tt stvec} points to. Further, the trap vector must switch {\tt
+the user page table must include a mapping for {\tt uservec},
+the trap vector
+instructions that {\tt stvec} points to. Further, {\tt uservec}
+must switch {\tt
   satp} to point to the kernel page table, and in order to avoid a
-crash, the vector instructions must be mapped at the same address in the
+crash, {\tt uservec} must be mapped at the same address in the
 kernel page table as in the user page table.
 
 Xv6 satisfies these constraints with a \indextext{trampoline} page
-that contains the trap vector code. Xv6 maps the trampoline page at
+that contains {\tt uservec}. Xv6 maps the trampoline page at
 the same virtual address in the kernel page table and in every user
 page table. This virtual address is \indexcode{TRAMPOLINE} (as we saw
 in Figure~\ref{fig:as} and in Figure~\ref{fig:xv6_layout}). The
@@ -232,18 +234,18 @@ and (when executing user code) {\tt stvec} is set to
 {\tt uservec}
 \lineref{kernel/trampoline.S:/^uservec/}.
 
-When {\tt uservec} starts, every register contains a value owned by
-the interrupting code. But {\tt uservec} needs to be able to modify
+When {\tt uservec} starts, all 32 registers contain values owned by
+the interrupted code. But {\tt uservec} needs to be able to modify
 some registers in order to set {\tt satp} and generate addresses at
 which to save the registers. RISC-V provides a helping hand in the
 form of the {\tt sscratch} register. The {\tt csrrw} instruction at
 the start of {\tt uservec} swaps the contents of {\tt a0} and {\tt
   sscratch}. Now the user code's {\tt a0} is saved; {\tt uservec} has
-one register ({\tt a0}) to play with; and {\tt a0} contains whatever
+one register ({\tt a0}) to play with; and {\tt a0} contains the
 value the kernel previously placed in {\tt sscratch}.
 
 {\tt uservec}'s next task is to save the user registers. Before
-entering user space, the kernel sets {\tt sscratch} to point to a
+entering user space, the kernel previously set {\tt sscratch} to point to a
 per-process {\tt trapframe} that (among other things) has space to
 save all the user registers
 \lineref{kernel/proc.h:/^struct.trapframe/}. Because {\tt satp} still
@@ -251,8 +253,9 @@ refers to the user page table, {\tt uservec} needs the trapframe to be
 mapped in the user address space. When creating each process, xv6
 allocates a page for the process's trapframe, and arranges for it
 always to be mapped at user virtual address {\tt TRAPFRAME}, which is
-just below {\tt TRAMPOLINE}. The process's {\tt p->trapframe} points to the
-trapframe, though at its physical address where it can be accessed
+just below {\tt TRAMPOLINE}. The process's {\tt p->trapframe} also
+points to the
+trapframe, though at its physical address so the kernel can use it
 through the kernel page table.
 
 Thus after swapping {\tt a0} and {\tt sscratch}, {\tt a0}
@@ -266,12 +269,14 @@ and the address of the kernel page table. {\tt uservec}
 retrieves these values, switches {\tt satp} to the kernel page table,
 and calls {\tt usertrap}.
 
-The job of {\tt usertrap}, like {\tt kerneltrap} is to determine
+The job of {\tt usertrap} is to determine
 the cause of the trap, process it, and return
 \lineref{kernel/trap.c:/^usertrap/}.
-As mentioned above, it first changes {\tt stvec} to process
-traps from kernel mode in {\tt kernelvec}.
-It saves the {\tt sepc}, again because there might be a
+As mentioned above, it first changes {\tt stvec} so
+that a trap while in the kernel will be handled by
+{\tt kernelvec}.
+It saves the {\tt sepc} (the saved user program counter),
+again because there might be a
 process switch in {\tt usertrap} that could cause {\tt sepc}
 to be overwritten.
 If the trap is a system call, {\tt syscall} handles it;
@@ -304,8 +309,8 @@ and {\tt TRAPFRAME}, but nothing else from the kernel.
 Again, the fact that the trampoline page is mapped at the same
 virtual address in user and kernel page tables is what allows
 {\tt uservec} to keep executing after changing {\tt satp}.
-{\tt trapret} copies the trapframe's saved user {\tt a0} to {\tt sscratch}
-in preparation for a later swap with with TRAPFRAME.
+{\tt userret} copies the trapframe's saved user {\tt a0} to {\tt sscratch}
+in preparation for a later swap with TRAPFRAME.
 From this point on, the only data {\tt userret} can use is
 the register contents and the content of the trapframe.
 Next {\tt userret} restores saved user registers from the trapframe,
