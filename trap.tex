@@ -368,14 +368,12 @@ prints an error and returns $-1$.
 
 \section{Code: System call arguments}
 
-Kernel code that implements system calls such as {\tt exec} needs to
-be able to find the arguments passed by user code. User code calls
-wrapper functions in order to make system calls. This causes system
-call arguments to be where the RISC-V C calling convention places
-them: in registers.
-
-In the kernel, system call arguments are available in the
-saved registers in the trapframe, {\tt p->trapframe}.
+System call implementations in the kernel need to find the arguments
+passed by user code. Because user code calls system call wrapper
+functions, the arguments are initially where the RISC-V C calling
+convention places them: in registers.
+The kernel trap code saves user registers to the current
+process's trap frame, where kernel code can find them.
 The functions
 \lstinline{argint},
 \lstinline{argaddr},
@@ -444,28 +442,31 @@ which can be complex and poorly documented.
 
 Devices that need attention from the operating system can usually be
 configured to generate interrupts, which are one type of trap.
-The kernel trap handling code must be able to recognize when the device
+The kernel trap handling code recognizes when a device
 has raised an interrupt and call the driver's interrupt handler;
 in xv6, this dispatch happens in {\tt devintr} \lineref{kernel/trap.c:/^devintr/}.
 
-Many device drivers have two main parts: code that runs as part of a
-process, and code that runs at interrupt time. The process-level code
-is driven by system calls such as {\tt read} and {\tt write} that want
+Many device drivers execute code in two contexts: a \indextext{top
+half} that runs in a process's kernel thread, and a \indextext{bottom
+half} that executes at interrupt time. The top half
+is called via system calls such as {\tt read} and {\tt write} that want
 the device to perform I/O. This code may ask the hardware to start an
 operation (e.g., ask the disk to read a block); then the code waits for
 the operation to complete. Eventually the device completes the
-operation and raises an interrupt. The driver's interrupt handler
-figures out what operation (if any) has completed, wakes up a waiting
-process if appropriate, and perhaps tells the hardware to start work
+operation and raises an interrupt. The driver's interrupt handler,
+acting as the bottom half,
+figures out what operation has completed, wakes up a waiting
+process if appropriate, and tells the hardware to start work
 on any waiting next operation.
 
 \section{Code: The console driver}
 
-The console driver is a simple illustration of driver structure. The
+The console driver \fileref{console.c}
+is a simple illustration of driver structure. The
 console driver accepts characters typed by a human, via the \indextext{UART}
-serial-port hardware attached to the RISC-V. The driver accumulates a
+serial-port hardware attached to the RISC-V. The console driver accumulates a
 line of input at a time, processing special input characters such as
-backspace and control-u. User processes, such as the shell, can use
+backspace and control-u. User processes, such as the shell, use
 the {\tt read} system call to fetch lines of input from the console.
 When you type input to xv6 in QEMU, your keystrokes are delivered to
 xv6 by way of QEMU's simulated UART hardware.
@@ -476,7 +477,7 @@ would manage an RS232 serial link connecting to a terminal or other
 computer. When running QEMU, it's connected to your keyboard and
 display.
 
-The UART hardware appears to software as a set of memory-mapped
+The UART hardware appears to software as a set of \indextext{memory-mapped}
 control registers. That is, there are some physical addresses that 
 RISC-V hardware connects to the UART device, so that loads and stores
 interact with the device hardware rather than RAM.
