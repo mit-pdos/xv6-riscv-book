@@ -333,7 +333,7 @@ The user code places the arguments for
 in registers {\tt a0} and {\tt a1}, and puts the
 system call number in
 \texttt{a7}.
-System call numbers match the entries in the syscalls array,
+System call numbers match the entries in the {\tt syscalls} array,
 a table of function pointers
 \lineref{kernel/syscall.c:/syscalls/}.
 The \lstinline{ecall} instruction traps into the kernel
@@ -342,38 +342,24 @@ and executes {\tt uservec},
 
 \indexcode{Syscall}
 \lineref{kernel/syscall.c:/^syscall/} 
-loads the system call number from the trapframe, which
-contains the saved
-\texttt{a7},
-and indexes into the system call table.
+retrieves the system call number from the saved
+\texttt{a7} in the trapframe
+and uses it to index into {\tt syscalls}.
 For the first system call, 
 \texttt{a7}
-contains the value 
+contains 
 \indexcode{SYS_exec}
 \lineref{kernel/syscall.h:/SYS_exec/},
-and
-\lstinline{syscall}
-will call the 
-\lstinline{SYS_exec}'th 
-entry of the system call table, which corresponds to calling
+resulting in a call to the system call implementation function
 \lstinline{sys_exec}.
 
-\lstinline{Syscall}
-records the return value of the system call function in
+When the system call implementation function returns,
+\lstinline{syscall}
+records its return value in
 \lstinline{p->trapframe->a0}.
-When the system call returns to user space,
-\lstinline{userret}
-will load the values from
-\indexcode{p->trapframe}
-into the machine registers
-and return to user space
-using
-\lstinline{sret}.
-Thus, when 
-\lstinline{exec}
-returns in user space, it will return in \lstinline{a0} the value
-that the system call handler returned
-\lineref{kernel/syscall.c:/a0 = syscalls/}.
+This will cause the original user-space call to 
+{\tt exec()} to return that value, since the C
+calling convention on RISC-V places return values in {\tt a0}.
 System calls conventionally return negative numbers to indicate
 errors, and zero or positive numbers for success.
 If the system call number is invalid,
@@ -382,15 +368,14 @@ prints an error and returns $-1$.
 
 \section{Code: System call arguments}
 
-Later chapters will examine the implementation of
-particular system calls.
-This chapter is concerned with the system call mechanism.
-There is one bit of mechanism left: finding the system call arguments.
+Kernel code that implements system calls such as {\tt exec} needs to
+be able to find the arguments passed by user code. User code calls
+wrapper functions in order to make system calls. This causes system
+call arguments to be where the RISC-V C calling convention places
+them: in registers.
 
-The C calling convention on RISC-V specifies that arguments are
-passed in registers.
-During a system call, these registers (the saved user registers)
-are available in the trapframe, {\tt p->trapframe}.
+In the kernel, system call arguments are available in the
+saved registers in the trapframe, {\tt p->trapframe}.
 The functions
 \lstinline{argint},
 \lstinline{argaddr},
@@ -399,9 +384,9 @@ and
 retrieve the 
 \textit{n} 'th 
 system call
-argument, as either an integer, pointer, or a file descriptor.
-They all call {\tt argraw} to retrieve one of the saved
-user registers
+as either an integer, pointer, or a file descriptor.
+They all call {\tt argraw} to retrieve the appropriate saved
+user register
 \lineref{kernel/syscall.c:/^argraw/}.
 
 Some system calls pass pointers as arguments, and the kernel must use
@@ -416,15 +401,14 @@ Second, the xv6 kernel page table mappings are not the same as the
 user page table mappings, so the kernel cannot use ordinary
 instructions to load or store from user-supplied addresses.
 
-A number of kernel functions need to perform safe reads from user space;
+The kernel implements functions that safely transfer data to and
+from user-supplied addresses.
 {\tt fetchstr} is an example \lineref{kernel/syscall.c:/^fetchstr/}.
 File system calls such as
-{\tt exec} use {\tt fetchstr} to retrieve string arguments from user
+{\tt exec} use {\tt fetchstr} to retrieve string file-name arguments from user
 space.
-\lstinline{fetchstr} calls \lstinline{copyinstr},
-which looks up a virtual address in a user page
-table, turn it into an address the kernel can use,
-and copies a string from the address into the kernel.
+\lstinline{fetchstr} calls \lstinline{copyinstr}
+to do the hard work.
 
 \indexcode{copyinstr}
 \lineref{kernel/vm.c:/^copyinstr/} copies up to \lstinline{max} bytes to
@@ -587,7 +571,8 @@ sets up to receive timer interrupts
 Part of the job is to program the CLINT hardware (core-local interruptor)
 to generate an interrupt after a certain delay.
 Another part is to set up a scratch area, analogous to the trapframe,
-for the timer interrupt handler to save registers in and find
+to help
+the timer interrupt handler save registers and 
 the address of the CLINT registers.
 Finally, {\tt start} sets {\tt mtvec} to {\tt timervec} and
 enables timer interrupts.
@@ -596,7 +581,7 @@ A timer interrupt can occur at any point when user or kernel code is
 executing; there's no way for the kernel to disable timer interrupts
 during critical operations. Thus the timer interrupt handler must do
 its job in a way guaranteed not to disturb interrupted kernel code.
-The basic strategy is for the timer interrupt to ask the RISC-V to
+The basic strategy is for the handler to ask the RISC-V to
 raise a ``software interrupt'' and immediately return. The RISC-V
 delivers software interrupts to the kernel with the ordinary trap
 mechanism, and allows the kernel to disable them. The code to
@@ -609,7 +594,7 @@ It saves a few registers in the scratch area prepared by {\tt start},
 tells the CLINT when to generate the next timer interrupt,
 asks the RISC-V to raise a software interrupt,
 restores registers, and returns.
-There's no C code involved in a timer interrupt.
+There's no C code in the timer interrupt handler.
 
 \section{Real world}
 
