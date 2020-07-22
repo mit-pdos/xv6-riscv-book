@@ -354,6 +354,7 @@ For simplicity we'll often refer to the object a file descriptor
 refers to as a ``file'';
 the file descriptor interface abstracts away the differences between
 files, pipes, and devices, making them all look like streams of bytes.
+We'll refer to input and output as \indextext{I/O}.
 
 Internally, the xv6 kernel uses the file descriptor
 as an index into a per-process table,
@@ -479,7 +480,7 @@ The system call
 \indexcode{exec}
 replaces the calling process's memory but preserves its file table.
 This behavior allows the shell to
-implement I/O redirection by forking, reopening chosen file descriptors,
+implement \indextext{I/O redirection} by forking, reopening chosen file descriptors,
 and then execing the new program.
 Here is a simplified version of the code a shell runs for the
 command

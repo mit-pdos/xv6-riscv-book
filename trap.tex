@@ -430,8 +430,8 @@ kernel to a user-supplied address.
 A
 \indextext{driver}
 is the code in an operating system that manages a particular device:
-it tells the device hardware to perform operations,
-configures the device to generate interrupts when done,
+it configures the device hardware,
+tells the device to perform operations,
 handles the resulting interrupts,
 and interacts with processes that may be waiting
 for I/O from the device.
@@ -443,7 +443,7 @@ which can be complex and poorly documented.
 Devices that need attention from the operating system can usually be
 configured to generate interrupts, which are one type of trap.
 The kernel trap handling code recognizes when a device
-has raised an interrupt and call the driver's interrupt handler;
+has raised an interrupt and calls the driver's interrupt handler;
 in xv6, this dispatch happens in {\tt devintr} \lineref{kernel/trap.c:/^devintr/}.
 
 Many device drivers execute code in two contexts: a \indextext{top
@@ -481,7 +481,7 @@ The UART hardware appears to software as a set of \indextext{memory-mapped}
 control registers. That is, there are some physical addresses that 
 RISC-V hardware connects to the UART device, so that loads and stores
 interact with the device hardware rather than RAM.
-The memory-mapped address for the UART is 0x10000000, or {\tt UART0}
+The memory-mapped addresses for the UART start at 0x10000000, or {\tt UART0}
 \lineref{kernel/memlayout.h:/UART0.0x/}.
 There are a handful of UART control registers, each the width
 of a byte. Their offsets from {\tt UART0} are defined in
@@ -492,11 +492,17 @@ characters (if any) are available for reading from the
 {\tt RHR} register. Each time one is read, the UART hardware
 deletes it from an internal FIFO of waiting characters, and
 clears the ``ready'' bit in {\tt LSR} when the FIFO is empty.
+The UART transmit hardware is largely independent of the receive
+hardware; if software writes a byte to the {\tt THR},
+the UART transmit that byte.
 
 Xv6's {\tt main} calls {\tt consoleinit}
 \lineref{kernel/console.c:/^consoleinit/} to initialize the UART
-hardware, and to configure the UART hardware to generate input
-interrupts \lineref{kernel/uart.c:/^uartinit/}.
+hardware. This code configures the UART to generate 
+a receive 
+interrupt when the UART receives each byte of input, and
+a \indextext{transmit complete} interrupt each time the
+UART finishes sending a byte of output \lineref{kernel/uart.c:/^uartinit/}.
 
 The xv6 shell reads from the console by way of a file descriptor
 opened by {\tt init.c} \lineref{user/init.c:/open..console/}. Calls to
@@ -511,10 +517,11 @@ hasn't typed a full line yet, any reading processes will wait in the
 (Chapter~\ref{CH:SCHED} explains the details of {\tt sleep}).
 
 When the user types a character, the UART hardware asks the RISC-V
-to raise an interrupt. The RISC-V and xv6 process the interrupt
-as described above, and xv6's trap handling code calls {\tt devintr}
-\lineref{kernel/trap.c:/^devintr/}.
-{\tt devintr} looks at the RISC-V {\tt scause} register to discover that
+to raise an interrupt, which activates
+xv6's trap handler.
+The trap handler calls {\tt devintr}
+\lineref{kernel/trap.c:/^devintr/},
+which looks at the RISC-V {\tt scause} register to discover that
 the interrupt is from an external device.
 Then it asks a hardware unit called the PLIC
 \cite{riscv:priv}
@@ -545,6 +552,37 @@ same CPU that is running the process reading from the console; or it
 may arrive on a CPU that is doing something entirely unrelated. Thus
 interrupt handlers are not allowed to think about the process or code
 that they have interrupted.
+
+A {\tt write} system call on a file descriptor connected to the console
+eventually arrives at 
+{\tt uartputc}
+\lineref{kernel/uart.c:/^uartputc/}.
+The device driver maintains an output buffer ({\tt uart\_tx\_buf})
+so that writing processes do not have to wait for the UART to finish
+sending; instead, {\tt uartputc} appends each character to the buffer,
+calls {\tt uartstart} to start the device transmitting (if it isn't
+already), and returns. The only situation in which {\tt uartputc}
+waits is if the buffer is already full.
+
+Each time the UART finishes sending a byte, it generates an interrupt.
+{\tt uartintr} calls {\tt uartstart}, which checks that the device
+really has finished sending, and hands the device the next buffered
+output character. Thus if a process writes multiple bytes to the
+console, typically the first byte will be sent by {\tt uartputc}'s
+call to {\tt uartstart}, and the remaining buffered bytes will be sent
+by {\tt uartstart} calls from {\tt uartintr} as transmit complete
+interrupts arrive.
+
+A general pattern to note is the decoupling of device activity from
+process activity via buffering and interrupts. The console driver can
+process input even when no process is waiting to read it; a subsequent
+read will see the input. Similarly, processes can send output without
+having to wait for the device. This decoupling can increase
+performance by allowing processes to execute concurrently with device
+I/O, and is particularly important when the device is slow (as with
+the UART) or needs immediate attention (as with echoing typed
+characters). This idea is sometimes called \indextext{I/O
+  concurrency}.
 
 \section{Timer interrupts}
 
