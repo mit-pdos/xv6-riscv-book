@@ -701,10 +701,9 @@ often with DMA.
 
 \begin{enumerate}
 
-\item \texttt{uartputc} \lineref{kernel/uart.c:/^uartputc/} polls the
-  UART device to wait for it to finish with the previous output
-  character. Convert it to use interrupts instead.
-  
+\item Modify {\tt uart.c} to not use interrupts at all. You may need
+to modify {\tt console.c} as well.
+
 \item Add a driver for an Ethernet card.
 
 \end{enumerate}
