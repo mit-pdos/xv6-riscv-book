@@ -69,6 +69,13 @@ implements them, and how it uses them.
 \section{Race conditions}
 %% 
 
+\begin{figure}[t]
+\center
+\includegraphics[scale=0.8]{fig/smp.pdf}
+\caption{Simplified SMP architecture}
+\label{fig:smp}
+\end{figure}
+
 As an example of why we need locks,
 consider a linked list accessible from any
 CPU on a multiprocessor.
