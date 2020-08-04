@@ -8,6 +8,7 @@ TEX=\
 	$(T)/first.tex\
 	$(T)/mem.tex\
 	$(T)/trap.tex\
+	$(T)/interrupt.tex\
 	$(T)/lock.tex\
 	$(T)/sched.tex\
 	$(T)/fs.tex\

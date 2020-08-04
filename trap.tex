@@ -1,7 +1,7 @@
 %    Sidebar about panic:
 % 	panic is the kernel's last resort: the impossible has happened and the
 % 	kernel does not know how to proceed.  In xv6, panic does ...
-\chapter{Traps and device drivers}
+\chapter{Traps and system calls}
 \label{CH:TRAP}
 
 There are three situations in which some event causes the CPU to set
@@ -42,13 +42,8 @@ and the system call or device-driver service routine. While
 commonality among the three trap types suggests that a kernel could
 handle all traps with a single code path, it turns out to be
 convenient to have separate assembly vectors and C trap handlers for
-three distinct cases: traps from kernel space, traps from user space,
+three distinct cases: traps from user space, traps from kernel space,
 and timer interrupts.
-
-This chapter ends with a discussion of device drivers. Device handling
-is a different topic than traps, but is included here because the
-kernel's interaction with device hardware is often driven by
-interrupts.
 
 \section{RISC-V trap machinery}
 
@@ -131,66 +126,6 @@ break the user/kernel isolation, for example by modifying the {\tt
   satp} register to point to a page table that allowed accessing all
 of physical memory. It is thus important that the CPU switch to a
 kernel-specified instruction address, namely {\tt stvec}.
-
-\section{Traps from kernel space}
-
-Xv6 configures the CPU trap registers somewhat differently depending
-on whether user or kernel code is executing.
-When the kernel is executing on a CPU, the kernel points {\tt stvec}
-to the assembly code at {\tt kernelvec}
-\lineref{kernel/kernelvec.S:/^kernelvec/}.
-Since xv6 is already in the kernel, {\tt kernelvec} can rely
-on {\tt satp} being set to the kernel page table, and on the
-stack pointer referring to a valid kernel stack.
-{\tt kernelvec} saves all registers so that the interrupted
-code can eventually resume without disturbance.
-
-{\tt kernelvec} saves the registers on the stack of the interrupted
-kernel thread, which makes sense because the register values belong to
-that thread. This is particularly important if the trap causes a
-switch to a different thread -- in that case the trap will actually
-return on the stack of the new thread, leaving the interrupted
-thread's saved registers safely on its stack.
-
-{\tt kernelvec} jumps to {\tt kerneltrap}
-\lineref{kernel/trap.c:/^kerneltrap/} after saving registers.
-{\tt kerneltrap} is prepared for two types of traps:
-device interrrupts and exceptions. It calls
-{\tt devintr}
-\lineref{kernel/trap.c:/^devintr/}
-to check for and handle the former.
-If the trap isn't a device interrupt, it must be an exception,
-and that is always a fatal error if it occurs in the kernel.
-
-If {\tt kerneltrap} was called due to a timer interrupt, and a
-process's kernel thread is running (rather than a scheduler thread),
-{\tt kerneltrap} calls {\tt yield} to give other threads a chance to
-run. At some point one of those threads will yield, and let our thread
-and its {\tt kerneltrap} resume again.
-Chapter~\ref{CH:SCHED} explains what happens in {\tt yield}.
-
-When {\tt kerneltrap}'s work is done, it needs to return to whatever
-code was interrupted by the trap. Because a {\tt yield} may have
-disturbed the saved {\tt sepc} and the saved previous mode in {\tt sstatus},
-{\tt kerneltrap} saves them when it starts. It now restores those
-control registers and returns to {\tt kernelvec}
-\lineref{kernel/kernelvec.S:/call.kerneltrap$/}.
-{\tt kernelvec} pops the saved registers from the stack and
-executes {\tt sret}, which copies {\tt sepc} to {\tt pc}
-and resumes the interrupted kernel code.
-
-It's worth thinking through how the trap return happens if
-{\tt kerneltrap} called {\tt yield} due to a timer interrupt.
-
-Xv6 sets a CPU's {\tt stvec} to {\tt kernelvec} when that CPU
-enters the kernel from user space; you can see this in {\tt usertrap}
-\lineref{kernel/trap.c:/stvec.*kernelvec/}.
-There's a window of time when the kernel is executing
-but {\tt stvec} has the wrong value, and it's crucial that device
-interrupts be disabled during that window.
-Luckily the RISC-V always disables interrupts when it starts
-to take a trap, and xv6 doesn't enable them again until
-after it sets {\tt stvec}.
 
 \section{Traps from user space}
 
@@ -425,215 +360,68 @@ cannot trick the kernel into reading other memory.
 A similar function, {\tt copyout}, copies data from the
 kernel to a user-supplied address.
 
-\section{Device drivers}
+\section{Traps from kernel space}
 
-A
-\indextext{driver}
-is the code in an operating system that manages a particular device:
-it configures the device hardware,
-tells the device to perform operations,
-handles the resulting interrupts,
-and interacts with processes that may be waiting
-for I/O from the device.
-Driver code can be tricky
-because a driver executes concurrently with the device that it manages.  In
-addition, the driver must understand the device's hardware interface,
-which can be complex and poorly documented.
+Xv6 configures the CPU trap registers somewhat differently depending
+on whether user or kernel code is executing.
+When the kernel is executing on a CPU, the kernel points {\tt stvec}
+to the assembly code at {\tt kernelvec}
+\lineref{kernel/kernelvec.S:/^kernelvec/}.
+Since xv6 is already in the kernel, {\tt kernelvec} can rely
+on {\tt satp} being set to the kernel page table, and on the
+stack pointer referring to a valid kernel stack.
+{\tt kernelvec} saves all registers so that the interrupted
+code can eventually resume without disturbance.
 
-Devices that need attention from the operating system can usually be
-configured to generate interrupts, which are one type of trap.
-The kernel trap handling code recognizes when a device
-has raised an interrupt and calls the driver's interrupt handler;
-in xv6, this dispatch happens in {\tt devintr} \lineref{kernel/trap.c:/^devintr/}.
+{\tt kernelvec} saves the registers on the stack of the interrupted
+kernel thread, which makes sense because the register values belong to
+that thread. This is particularly important if the trap causes a
+switch to a different thread -- in that case the trap will actually
+return on the stack of the new thread, leaving the interrupted
+thread's saved registers safely on its stack.
 
-Many device drivers execute code in two contexts: a \indextext{top
-half} that runs in a process's kernel thread, and a \indextext{bottom
-half} that executes at interrupt time. The top half
-is called via system calls such as {\tt read} and {\tt write} that want
-the device to perform I/O. This code may ask the hardware to start an
-operation (e.g., ask the disk to read a block); then the code waits for
-the operation to complete. Eventually the device completes the
-operation and raises an interrupt. The driver's interrupt handler,
-acting as the bottom half,
-figures out what operation has completed, wakes up a waiting
-process if appropriate, and tells the hardware to start work
-on any waiting next operation.
+{\tt kernelvec} jumps to {\tt kerneltrap}
+\lineref{kernel/trap.c:/^kerneltrap/} after saving registers.
+{\tt kerneltrap} is prepared for two types of traps:
+device interrrupts and exceptions. It calls
+{\tt devintr}
+\lineref{kernel/trap.c:/^devintr/}
+to check for and handle the former.
+If the trap isn't a device interrupt, it must be an exception,
+and that is always a fatal error if it occurs in the kernel.
 
-\section{Code: The console driver}
+If {\tt kerneltrap} was called due to a timer interrupt, and a
+process's kernel thread is running (rather than a scheduler thread),
+{\tt kerneltrap} calls {\tt yield} to give other threads a chance to
+run. At some point one of those threads will yield, and let our thread
+and its {\tt kerneltrap} resume again.
+Chapter~\ref{CH:SCHED} explains what happens in {\tt yield}.
 
-The console driver \fileref{console.c}
-is a simple illustration of driver structure. The
-console driver accepts characters typed by a human, via the \indextext{UART}
-serial-port hardware attached to the RISC-V. The console driver accumulates a
-line of input at a time, processing special input characters such as
-backspace and control-u. User processes, such as the shell, use
-the {\tt read} system call to fetch lines of input from the console.
-When you type input to xv6 in QEMU, your keystrokes are delivered to
-xv6 by way of QEMU's simulated UART hardware.
+When {\tt kerneltrap}'s work is done, it needs to return to whatever
+code was interrupted by the trap. Because a {\tt yield} may have
+disturbed the saved {\tt sepc} and the saved previous mode in {\tt sstatus},
+{\tt kerneltrap} saves them when it starts. It now restores those
+control registers and returns to {\tt kernelvec}
+\lineref{kernel/kernelvec.S:/call.kerneltrap$/}.
+{\tt kernelvec} pops the saved registers from the stack and
+executes {\tt sret}, which copies {\tt sepc} to {\tt pc}
+and resumes the interrupted kernel code.
 
-The UART hardware that the driver talks to is a 16550
-chip~\cite{ns16550a} emulated by QEMU. On a real computer, a 16550
-would manage an RS232 serial link connecting to a terminal or other
-computer. When running QEMU, it's connected to your keyboard and
-display.
+It's worth thinking through how the trap return happens if
+{\tt kerneltrap} called {\tt yield} due to a timer interrupt.
 
-The UART hardware appears to software as a set of \indextext{memory-mapped}
-control registers. That is, there are some physical addresses that 
-RISC-V hardware connects to the UART device, so that loads and stores
-interact with the device hardware rather than RAM.
-The memory-mapped addresses for the UART start at 0x10000000, or {\tt UART0}
-\lineref{kernel/memlayout.h:/UART0.0x/}.
-There are a handful of UART control registers, each the width
-of a byte. Their offsets from {\tt UART0} are defined in
-\lineref{kernel/uart.c:/define.RHR/}. For example, the
-{\tt LSR} register contain bits that indicate whether input
-characters are waiting to be read by the software. These
-characters (if any) are available for reading from the
-{\tt RHR} register. Each time one is read, the UART hardware
-deletes it from an internal FIFO of waiting characters, and
-clears the ``ready'' bit in {\tt LSR} when the FIFO is empty.
-The UART transmit hardware is largely independent of the receive
-hardware; if software writes a byte to the {\tt THR},
-the UART transmit that byte.
+Xv6 sets a CPU's {\tt stvec} to {\tt kernelvec} when that CPU
+enters the kernel from user space; you can see this in {\tt usertrap}
+\lineref{kernel/trap.c:/stvec.*kernelvec/}.
+There's a window of time when the kernel is executing
+but {\tt stvec} has the wrong value, and it's crucial that device
+interrupts be disabled during that window.
+Luckily the RISC-V always disables interrupts when it starts
+to take a trap, and xv6 doesn't enable them again until
+after it sets {\tt stvec}.
 
-Xv6's {\tt main} calls {\tt consoleinit}
-\lineref{kernel/console.c:/^consoleinit/} to initialize the UART
-hardware. This code configures the UART to generate 
-a receive 
-interrupt when the UART receives each byte of input, and
-a \indextext{transmit complete} interrupt each time the
-UART finishes sending a byte of output \lineref{kernel/uart.c:/^uartinit/}.
-
-The xv6 shell reads from the console by way of a file descriptor
-opened by {\tt init.c} \lineref{user/init.c:/open..console/}. Calls to
-the {\tt read} system call make their way through the kernel to {\tt
-  consoleread} \lineref{kernel/console.c:/^consoleread/}. {\tt
-  consoleread} waits for input to arrive (via interrupts) and be
-buffered in {\tt cons.buf}, copies the input to user space, and (after
-a whole line has arrived) returns to the user process. If the user
-hasn't typed a full line yet, any reading processes will wait in the
-{\tt sleep} call
-\lineref{kernel/console.c:/sleep..cons/}
-(Chapter~\ref{CH:SCHED} explains the details of {\tt sleep}).
-
-When the user types a character, the UART hardware asks the RISC-V
-to raise an interrupt, which activates
-xv6's trap handler.
-The trap handler calls {\tt devintr}
-\lineref{kernel/trap.c:/^devintr/},
-which looks at the RISC-V {\tt scause} register to discover that
-the interrupt is from an external device.
-Then it asks a hardware unit called the PLIC
-\cite{riscv:priv}
-to tell it which device interrupted
-\lineref{kernel/trap.c:/plic.claim/}.
-If it was the UART, {\tt devintr} calls {\tt uartintr}.
-
-{\tt uartintr}
-\lineref{kernel/uart.c:/^uartintr/}
-reads any waiting input characters from the UART hardware
-and hands them to {\tt consoleintr}; it doesn't
-wait for characters, since future input will raise a new interrupt.
-The job of {\tt consoleintr} is to accumulate input characters in
-{\tt cons.buf} 
-until a whole line arrives.
-{\tt consoleintr} treats backspace and a few other characters
-specially.
-When a newline arrives, {\tt consoleintr} wakes up a
-waiting {\tt consoleread} (if there is one).
-
-Once woken, {\tt consoleread} will observe a full line in {\tt
-  cons.buf}, copy it to user space, and return (via the system call
-machinery) to user space.
-
-On a multi-core machine, the interrupt may be delivered to any of the
-CPUs; the PLIC manages this decision. The interrupt may arrive on the
-same CPU that is running the process reading from the console; or it
-may arrive on a CPU that is doing something entirely unrelated. Thus
-interrupt handlers are not allowed to think about the process or code
-that they have interrupted.
-
-A {\tt write} system call on a file descriptor connected to the console
-eventually arrives at 
-{\tt uartputc}
-\lineref{kernel/uart.c:/^uartputc/}.
-The device driver maintains an output buffer ({\tt uart\_tx\_buf})
-so that writing processes do not have to wait for the UART to finish
-sending; instead, {\tt uartputc} appends each character to the buffer,
-calls {\tt uartstart} to start the device transmitting (if it isn't
-already), and returns. The only situation in which {\tt uartputc}
-waits is if the buffer is already full.
-
-Each time the UART finishes sending a byte, it generates an interrupt.
-{\tt uartintr} calls {\tt uartstart}, which checks that the device
-really has finished sending, and hands the device the next buffered
-output character. Thus if a process writes multiple bytes to the
-console, typically the first byte will be sent by {\tt uartputc}'s
-call to {\tt uartstart}, and the remaining buffered bytes will be sent
-by {\tt uartstart} calls from {\tt uartintr} as transmit complete
-interrupts arrive.
-
-A general pattern to note is the decoupling of device activity from
-process activity via buffering and interrupts. The console driver can
-process input even when no process is waiting to read it; a subsequent
-read will see the input. Similarly, processes can send output without
-having to wait for the device. This decoupling can increase
-performance by allowing processes to execute concurrently with device
-I/O, and is particularly important when the device is slow (as with
-the UART) or needs immediate attention (as with echoing typed
-characters). This idea is sometimes called \indextext{I/O
-  concurrency}.
-
-\section{Timer interrupts}
-
-Xv6 uses timer interrupts to maintain its clock and to enable it to
-switch among compute-bound processes; the {\tt yield} calls in {\tt
-  usertrap} and {\tt kerneltrap} cause this switching. Timer
-interrupts come from clock hardware attached to each RISC-V CPU. Xv6
-programs this clock hardware to interrupt each CPU periodically.
-
-RISC-V requires that timer interrupts be taken in machine mode, not
-supervisor mode. RISC-V machine mode executes without paging, and with
-a separate set of control registers, so it's not practical to run
-ordinary xv6 kernel code in machine mode. As a result, xv6 handles
-timer interrupts completely separately from the trap mechanism laid
-out above.
-
-%% The xv6 timer interrupt handler asks the RISC-V hardware to
-%% generate a ``software interrupt;'' after the timer interrupt finishes,
-%% the RISC-V delivers the software interrupt in supervisor mode, using
-%% the ordinary trap machinery outlined above.
-
-Code executed in machine mode in {\tt start.c}, before {\tt main},
-sets up to receive timer interrupts
-\lineref{kernel/start.c:/^timerinit/}.
-Part of the job is to program the CLINT hardware (core-local interruptor)
-to generate an interrupt after a certain delay.
-Another part is to set up a scratch area, analogous to the trapframe,
-to help
-the timer interrupt handler save registers and 
-the address of the CLINT registers.
-Finally, {\tt start} sets {\tt mtvec} to {\tt timervec} and
-enables timer interrupts.
-
-A timer interrupt can occur at any point when user or kernel code is
-executing; there's no way for the kernel to disable timer interrupts
-during critical operations. Thus the timer interrupt handler must do
-its job in a way guaranteed not to disturb interrupted kernel code.
-The basic strategy is for the handler to ask the RISC-V to
-raise a ``software interrupt'' and immediately return. The RISC-V
-delivers software interrupts to the kernel with the ordinary trap
-mechanism, and allows the kernel to disable them. The code to
-handle the software interrupt generated by a timer interrupt can be
-seen in {\tt devintr} \lineref{kernel/trap.c:/machine-mode.timer/}.
-
-The machine-mode timer interrupt vector is {\tt timervec} 
-\lineref{kernel/kernelvec.S:/^timervec/}.
-It saves a few registers in the scratch area prepared by {\tt start},
-tells the CLINT when to generate the next timer interrupt,
-asks the RISC-V to raise a software interrupt,
-restores registers, and returns.
-There's no C code in the timer interrupt handler.
+\mfk{a few paragraphs on page fault, as an example of something
+  interesting the kernel could instead of always panic}
 
 \section{Real world}
 
@@ -649,61 +437,14 @@ security bugs in the kernel due to inadvertent use of user pointers,
 and to reduce some complexity that would be required to ensure that
 user and kernel virtual addresses don't overlap.
 
-Xv6 allows device and timer interrupts while executing in the kernel,
-as well as when executing user programs. Timer interrupts force a
-thread switch (a call to {\tt yield}) from the timer interrupt
-handler, even when executing in the kernel. The ability to time-slice
-the CPU fairly among kernel threads is useful if kernel threads
-sometimes spend a lot of time computing, without returning to user
-space. However, the need for kernel code to be mindful that it might
-be suspended (due to a timer interrupt) and later resume on a
-different CPU is the source of some complexity in xv6. The kernel
-could be made somewhat simpler if device and timer interrupts only
-occurred while executing user code.
-
-Supporting all the devices on a typical computer in its full glory is
-much work, because there are many devices, the devices have many
-features, and the protocol between device and driver can be complex
-and poorly documented. In many operating systems, the drivers account
-for more code than the core kernel.
-
-The UART driver retrieves data a byte at a time by reading the UART
-control registers; this pattern is called \indextext{programmed I/O}, since
-software is driving the data movement. Programmed I/O is simple, but
-too slow to be used at high data rates. Devices that need to move lots
-of data at high speed typically use \indextext{direct memory access (DMA)}.
-DMA device hardware directly writes incoming data to RAM, and reads
-outgoing data from RAM. Modern disk and network devices use DMA. A
-driver for a DMA device would prepare data in RAM, and then use a
-single write to a control register to tell the device to process the
-prepared data.
-
-Interrupts make sense when a device needs attention at unpredictable
-times, and not too often. But interrupts have high CPU overhead. Thus
-high speed devices, such networks and disk controllers, use tricks
-that reduce the need for interrupts. One trick is to raise a single
-interrupt for a whole batch of incoming or outgoing requests. Another
-trick is for the driver to disable interrupts entirely, and to check
-the device periodically to see if it needs attention. This technique
-is called \indextext{polling}. Polling makes sense if the device performs
-operations very quickly, but it wastes CPU time if the device is mostly
-idle. Some drivers dynamically switch between polling and interrupts
-depending on the current device load.
-
-The UART driver copies incoming data first to a buffer in the kernel,
-and then to user space. This makes sense at low data rates, but such a
-double copy can significantly reduce performance for devices that
-generate or consume data very quickly. Some operating systems are able
-to directly move data between user-space buffers and device hardware,
-often with DMA.
-
 \section{Exercises}
 
 \begin{enumerate}
 
-\item Modify {\tt uart.c} to not use interrupts at all. You may need
-to modify {\tt console.c} as well.
-
-\item Add a driver for an Ethernet card.
+\item The functions {\tt copyin} and {\tt copyinstr} walk the user
+  page table in software.  Set up the kernel page table so that the
+  kernel has the user program mapped, and {\tt copyin} and {\tt
+    copyinstr} can use {\tt memcpy} to copy system call arguments into
+  kernel space, relying on the hardware to do the page table walk.
 
 \end{enumerate}
