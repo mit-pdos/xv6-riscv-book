@@ -406,7 +406,8 @@ initializes the free list to hold
 every page between the end of the kernel and {\tt PHYSTOP}.
 \lstinline{xv6}
 ought to determine how much physical
-memory is available by parsing configuration information.
+memory is available by parsing configuration information that
+is provide by the hardware.
 Instead xv6 assumes that the machine has
 128 megabytes of RAM.
 \lstinline{kinit}
@@ -587,9 +588,9 @@ The first step is a quick check that the file probably contains an
 ELF binary.
 An ELF binary starts with the four-byte ``magic number''
 \lstinline{0x7F},
-.code 'E',
-.code 'L',
-.code 'F',
+\lstinline{`E'},
+\lstinline{`L'},
+\lstinline{`F'},
 or
 \indexcode{ELF_MAGIC}
 \lineref{kernel/elf.h:/ELF_MAGIC/}.
