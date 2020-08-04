@@ -60,7 +60,14 @@ Thus a process alternates between executing in
 and
 \indextext{kernel space}.
 
-The kernel uses the CPU's hardware protection mechanisms to
+The kernel uses the hardware protection mechanisms provided by a
+CPU\footnote{
+This text generally refers to the hardware element that executes a
+computation with the term \indextext{CPU}, an acronym for central
+processing unit.  Other documentation (e.g., the RISC-V specification)
+also uses the words processor, core, and hart instead of CPU.
+}
+to
 ensure that each process executing in user space can access only
 its own memory.
 The kernel executes with the hardware privileges required to
