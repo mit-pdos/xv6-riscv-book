@@ -76,9 +76,14 @@ implements them, and how it uses them.
 \label{fig:smp}
 \end{figure}
 
-As an example of why we need locks,
-consider a linked list accessible from any
-CPU on a multiprocessor.
+As an example of why we need locks, consider a linked list accessible
+from any CPU on a multiprocessor.  Figure~\ref{fig:smp} illustrates
+the setting: the linked list is in a memory that is shared among
+several processors, which manipulate the linked list using load and
+store instructions.  In reality, the processors have caches, but
+conceptually the multiprocessor systems behaves as if it has a single,
+shared memory.
+
 The list supports push and pop operations, which
 may be called concurrently.
 Xv6's memory allocator works in much this way;
@@ -126,9 +131,9 @@ copy executes concurrently.
 If two CPUs execute
 \lstinline{push}
 at the same time,
-both might execute line~\ref{line:next},
-before either executes line~\ref{line:list},  (see 
-Figure~\ref{fig:race}).
+both might execute line~\ref{line:next} as shown in Fig~\ref{fig:smp},
+before either executes line~\ref{line:list},  which results
+in an incorrect outcome as illustrated by Figure~\ref{fig:race}.
 There would then be two
 list elements with
 \lstinline{next}
