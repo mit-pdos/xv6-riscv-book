@@ -45,7 +45,13 @@ Unix operating systems.  This chapter also provides an overview of an
 xv6 process, which is the unit of isolation in xv6, and the
 creation of the first process when xv6 starts running.
 
-Xv6 runs on multi-core RISC-V microprocessor,
+Xv6 runs on a \indextext{multi-core}\footnote{
+With multi-core this text means multiple CPUs that share memory but execute independent
+programs in parallel.
+This text sometimes uses the term
+\indextext{multiprocessor} as a synonym for multi-core,
+though the former term can also refer to a computer board with
+several distinct processor chips.} RISC-V microprocessor,
 and much of its low-level
 functionality (for example, its process implementation) is specific to
 RISC-V.  RISC-V is a 64-bit CPU, and xv6 is written in ``LP64'' C,
@@ -57,18 +63,6 @@ for RISC-V is ``The RISC-V Reader: An Open Architecture
 Atlas''~\cite{riscv}.
 The user-level ISA~\cite{riscv:user} and the privileged
 architecture~\cite{riscv:priv} are the official specifications.
-
-This text generally refers to the hardware element that executes a
-computation with the term \indextext{CPU}, an acronym for central
-processing unit.  Other documentation (e.g., the RISC-V specification)
-also uses the words processor, core, and hart instead of CPU.
-Xv6 expects \indextext{multi-core} RISC-V hardware; that is,
-multiple CPUs that share memory but execute independent
-programs in parallel.
-This text sometimes uses the term
-\indextext{multiprocessor} as a synonym for multi-core,
-though the former term can also refer to a computer board with
-several distinct processor chips.
 
 The CPU in a complete computer is surrounded by support hardware, much
 of it in the form of I/O interfaces. Xv6 is written for the support
