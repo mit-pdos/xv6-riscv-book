@@ -62,7 +62,8 @@ introduce RISC-V-specific ideas as they come up.  A useful reference
 for RISC-V is ``The RISC-V Reader: An Open Architecture
 Atlas''~\cite{riscv}.
 The user-level ISA~\cite{riscv:user} and the privileged
-architecture~\cite{riscv:priv} are the official specifications.
+architecture~\cite{riscv:priv} are the official
+specifications.\mfk{update to the latest specs}
 
 The CPU in a complete computer is surrounded by support hardware, much
 of it in the form of I/O interfaces. Xv6 is written for the support
@@ -459,7 +460,7 @@ with the address
 \lstinline{stack0+4096},
 the top of the stack, because the stack
 on RISC-V grows down.
-Now that we have a stack,
+Now that the kernel has a stack,
 \lstinline{_entry}
 calls into C code at
 \lstinline{start}
@@ -515,7 +516,7 @@ initializes several devices and subsystems,
 it creates the first process by calling 
 \lstinline{userinit}
 \lineref{kernel/proc.c:/^userinit/}.
-The first process executes a small program,
+The first process executes a small program written in RISC-V assembly,
 \indexcode{initcode.S} 
 \lineref{user/initcode.S:1},
 which re-enters the kernel by invoking the
