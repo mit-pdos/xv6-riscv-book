@@ -334,7 +334,7 @@ table, and the call to \lstinline{kvminithart} reloads the kernel page
 table into \texttt{satp} so that the hardware knows about the new
 PTEs.
 
-Each RISC-V core caches page table entries in a
+Each RISC-V CPU caches page table entries in a
 \indextext{Translation Look-aside Buffer (TLB)}, and when xv6 changes
 a page table, it must tell the CPU to invalidate corresponding
 cached TLB entries.  If it didn't,
@@ -343,7 +343,7 @@ use an old cached mapping, pointing to a physical page that in the meantime
 has been allocated to another process, and as a result, a process
 might be able to scribble on some other process's memory.  The RISC-V
 has an instruction \indexcode{sfence.vma} that flushes
-the current core's TLB.
+the current CPU's TLB.
 xv6 executes {\tt sfence.vma} in {\tt kvminithart}  after reloading the 
 \texttt{satp} register, and in the trampoline code that
 switches to a user page table before returning to user space
