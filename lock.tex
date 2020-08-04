@@ -36,11 +36,12 @@ kernel designers spend a lot of effort convincing themselves of
 correctness despite such concurrency. There are many ways to arrive at
 correct code, some easier to reason about than others. Strategies
 aimed at correctness under concurrency, and abstractions that support
-them, are called \indextext{concurrency control} techniques. Xv6 uses
+them, are called \indextext{concurrency control} techniques.
+
+Xv6 uses
 a number of concurrency control techniques, depending on the
 situation; many more are possible. This chapter focuses on a widely
 used technique: the \indextext{lock}.
-
 A lock provides mutual exclusion, ensuring that only one CPU at a time can hold
 the lock. If the programmer associates a lock with each shared data item,
 and the code always holds the associated lock when using an item,
@@ -795,7 +796,7 @@ process's address space (e.g., maps or unmaps memory), the kernel must arrange t
 other CPUs that run threads of the same process update their hardware page
 tables to reflect the change in the address space. 
 
-It is possible to implement locks without atomic instructions, but it is
+It is possible to implement locks without atomic instructions \mfk{ref}, but it is
 expensive, and most operating systems use atomic instructions.
 
 Locks can be expensive if many CPUs try to acquire the same lock
@@ -808,7 +809,7 @@ another CPU's cache can be orders of magnitude more expensive than
 fetching a line from a local cache.
 
 To avoid the expenses associated with locks, many operating systems use
-lock-free data structures and algorithms.  For example, it is possible to
+lock-free data structures and algorithms \mfk{rcu ref}.  For example, it is possible to
 implement a linked list like the one in the beginning of the chapter that
 requires no locks during list searches, and one atomic instruction to insert an
 item in a list.  Lock-free programming is more complicated, however, than
