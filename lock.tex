@@ -84,6 +84,11 @@ store instructions.  In reality, the processors have caches, but
 conceptually the multiprocessor systems behaves as if it has a single,
 shared memory.
 
+\mfk{Need to talk more about parallelism first; we want to get
+  speedup. easy when no shared state; hard when there is shared state
+  (correctness and scalability are hard). maybe here or into of
+  this chapter.}
+
 The list supports push and pop operations, which
 may be called concurrently.
 Xv6's memory allocator works in much this way;

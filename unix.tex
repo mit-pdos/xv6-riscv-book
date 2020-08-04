@@ -323,7 +323,9 @@ usages in the shell for I/O redirection.  To avoid the wastefulness of
 creating a duplicate process and then immediately replacing it,
 operating kernels optimize the implementation of
 \lstinline{fork}
-for this use case by using virtual memory techniques such as copy-on-write.
+for this use case by using virtual memory techniques such as
+copy-on-write\mfk{need forward-reference and need to actually describe
+  what COW is}.
 
 Xv6 allocates most user-space memory
 implicitly:
@@ -740,7 +742,7 @@ create a tree of processes.  The leaves of this tree are commands and
 the interior nodes are processes that wait until the left and right
 children complete.  In principle, you could have the interior nodes
 run the left end of a pipeline, but doing so correctly would complicate the
-implementation.
+implementation. \mfk{explain this claim}
 
 Pipes may seem no more powerful than temporary files:
 the pipeline
