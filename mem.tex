@@ -73,7 +73,7 @@ The root of the tree is a
 addresses for page-table pages in the next level of the tree.  Each of those
 pages contains 512 PTEs for the final level in the tree.  The paging
 hardware uses the top 9 bits of the 27 bits to select a PTE in the
-root ptable-table page, the middle 9 bits to select a PTE in a page-table page in the
+root page-table page, the middle 9 bits to select a PTE in a page-table page in the
 next level of the
 tree, and the bottom 9 bits to select the final PTE.
 
