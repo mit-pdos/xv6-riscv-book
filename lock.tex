@@ -38,15 +38,17 @@ correct code, some easier to reason about than others. Strategies
 aimed at correctness under concurrency, and abstractions that support
 them, are called \indextext{concurrency control} techniques.
 
-Xv6 uses
-a number of concurrency control techniques, depending on the
+Xv6 uses a number of concurrency control techniques, depending on the
 situation; many more are possible. This chapter focuses on a widely
-used technique: the \indextext{lock}.
-A lock provides mutual exclusion, ensuring that only one CPU at a time can hold
-the lock. If the programmer associates a lock with each shared data item,
-and the code always holds the associated lock when using an item,
-then the item will be used by only one CPU at a time.
-In this situation, we say that the lock protects the data item.
+used technique: the \indextext{lock}.  A lock provides mutual
+exclusion, ensuring that only one CPU at a time can hold the lock. If
+the programmer associates a lock with each shared data item, and the
+code always holds the associated lock when using an item, then the
+item will be used by only one CPU at a time.  In this situation, we
+say that the lock protects the data item.  Although locks are an
+easy-to-understand concurrency control mechanism, the downside of
+locks is that they can kill performance, because they serialize
+concurrent operations.
 
 The rest of this chapter explains why xv6 needs locks, how xv6
 implements them, and how it uses them.
@@ -77,34 +79,25 @@ implements them, and how it uses them.
 \label{fig:smp}
 \end{figure}
 
-As an example of why we need locks, consider a linked list accessible
-from any CPU on a multiprocessor.  Figure~\ref{fig:smp} illustrates
-the setting: the linked list is in a memory that is shared among
-several processors, which manipulate the linked list using load and
-store instructions.  In reality, the processors have caches, but
-conceptually the multiprocessor systems behaves as if it has a single,
-shared memory.
+As an example of why we need locks, consider two processes calling
+{\tt wait} to cleanup their children's address spaces on two different
+CPUs.  On each CPU, the kernel will call the kernel memory allocator
+to free the children's pages.  The kernel allocator maintains a linked
+list: \lstinline{kalloc()} \lineref{kernel/kalloc.c:/^kalloc/} pops a
+page of memory from a list of free pages, and \lstinline{kfree()}
+\lineref{kernel/kalloc.c:/^kfree/} pushes a page onto the free list.
+Ideally, we like to run the {\tt kfree}'s of the two parent processes
+in parallel without any coordination between the two processes, but
+this breaks correctness.
 
-\mfk{Need to talk more about parallelism first; we want to get
-  speedup. easy when no shared state; hard when there is shared state
-  (correctness and scalability are hard). maybe here or into of
-  this chapter.}
-
-The list supports push and pop operations, which
-may be called concurrently.
-Xv6's memory allocator works in much this way;
-\lstinline{kalloc()}
-\lineref{kernel/kalloc.c:/^kalloc/}
-pops a page of memory from a list of free pages,
-and
-\lstinline{kfree()}
-\lineref{kernel/kalloc.c:/^kfree/}
-pushes a page onto the free list.
-
-If there were no
-concurrent requests, you might implement a list
-\lstinline{push}
-operation as follows:
+Figure~\ref{fig:smp} illustrates the setting in more detail: the
+linked list is in a memory that is shared among two CPUs, which
+manipulate the linked list using load and store instructions.  (In
+reality, the processors have caches, but conceptually the
+multiprocessor systems behaves as if it has a single, shared memory.)
+If there were no concurrent
+requests, you might implement a list \lstinline{push} operation as
+follows:
 \begin{lstlisting}[numbers=left,firstnumber=1]
     struct element {
       int data;
@@ -249,18 +242,30 @@ atomic with respect to each other,
 so that each sees only the complete set of
 changes from earlier critical sections, and never sees
 partially-completed updates.
-We say that multiple processes \indextext{conflict} if they
-want the same lock at the same time, or that the
-lock experiences \indextext{contention}.
 
-Note that it would be correct to move
+Although correct use of locks can make incorrect code correct, locks
+limit performance.  For example, if two processes call {\tt kfree}
+concurrently, the locks will serialize the two calls, and we obtain no
+benefit from running them on different CPUs.  We say that multiple
+processes \indextext{conflict} if they want the same lock at the same
+time, or that the lock experiences \indextext{contention}.  A major
+challenge in kernel design is to avoid lock contention.  Xv6 does
+little of that, but a sophisticated kernels, for example, re-organize
+data structures in order to avoid lock contention.  In the list
+example, a kernel may maintain a free list per CPU and only touch
+another CPU's free list, if the CPU's list is empty and it must steal
+memory from another CPU.  Other use cases may require more
+complicated designs.
+
+The placement of locks is also important for performance.
+For example, it would be correct to move
 \lstinline{acquire}
 earlier in
-\lstinline{push.}
-For example, it is fine to move the call to
+\lstinline{push}:
+it is fine to move the call to
 \lstinline{acquire}
 up to before line~\ref{line:malloc}.
-This may reduce parallelism because then the calls
+This may reduce performance because then the calls
 to
 \lstinline{malloc}
 are also serialized.
