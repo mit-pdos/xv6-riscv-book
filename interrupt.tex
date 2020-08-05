@@ -182,8 +182,8 @@ then it could happen that {\tt f} will not be called: if the interrupt
 arrives between statements 1 and 2.  If it is important that {\tt f}
 is always called, then the kernel programmer must take extra measures,
 for example, by explicitly turning interrupts off before line 1 and
-re-enabling them after line 3.  The next chapter explores how to
-provide this kind atomicity in detail.
+re-enabling them after line 3.  Chapter~\ref{CH:LOCK} explores how to
+provide this kind of atomicity in detail.
 
 Another complication is for code in an interrupt handler itself.  For
 example, when {\tt consoleintr} runs, it may interrupt the process
