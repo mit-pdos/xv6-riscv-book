@@ -1,0 +1,309 @@
+%    Sidebar about panic:
+% 	panic is the kernel's last resort: the impossible has happened and the
+% 	kernel does not know how to proceed.  In xv6, panic does ...
+\chapter{Interrupts and device drivers}
+\label{CH:INTERRUPT}
+
+A
+\indextext{driver}
+is the code in an operating system that manages a particular device:
+it configures the device hardware,
+tells the device to perform operations,
+handles the resulting interrupts,
+and interacts with processes that may be waiting
+for I/O from the device.
+Driver code can be tricky
+because a driver executes concurrently with the device that it manages.  In
+addition, the driver must understand the device's hardware interface,
+which can be complex and poorly documented.
+
+Devices that need attention from the operating system can usually be
+configured to generate interrupts, which are one type of trap.
+The kernel trap handling code recognizes when a device
+has raised an interrupt and calls the driver's interrupt handler;
+in xv6, this dispatch happens in {\tt devintr} \lineref{kernel/trap.c:/^devintr/}.
+
+Many device drivers execute code in two contexts: a \indextext{top
+half} that runs in a process's kernel thread, and a \indextext{bottom
+half} that executes at interrupt time. The top half
+is called via system calls such as {\tt read} and {\tt write} that want
+the device to perform I/O. This code may ask the hardware to start an
+operation (e.g., ask the disk to read a block); then the code waits for
+the operation to complete. Eventually the device completes the
+operation and raises an interrupt. The driver's interrupt handler,
+acting as the bottom half,
+figures out what operation has completed, wakes up a waiting
+process if appropriate, and tells the hardware to start work
+on any waiting next operation.
+
+\section{Code: The console driver}
+
+The console driver \fileref{console.c}
+is a simple illustration of driver structure. The
+console driver accepts characters typed by a human, via the \indextext{UART}
+serial-port hardware attached to the RISC-V. The console driver accumulates a
+line of input at a time, processing special input characters such as
+backspace and control-u. User processes, such as the shell, use
+the {\tt read} system call to fetch lines of input from the console.
+When you type input to xv6 in QEMU, your keystrokes are delivered to
+xv6 by way of QEMU's simulated UART hardware.
+
+The UART hardware that the driver talks to is a 16550
+chip~\cite{ns16550a} emulated by QEMU. On a real computer, a 16550
+would manage an RS232 serial link connecting to a terminal or other
+computer. When running QEMU, it's connected to your keyboard and
+display.
+
+The UART hardware appears to software as a set of \indextext{memory-mapped}
+control registers. That is, there are some physical addresses that 
+RISC-V hardware connects to the UART device, so that loads and stores
+interact with the device hardware rather than RAM.
+The memory-mapped addresses for the UART start at 0x10000000, or {\tt UART0}
+\lineref{kernel/memlayout.h:/UART0.0x/}.
+There are a handful of UART control registers, each the width
+of a byte. Their offsets from {\tt UART0} are defined in
+\lineref{kernel/uart.c:/define.RHR/}. For example, the
+{\tt LSR} register contain bits that indicate whether input
+characters are waiting to be read by the software. These
+characters (if any) are available for reading from the
+{\tt RHR} register. Each time one is read, the UART hardware
+deletes it from an internal FIFO of waiting characters, and
+clears the ``ready'' bit in {\tt LSR} when the FIFO is empty.
+The UART transmit hardware is largely independent of the receive
+hardware; if software writes a byte to the {\tt THR},
+the UART transmit that byte.
+
+Xv6's {\tt main} calls {\tt consoleinit}
+\lineref{kernel/console.c:/^consoleinit/} to initialize the UART
+hardware. This code configures the UART to generate 
+a receive 
+interrupt when the UART receives each byte of input, and
+a \indextext{transmit complete} interrupt each time the
+UART finishes sending a byte of output \lineref{kernel/uart.c:/^uartinit/}.
+
+The xv6 shell reads from the console by way of a file descriptor
+opened by {\tt init.c} \lineref{user/init.c:/open..console/}. Calls to
+the {\tt read} system call make their way through the kernel to {\tt
+  consoleread} \lineref{kernel/console.c:/^consoleread/}. {\tt
+  consoleread} waits for input to arrive (via interrupts) and be
+buffered in {\tt cons.buf}, copies the input to user space, and (after
+a whole line has arrived) returns to the user process. If the user
+hasn't typed a full line yet, any reading processes will wait in the
+{\tt sleep} call
+\lineref{kernel/console.c:/sleep..cons/}
+(Chapter~\ref{CH:SCHED} explains the details of {\tt sleep}).
+
+When the user types a character, the UART hardware asks the RISC-V
+to raise an interrupt, which activates
+xv6's trap handler.
+The trap handler calls {\tt devintr}
+\lineref{kernel/trap.c:/^devintr/},
+which looks at the RISC-V {\tt scause} register to discover that
+the interrupt is from an external device.
+Then it asks a hardware unit called the PLIC
+\cite{riscv:priv}
+to tell it which device interrupted
+\lineref{kernel/trap.c:/plic.claim/}.
+If it was the UART, {\tt devintr} calls {\tt uartintr}.
+
+{\tt uartintr}
+\lineref{kernel/uart.c:/^uartintr/}
+reads any waiting input characters from the UART hardware
+and hands them to {\tt consoleintr}
+\lineref{kernel/console.c:/^consoleintr/}; it doesn't
+wait for characters, since future input will raise a new interrupt.
+The job of {\tt consoleintr} is to accumulate input characters in
+{\tt cons.buf} 
+until a whole line arrives.
+{\tt consoleintr} treats backspace and a few other characters
+specially.
+When a newline arrives, {\tt consoleintr} wakes up a
+waiting {\tt consoleread} (if there is one).
+
+Once woken, {\tt consoleread} will observe a full line in {\tt
+  cons.buf}, copy it to user space, and return (via the system call
+machinery) to user space.
+
+A {\tt write} system call on a file descriptor connected to the console
+eventually arrives at 
+{\tt uartputc}
+\lineref{kernel/uart.c:/^uartputc/}.
+The device driver maintains an output buffer ({\tt uart\_tx\_buf})
+so that writing processes do not have to wait for the UART to finish
+sending; instead, {\tt uartputc} appends each character to the buffer,
+calls {\tt uartstart} to start the device transmitting (if it isn't
+already), and returns. The only situation in which {\tt uartputc}
+waits is if the buffer is already full.
+
+Each time the UART finishes sending a byte, it generates an interrupt.
+{\tt uartintr} calls {\tt uartstart}, which checks that the device
+really has finished sending, and hands the device the next buffered
+output character. Thus if a process writes multiple bytes to the
+console, typically the first byte will be sent by {\tt uartputc}'s
+call to {\tt uartstart}, and the remaining buffered bytes will be sent
+by {\tt uartstart} calls from {\tt uartintr} as transmit complete
+interrupts arrive.
+
+A general pattern to note is the decoupling of device activity from
+process activity via buffering and interrupts. The console driver can
+process input even when no process is waiting to read it; a subsequent
+read will see the input. Similarly, processes can send output without
+having to wait for the device. This decoupling can increase
+performance by allowing processes to execute concurrently with device
+I/O, and is particularly important when the device is slow (as with
+the UART) or needs immediate attention (as with echoing typed
+characters). This idea is sometimes called \indextext{I/O
+  concurrency}.
+
+\section{Interrupts complicate kernel programming}
+
+Interrupts complicate kernel programming because interrupts can be
+delivered at anytime and to any of the CPUs of a multicore machine;
+the PLIC manages this decision. For user code these two issues doesn't
+complicate matters, because the kernel will resume user code at the
+address where it was interrupted, but for kernel code it complicates
+matters.
+
+Consider the following hypothetical fragment of code in the kernel:
+\begin{lstlisting}[numbers=left,firstnumber=1]
+  x = 0;
+  if(x = 0)
+     f()
+\end{lstlisting}
+By just reading this code, one might expect that {\tt f} is always
+called. But, interrupts can be delivered at any time and if there was
+interrupt handler that runs the following code:
+\begin{lstlisting}
+  void interrupt() {
+    x = 1;
+  }
+\end{lstlisting}
+then it could happen that {\tt f} will not be called: if the interrupt
+arrives between statements 1 and 2.  If it is important that {\tt f}
+is always called, then the kernel programmer must take extra measures,
+for example, by explicitly turning interrupts off before line 1 and
+re-enabling them after line 3.  The next chapter explores how to
+provide this kind atomicity in detail.
+
+Another complication is for code in an interrupt handler itself.  For
+example, when {\tt consoleintr} runs, it may interrupt the process
+reading from the console; or it may arrive on a CPU that is doing
+something entirely unrelated. Thus interrupt handlers are not allowed
+to think about the process or code that they have interrupted.  For
+example, an interrupt handler cannot call {\tt copyout} with the CPU's
+page table because the current CPU may be running with the page table
+of the process to which the input data should be copied.  For this
+reason, interrupt handlers do little work (e.g., copy the input data
+into a buffer) and wakeup top-half code to do the rest.
+
+\section{Timer interrupts}
+
+Xv6 uses timer interrupts to maintain its clock and to enable it to
+switch among compute-bound processes; the {\tt yield} calls in {\tt
+  usertrap} and {\tt kerneltrap} cause this switching. Timer
+interrupts come from clock hardware attached to each RISC-V CPU. Xv6
+programs this clock hardware to interrupt each CPU periodically.
+
+RISC-V requires that timer interrupts be taken in machine mode, not
+supervisor mode. RISC-V machine mode executes without paging, and with
+a separate set of control registers, so it's not practical to run
+ordinary xv6 kernel code in machine mode. As a result, xv6 handles
+timer interrupts completely separately from the trap mechanism laid
+out above.
+
+%% The xv6 timer interrupt handler asks the RISC-V hardware to
+%% generate a ``software interrupt;'' after the timer interrupt finishes,
+%% the RISC-V delivers the software interrupt in supervisor mode, using
+%% the ordinary trap machinery outlined above.
+
+Code executed in machine mode in {\tt start.c}, before {\tt main},
+sets up to receive timer interrupts
+\lineref{kernel/start.c:/^timerinit/}.
+Part of the job is to program the CLINT hardware (core-local interruptor)
+to generate an interrupt after a certain delay.
+Another part is to set up a scratch area, analogous to the trapframe,
+to help
+the timer interrupt handler save registers and 
+the address of the CLINT registers.
+Finally, {\tt start} sets {\tt mtvec} to {\tt timervec} and
+enables timer interrupts.
+
+A timer interrupt can occur at any point when user or kernel code is
+executing; there's no way for the kernel to disable timer interrupts
+during critical operations. Thus the timer interrupt handler must do
+its job in a way guaranteed not to disturb interrupted kernel code.
+The basic strategy is for the handler to ask the RISC-V to
+raise a ``software interrupt'' and immediately return. The RISC-V
+delivers software interrupts to the kernel with the ordinary trap
+mechanism, and allows the kernel to disable them. The code to
+handle the software interrupt generated by a timer interrupt can be
+seen in {\tt devintr} \lineref{kernel/trap.c:/machine-mode.timer/}.
+
+The machine-mode timer interrupt vector is {\tt timervec} 
+\lineref{kernel/kernelvec.S:/^timervec/}.
+It saves a few registers in the scratch area prepared by {\tt start},
+tells the CLINT when to generate the next timer interrupt,
+asks the RISC-V to raise a software interrupt,
+restores registers, and returns.
+There's no C code in the timer interrupt handler.
+
+\section{Real world}
+
+Xv6 allows device and timer interrupts while executing in the kernel,
+as well as when executing user programs. Timer interrupts force a
+thread switch (a call to {\tt yield}) from the timer interrupt
+handler, even when executing in the kernel. The ability to time-slice
+the CPU fairly among kernel threads is useful if kernel threads
+sometimes spend a lot of time computing, without returning to user
+space. However, the need for kernel code to be mindful that it might
+be suspended (due to a timer interrupt) and later resume on a
+different CPU is the source of some complexity in xv6. The kernel
+could be made somewhat simpler if device and timer interrupts only
+occurred while executing user code.
+
+Supporting all the devices on a typical computer in its full glory is
+much work, because there are many devices, the devices have many
+features, and the protocol between device and driver can be complex
+and poorly documented. In many operating systems, the drivers account
+for more code than the core kernel.
+
+The UART driver retrieves data a byte at a time by reading the UART
+control registers; this pattern is called \indextext{programmed I/O}, since
+software is driving the data movement. Programmed I/O is simple, but
+too slow to be used at high data rates. Devices that need to move lots
+of data at high speed typically use \indextext{direct memory access (DMA)}.
+DMA device hardware directly writes incoming data to RAM, and reads
+outgoing data from RAM. Modern disk and network devices use DMA. A
+driver for a DMA device would prepare data in RAM, and then use a
+single write to a control register to tell the device to process the
+prepared data.
+
+Interrupts make sense when a device needs attention at unpredictable
+times, and not too often. But interrupts have high CPU overhead. Thus
+high speed devices, such networks and disk controllers, use tricks
+that reduce the need for interrupts. One trick is to raise a single
+interrupt for a whole batch of incoming or outgoing requests. Another
+trick is for the driver to disable interrupts entirely, and to check
+the device periodically to see if it needs attention. This technique
+is called \indextext{polling}. Polling makes sense if the device performs
+operations very quickly, but it wastes CPU time if the device is mostly
+idle. Some drivers dynamically switch between polling and interrupts
+depending on the current device load.
+
+The UART driver copies incoming data first to a buffer in the kernel,
+and then to user space. This makes sense at low data rates, but such a
+double copy can significantly reduce performance for devices that
+generate or consume data very quickly. Some operating systems are able
+to directly move data between user-space buffers and device hardware,
+often with DMA.
+
+\section{Exercises}
+
+\begin{enumerate}
+
+\item Modify {\tt uart.c} to not use interrupts at all. You may need
+to modify {\tt console.c} as well.
+
+\item Add a driver for an Ethernet card.
+
+\end{enumerate}
