@@ -2,7 +2,7 @@
 *.*~
 *.ps
 latex.out/
-xv6-riscv-src/
+xv6-riscv-src
 *.aux
 *.idx
 *.ilg
