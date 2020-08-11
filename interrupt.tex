@@ -182,17 +182,9 @@ then it could happen that {\tt f} will not be called: if the interrupt
 arrives between statements 1 and 2.  If it is important that {\tt f}
 is always called, then the kernel programmer must take extra measures,
 for example, by explicitly turning interrupts off before line 1 and
-re-enabling them after line 3.  Chapter~\ref{CH:LOCK} explores how to
+re-enabling them after line 3; xv6 provides \lstinline{intr_off} and
+\lstinline{intr_on} for this purpose.  Chapter~\ref{CH:LOCK} explores how to
 provide this kind of atomicity in detail.
-
-\mfk{maybe a good time to bring up the interrupt-related registers
-  that were not discussed in the trap chapter:
-  sie --- supervisor interrupt enabled register
-    one bit to enable interrupts
-  sstatus --- supervisor status register
-    one bit per software interrupt, external interrupt, timer interrupt
-    sip --- supervisor interrupt pending register
-}
 
 Another complication is for code in an interrupt handler itself.  For
 example, when {\tt consoleintr} runs, it may interrupt the process
