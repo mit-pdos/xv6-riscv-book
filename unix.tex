@@ -740,9 +740,26 @@ and one for
 Thus, the shell may
 create a tree of processes.  The leaves of this tree are commands and
 the interior nodes are processes that wait until the left and right
-children complete.  In principle, you could have the interior nodes
-run the left end of a pipeline, but doing so correctly would complicate the
-implementation. \mfk{explain this claim}
+children complete.
+
+In principle, one could have the interior nodes run the left end of a
+pipeline, but doing so correctly would complicate the
+implementation. Consider making just the following modification:
+change \lstinline{sh.c} to not fork for \lstinline{p->left} and run
+\lstinline{runcmd(p->left)} in the interior process. Then, for
+example, \lstinline{echo hi | wc} won't produce output, because when
+\lstinline{echo hi} exits in \lstinline{runcmd}, the interior process
+exits and never calls fork to run the right end of the pipe.  This
+incorrect behavior could be fixed by not calling \lstinline{exit} in
+\lstinline{runcmd} for interior processes, but this fix complicates
+the code: now \lstinline{runcmd} needs to know if it a interior
+process or not.  Complications also arise when not forking for
+\lstinline{runcmd(p->right)}.  For example, with just that modification,
+\lstinline{sleep 10 | echo hi} will immediately print ``hi'' instead
+of after 10 seconds, because \lstinline{echo} runs immediately and
+exits, not waiting for \lstinline{sleep} to finish.  Since the goal of
+the \lstinline{sh.c} is to be as simple as possible, it doesn't try to
+avoid creating interior processes.
 
 Pipes may seem no more powerful than temporary files:
 the pipeline
