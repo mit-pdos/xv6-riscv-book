@@ -78,7 +78,8 @@ next level of the
 tree, and the bottom 9 bits to select the final PTE.
 
 If any of the three PTEs required to translate an address
-is not present, the paging hardware raises a fault.
+is not present, the paging hardware raises an \indextext{page-fault exception}, leaving it up
+to the kernel to handle the exception (see Chapter~\ref{CH:TRAP}).
 This three-level structure allows a page table to omit entire page
 table pages in the common case in which large ranges of virtual
 addresses have no mappings.
@@ -87,7 +88,7 @@ Each PTE contains flag bits that tell the paging hardware
 how the associated virtual address is allowed to be used.
 \indexcode{PTE_V}
 indicates whether the PTE is present: if it is
-not set, a reference to the page causes a fault (i.e. is not allowed).
+not set, a reference to the page causes an exception (i.e. is not allowed).
 \indexcode{PTE_R}
 controls whether instructions are allowed to 
 read to the page.
@@ -187,7 +188,7 @@ addresses that aren't direct-mapped:
   which is mapped high so that below it xv6 can leave an unmapped \indextext{guard
     page}.  The guard page's PTE is invalid (i.e.,
   \lstinline{PTE_V} is not set), which ensures that if the kernel overflows
-  a kernel stack, it will likely cause a fault and the kernel will panic.
+  a kernel stack, it will likely cause an exception and the kernel will panic.
   Without a guard page an overflowing stack would overwrite other kernel memory,
   resulting in incorrect operation. A panic crash is preferable.
 
@@ -749,13 +750,11 @@ user-level data supplied to the kernel, which a malicious user program might be 
 \section{Real world}
 %% 
 
-Like most operating systems, xv6 uses the paging hardware
-for memory protection and mapping.
-Most operating systems make far more sophisticated
-use of paging than xv6; for example, xv6 lacks demand
-paging from disk, copy-on-write fork, shared memory,
-lazily-allocated pages,
-automatically extending stacks, and memory-mapped files.
+Like most operating systems, xv6 uses the paging hardware for memory
+protection and mapping.  Most operating systems make far more
+sophisticated use of paging than xv6 by combining paging and
+page-fault exceptions, which we will discuss in
+Chapter~\ref{CH:TRAP}.
 
 RISC-V supports protection at the level of physical addresses,
 but xv6 doesn't use that feature.
@@ -808,7 +807,7 @@ for the new memory contain?
 \item Modify xv6 to use super pages for the kernel.
 
 \item Modify xv6 so that when a user program dereferences a null pointer, it will
-receive a fault.  That is, modify xv6 so that virtual address 0 isn't mapped for
+receive an exception.  That is, modify xv6 so that virtual address 0 isn't mapped for
 user programs.
 
 \item Unix implementations of

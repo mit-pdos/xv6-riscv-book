@@ -324,8 +324,7 @@ creating a duplicate process and then immediately replacing it,
 operating kernels optimize the implementation of
 \lstinline{fork}
 for this use case by using virtual memory techniques such as
-copy-on-write\mfk{need forward-reference and need to actually describe
-  what COW is}.
+copy-on-write (see Section~\ref{sec:pagefaults}).
 
 Xv6 allocates most user-space memory
 implicitly:
