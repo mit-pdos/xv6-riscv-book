@@ -56,22 +56,22 @@ an outline of the most important registers:
 
 \begin{itemize}
 
-\item {\bf stvec}: The kernel writes the address of its trap handler
+\item \indexcode{stvec}: The kernel writes the address of its trap handler
   here; the RISC-V jumps here to handle a trap.
 
-\item {\bf sepc}: When a trap occurs, RISC-V saves the program counter
+\item \indexcode{sepc}: When a trap occurs, RISC-V saves the program counter
   here (since the {\tt pc} is then overwritten with {\tt stvec}). The
   {\tt sret} (return from trap) instruction copies {\tt sepc} to the
   {\tt pc}. The kernel can write to {\tt sepc} to control where {\tt
     sret} goes.
 
-\item {\bf scause}: The RISC-V puts a number here that describes
+\item \indexcode{scause}: The RISC-V puts a number here that describes
 the reason for the trap.
 
-\item {\bf sscratch}: The kernel places a value here that comes in
+\item \indexcode{sscratch}: The kernel places a value here that comes in
   handy at the very start of a trap handler.
 
-\item {\bf sstatus}: The SIE bit controls whether device interrupts
+\item \indexcode{sstatus}: The SIE bit controls whether device interrupts
   are enabled. If the kernel clears SIE, the RISC-V will defer
   device interrupts until the kernel sets SIE. The SPP bit
   indicates whether a trap came from user mode or supervisor
@@ -451,7 +451,7 @@ translate its virtual address), a store page fault (when a store
 instruction cannot translate its virtual address), and an instruction
 page fault (when the address for instruction doesn't translate).  The
 value in the \lstinline{scause} register indicates the type of the
-page fault and the \lstinline{stval} register contains the address
+page fault and the \indexcode{stval} register contains the address
 that couldn't be translated.
 
 The basic plan in COW fork is for the parent and child to share all
