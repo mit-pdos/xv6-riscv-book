@@ -801,8 +801,9 @@ process's address space (e.g., maps or unmaps memory), the kernel must arrange t
 other CPUs that run threads of the same process update their hardware page
 tables to reflect the change in the address space. 
 
-It is possible to implement locks without atomic instructions \mfk{ref}, but it is
-expensive, and most operating systems use atomic instructions.
+It is possible to implement locks without atomic
+instructions~\cite{lamport:bakery}, but it is expensive, and most
+operating systems use atomic instructions.
 
 Locks can be expensive if many CPUs try to acquire the same lock
 at the same time.  If one CPU has a lock
@@ -813,12 +814,13 @@ invalidate any other copies of the cache line.  Fetching a cache line from
 another CPU's cache can be orders of magnitude more expensive than
 fetching a line from a local cache.
 
-To avoid the expenses associated with locks, many operating systems use
-lock-free data structures and algorithms \mfk{rcu ref}.  For example, it is possible to
-implement a linked list like the one in the beginning of the chapter that
-requires no locks during list searches, and one atomic instruction to insert an
-item in a list.  Lock-free programming is more complicated, however, than
-programming locks; for example, one must worry about instruction and memory
+To avoid the expenses associated with locks, many operating systems
+use lock-free data structures and algorithms~\cite{herlihy:art,mckenney:rcuusage}.
+For example, it is possible to implement a linked list like the one in
+the beginning of the chapter that requires no locks during list
+searches, and one atomic instruction to insert an item in a list.
+Lock-free programming is more complicated, however, than programming
+locks; for example, one must worry about instruction and memory
 reordering.  Programming with locks is already hard, so xv6 avoids the
 additional complexity of lock-free programming.
 
