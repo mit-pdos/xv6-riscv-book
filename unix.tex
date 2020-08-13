@@ -4,11 +4,11 @@
 The job of an operating system is to share a computer among
 multiple programs and to provide a more useful set of services
 than the hardware alone supports.
-The operating system manages and abstracts
+An operating system manages and abstracts
 the low-level hardware, so that, for example,
 a word processor need not concern itself with which type
 of disk hardware is being used.
-It also shares the hardware among multiple programs so
+An operating system shares the hardware among multiple programs so
 that they run (or appear to run) at the same time.
 Finally, operating systems provide controlled ways for programs
 to interact, so that they can share data or work together.
@@ -36,8 +36,8 @@ lesser extent, Microsoft Windows—have Unix-like interfaces.
 Understanding xv6 is a good start toward understanding any of these
 systems and many others.
 
-As shown in 
-Figure~\ref{fig:os},
+As 
+Figure~\ref{fig:os} shows,
 xv6 takes the traditional form of a
 \indextext{kernel},
 a special program that provides
@@ -48,11 +48,14 @@ has memory containing instructions, data, and a stack. The
 instructions implement the
 program's computation.  The data are the variables on which
 the computation acts. The stack organizes the program's procedure calls.
+A given computer typically has many processes but only a single
+kernel.
 
 When a
-process needs to invoke a kernel service, it invokes a procedure call
-in the operating system interface.  Such a procedure is called a
-\indextext{system call}.
+process needs to invoke a kernel service, it invokes 
+a \indextext{system call},
+one of the calls
+in the operating system's interface.
 The system call enters the kernel;
 the kernel performs the service and returns.
 Thus a process alternates between executing in
@@ -93,14 +96,14 @@ lists all of xv6's system calls.
 
 The rest of this chapter outlines xv6's services---processes, memory,
 file descriptors, pipes, and a file system---and illustrates them with
-code snippets and discussions of how the \indextext{shell}, which is
-the primary user interface to traditional Unix-like systems, uses
+code snippets and discussions of how the \indextext{shell}, 
+Unix's command-line user interface, uses
 them. The shell's use of system calls illustrates how carefully they
 have been designed.
 
 The shell is an ordinary program that reads commands from the user
 and executes them.
-The fact that the shell is a user program and not part of the kernel,
+The fact that the shell is a user program, and not part of the kernel,
 illustrates the power of the system call interface: there is nothing
 special about the shell.
 It also means that the shell is easy to replace; as a result,
@@ -117,8 +120,8 @@ the Unix Bourne shell.  Its implementation can be found at
 
 An xv6 process consists of user-space memory (instructions, data, and stack)
 and per-process state private to the kernel.
-Xv6 can
-\indextext{time-share} 
+Xv6 
+\indextext{time-share}s
 processes: it transparently switches the available CPUs
 among the set of processes waiting to execute.
 When a process is not executing, xv6 saves its CPU registers,
@@ -133,24 +136,25 @@ with each process.
 {\bf System call} & {\bf Description} \\
 \midrule
 fork() & Create a process \\
-exit(xstatus) & Terminate the current process with xstatus indicating success of failure \\
+exit(xstatus) & Terminate the current process with xstatus indicating success or failure \\
 wait(*xstatus) & Wait for a child process to exit and copy the child's exit status to xstatus \\
 kill(pid) & Terminate process pid \\
 getpid() & Return the current process's pid \\
 sleep(n) & Sleep for n clock ticks \\
 exec(filename, *argv) & Load a file and execute it \\
 sbrk(n) & Grow process's memory by n bytes \\
-open(filename, flags) & Open a file; the flags indicate read/write \\
+open(filename, flags) & Open a file; the flags indicate read/write; returns a file descriptor \\
 read(fd, buf, n) & Read n bytes from an open file into buf \\
 write(fd, buf, n) & Write n bytes to an open file \\
 close(fd) & Release open file fd \\
-dup(fd) & Duplicate fd \\
-pipe(p) & Create a pipe and return fd's in p \\
+dup(fd) & Return a new file descriptor referring to the same file as fd \\
+pipe(*p) & Create a pipe and return file descriptors in p[0] and p[1] \\
 chdir(dirname) & Change the current directory \\
 mkdir(dirname) & Create a new directory \\
 mknod(name, major, minor) & Create a device file \\
-fstat(fd) & Return info about an open file \\
-link(f1, f2) & Create another name (f2) for the file f1 \\
+fstat(fd, *stat) & Return info about an open file \\
+stat(filename, *stat) & Return info about a named file \\
+link(name1, name2) & Create another name (name2) for the file name1 \\
 unlink(filename) & Remove a file \\
 \end{tabular}
 \caption{Xv6 system calls}
@@ -171,14 +175,14 @@ returns in both the parent and the child.
 In the parent,
 \indexcode{fork}
 returns the child's pid;
-in the child, it returns zero.
+in the child, \lstinline{fork} returns zero.
 For example, consider the following program fragment written in the C
 programming language~\cite{kernighan}:
 \begin{lstlisting}[]
 int pid = fork();
 if(pid > 0){
   printf("parent: child=%d\n", pid);
-  pid = wait(0);
+  pid = wait((int *) 0);
   printf("child %d is done\n", pid);
 } else if(pid == 0){
   printf("child: exiting\n");
@@ -214,7 +218,7 @@ might come out in either order, depending on whether the
 parent or child gets to its
 \indexcode{printf}
 call first.
-After the child exits the parent's
+After the child exits, the parent's
 \indexcode{wait}
 returns, causing the parent to print
 \begin{lstlisting}[]
@@ -268,7 +272,7 @@ of the program
 running with the argument list
 \lstinline{echo}
 \lstinline{hello}.
-Most programs ignore the first argument, which is 
+Most programs ignore the first element of the argument array, which is 
 conventionally the name of the program.
 
 The xv6 shell uses the above calls to run programs on behalf of
@@ -317,10 +321,11 @@ You might wonder why
 \indexcode{fork}
 and
 \indexcode{exec}
-are not combined in a single call; we will see later that separate
-calls for creating a process and loading a program has some clever
-usages in the shell for I/O redirection.  To avoid the wastefulness of
-creating a duplicate process and then immediately replacing it,
+are not combined in a single call; we will see later that 
+the shell exploits the separation in its implementation of
+I/O redirection.
+To avoid the wastefulness of
+creating a duplicate process and then immediately replacing it (with \lstinline{exec}),
 operating kernels optimize the implementation of
 \lstinline{fork}
 for this use case by using virtual memory techniques such as
@@ -343,9 +348,6 @@ bytes;
 \indexcode{sbrk}
 returns the location of the new memory.
 
-Xv6 does not provide a notion of users or of protecting
-one user from another; in Unix terms, all xv6 processes
-run as root.
 %% 
 %% 	I/O and File descriptors
 %% 
@@ -488,8 +490,8 @@ The system call
 \indexcode{exec}
 replaces the calling process's memory but preserves its file table.
 This behavior allows the shell to
-implement \indextext{I/O redirection} by forking, reopening chosen file descriptors,
-and then execing the new program.
+implement \indextext{I/O redirection} by forking, re-opening chosen file descriptors,
+and then calling \lstinline{exec} to run the new program.
 Here is a simplified version of the code a shell runs for the
 command
 \lstinline{cat}
@@ -678,10 +680,11 @@ file descriptors in the array
 After
 \lstinline{fork},
 both parent and child have file descriptors referring to the pipe.
-The child dups the read end onto file descriptor 0,
+The child calls \lstinline{close} and \lstinline{dup} to make file descriptor
+zero refer to the read end of the pipe,
 closes the file descriptors in
 \lstinline{p},
-and execs
+and calls \lstinline{exec} to run
 \lstinline{wc}.
 When 
 \lstinline{wc}
@@ -847,9 +850,8 @@ close(fd);
 mknod("/console", 1, 1);
 \end{lstlisting}
 \lstinline{Mknod}
-creates a file in the file system,
-but the file has no contents.
-Instead, the file's metadata marks it as a device file
+creates a special file that refers to a device.
+The file's metadata marks it as a device file
 and records the major and minor device numbers
 (the two arguments to 
 \lstinline{mknod}),
@@ -983,7 +985,7 @@ Unix's combination of ``standard'' file
 descriptors, pipes, and convenient shell syntax for
 operations on them was a major advance in writing
 general-purpose reusable programs.
-The idea sparked a whole culture of ``software tools'' that was
+The idea sparked a culture of ``software tools'' that was
 responsible for much of Unix's power and popularity,
 and the shell was the first so-called ``scripting language.''
 The Unix system call interface persists today in systems like
@@ -993,9 +995,10 @@ The Unix system call interface has been standardized through the Portable
 Operating System Interface (POSIX) standard.
 Xv6 is
 \textit{not}
-POSIX compliant.  It misses system calls (including basic ones such as
+POSIX compliant:  it is missing many system calls (including basic ones such as
 \lstinline{lseek}),
-it implements system calls only partially, as well as other differences.  Our main goals for xv6 are
+and many of the system calls it does provide differ from the standard.
+Our main goals for xv6 are
 simplicity and clarity while providing a simple UNIX-like system-call interface.
 Several people have extended xv6 with a few more system calls and a simple
 C library in order to run basic Unix programs.  Modern kernels, however,
@@ -1035,6 +1038,10 @@ on the designers of Unix, who tried to build something simpler.
 % virtual machines send messages to each other
 % and the outside world using virtual network devices
 % instead of pipes or files.
+
+Xv6 does not provide a notion of users or of protecting
+one user from another; in Unix terms, all xv6 processes
+run as root.
 
 This book examines how xv6 implements its Unix-like interface,
 but the ideas and concepts apply to more than just Unix.
