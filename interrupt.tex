@@ -158,7 +158,7 @@ characters). This idea is sometimes called \indextext{I/O
 \section{Interrupts complicate kernel programming}
 
 Interrupts complicate kernel programming because interrupts can be
-delivered at anytime and to any of the CPUs of a multicore machine;
+delivered at anytime and to any of the CPUs of a multi-core machine;
 the PLIC manages this decision. For user code these two issues doesn't
 complicate matters, because the kernel will resume user code at the
 address where it was interrupted, but for kernel code it complicates
