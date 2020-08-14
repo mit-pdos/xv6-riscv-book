@@ -447,11 +447,11 @@ for(;;){
     break;
   if(n < 0){
     fprintf(2, "read error\n");
-    exit();
+    exit(1);
   }
   if(write(1, buf, n) != n){
     fprintf(2, "write error\n");
-    exit();
+    exit(1);
   }
 }
 \end{lstlisting}
@@ -490,7 +490,8 @@ The system call
 \indexcode{exec}
 replaces the calling process's memory but preserves its file table.
 This behavior allows the shell to
-implement \indextext{I/O redirection} by forking, re-opening chosen file descriptors,
+implement \indextext{I/O redirection} by forking,
+re-opening chosen file descriptors in the child,
 and then calling \lstinline{exec} to run the new program.
 Here is a simplified version of the code a shell runs for the
 command
@@ -517,6 +518,8 @@ for the newly opened
 \lstinline{Cat}
 then executes with file descriptor 0 (standard input) referring to
 \lstinline{input.txt}.
+The parent process's file descriptors are not changed by this
+sequence, since it modifies only the child's descriptors.
 
 The code for I/O redirection in the xv6 shell works in exactly this way
 \lineref{user/sh.c:/case.REDIR/}.
@@ -525,30 +528,25 @@ child shell and that
 \lstinline{runcmd} 
 will call
 \lstinline{exec}
-to load the new program.  Now it should be clear why it is a good idea that
+to load the new program.
+
+Now it should be clear why it is helpful that
 \lstinline{fork}
 and 
 \lstinline{exec} 
-are separate calls.  Because if they are separate, the shell can fork a child,
-use
-\lstinline{open},
-\lstinline{close},
-\lstinline{dup}
-in the child to change the standard input and output
-file descriptors, and then
-\lstinline{exec}.
-No changes to the program being exec-ed
-(\lstinline{cat}
-in our example)
-are required.
-If
-\lstinline{fork}
-and
-\lstinline{exec}
-were combined into a single
-system call, some other (probably more complex) scheme would be required for the
-shell to redirect standard input and output, or the program itself would have to
-understand how to redirect I/O.
+are separate calls: between the two, the shell has a chance
+to redirect the child's I/O without disturbing the I/O setup of the main shell.
+One could instead imagine a hypothetical combined
+\lstinline{forkexec} system call,
+but the options for doing I/O redirection with such a call
+seem awkward.
+The shell could modify its own I/O
+setup before calling \lstinline{forkexec} (and then
+un-do those modifications); or
+\lstinline{forkexec} could take instructions for I/O
+redirection as arguments;
+or (least attractively) every program like \lstinline{cat} could
+be taught to do its own I/O redirection.
 
 Although
 \lstinline{fork}
@@ -695,7 +693,7 @@ and then closes the write side.
 
 If no data is available, a
 \lstinline{read}
-on a pipe waits for either data to be written or all
+on a pipe waits for either data to be written or for all
 file descriptors referring to the write end to be closed;
 in the latter case,
 \lstinline{read}
@@ -794,7 +792,7 @@ than the non-blocking semantics of files.
 \section{File system}
 
 The xv6 file system provides data files,
-which are uninterpreted byte arrays,
+which contain uninterpreted byte arrays,
 and directories, which
 contain named references to data files and other directories.
 The directories form a tree, starting
@@ -832,7 +830,7 @@ The first fragment changes the process's current directory to
 \lstinline{/a/b};
 the second neither refers to nor changes the process's current directory.
 
-There are multiple system calls to create a new file or directory:
+There are system calls to create new files and directories:
 \lstinline{mkdir}
 creates a new directory,
 \lstinline{open}
@@ -851,12 +849,12 @@ mknod("/console", 1, 1);
 \end{lstlisting}
 \lstinline{Mknod}
 creates a special file that refers to a device.
-The file's metadata marks it as a device file
-and records the major and minor device numbers
+Associated with a device file are
+the major and minor device numbers
 (the two arguments to 
 \lstinline{mknod}),
 which uniquely identify a kernel device.
-When a process later opens the file, the kernel
+When a process later opens a device file, the kernel
 diverts
 \lstinline{read}
 and
@@ -864,9 +862,28 @@ and
 system calls to the kernel device implementation
 instead of passing them to the file system.
 
-\lstinline{Fstat}
-retrieves information about the object a file
-descriptor refers to.
+A file's name is distinct from the file itself;
+the same underlying file, called an 
+\indextext{inode}, 
+can have multiple names,
+called 
+\indextext{links}.
+Each link consists of an entry in a directory;
+the entry contains a file name and a reference
+to an inode.
+An inode holds
+\indextext{metadata}
+about a file, including
+its type (file or directory or device),
+its length,
+the location of the file's content on disk,
+and the number of links to a file.
+
+The
+\lstinline{fstat}
+system call
+retrieves information from the inode that a
+file descriptor refers to.
 It fills in a
 \lstinline{struct}
 \lstinline{stat},
@@ -887,12 +904,6 @@ struct stat {
 };
 \end{lstlisting}
 
-A file's name is distinct from the file itself;
-the same underlying file, called an 
-\indextext{inode}, 
-can have multiple names,
-called 
-\indextext{links}.
 The
 \lstinline{link}
 system call creates another file system name 
@@ -945,17 +956,20 @@ fd = open("/tmp/xyz", O_CREATE|O_RDWR);
 unlink("/tmp/xyz");
 \end{lstlisting}
 is an idiomatic way to create a temporary inode 
+with no name
 that will be cleaned up when the process closes 
 \lstinline{fd}
 or exits.
 
-Shell commands for file system operations are implemented
-as user-level programs such as
+Unix provides
+file utilities callable from the shell
+as user-level programs, for example
 \lstinline{mkdir},
 \lstinline{ln},
-\lstinline{rm},
-etc. This design allows anyone to extend the shell with new user commands by
-just adding a new user-level program.  In hindsight this plan seems obvious,
+and
+\lstinline{rm}.
+This design allows anyone to extend the command-line interface
+by adding new user-level programs.  In hindsight this plan seems obvious,
 but other systems designed at the time of Unix often built such commands into
 the shell (and built the shell into the kernel).
 
