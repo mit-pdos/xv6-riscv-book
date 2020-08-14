@@ -1021,16 +1021,16 @@ xv6.  For example, they support networking, windowing systems, user-level thread
 drivers for many devices, and so on.  Modern kernels evolve continuously and
 rapidly, and offer many features beyond POSIX.
 
-For the most part, modern Unix-derived operating systems
-have not followed the early
-Unix model of exposing devices as special files, like the
-\lstinline{console}
-device file discussed above.
-The authors of Unix went on to build Plan 9,
+Unix unified access to multiple types of resources (files,
+directories, and devices) with a single set of 
+file-name and file-descriptor interfaces.
+This idea can be extended to more kinds of resources;
+a good example is Plan 9~\cite{Presotto91plan9},
 which applied the ``resources are files''
-concept to modern facilities,
-representing networks, graphics, and other resources
-as files or file trees.
+concept to 
+networks, graphics, and more.
+However, most Unix-derived operating systems have
+not followed this route.
 
 The file system and file descriptors have been  powerful
 abstractions.
