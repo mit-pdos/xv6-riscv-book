@@ -17,7 +17,7 @@
 
 A key requirement for an operating system is to support several activities at once.  For
 example, using the system call interface described in
-chapter~\ref{CH:UNIX}
+Chapter~\ref{CH:UNIX}
 a process can start new processes with 
 \lstinline{fork}.
 The operating system must 
@@ -26,11 +26,12 @@ the resources of the computer among these processes.
 For example, even if there are more processes
 than there are hardware CPUs, the operating
 system must ensure that all of the processes
-make progress.  The operating system must also arrange for
+get a chance to execute.  The operating system must also arrange for
 \indextext{isolation} 
 between the processes.
-That is, if one process has a bug and fails, it shouldn't affect processes that
-don't depend on the failed process.
+That is, if one process has a bug and malfunctions,
+it shouldn't affect processes that
+don't depend on the buggy process.
 Complete isolation, however, is too strong, since it should be possible for
 processes to intentionally interact; pipelines are an example.
 Thus
@@ -43,14 +44,14 @@ many ways to do so, but this text focuses on mainstream designs
 centered around a \indextext{monolithic kernel}, which is used by many
 Unix operating systems.  This chapter also provides an overview of an
 xv6 process, which is the unit of isolation in xv6, and the
-creation of the first process when xv6 starts running.
+creation of the first process when xv6 starts.
 
 Xv6 runs on a \indextext{multi-core}\footnote{
-With multi-core this text means multiple CPUs that share memory but execute independent
-programs in parallel.
+By ``multi-core'' this text means multiple CPUs that share memory but execute
+in parallel, each with its own set of registers.
 This text sometimes uses the term
 \indextext{multiprocessor} as a synonym for multi-core,
-though the former term can also refer to a computer board with
+though multiprocessor can also refer more specifically to a computer with
 several distinct processor chips.} RISC-V microprocessor,
 and much of its low-level
 functionality (for example, its process implementation) is specific to
@@ -98,17 +99,21 @@ stronger isolation than a cooperative scheme provides.
 
 To achieve strong isolation it's helpful to forbid applications from
 directly accessing sensitive hardware resources, and instead to abstract the
-resources into services.  For example, applications interact with a file system
-only through
+resources into services.  For example, Unix applications interact with storage
+only through the file system's
 \lstinline{open},
 \lstinline{read},
 \lstinline{write}, 
 and
 \lstinline{close}
 system calls,
-instead of reading and writing raw disk sectors. 
+instead of reading and writing the disk directly. 
 This provides the application with the convenience of pathnames, and it allows
 the operating system (as the implementer of the interface) to manage the disk. 
+Even if isolation is not a concern,
+programs that interact intentionally (or just wish to keep
+out of each other's way) are likely to find a file system a more convenient
+abstraction than direct use of the disk.
 
 Similarly, Unix transparently switches hardware CPUs among processes,
 saving and restoring register state as necessary,
@@ -133,7 +138,7 @@ way that simplifies interaction.
 For example, if one application in a pipeline fails, the kernel
 generates an end-of-file signal for the next process in the pipeline.
 
-As you can see, the system-call interface in
+The system-call interface in
 Figure~\ref{fig:api}
 is carefully designed to provide both programmer convenience and
 the possibility of strong isolation.  The Unix interface
@@ -302,8 +307,8 @@ vm.c & Manage page tables and address spaces. \\
 
 The xv6 kernel source is in the {\tt kernel/} sub-directory. The
 source is divided into files, following a rough notion of modularity;
-Figure~\ref{fig:source} lists the files.  The interface for each
-module is defined in \lstinline{defs.h} \fileref{kernel/defs.h}.
+Figure~\ref{fig:source} lists the files.  The inter-module interfaces
+are defined in \lstinline{defs.h} \fileref{kernel/defs.h}.
 
 %% 
 \section{Process overview}
