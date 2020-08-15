@@ -345,7 +345,7 @@ translates (or ``maps'') a
 \begin{figure}[t]
 \centering
 \includegraphics[scale=0.5]{fig/as.pdf}
-\caption{Layout of a virtual address space of a user process}
+\caption{Layout of a process's virtual address space}
 \label{fig:as}
 \end{figure}
 
@@ -358,8 +358,13 @@ starting at virtual address zero. Instructions come first,
 followed by global variables, then the stack,
 and finally a ``heap'' area (for malloc)
 that the process can expand as needed.
-Xv6 runs on RISC-V with 39 bits for virtual addresses,
-but uses only 38 bits.  Thus, the maximum address is $2^{38}-1$ =
+There are a number of factors that limit the
+maximum size of a process's address space:
+pointers on the RISC-V are 64 bits wide;
+the hardware only uses the low 39 bits when
+looking up virtual addresses in page tables;
+and xv6 only uses 38 of those 39 bits.
+Thus, the maximum address is $2^{38}-1$ =
 0x3fffffffff, which is \lstinline{MAXVA}~\lineref{kernel/riscv.h:/MAXVA/}.
 At the top of the address space xv6 reserves a page
 for a \indextext{trampoline} and a page mapping
@@ -376,7 +381,8 @@ We'll use the notation
 \indexcode{p->xxx}
 to refer to elements of the
 \lstinline{proc}
-structure.  The trapframe mentioned above is \indexcode{p->trapframe}.
+structure; for example,
+\indexcode{p->pagetable} is a pointer to the process's page table.
 
 Each process has a thread of execution (or 
 \indextext{thread}
@@ -436,7 +442,7 @@ memory.  The boot loader loads the xv6 kernel into memory.  Then, in
 machine mode, the CPU executes xv6 starting at
 \indexcode{_entry}
 \lineref{kernel/entry.S:/^.entry:/}.
-Xv6 starts with the RISC-V paging hardware disabled:
+The RISC-V starts with paging hardware disabled:
 virtual addresses map directly to physical addresses.
 
 The loader loads the xv6 kernel into memory at physical address
@@ -531,20 +537,17 @@ As we saw in Chapter~\ref{CH:UNIX},
 \indexcode{exec}
 replaces the memory and registers of the
 current process with a new program (in this case,
-\lstinline{/init}).
+\indexcode{/init}).
 Once the kernel has completed 
 \lstinline{exec},
-it returns to user space and runs
-\indexcode{/init}.
+it returns to user space in
+the \lstinline{/init} process.
 \lstinline{Init}
 \lineref{user/init.c:/^main/}
 creates a new console device file
 if needed
 and then opens it as file descriptors 0, 1, and 2.
-Then it loops,
-starting a console shell, 
-handles orphaned zombies until the shell exits,
-and repeats.
+Then it starts a shell on the console.
 The system is up.
 %% 
 \section{Real world}
@@ -565,7 +568,7 @@ including potential interface changes (e.g., Linux's
 \lstinline{clone},
 a variant of
 \lstinline{fork}),
-to control which parts of
+to control which aspects of
 a process threads share.
 %% 
 \section{Exercises}
@@ -576,19 +579,19 @@ a process threads share.
 \item You can use gdb to observe the very first kernel-to-user
 transition. Run {\tt make qemu-gdb}.
 In another window, in the same directory, run {\tt gdb}.
-Type the gdb command {\tt break *0x3ffffff07e}, which sets
+Type the gdb command {\tt break *0x3ffffff10e}, which sets
 a breakpoint at the {\tt sret} instruction in the kernel
 that jumps into user space. Type the {\tt continue} gdb command.
 gdb should stop at the breakpoint, about to
 execute {\tt sret}. Type {\tt stepi}. gdb should now
-indicate that it is executing at address 0x4, which is
+indicate that it is executing at address 0x0, which is
 in user space at the start of {\tt initcode.S}.
 
 % break *0x3ffffff000
 % disas 0x3ffffff000,+8
 % set disassemble-next-line auto
 % x/i $pc
-% break *0x3ffffff07e
+% break *0x3ffffff10e
 % print/x $sepc
 % print/x $pc
 
