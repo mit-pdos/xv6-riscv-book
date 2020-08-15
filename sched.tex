@@ -1140,7 +1140,7 @@ be sleeping in {\tt wait}, or may be doing something else;
 in the latter case, a subsequent call to {\tt wait} must
 observe the child's death, perhaps long after it calls {\tt exit}.
 The way that xv6 records the child's demise until {\tt wait}
-observes it is for {\tt exit} to put the caller into the {\tt ZOMBIE}
+observes it is for {\tt exit} to put the caller into the \indexcode{ZOMBIE}
 state, where it stays until the parent's {\tt wait} notices it, changes
 the child's state to {\tt UNUSED}, copies the child's exit status,
 and returns the child's process ID to the parent.
