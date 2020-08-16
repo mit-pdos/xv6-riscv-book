@@ -33,7 +33,8 @@ by mapping each virtual address to a physical address.
 \begin{figure}[t]
 \center
 \includegraphics[scale=0.5]{fig/riscv_address.pdf}
-\caption{RISC-V virtual and physical addresses.}
+\caption{RISC-V virtual and physical addresses, with a simplified
+logical page table.}
 \label{fig:riscv_address}
 \end{figure}
 
@@ -48,8 +49,8 @@ to index into the page table to find a PTE, and making a 56-bit
 physical address whose top 44 bits come from the PPN in the PTE
 and whose bottom 12 bits are copied from the original virtual address.
 Figure~\ref{fig:riscv_address} shows this
-process with an abstract version of a page table (see Figure~\ref{fig:riscv_pagetable}
-for a fuller story).
+process with a logical view of the page table as a simple array of PTEs
+(see Figure~\ref{fig:riscv_pagetable} for a fuller story).
 A page table
 gives the operating system control over virtual-to-physical address
 translations at the granularity of aligned chunks of 4096 ($2^{12}$)
@@ -67,8 +68,8 @@ used for translation; in the future, RISC-V may use those bits to
 define more levels of translation.  Similarly, the physical address
 has room for growth; in Sv39 it is 56 bits, but could grow to 64 bits.
 
-As shown in
-Figure~\ref{fig:riscv_pagetable},
+As 
+Figure~\ref{fig:riscv_pagetable} shows,
 the actual translation happens in three steps.  A page table is stored
 in physical memory as a three-level tree.
 The root of the tree is a
@@ -81,7 +82,7 @@ next level of the
 tree, and the bottom 9 bits to select the final PTE.
 
 If any of the three PTEs required to translate an address
-is not present, the paging hardware raises an \indextext{page-fault exception}, leaving it up
+is not present, the paging hardware raises a \indextext{page-fault exception}, leaving it up
 to the kernel to handle the exception (see Chapter~\ref{CH:TRAP}).
 This three-level structure allows a page table to omit entire page
 table pages in the common case in which large ranges of virtual
@@ -472,8 +473,8 @@ removes and returns the first element in the free list.
 
 Each process has a separate page table, and when xv6 switches between
 processes, it also changes page tables.
-As shown in
-Figure~\ref{fig:as},
+As 
+Figure~\ref{fig:as} shows,
 a process's user memory starts at virtual address
 zero and can grow up to
 \texttt{MAXVA}
