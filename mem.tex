@@ -38,7 +38,7 @@ by mapping each virtual address to a physical address.
 \end{figure}
 
 xv6 runs on Sv39 RISC-V, which has 39-bit virtual
-addresses (see Figure~\ref{fig:riscv_address}). The top 25 bits of a
+addresses. The top 25 bits of a
 64-bit virtual address are unused.  In this Sv39 configuration, a
 RISC-V page table is logically an array of $2^{27}$ (134,217,728)
 \indextext{page table entries (PTEs)}.  Each PTE contains a 44-bit
@@ -47,7 +47,10 @@ translates a virtual address by using the top 27 bits of the 39 bits
 to index into the page table to find a PTE, and making a 56-bit
 physical address whose top 44 bits come from the PPN in the PTE
 and whose bottom 12 bits are copied from the original virtual address.
-Thus a page table
+Figure~\ref{fig:riscv_address} shows this
+process with an abstract version of a page table (see Figure~\ref{fig:riscv_pagetable}
+for a fuller story).
+A page table
 gives the operating system control over virtual-to-physical address
 translations at the granularity of aligned chunks of 4096 ($2^{12}$)
 bytes.  Such a chunk is called a \indextext{page}.
@@ -55,7 +58,7 @@ bytes.  Such a chunk is called a \indextext{page}.
 \begin{figure}[t]
 \center
 \includegraphics[scale=0.5]{fig/riscv_pagetable.pdf}
-\caption{RISC-V page table hardware.}
+\caption{RISC-V address translation details.}
 \label{fig:riscv_pagetable}
 \end{figure}
 
