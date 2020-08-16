@@ -146,14 +146,15 @@ xv6 expects to see.}
 %% 
 \section{Kernel address space}
 %% 
-The kernel has its own page table.  When a process enters the kernel,
-xv6 switches to the kernel page table, and when the kernel
-returns to user space, it switches to the page table of the user
-process.  The memory of the kernel is private.
-
+Xv6 maintains one page table per process, describing each
+process's user address space, plus a single page table
+that describes the kernel's address space.
+The kernel configures the layout of its address space to
+give itself
+access to various hardware resources at predictable virtual addresses.
 Figure~\ref{fig:xv6_layout}
-shows the layout of the kernel address space, and the mapping from
-virtual addresses to physical addresses.  The file
+shows how this layout maps
+kernel virtual addresses to physical addresses.  The file
 \fileref{kernel/memlayout.h}
 declares the constants for xv6's kernel memory layout.
 
@@ -163,35 +164,37 @@ QEMU exposes the device interfaces to software as
 \indextext{memory-mapped}
 control registers that sit below
 \texttt{0x80000000}
-in physical memory.
+in the physical address space.
 The kernel can interact with the devices by reading/writing
-these memory locations.
+these special physical addresses; such reads and writes communicate
+with the device hardware rather than with RAM.
 Chapter~\ref{CH:TRAP} explains
 how xv6 interacts with devices.
 
 The kernel uses an identity mapping for most virtual addresses; that
 is, most of the kernel's address space is ``direct-mapped.'' For
 example, the kernel itself is located at \lstinline{KERNBASE} in both
-the virtual address space and in physical memory. This direct mapping
-simplifies kernel code that needs to both read or write a page (with
-its virtual address) and also manipulate a PTE that refers to the same
-page (with its physical address). There are a couple of virtual
-addresses that aren't direct-mapped:
+the virtual address space and in physical memory.
+This direct mapping helps kernel code that needs to read or write
+physical memory, for example when \lstinline{fork}
+or \lstinline{exec} allocates and initializes user memory:
+the kernel can simply use a physical address
+directly as a virtual address.
 
 \begin{itemize}
   
 \item The trampoline page. It is mapped at the top of the virtual
-  address space; user page tables have this same mapping.  In
-  Chapter~\ref{CH:TRAP}, we will discuss the role of the trampoline
+  address space; user page tables have this same mapping.
+  Chapter~\ref{CH:TRAP} discusses the role of the trampoline
   page, but we see here an interesting use case of page tables; a
   physical page (holding the trampoline code) is mapped twice in the
   virtual address space of the kernel: once at top of the virtual
-  address space and once in the kernel text.
+  address space and once with a direct mapping.
 
 \item The kernel stack pages.  Each process has its own kernel stack,
   which is mapped high so that below it xv6 can leave an unmapped \indextext{guard
     page}.  The guard page's PTE is invalid (i.e.,
-  \lstinline{PTE_V} is not set), which ensures that if the kernel overflows
+  \lstinline{PTE_V} is not set), so that if the kernel overflows
   a kernel stack, it will likely cause an exception and the kernel will panic.
   Without a guard page an overflowing stack would overwrite other kernel memory,
   resulting in incorrect operation. A panic crash is preferable.
