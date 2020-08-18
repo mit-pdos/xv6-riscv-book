@@ -431,24 +431,27 @@ after it sets {\tt stvec}.
 Xv6's response to exceptions is quite boring: if an exception happens
 in user space, the kernel kills the faulting process.  If an
 exception happens in the kernel, the kernel panics.  Real operating systems
-respond in much more interesting ways. For
-instance, many kernels use page faults to implement
-virtual memory
-features such as \indextext{copy-on-write (COW) fork}.
+often respond in much more interesting ways.
 
-To explain copy-on-write fork, consider xv6's \lstinline{fork}. The
-parent creates a new address space for the child as described in
-Chapter~\ref{CH:MEM}. This address space is identical to the
-parent's. It would be nice if the child and parent could share 
-physical memory, instead of having the parent making a copy of its 
-address space using \lstinline{uvmcopy}
-\lineref{kernel/vm.c:/^uvmcopy/}.  The kernel, however, cannot
-unconditionally share physical memory between parent and child,
-since they would then see each other's memory writes; that would
-rapidly cause them to malfunction.
+As an example,
+many kernels use page faults to implement
+\indextext{copy-on-write (COW) fork}.
+To explain copy-on-write fork, consider xv6's \lstinline{fork},
+described in Chapter~\ref{CH:MEM}.
+\lstinline{fork} causes the child to have the same
+memory content as the parent, by calling
+\lstinline{uvmcopy}
+\lineref{kernel/vm.c:/^uvmcopy/}
+to allocate physical memory for
+the child and copy the parent's memory into it.
+It would be more efficient if the child and parent could share 
+the parent's physical memory.
+A straightforward implementation of this would not work, however,
+since it would cause the parent and child to disrupt each other's
+execution with their writes to the shared stack and heap.
 
 Parent and child can safely share phyical memory
-using page faults and COW fork.  When a
+using copy-on-write fork, driven by page faults.  When a
 CPU cannot translate a virtual address to a physical address, the CPU
 generates a \indextext{page-fault exception}.  RISC-V has three
 different kinds of page fault: load page faults (when a load instruction cannot
@@ -465,45 +468,52 @@ Thus, when the child or parent executes a
 store instruction, the RISC-V CPU raises a page-fault exception. In
 response to this exception, the kernel makes a copy of the page that
 contains the faulted address. It maps one copy read/write in the
-child's address space and one read/write in the parent's address
+child's address space and the other copy read/write in the parent's address
 space.  After updating the page tables, the kernel resumes the
 faulting process at the instruction that caused the fault. Because the
-kernel has updated the page tables, the faulting instruction will now
+kernel has updated the relevant PTE to allow writes,
+the faulting instruction will now
 execute without a fault.
 
 This COW plan works well for \lstinline{fork}, because often the child
 calls \lstinline{exec} immediately after the fork, replacing its
 address space with a new address space.  In that common case, the
-child will experience few page faults, and the kernel can avoid making
-a complete copy.  Furthermore, this features is completely transparent to the
-applications: no modifications to applications are necessary for
-applications to benefit from COW fork.
+child will experience only a few page faults, and the kernel can avoid making
+a complete copy.  Furthermore, COW fork is transparent:
+no modifications to applications are necessary for
+them to benefit.
 
 The combination of page tables and page faults opens up a wide-range
 of interesting possibilities other than COW fork.  Another widely-used
-feature is called \indextext{lazy allocation}, which has two parts to
-it. First, when an application calls \lstinline{sbrk}, the kernel grows
+feature is called \indextext{lazy allocation}, which has two parts.
+First, when an application calls \lstinline{sbrk}, the kernel grows
 the address space, but marks the new addresses as not valid in the
 page table. Second, on a page fault on one of those new addresses,
-the kernel allocates the physical
+the kernel allocates physical
 memory and maps it into the page table.  Since applications often ask
 for more memory than they need, lazy allocation is a win: the kernel
 allocates memory only when the application actually uses it.  Like
-COW-fork, the kernel can implement this feature transparently to
+COW fork, the kernel can implement this feature transparently to
 applications.
 
-Yes another widely-used feature that combines paging and page faults
-is \indextext{paging from disk}.  If several applications use more
-memory than fits in physical memory, the kernel can move some
-application pages to a storage device such as a disk and marking their
-entries in the page table as not valid. If an application uses an
+Yes another widely-used feature that exploits page faults
+is \indextext{paging from disk}.  If applications need more
+memory than the available physical RAM,
+the kernel can evict some pages: write
+them to a storage device such as a disk and mark their
+PTEs as not valid. If an application reads
+or writes an
 evicted page, the CPU will experience a page fault. The kernel can
 then inspect the faulting address. If the address belongs to a page
-that is on disk, the kernel fetches the page from disk, marks the page
-as present, and resumes the application. To make room for the page,
+that is on disk, the kernel allocates a page of physical
+memory,
+reads the page from disk to that memory, updates
+the PTE to be valid and refer to that memory,
+and resumes the application. To make room for the page,
 the kernel may have to evict another page.  This feature requires no
 changes to applications, and works well if applications have locality
-of reference (i.e., they don't use all their memory constantly).
+of reference (i.e., they use only a subset of their memory
+at any given time).
 
 Other features that combine paging and page-fault exceptions include
 automatically extending stacks and memory-mapped files.
@@ -511,12 +521,13 @@ automatically extending stacks and memory-mapped files.
 \section{Real world}
 
 The need for special trampoline pages could be eliminated if kernel
-memory were mapped into every process's user page table. That would
+memory were mapped into every process's user page table (with
+appropriate PTE permission flags). That would
 also eliminate the need for a page table switch when trapping from
 user space into the kernel. That in turn would allow system call
 implementations in the kernel to take advantage of the current
 process's user memory being mapped, allowing kernel code to directly
-dereference user pointers. Many operating systems use these ideas to
+dereference user pointers. Many operating systems have used these ideas to
 increase efficiency. Xv6 avoids them in order to reduce the chances of
 security bugs in the kernel due to inadvertent use of user pointers,
 and to reduce some complexity that would be required to ensure that
