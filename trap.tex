@@ -4,8 +4,8 @@
 \chapter{Traps and system calls}
 \label{CH:TRAP}
 
-There are three situations in which some event causes the CPU to set
-aside its ordinary sequential execution of instructions and forces a
+There are three kinds of event which cause the CPU to set
+aside ordinary execution of instructions and force a
 transfer of control to special code that handles the event. One
 situation is a system call, when a user program 
 executes the {\tt ecall} instruction to ask the kernel to do 
@@ -71,7 +71,8 @@ the reason for the trap.
 \item \indexcode{sscratch}: The kernel places a value here that comes in
   handy at the very start of a trap handler.
 
-\item \indexcode{sstatus}: The SIE bit controls whether device interrupts
+\item \indexcode{sstatus}: The SIE bit in {\tt sstatus}
+  controls whether device interrupts
   are enabled. If the kernel clears SIE, the RISC-V will defer
   device interrupts until the kernel sets SIE. The SPP bit
   indicates whether a trap came from user mode or supervisor
@@ -113,10 +114,11 @@ following for all trap types (other than timer interrupts):
 
 Note that the CPU doesn't switch to the kernel page table, doesn't
 switch to a stack in the kernel, and doesn't save any registers other
-than the {\tt pc}. Kernel software must perform these tasks if necessary.
+than the {\tt pc}. Kernel software must perform these tasks.
 One reason that the CPU does minimal work during a trap is to provide
-flexibility to software; for example, in some situations no page table
-switch is needed, which may increase performance.
+flexibility to software; for example, some operating systems don't
+require a page table switch in some situations, which can increase
+performance.
 
 You might wonder whether the CPU hardware's trap handling sequence
 could be further simplified. For example, suppose that the CPU didn't
@@ -153,10 +155,11 @@ value.
 Because the RISC-V hardware doesn't switch page tables during a trap,
 the user page table must include a mapping for {\tt uservec},
 the trap vector
-instructions that {\tt stvec} points to. Further, {\tt uservec}
+instructions that {\tt stvec} points to. {\tt uservec}
 must switch {\tt
-  satp} to point to the kernel page table, and in order to avoid a
-crash, {\tt uservec} must be mapped at the same address in the
+  satp} to point to the kernel page table;
+in order to continue executing instructions after the switch,
+{\tt uservec} must be mapped at the same address in the
 kernel page table as in the user page table.
 
 Xv6 satisfies these constraints with a \indextext{trampoline} page
@@ -316,8 +319,9 @@ and
 \lstinline{argfd}
 retrieve the 
 \textit{n} 'th 
-system call
-as either an integer, pointer, or a file descriptor.
+system call argument
+from the trap frame
+as an integer, pointer, or a file descriptor.
 They all call {\tt argraw} to retrieve the appropriate saved
 user register
 \lineref{kernel/syscall.c:/^argraw/}.
@@ -388,7 +392,7 @@ device interrrupts and exceptions. It calls
 \lineref{kernel/trap.c:/^devintr/}
 to check for and handle the former.
 If the trap isn't a device interrupt, it must be an exception,
-and that is always a fatal error if it occurs in the kernel;
+and that is always a fatal error if it occurs in the xv6 kernel;
 the kernel calls \lstinline{panic} and stops executing.
 
 If {\tt kerneltrap} was called due to a timer interrupt, and a
@@ -415,7 +419,7 @@ Xv6 sets a CPU's {\tt stvec} to {\tt kernelvec} when that CPU
 enters the kernel from user space; you can see this in {\tt usertrap}
 \lineref{kernel/trap.c:/stvec.*kernelvec/}.
 There's a window of time when the kernel is executing
-but {\tt stvec} has the wrong value, and it's crucial that device
+but {\tt stvec} is set to {\tt uservec}, and it's crucial that device
 interrupts be disabled during that window.
 Luckily the RISC-V always disables interrupts when it starts
 to take a trap, and xv6 doesn't enable them again until
@@ -424,38 +428,40 @@ after it sets {\tt stvec}.
 \section{Page-fault exceptions}
 \label{sec:pagefaults}
 
-Xv6's response to exceptions is quite boring: if the exception happens
-in user space, the kernel kills the faulting process.  If the
-exceptions happens in the kernel, the kernel panics.  Real operating,
-however, respond in much more interesting ways to exceptions. For
-instance, kernels use exceptions due to page faults to implement
-widely-used features, such as \indextext{copy-on-write (COW) fork}.
+Xv6's response to exceptions is quite boring: if an exception happens
+in user space, the kernel kills the faulting process.  If an
+exception happens in the kernel, the kernel panics.  Real operating systems
+respond in much more interesting ways. For
+instance, many kernels use page faults to implement
+virtual memory
+features such as \indextext{copy-on-write (COW) fork}.
 
 To explain copy-on-write fork, consider xv6's \lstinline{fork}. The
 parent creates a new address space for the child as described in
 Chapter~\ref{CH:MEM}. This address space is identical to the
-parent's. It would be nice if the child and parent could share the
-address space, instead of having the parent making a copy of its own
+parent's. It would be nice if the child and parent could share 
+physical memory, instead of having the parent making a copy of its 
 address space using \lstinline{uvmcopy}
 \lineref{kernel/vm.c:/^uvmcopy/}.  The kernel, however, cannot
-unconditionally share the address space between parent and child
-because the parent and child may write to the address space and, if
-the address space is shared, those writes will change the other
-process; that breaks isolation.
+unconditionally share physical memory between parent and child,
+since they would then see each other's memory writes; that would
+rapidly cause them to malfunction.
 
-This challenge can be solved using page faults and COW fork.  When a
+Parent and child can safely share phyical memory
+using page faults and COW fork.  When a
 CPU cannot translate a virtual address to a physical address, the CPU
 generates a \indextext{page-fault exception}.  RISC-V has three
-different page faults: load page fault (when a load instruction cannot
-translate its virtual address), a store page fault (when a store
-instruction cannot translate its virtual address), and an instruction
-page fault (when the address for instruction doesn't translate).  The
+different kinds of page fault: load page faults (when a load instruction cannot
+translate its virtual address), store page faults (when a store
+instruction cannot translate its virtual address), and instruction
+page faults (when the address for an instruction doesn't translate).  The
 value in the \lstinline{scause} register indicates the type of the
 page fault and the \indexcode{stval} register contains the address
 that couldn't be translated.
 
-The basic plan in COW fork is for the parent and child to share all
-pages but mapped read-only.  Thus, when the child or parent executes a
+The basic plan in COW fork is for the parent and child to initially share all
+physical pages, but to map them read-only.
+Thus, when the child or parent executes a
 store instruction, the RISC-V CPU raises a page-fault exception. In
 response to this exception, the kernel makes a copy of the page that
 contains the faulted address. It maps one copy read/write in the
@@ -468,21 +474,22 @@ execute without a fault.
 This COW plan works well for \lstinline{fork}, because often the child
 calls \lstinline{exec} immediately after the fork, replacing its
 address space with a new address space.  In that common case, the
-child will experience no page faults, and the kernel can avoid making
-a copy.  Furthermore, this features is completely transparent to the
+child will experience few page faults, and the kernel can avoid making
+a complete copy.  Furthermore, this features is completely transparent to the
 applications: no modifications to applications are necessary for
 applications to benefit from COW fork.
 
 The combination of page tables and page faults opens up a wide-range
 of interesting possibilities other than COW fork.  Another widely-used
 feature is called \indextext{lazy allocation}, which has two parts to
-it. First, when application calls \lstinline{sbrk}, the kernel grows
+it. First, when an application calls \lstinline{sbrk}, the kernel grows
 the address space, but marks the new addresses as not valid in the
-page table. Second, on a page fault, the kernel allocates the physical
+page table. Second, on a page fault on one of those new addresses,
+the kernel allocates the physical
 memory and maps it into the page table.  Since applications often ask
 for more memory than they need, lazy allocation is a win: the kernel
-allocates memory only when the application is actually using it.  Like
-COW-fork, the kernel can implement this feature transparent to
+allocates memory only when the application actually uses it.  Like
+COW-fork, the kernel can implement this feature transparently to
 applications.
 
 Yes another widely-used feature that combines paging and page faults
