@@ -151,14 +151,19 @@ process's user address space, plus a single page table
 that describes the kernel's address space.
 The kernel configures the layout of its address space to
 give itself
-access to various hardware resources at predictable virtual addresses.
+access to physical memory and
+various hardware resources at predictable virtual addresses.
 Figure~\ref{fig:xv6_layout}
 shows how this layout maps
 kernel virtual addresses to physical addresses.  The file
 \fileref{kernel/memlayout.h}
 declares the constants for xv6's kernel memory layout.
 
-QEMU simulates a computer that includes I/O devices
+QEMU simulates a computer that includes RAM (physical memory) starting
+at physical address \texttt{0x80000000} and continuing through
+at least \texttt{0x86400000}, which xv6 calls \texttt{PHYSTOP}.
+The QEMU simulation also
+includes I/O devices
 such as a disk interface.
 QEMU exposes the device interfaces to software as
 \indextext{memory-mapped}
@@ -171,15 +176,21 @@ with the device hardware rather than with RAM.
 Chapter~\ref{CH:TRAP} explains
 how xv6 interacts with devices.
 
-The kernel uses an identity mapping for most virtual addresses; that
-is, most of the kernel's address space is ``direct-mapped.'' For
-example, the kernel itself is located at \lstinline{KERNBASE} in both
+The kernel gets at RAM and memory-mapped device registers
+using ``direct mapping;'' that is, mapping the resources at
+virtual addresses that are equal to the physical address.
+For
+example, the kernel itself is located at \lstinline{KERNBASE=0x80000000} in both
 the virtual address space and in physical memory.
-This direct mapping helps kernel code that needs to read or write
-physical memory, for example when \lstinline{fork}
-or \lstinline{exec} allocates and initializes user memory:
-the kernel can simply use a physical address
-directly as a virtual address.
+Direct mapping simplifies kernel code that reads or writes
+physical memory. For example, when \lstinline{fork}
+allocates user memory for the child process,
+the allocator returns the physical address of that memory;
+\lstinline{fork} uses that address directly as a virtual
+address when it is copying the parent's user memory to the child.
+
+There are a couple of kernel virtual
+addresses that aren't direct-mapped:
 
 \begin{itemize}
   
@@ -414,8 +425,8 @@ initializes the free list to hold
 every page between the end of the kernel and {\tt PHYSTOP}.
 \lstinline{xv6}
 ought to determine how much physical
-memory is available by parsing configuration information that
-is provide by the hardware.
+memory is available by parsing configuration information 
+provided by the hardware.
 Instead xv6 assumes that the machine has
 128 megabytes of RAM.
 \lstinline{kinit}
@@ -782,7 +793,7 @@ The xv6 kernel's lack of a {\tt malloc}-like allocator that can
 provide memory for small objects prevents the kernel from using
 sophisticated data structures that would require dynamic allocation.
 
-Memory allocation was a hot topic a long time ago, the basic problems being
+Memory allocation is a perennial hot topic, the basic problems being
 efficient use of limited memory and
 preparing for unknown future requests~\cite{knuth}.  Today people care more about speed than
 space efficiency.  In addition, a more elaborate kernel
@@ -808,7 +819,7 @@ to
 and after the call to
 \lstinline{sbrk}.
 How much space has the kernel allocated?  What does the
-\lstinline{pte}
+PTE
 for the new memory contain?
 
 \item Modify xv6 to use super pages for the kernel.
