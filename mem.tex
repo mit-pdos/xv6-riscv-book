@@ -776,17 +776,15 @@ sophisticated use of paging than xv6 by combining paging and
 page-fault exceptions, which we will discuss in
 Chapter~\ref{CH:TRAP}.
 
-Xv6 is simplified by the kernel's use of a direct map between
-virtual and physical addresses, and by its assumption that
-there is physical RAM at address 0x8000000, where the
-kernel expects to be loaded.
-This works with QEMU, but on real hardware it turns out
-to be a bad idea; real hardware places RAM and devices at
-unpredictable physical addresses, so that (for example) there
-might be no RAM at 0x8000000, where xv6 expect to be able
-to store the kernel. More serious operatings systems are
-flexible enough to be able to make use of RAM at arbitrary
-physical addresses.
+Xv6 is simplified by the kernel's use of a direct map between virtual
+and physical addresses, and by its assumption that there is physical
+RAM at address 0x8000000, where the kernel expects to be loaded. This
+works with QEMU, but on real hardware it turns out to be a bad idea;
+real hardware places RAM and devices at unpredictable physical
+addresses, so that (for example) there might be no RAM at 0x8000000,
+where xv6 expect to be able to store the kernel. More serious kernel
+designs exploit the page table to turn arbitrary hardware physical
+memory layouts into predictable kernel virtual address layouts.
 
 RISC-V supports protection at the level of physical addresses,
 but xv6 doesn't use that feature.
