@@ -157,47 +157,30 @@ the UART) or needs immediate attention (as with echoing typed
 characters). This idea is sometimes called \indextext{I/O
   concurrency}.
 
-\section{Interrupts complicate kernel programming}
+\section{Concurrency in drivers}
 
-Interrupts complicate kernel programming because interrupts can be
-delivered at any time and to any of the CPUs of a multi-core machine;
-the PLIC manages this decision. For user code these two issues doesn't
-complicate matters, because the kernel will resume user code at the
-address where it was interrupted, but for kernel code it complicates
-matters.
+You may have noticed calls to {\tt acquire} in {\texttt consoleread}
+and in {\tt consoleintr}. These calls acquire a lock, which protects
+the console driver's data structures from concurrent access.
+There are three concurrency dangers here: two processes on
+different CPUs might call {\tt consoleread} at the same time;
+the hardware might ask a CPU to deliver a console (really 
+UART) interrupt while that CPU is already executing inside
+{\tt consoleread};
+and the hardware might deliver a console interrupt on
+a different CPU while {\tt consoleread} is executing.
+Chapter~\ref{CH:LOCK} explores how locks help in
+these scenarios.
 
-Consider the following hypothetical fragment of code in the kernel:
-\begin{lstlisting}[numbers=left,firstnumber=1]
-  x = 0;
-  if(x = 0)
-     f()
-\end{lstlisting}
-By just reading this code, one might expect that {\tt f} is always
-called. But, interrupts can be delivered at any time and if there was
-interrupt handler that runs the following code:
-\begin{lstlisting}
-  void interrupt() {
-    x = 1;
-  }
-\end{lstlisting}
-then it could happen that {\tt f} will not be called: if the interrupt
-arrives between statements 1 and 2.  If it is important that {\tt f}
-is always called, then the kernel programmer must take extra measures,
-for example, by explicitly turning interrupts off before line 1 and
-re-enabling them after line 3; xv6 provides \lstinline{intr_off} and
-\lstinline{intr_on} for this purpose.  Chapter~\ref{CH:LOCK} explores how to
-provide this kind of atomicity in detail.
-
-Another complication is for code in an interrupt handler itself.  For
-example, when {\tt consoleintr} runs, it may interrupt the process
-reading from the console; or it may arrive on a CPU that is doing
-something entirely unrelated. Thus interrupt handlers are not allowed
-to think about the process or code that they have interrupted.  For
-example, an interrupt handler cannot call {\tt copyout} with the CPU's
-page table because the current CPU may be running with the page table
-of the process to which the input data should be copied.  For this
-reason, interrupt handlers do little work (e.g., copy the input data
-into a buffer) and wakeup top-half code to do the rest.
+Another way in which concurrency requires care in drivers is that one
+process may be waiting for input from a device, but the interrupt
+signaling arrival of the input may arrive when a different process (or
+no process at all) is running. Thus interrupt handlers are not allowed
+to think about the process or code that they have interrupted. For
+example, an interrupt handler cannot safely call {\tt copyout} with
+the current process's page table. Interrupt handlers typically do
+relatively little work (e.g., just copy the input data to a buffer),
+and wake up top-half code to do the rest.
 
 \section{Timer interrupts}
 
