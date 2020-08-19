@@ -80,21 +80,21 @@ implements them, and how it uses them.
 \end{figure}
 
 As an example of why we need locks, consider two processes calling
-{\tt wait} to cleanup their children's address spaces on two different
+{\tt wait} to clean up their children's address spaces on two different
 CPUs.  On each CPU, the kernel will call the kernel memory allocator
 to free the children's pages.  The kernel allocator maintains a linked
 list: \lstinline{kalloc()} \lineref{kernel/kalloc.c:/^kalloc/} pops a
 page of memory from a list of free pages, and \lstinline{kfree()}
 \lineref{kernel/kalloc.c:/^kfree/} pushes a page onto the free list.
-Ideally, we like to run the {\tt kfree}'s of the two parent processes
-in parallel without any coordination between the two processes, but
-this breaks correctness.
+Ideally, we would like the {\tt kfree}s of the two parent processes
+to execute in parallel without either having to wait for the other,
+but this would not be correct given xv6's {\tt kfree} implementation.
 
 Figure~\ref{fig:smp} illustrates the setting in more detail: the
-linked list is in a memory that is shared among two CPUs, which
+linked list is in memory that is shared by the two CPUs, which
 manipulate the linked list using load and store instructions.  (In
-reality, the processors have caches, but conceptually the
-multiprocessor systems behaves as if it has a single, shared memory.)
+reality, the processors have caches, but conceptually 
+multiprocessor systems behave as if there were a single, shared memory.)
 If there were no concurrent
 requests, you might implement a list \lstinline{push} operation as
 follows:
