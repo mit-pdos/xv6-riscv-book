@@ -38,9 +38,10 @@ logical page table.}
 \label{fig:riscv_address}
 \end{figure}
 
-xv6 runs on Sv39 RISC-V, which has 39-bit virtual
-addresses. The top 25 bits of a
-64-bit virtual address are unused.  In this Sv39 configuration, a
+xv6 runs on Sv39 RISC-V, which means that only the bottom 39
+bits of a 64-bit virtual address are used; the top 25 bits
+are not used.
+In this Sv39 configuration, a
 RISC-V page table is logically an array of $2^{27}$ (134,217,728)
 \indextext{page table entries (PTEs)}.  Each PTE contains a 44-bit
 physical page number (PPN) and some flags. The paging hardware
@@ -65,8 +66,9 @@ bytes.  Such a chunk is called a \indextext{page}.
 
 In Sv39 RISC-V, the top 25 bits of a virtual address are not
 used for translation; in the future, RISC-V may use those bits to
-define more levels of translation.  Similarly, the physical address
-has room for growth; in Sv39 it is 56 bits, but could grow to 64 bits.
+define more levels of translation.  The physical address also
+has room for growth: there is room in the PTE format for the
+physical page number to grow by another 10 bits.
 
 As 
 Figure~\ref{fig:riscv_pagetable} shows,
