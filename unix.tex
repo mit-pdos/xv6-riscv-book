@@ -127,7 +127,7 @@ among the set of processes waiting to execute.
 When a process is not executing, xv6 saves its CPU registers,
 restoring them when it next runs the process.
 The kernel associates a process identifier, or
-\indexcode{pid},
+\indexcode{PID},
 with each process.
 
 \begin{figure}[t]
@@ -135,29 +135,30 @@ with each process.
 \begin{tabular}{ll}
 {\bf System call} & {\bf Description} \\
 \midrule
-fork() & Create a process \\
-exit(xstatus) & Terminate the current process with xstatus indicating success or failure \\
-wait(*xstatus) & Wait for a child process to exit and copy the child's exit status to xstatus \\
-kill(pid) & Terminate process pid \\
-getpid() & Return the current process's pid \\
-sleep(n) & Sleep for n clock ticks \\
-exec(filename, *argv) & Load a file and execute it \\
-sbrk(n) & Grow process's memory by n bytes \\
-open(filename, flags) & Open a file; the flags indicate read/write; returns a file descriptor \\
-read(fd, buf, n) & Read n bytes from an open file into buf \\
-write(fd, buf, n) & Write n bytes to an open file \\
-close(fd) & Release open file fd \\
-dup(fd) & Return a new file descriptor referring to the same file as fd \\
-pipe(*p) & Create a pipe and return file descriptors in p[0] and p[1] \\
-chdir(dirname) & Change the current directory \\
-mkdir(dirname) & Create a new directory \\
-mknod(name, major, minor) & Create a device file \\
-fstat(fd, *stat) & Return info about an open file \\
-stat(filename, *stat) & Return info about a named file \\
-link(name1, name2) & Create another name (name2) for the file name1 \\
-unlink(filename) & Remove a file \\
+int fork() & Create a process, return child's PID. \\
+int exit(int status) & Terminate the current process; status reported to wait(). No return. \\
+int wait(int *status) & Wait for a child to exit; exit status in *status; returns child PID. \\
+int kill(int pid) & Terminate process PID. Returns 0, or -1 for error. \\
+int getpid() & Return the current process's PID. \\
+int sleep(int n) & Sleep for n clock ticks. \\
+int exec(char *file, char *argv[]) & Load a file and execute it with arguments; only returns if error. \\
+char *sbrk(int n) & Grow process's memory by n bytes. Returns start of new memory. \\
+int open(char *file, int flags) & Open a file; flags indicate read/write; returns an fd (file descriptor). \\
+int write(int fd, char *buf, int n) & Write n bytes from buf to file descriptor fd; returns n. \\
+int read(int fd, char *buf, int n) & Read n bytes into buf; returns number read; or 0 if end of file. \\
+int close(int fd) & Release open file fd. \\
+int dup(int fd) & Return a new file descriptor referring to the same file as fd.\\
+int pipe(int p[]) & Create a pipe, put read/write file descriptors in p[0] and p[1]. \\
+int chdir(char *dir) & Change the current directory. \\
+int mkdir(char *dir) & Create a new directory. \\
+int mknod(char *file, int, int) & Create a device file. \\
+int fstat(int fd, struct stat *st) & Return info about an open file. \\
+int stat(char *file, struct stat *st) & Return info about a named file. \\
+int link(char *file1, char *file2) & Create another name (file2) for the file file1. \\
+int unlink(char *file) & Remove a file. \\
 \end{tabular}
-\caption{Xv6 system calls}
+\caption{Xv6 system calls. If not otherwise stated, these calls return
+0 for no error, and -1 if there's an error.}
 \label{fig:api}
 \end{figure}
 
@@ -174,7 +175,7 @@ as the calling process, called the
 returns in both the parent and the child.
 In the parent,
 \indexcode{fork}
-returns the child's pid;
+returns the child's PID;
 in the child, \lstinline{fork} returns zero.
 For example, consider the following program fragment written in the C
 programming language~\cite{kernighan}:
@@ -199,12 +200,14 @@ Exit takes an integer status argument,
 conventionally 0 to indicate success and 1 to indicate failure.
 The
 \indexcode{wait}
-system call returns the pid of an exited child of the
+system call returns the PID of an exited (or killed) child of the
 current process and copies the exit status of the child to the address
 passed to wait; if none of the caller's children
 has exited,
 \indexcode{wait}
 waits for one to do so.
+If the caller has no children, \lstinline{wait} immediately
+returns -1.
 If the parent doesn't care about the exit status of a child, it can
 pass a 0 address to
 \lstinline{wait}.
@@ -529,6 +532,21 @@ child shell and that
 will call
 \lstinline{exec}
 to load the new program.
+
+The second argument to \lstinline{open} consists of a set of
+flags, expressed as bits, that control what \lstinline{open}
+does. The possible values are
+\lstinline{O_RDONLY},
+\lstinline{O_WRONLY},
+\lstinline{O_RDWR},
+\lstinline{O_CREATE}, and
+\lstinline{O_TRUNC},
+which instruct \lstinline{open} to
+open the file for reading,
+or for writing,
+or for both reading and writing,
+to create the file if it doesn't exist,
+and to truncate the file to zero length.
 
 Now it should be clear why it is helpful that
 \lstinline{fork}
