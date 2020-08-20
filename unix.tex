@@ -140,7 +140,7 @@ int exit(int status) & Terminate the current process; status reported to wait().
 int wait(int *status) & Wait for a child to exit; exit status in *status; returns child PID. \\
 int kill(int pid) & Terminate process PID. Returns 0, or -1 for error. \\
 int getpid() & Return the current process's PID. \\
-int sleep(int n) & Sleep for n clock ticks. \\
+int sleep(int n) & Pause for n clock ticks. \\
 int exec(char *file, char *argv[]) & Load a file and execute it with arguments; only returns if error. \\
 char *sbrk(int n) & Grow process's memory by n bytes. Returns start of new memory. \\
 int open(char *file, int flags) & Open a file; flags indicate read/write; returns an fd (file descriptor). \\
