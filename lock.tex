@@ -80,14 +80,16 @@ implements them, and how it uses them.
 \end{figure}
 
 As an example of why we need locks, consider two processes calling
-{\tt wait} to clean up their children's address spaces on two different
-CPUs.  On each CPU, the kernel will call the kernel memory allocator
+{\tt wait} on two different
+CPUs.  {\tt wait} frees the child's memory.
+Thus
+on each CPU, the kernel will call {\tt kfree}
 to free the children's pages.  The kernel allocator maintains a linked
 list: \lstinline{kalloc()} \lineref{kernel/kalloc.c:/^kalloc/} pops a
 page of memory from a list of free pages, and \lstinline{kfree()}
 \lineref{kernel/kalloc.c:/^kfree/} pushes a page onto the free list.
-Ideally, we would like the {\tt kfree}s of the two parent processes
-to execute in parallel without either having to wait for the other,
+For best performance, we might hope that the {\tt kfree}s of the two parent processes
+would execute in parallel without either having to wait for the other,
 but this would not be correct given xv6's {\tt kfree} implementation.
 
 Figure~\ref{fig:smp} illustrates the setting in more detail: the
@@ -250,10 +252,10 @@ benefit from running them on different CPUs.  We say that multiple
 processes \indextext{conflict} if they want the same lock at the same
 time, or that the lock experiences \indextext{contention}.  A major
 challenge in kernel design is to avoid lock contention.  Xv6 does
-little of that, but a sophisticated kernels, for example, re-organize
-data structures in order to avoid lock contention.  In the list
+little of that, but sophisticated kernels organize
+data structures and algorithms specifically to avoid lock contention.  In the list
 example, a kernel may maintain a free list per CPU and only touch
-another CPU's free list, if the CPU's list is empty and it must steal
+another CPU's free list if the CPU's list is empty and it must steal
 memory from another CPU.  Other use cases may require more
 complicated designs.
 
@@ -389,15 +391,13 @@ instruction.
 \section{Code: Using locks}
 %% 
 Xv6 uses locks in many places to avoid race conditions.
-To see a simple example much like
-\lstinline{push}
-above,
-look at
+As described above,
 \lstinline{kalloc}
 \lineref{kernel/kalloc.c:/^kalloc/}
 and
-\lstinline{free}
-\lineref{kernel/kalloc.c:/^free/}.
+\lstinline{kfree}
+\lineref{kernel/kalloc.c:/^kfree/}
+form a good example.
 Try Exercises 1 and 2 to see what happens if those
 functions omit the locks.
 You'll likely find that it's difficult to trigger incorrect
