@@ -152,8 +152,8 @@ int pipe(int p[]) & Create a pipe, put read/write file descriptors in p[0] and p
 int chdir(char *dir) & Change the current directory. \\
 int mkdir(char *dir) & Create a new directory. \\
 int mknod(char *file, int, int) & Create a device file. \\
-int fstat(int fd, struct stat *st) & Return info about an open file. \\
-int stat(char *file, struct stat *st) & Return info about a named file. \\
+int fstat(int fd, struct stat *st) & Place info about an open file into *st. \\
+int stat(char *file, struct stat *st) & Place info about a named file into *st. \\
 int link(char *file1, char *file2) & Create another name (file2) for the file file1. \\
 int unlink(char *file) & Remove a file. \\
 \end{tabular}
