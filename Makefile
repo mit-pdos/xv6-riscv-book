@@ -16,17 +16,19 @@ TEX=\
 	$(T)/sum.tex\
 
 all: book.pdf
-.PHONY: all
+.PHONY: all src clean
 
-$(T)/%.tex: %.tex
+$(T)/%.tex: %.tex | src
 	mkdir -p latex.out
 	./lineref $(notdir $@) $(SRC) > $@
 
 src:
 	if [ ! -d $(SRC) ]; then \
 		git clone git@github.com:mit-pdos/xv6-riscv.git $(SRC) ; \
+	else \
+		git -C $(SRC) pull ; \
 	fi; \
-	cd $(SRC); git pull; true
+	true
 
 book.pdf: src book.tex $(TEX)
 	pdflatex book.tex
