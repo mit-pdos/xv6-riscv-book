@@ -16,9 +16,9 @@ TEX=\
 	$(T)/sum.tex\
 
 all: book.pdf
-.PHONY: all
+.PHONY: all src clean
 
-$(T)/%.tex: %.tex
+$(T)/%.tex: %.tex | src
 	mkdir -p latex.out
 	./lineref $(notdir $@) $(SRC) > $@
 
