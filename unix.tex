@@ -535,7 +535,8 @@ to load the new program.
 
 The second argument to \lstinline{open} consists of a set of
 flags, expressed as bits, that control what \lstinline{open}
-does. The possible values are
+does. The possible values are defined in the file control (fcntl) header
+\linerefs{kernel/fcntl.h:/RDONLY/,/TRUNC/}:
 \lstinline{O_RDONLY},
 \lstinline{O_WRONLY},
 \lstinline{O_RDWR},
