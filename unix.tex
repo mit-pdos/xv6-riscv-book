@@ -166,17 +166,19 @@ A process may create a new process using the
 \indexcode{fork}
 system call.
 \lstinline{Fork}
-creates a new process, called the 
-\indextext{child process}, 
-with exactly the same memory contents
-as the calling process, called the 
-\indextext{parent process}.
+gives the new process exactly the same memory contents
+(both instructions and data)
+as the calling process.
 \lstinline{Fork}
-returns in both the parent and the child.
-In the parent,
-\indexcode{fork}
-returns the child's PID;
-in the child, \lstinline{fork} returns zero.
+returns in both the original and new processes.
+In the original process, \lstinline{fork} returns the new process's
+PID.
+In the new process, \lstinline{fork} returns zero.
+The original and new processes are often called the
+\indextext{parent}
+and
+\indextext{child}.
+
 For example, consider the following program fragment written in the C
 programming language~\cite{kernighan}:
 \begin{lstlisting}[]
