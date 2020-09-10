@@ -24,7 +24,7 @@ $(T)/%.tex: %.tex | src
 
 src:
 	if [ ! -d $(SRC) ]; then \
-		git clone git@github.com:mit-pdos/xv6-riscv.git $(SRC) ; \
+		git clone https://github.com/mit-pdos/xv6-riscv.git $(SRC) ; \
 	else \
 		git -C $(SRC) pull ; \
 	fi; \
