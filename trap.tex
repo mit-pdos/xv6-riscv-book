@@ -485,11 +485,20 @@ A straightforward implementation of this would not work, however,
 since it would cause the parent and child to disrupt each other's
 execution with their writes to the shared stack and heap.
 
-Parent and child can safely share phyical memory
-using copy-on-write fork, driven by page faults.  When a
-CPU cannot translate a virtual address to a physical address, the CPU
-generates a \indextext{page-fault exception}.  RISC-V has three
-different kinds of page fault: load page faults (when a load instruction cannot
+Parent and child can safely share physical memory by
+appropriate use of page-table permissions and page faults.
+The CPU raises a
+\indextext{page-fault exception}
+when a virtual address is used that has no mapping
+in the page table, or a mapping whose \lstinline{PTE_V}
+flag is clear, or a mapping whose permission bits
+(\lstinline{PTE_R},
+\lstinline{PTE_W},
+\lstinline{PTE_X},
+\lstinline{PTE_U})
+forbid the operation being attempted.
+RISC-V distinguishes three
+kinds of page fault: load page faults (when a load instruction cannot
 translate its virtual address), store page faults (when a store
 instruction cannot translate its virtual address), and instruction
 page faults (when the address for an instruction doesn't translate).  The
@@ -498,7 +507,8 @@ page fault and the \indexcode{stval} register contains the address
 that couldn't be translated.
 
 The basic plan in COW fork is for the parent and child to initially share all
-physical pages, but to map them read-only.
+physical pages, but to map them read-only (with the
+\lstinline{PTE_W} flag clear).
 Thus, when the child or parent executes a
 store instruction, the RISC-V CPU raises a page-fault exception. In
 response to this exception, the kernel makes a copy of the page that
@@ -510,21 +520,31 @@ kernel has updated the relevant PTE to allow writes,
 the faulting instruction will now
 execute without a fault.
 
-This COW plan works well for \lstinline{fork}, because often the child
-calls \lstinline{exec} immediately after the fork, replacing its
-address space with a new address space.  In that common case, the
-child will experience only a few page faults, and the kernel can avoid making
-a complete copy.  Furthermore, COW fork is transparent:
+Copy-on-write makes \lstinline{fork} faster, since \lstinline{fork}
+need not copy memory. Some of the memory will have to be copied
+later, when written, but it's often the case that most of the
+memory need never be copied.
+A common example is
+\lstinline{fork} followed by \lstinline{exec}:
+a few pages of stack may be written between the
+two system calls, but then the \lstinline{exec} frees
+most of the child memory inherited from the parent.
+Copy-on-write \lstinline{fork} eliminates the need to
+copy this memory.
+Furthermore, COW fork is transparent:
 no modifications to applications are necessary for
 them to benefit.
 
-The combination of page tables and page faults opens up a wide-range
-of interesting possibilities other than COW fork.  Another widely-used
+The combination of page tables and page faults opens up a wide range
+of interesting possibilities in addition to COW fork.  Another widely-used
 feature is called \indextext{lazy allocation}, which has two parts.
-First, when an application calls \lstinline{sbrk}, the kernel grows
-the address space, but marks the new addresses as not valid in the
-page table. Second, on a page fault on one of those new addresses,
-the kernel allocates physical
+First, when an application asks for more memory by
+calling \lstinline{sbrk}, the kernel 
+notes the increase in size,
+but does not allocate physical memory and does not create PTEs
+for the new range of virtual addresses.
+Second, on a page fault on one of those new addresses,
+the kernel allocates a page of physical
 memory and maps it into the page table.  Since applications often ask
 for more memory than they need, lazy allocation is a win: the kernel
 allocates memory only when the application actually uses it.  Like
