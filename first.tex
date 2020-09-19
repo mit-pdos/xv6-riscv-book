@@ -259,12 +259,46 @@ accessing device hardware, etc.  This organization allows the kernel to be
 relatively simple, as most of the operating system
 resides in user-level servers.
 
+In the real world, both monolithic kernels and microkernels are
+popular. Many
+Unix kernels are monolithic. For example, Linux has a monolithic kernel,
+although some OS functions run as user-level servers (e.g., the windowing
+system).  Linux delivers high performance to OS-intensive applications, partially
+because the subsystems of the kernel can be tightly integrated.
+
+Operating systems such as Minix, L4, and QNX are organized as a microkernel with
+servers, and have seen wide deployment in embedded settings.  A
+variant of L4, seL4, is small enough that it has been verified for
+memory safety and other security properties~\cite{sel4}.
+
+There is much debate among developers of operating systems which
+organization is better, and there is no conclusive evidence one way or
+the other.  Furthermore, it depends much on what ``better'' means:
+faster performance, smaller code size, reliability of the kernel,
+reliability of the complete operating system (inclusing user-level
+services), etc.
+
+There are also practical considerations that may be more important
+than the question of which organization.  Some operating systems
+have a microkernel but run some of the user-level services in kernel
+space for performance reasons.  Some operating systems have monolithic
+kernels because that is how they started and there is little incentive
+to move to a pure microkernel organization, because new features may
+be more important than rewriting the existing operating system to fit a microkernel
+design.
+
+From this book's perspective, microkernel and monolithic operating
+systems share many key ideas.  They implement system calls, they use
+page tables, they handle interrupts, they support processes, they use
+locks for concurrency control, they implement a file system,
+etc. This book focuses on these core ideas.
+
 Xv6 is
 implemented as a monolithic kernel, like most Unix operating systems.
 Thus, the xv6 kernel interface corresponds to the operating system
 interface, and the kernel implements the complete operating system.  Since 
 xv6 doesn't provide many services, its kernel is smaller than some
-microkernels, but conceptually xv6 is monolithic.
+microkernels, but conceptually xv6 is monolithic.  
 
 \section{Code: xv6 organization}
 
@@ -553,12 +587,6 @@ The system is up.
 \section{Real world}
 %% 
 
-In the real world, one can find both monolithic kernels and microkernels. Many
-Unix kernels are monolithic. For example, Linux has a monolithic kernel,
-although some OS functions run as user-level servers (e.g., the windowing
-system).  Kernels such as L4, Minix, and QNX are organized as a microkernel with
-servers, and have seen wide deployment in embedded settings.
-
 Most operating systems have adopted the process concept, and most
 processes look similar to xv6's.  Modern operating systems, however,
 support several threads within a process, to allow a single process to
@@ -576,16 +604,8 @@ a process threads share.
 
 \begin{enumerate}
 
-\item You can use gdb to observe the very first kernel-to-user
-transition. Run {\tt make qemu-gdb}.
-In another window, in the same directory, run {\tt gdb}.
-Type the gdb command {\tt break *0x3ffffff10e}, which sets
-a breakpoint at the {\tt sret} instruction in the kernel
-that jumps into user space. Type the {\tt continue} gdb command.
-gdb should stop at the breakpoint, about to
-execute {\tt sret}. Type {\tt stepi}. gdb should now
-indicate that it is executing at address 0x0, which is
-in user space at the start of {\tt initcode.S}.
+\item Add a system call to xv6
+  that returns the amount of free memory available.
 
 % break *0x3ffffff000
 % disas 0x3ffffff000,+8
