@@ -469,7 +469,15 @@ xv6 causes the paging hardware to use a process's
 \lstinline{p->pagetable}
 when executing that process in user space.
 A process's page table also serves as the record of the
-addresses of the physical pages allocated to store the process's memory.
+addresses of the physical pages allocated to store the process's
+memory.
+
+In summary, a process bundles two design ideas: an address space to
+give a process the illusion of its own memory, and, a thread, to give
+the process the illusion of its own CPU.  In xv6, a process consists
+of one address space and one thread.  In real operating systems a
+process may have more than one thread to take advantage of multiple CPUs.
+
 %% 
 \section{Code: starting xv6, the first process and system call}
 %% 
