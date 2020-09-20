@@ -153,10 +153,12 @@ Each CPU has its own \texttt{satp} so that different CPUs can run
 different processes, each with a private address space described by
 its own page table.
 
-Since the page directories are in physical memory, the kernel can map
-the page directories into its page table.  Once they are mapped, the
-kernel can program the content of a PTE in a page directory by
-executing a store instruction to the address of the PTE in memory.
+Typically a kernel maps all of physical memory into its page table so
+that it can read and write any location in physical memory using
+load/store instructions.  Since the page directories are in physical
+memory, the kernel can program the content of a PTE in a page
+directory by writing to the virtual address of the PTE using a
+standard store instruction.
 
 A few notes about terms.
 Physical memory refers to storage cells in DRAM.
