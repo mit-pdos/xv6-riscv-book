@@ -579,6 +579,20 @@ automatically extending stacks and memory-mapped files.
 
 \section{Real world}
 
+The trampoline and trapframe may seem excessively complex. A driving
+force is that the RISC-V intentionally does as little as it can when
+forcing a trap, to allow the possibility of very fast trap handling,
+which turns out to be important. As a result, the first few
+instructions of the kernel trap handler effectively have to execute in
+the user environment: the user page table, and user register contents.
+And the trap handler is initially ignorant of useful facts such as the
+identity of the process that's running or the address of the kernel
+page table. A solution is possible because RISC-V provides protected
+places in which the kernel can stash away information before entering
+user space: the {\tt sscratch} register, and user page table entries
+that point to kernel memory but are protected by \lstinline{PTE_U}.
+Xv6's trampoline and trapframe exploit these RISC-V features.
+
 The need for special trampoline pages could be eliminated if kernel
 memory were mapped into every process's user page table (with
 appropriate PTE permission flags). That would
