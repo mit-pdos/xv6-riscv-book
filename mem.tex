@@ -86,9 +86,20 @@ tree, and the bottom 9 bits to select the final PTE.
 If any of the three PTEs required to translate an address
 is not present, the paging hardware raises a \indextext{page-fault exception}, leaving it up
 to the kernel to handle the exception (see Chapter~\ref{CH:TRAP}).
-This three-level structure allows a page table to omit entire page
-table pages in the common case in which large ranges of virtual
-addresses have no mappings.
+
+The three-level structure of Figure~\ref{fig:riscv_pagetable} allows a
+memory-efficient way of recording PTEs, compared to the single-level
+design of Figure~\ref{fig:riscv_address}.  In the common case in which
+large ranges of virtual addresses have no mappings, the three-level
+structure can omit entire page directories.  For example, if an
+application uses only a few pages starting at address zero, then the
+entries 1 through 511 of the top-level page directory are invalid, and
+the kernel doesn't have to allocate pages those for 511 intermediate
+page directories.  Furthermore, the kernel also doesn't have to
+allocate pages for the bottom-level page directories for those 511
+intermediate page directories. So, in this example, the three-level
+design saves 511 pages for intermediate page directories and
+$511\times512$ pages for bottom-level page directories.
 
 Each PTE contains flag bits that tell the paging hardware
 how the associated virtual address is allowed to be used.
