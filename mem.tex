@@ -108,6 +108,12 @@ intermediate page directories. So, in this example, the three-level
 design saves 511 pages for intermediate page directories and
 $511\times512$ pages for bottom-level page directories.
 
+A potential downside of the three-level structure compared to a single
+level is that the CPU must perform a lookup in three page
+directories to determine the physical address for a virtual address.
+To avoid this cost, a RISC-V CPU caches page table entries in a
+\indextext{Translation Look-aside Buffer (TLB)}.
+
 Each PTE contains flag bits that tell the paging hardware
 how the associated virtual address is allowed to be used.
 \indexcode{PTE_V}
@@ -387,6 +393,10 @@ xv6 executes {\tt sfence.vma} in {\tt kvminithart}  after reloading the
 \texttt{satp} register, and in the trampoline code that
 switches to a user page table before returning to user space
 \lineref{kernel/trampoline.S:/sfence.vma/}.
+
+To avoid flushing the complete TLB, RISC-V CPUs may support address
+space identifiers (ASIDs)~\cite{riscv:priv}.  The kernel can then
+flush just the TLB entries for a particular address space.
 
 \section{Physical memory allocation}
 
