@@ -9,16 +9,18 @@
 \chapter{Page tables}
 \label{CH:MEM}
 
-Page tables are the mechanism through which the operating system
-provides each process with its own private address space and memory.
-Page tables determine what memory addresses mean, and what parts of
-physical memory can be accessed. They allow xv6 to isolate different
-process's address spaces and to multiplex them onto a single physical
-memory. Page tables also provide a level of indirection that allows xv6 to
-perform a few tricks: mapping the same memory (a trampoline page) in
-several address spaces, and guarding kernel and user stacks with an
-unmapped page. The rest of this chapter explains the page tables that
-the RISC-V hardware provides and how xv6 uses them.
+Page tables are the most popular mechanism through which the operating
+system provides each process with its own private address space and
+memory.  Page tables determine what memory addresses mean, and what
+parts of physical memory can be accessed. They allow xv6 to isolate
+different process's address spaces and to multiplex them onto a single
+physical memory. Page tables are a popular design because they provide
+a level of indirection that allow operating systems to perform many
+tricks. xv6 performs a few tricks: mapping the same memory
+(a trampoline page) in several address spaces, and guarding kernel and
+user stacks with an unmapped page. The rest of this chapter explains
+the page tables that the RISC-V hardware provides and how xv6 uses
+them.
 
 %% 
 \section{Paging hardware}
@@ -64,11 +66,16 @@ bytes.  Such a chunk is called a \indextext{page}.
 \label{fig:riscv_pagetable}
 \end{figure}
 
-In Sv39 RISC-V, the top 25 bits of a virtual address are not
-used for translation; in the future, RISC-V may use those bits to
-define more levels of translation.  The physical address also
-has room for growth: there is room in the PTE format for the
-physical page number to grow by another 10 bits.
+In Sv39 RISC-V, the top 25 bits of a virtual address are not used for
+translation. The physical address also has room for growth: there is
+room in the PTE format for the physical page number to grow by another
+10 bits.  The designers of RISC-V chose these numbers based on
+technology predictions.  $2^{39}$ bytes is 512 GB, which should be
+enough address space for applications running on RISC-V
+computers. $2^{56}$ is enough physical memory space for the near
+future to fit may I/O devices and DRAM chips. If
+more is needed, the RISC-V designers have defined Sv48 with 48-bit
+virtual addresses~\cite{riscv:priv}.
 
 As 
 Figure~\ref{fig:riscv_pagetable} shows,
