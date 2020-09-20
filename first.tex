@@ -406,8 +406,11 @@ Thus, the maximum address is $2^{38}-1$ =
 0x3fffffffff, which is \lstinline{MAXVA}~\lineref{kernel/riscv.h:/MAXVA/}.
 At the top of the address space xv6 reserves a page
 for a \indextext{trampoline} and a page mapping
-the process's \indextext{trapframe}
-to switch to the kernel, as we will explain in Chapter~\ref{CH:TRAP}.
+the process's \indextext{trapframe}.  Xv6 uses these two pages
+to transition into the kernel and back;
+the trampoline page contains the code to transition in and out
+of the kernel and mapping the trapframe is necessary to save/restore the
+state of the user process, as we will explain in Chapter~\ref{CH:TRAP}.
 
 The xv6 kernel maintains many pieces of state for each process,
 which it gathers into a
