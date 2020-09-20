@@ -79,7 +79,8 @@ virtual addresses~\cite{riscv:priv}.
 
 As 
 Figure~\ref{fig:riscv_pagetable} shows,
-the actual translation happens in three steps.  A page table is stored
+a RISC-V CPU translates a virtual address into a physical in
+three steps.  A page table is stored
 in physical memory as a three-level tree.
 The root of the tree is a
 4096-byte page-table page that contains 512 PTEs, which contain the physical
@@ -89,6 +90,8 @@ hardware uses the top 9 bits of the 27 bits to select a PTE in the
 root page-table page, the middle 9 bits to select a PTE in a page-table page in the
 next level of the
 tree, and the bottom 9 bits to select the final PTE.
+(In Sv48 RISC-V a page table has four levels, and bits 39 through 47
+of a virtual address index into the top-level.)
 
 If any of the three PTEs required to translate an address
 is not present, the paging hardware raises a \indextext{page-fault exception}, leaving it up
@@ -108,10 +111,12 @@ intermediate page directories. So, in this example, the three-level
 design saves 511 pages for intermediate page directories and
 $511\times512$ pages for bottom-level page directories.
 
-A potential downside of the three-level structure compared to a single
-level is that the CPU must perform a lookup in three page
-directories to determine the physical address for a virtual address.
-To avoid this cost, a RISC-V CPU caches page table entries in a
+Although a CPU walks the three-level structure in hardware as part of
+executing a load or store instruction, a potential downside of three
+levels is that the CPU must load three PTEs from memory to perform the
+translation of the virtual address in the load/store instruction to a
+physical address.  To avoid the cost of loading PTEs from physical
+memory, a RISC-V CPU caches page table entries in a
 \indextext{Translation Look-aside Buffer (TLB)}.
 
 Each PTE contains flag bits that tell the paging hardware
