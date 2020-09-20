@@ -490,7 +490,7 @@ appropriate use of page-table permissions and page faults.
 The CPU raises a
 \indextext{page-fault exception}
 when a virtual address is used that has no mapping
-in the page table, or a mapping whose \lstinline{PTE_V}
+in the page table, or has a mapping whose \lstinline{PTE_V}
 flag is clear, or a mapping whose permission bits
 (\lstinline{PTE_R},
 \lstinline{PTE_W},
@@ -501,24 +501,28 @@ RISC-V distinguishes three
 kinds of page fault: load page faults (when a load instruction cannot
 translate its virtual address), store page faults (when a store
 instruction cannot translate its virtual address), and instruction
-page faults (when the address for an instruction doesn't translate).  The
+page faults (when the address in the program counter doesn't translate).  The
 value in the \lstinline{scause} register indicates the type of the
 page fault and the \indexcode{stval} register contains the address
 that couldn't be translated.
 
-The basic plan in COW fork is for the parent and child to initially share all
-physical pages, but to map them read-only (with the
-\lstinline{PTE_W} flag clear).
-Thus, when the child or parent executes a
-store instruction, the RISC-V CPU raises a page-fault exception. In
-response to this exception, the kernel makes a copy of the page that
-contains the faulted address. It maps one copy read/write in the
-child's address space and the other copy read/write in the parent's address
-space.  After updating the page tables, the kernel resumes the
-faulting process at the instruction that caused the fault. Because the
-kernel has updated the relevant PTE to allow writes,
-the faulting instruction will now
-execute without a fault.
+The basic plan in COW fork is for the parent and child to initially
+share all physical pages, but for each to map them read-only (with the
+\lstinline{PTE_W} flag clear). Thus, when the child or parent first
+writes a given page,
+the RISC-V CPU raises a page-fault exception. In
+response to this exception, the kernel makes a copy of the physical
+page that contains the faulted address. It maps that copy read/write
+in the faulting process's page table, and then resumes the faulting
+process at the instruction that caused the fault. Because the kernel
+has updated the relevant PTE to allow writes, the re-executed instruction
+will now execute without a fault. Copy-on-write requires book-keeping
+to help decide when physical pages can be freed, since each page can
+be referenced by a varying number of page tables depending on the history of
+forks, page faults, execs, and exits. This book-keeping allows
+an important optimization: if a process incurs a store page
+fault and the physical page is only referred to from that process's
+page table, no copy is needed.
 
 Copy-on-write makes \lstinline{fork} faster, since \lstinline{fork}
 need not copy memory. Some of the memory will have to be copied
@@ -526,11 +530,11 @@ later, when written, but it's often the case that most of the
 memory need never be copied.
 A common example is
 \lstinline{fork} followed by \lstinline{exec}:
-a few pages of stack may be written between the
-two system calls, but then the \lstinline{exec} frees
-most of the child memory inherited from the parent.
+a few pages may be written after the \lstinline{fork},
+but then the child's \lstinline{exec} releases
+the bulk of the memory inherited from the parent.
 Copy-on-write \lstinline{fork} eliminates the need to
-copy this memory.
+ever copy this memory.
 Furthermore, COW fork is transparent:
 no modifications to applications are necessary for
 them to benefit.
