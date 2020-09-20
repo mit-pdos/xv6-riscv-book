@@ -191,18 +191,22 @@ the
 An application that wants to invoke a kernel function (e.g., the
 \lstinline{read}
 system call in xv6) must 
-transition to the kernel.  CPUs provide a special instruction that switches the
+transition to the kernel; an application \emph{cannot} invoke a kernel
+function directly.  CPUs provide a special instruction that switches the
 CPU from user mode to supervisor mode and enters the kernel at an entry point
 specified by the kernel.  (RISC-V
 provides the 
 \indexcode{ecall}
 instruction for this purpose.)  Once the CPU has switched to supervisor mode,
-the kernel can then validate the arguments of the system call, decide whether
-the application is allowed to perform the requested operation, and then deny it
+the kernel can then validate the arguments of the system call (e.g.,
+check if the address passed to the system call is part of the application's memory), decide whether
+the application is allowed to perform the requested operation (e.g.,
+check if the application is allowed to write the specified file), and then deny it
 or execute it.  It is important that the kernel control the entry point for
 transitions to supervisor mode; if the application could decide the kernel entry
 point, a malicious application could, for example, enter the kernel at a point where the
 validation of arguments is skipped.
+
 %% 
 \section{Kernel organization}
 %% 
@@ -464,7 +468,7 @@ when executing that process in user space.
 A process's page table also serves as the record of the
 addresses of the physical pages allocated to store the process's memory.
 %% 
-\section{Code: starting xv6 and the first process}
+\section{Code: starting xv6, the first process and system call}
 %% 
 To make xv6 more concrete, we'll outline how the kernel starts and
 runs the first process. The subsequent chapters will describe the
@@ -562,16 +566,23 @@ it creates the first process by calling
 \lstinline{userinit}
 \lineref{kernel/proc.c:/^userinit/}.
 The first process executes a small program written in RISC-V assembly,
+make makes the first system call in xv6.
 \indexcode{initcode.S} 
-\lineref{user/initcode.S:1},
-which re-enters the kernel by invoking the
-\lstinline{exec}
-system call.
-As we saw in Chapter~\ref{CH:UNIX}, 
-\indexcode{exec}
-replaces the memory and registers of the
-current process with a new program (in this case,
-\indexcode{/init}).
+\lineref{user/initcode.S:3} loads the number for the \lstinline{exec}
+system call, \lstinline{SYS_EXEC}
+\lineref{kernel/syscall.h:/exec/},
+into
+register {\tt a7},
+and then calls \lstinline{ecall} to re-enter the kernel.
+
+The kernel uses the number in register {\tt a7} in \lstinline{syscall}
+\lineref{kernel/syscall.c:/^syscall/} to call the desired system call.
+The system call table \lineref{kernel/syscall.c:/syscalls/} maps
+\lstinline{SYS_EXEC} to \lstinline{sys_exec}, which the kernel
+invokes.  As we saw in Chapter~\ref{CH:UNIX}, \indexcode{exec}
+replaces the memory and registers of the current process with a new
+program (in this case, \indexcode{/init}).
+
 Once the kernel has completed 
 \lstinline{exec},
 it returns to user space in
