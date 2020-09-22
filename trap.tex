@@ -39,14 +39,18 @@ since xv6 responds to all exceptions from user space by killing the
 offending program.
 
 Xv6 trap handling proceeds in four stages: hardware actions taken by
-the RISC-V CPU, an assembly ``vector'' that prepares the way for
-kernel C code, a C trap handler that decides what to do with the trap,
+the RISC-V CPU, some assembly instructions that prepare the way for
+kernel C code, a C function that decides what to do with the trap,
 and the system call or device-driver service routine. While
 commonality among the three trap types suggests that a kernel could
 handle all traps with a single code path, it turns out to be
-convenient to have separate assembly vectors and C trap handlers for
+convenient to have separate code for
 three distinct cases: traps from user space, traps from kernel space,
-and timer interrupts.
+and timer interrupts. Kernel code (assembler or C) that
+processes a trap is often called a \indextext{handler};
+the first handler instructions are usually written in assembler
+(rather than C) and are sometimes called a \indextext{vector}.
+
 
 \section{RISC-V trap machinery}
 
@@ -590,7 +594,7 @@ identity of the process that's running or the address of the kernel
 page table. A solution is possible because RISC-V provides protected
 places in which the kernel can stash away information before entering
 user space: the {\tt sscratch} register, and user page table entries
-that point to kernel memory but are protected by \lstinline{PTE_U}.
+that point to kernel memory but are protected by lack of \lstinline{PTE_U}.
 Xv6's trampoline and trapframe exploit these RISC-V features.
 
 The need for special trampoline pages could be eliminated if kernel
