@@ -240,10 +240,11 @@ the cause of the trap, process it, and return
 It first changes {\tt stvec} so
 that a trap while in the kernel will be handled by
 {\tt kernelvec} rather than {\tt uservec}.
-It saves the {\tt sepc} (the saved user program counter),
-because there might be a
-process switch in {\tt usertrap} that could cause {\tt sepc}
-to be overwritten.
+It saves the {\tt sepc} register (the saved user program counter),
+because 
+{\tt usertrap} might call \lstinline{yield} to switch
+to another process's kernel thread, and that process might return
+to user space, in the process of which it will modify \lstinilne{sepc}.
 If the trap is a system call, {\tt usertrap} calls {\tt syscall} to
 handle it;
 if a device interrupt, {\tt devintr};
@@ -443,7 +444,7 @@ Chapter~\ref{CH:SCHED} explains what happens in {\tt yield}.
 
 When {\tt kerneltrap}'s work is done, it needs to return to whatever
 code was interrupted by the trap. Because a {\tt yield} may have
-disturbed the saved {\tt sepc} and the saved previous mode in {\tt sstatus},
+disturbed {\tt sepc} and the previous mode in {\tt sstatus},
 {\tt kerneltrap} saves them when it starts. It now restores those
 control registers and returns to {\tt kernelvec}
 \lineref{kernel/kernelvec.S:/call.kerneltrap$/}.
