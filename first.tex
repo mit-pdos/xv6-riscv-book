@@ -365,7 +365,7 @@ the hardware only uses the low 39 bits when
 looking up virtual addresses in page tables;
 and xv6 only uses 38 of those 39 bits.
 Thus, the maximum address is $2^{38}-1$ =
-0x3fffffffff, which is \lstinline{MAXVA}~\lineref{kernel/riscv.h:/MAXVA/}.
+0x3fffffffff, which is \lstinline{MAXVA}~\lineref{kernel/riscv.h:/define.MAXVA/}.
 At the top of the address space xv6 reserves a page
 for a \indextext{trampoline} and a page mapping
 the process's \indextext{trapframe}
