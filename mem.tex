@@ -581,11 +581,13 @@ function \lstinline{main(argc}, \lstinline{argv)} had just
 been called.
 
 To detect a user stack overflowing the allocated stack memory, xv6
-places an invalid guard page right below the stack. If the user stack
-overflows and the process tries to use an address below the stack, the
-hardware will generate a page-fault exception because the mapping is
-not valid. A real-world operating system might instead automatically
-allocate more memory for the user stack when it overflows.
+places an inaccessible guard page right below the stack by clearing
+\lstinline{PTE_U}. If the user stack overflows and the process tries
+to use an address below the stack, the hardware will generate a
+page-fault exception because the guard page is inaccessible to a
+program running in user mode. A real-world operating system might
+instead automatically allocate more memory for the user stack when it
+overflows.
 
 \section{Code: sbrk}
 
