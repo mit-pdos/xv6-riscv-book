@@ -582,7 +582,7 @@ been called.
 
 To detect a user stack overflowing the allocated stack memory, xv6
 places an inaccessible guard page right below the stack by clearing
-\lstinline{PTE_U}. If the user stack overflows and the process tries
+the \lstinline{PTE_U} flag. If the user stack overflows and the process tries
 to use an address below the stack, the hardware will generate a
 page-fault exception because the guard page is inaccessible to a
 program running in user mode. A real-world operating system might
