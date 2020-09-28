@@ -400,7 +400,7 @@ has been allocated to another process, and as a result, a process
 might be able to scribble on some other process's memory.  The RISC-V
 has an instruction \indexcode{sfence.vma} that flushes
 the current CPU's TLB.
-xv6 executes {\tt sfence.vma} in {\tt kvminithart}  after reloading the 
+Xv6 executes {\tt sfence.vma} in {\tt kvminithart}  after reloading the 
 \texttt{satp} register, and in the trampoline code that
 switches to a user page table before returning to user space
 \lineref{kernel/trampoline.S:/sfence.vma/}.
@@ -784,7 +784,7 @@ is risky, because the addresses in the ELF file may refer to the kernel, acciden
 or on purpose. The consequences for an unwary kernel could range from
 a crash to a malicious subversion of the kernel's isolation mechanisms
 (i.e., a security exploit).
-xv6 performs a number of checks to avoid these risks.
+Xv6 performs a number of checks to avoid these risks.
 For example
 \lstinline{if(ph.vaddr + ph.memsz < ph.vaddr)}
 checks for whether the sum overflows a 64-bit integer.
