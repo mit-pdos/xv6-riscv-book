@@ -244,7 +244,7 @@ It saves the {\tt sepc} register (the saved user program counter),
 because 
 {\tt usertrap} might call \lstinline{yield} to switch
 to another process's kernel thread, and that process might return
-to user space, in the process of which it will modify \lstinilne{sepc}.
+to user space, in the process of which it will modify \lstinline{sepc}.
 If the trap is a system call, {\tt usertrap} calls {\tt syscall} to
 handle it;
 if a device interrupt, {\tt devintr};
