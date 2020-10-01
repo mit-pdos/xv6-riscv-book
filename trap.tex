@@ -545,23 +545,44 @@ no modifications to applications are necessary for
 them to benefit.
 
 The combination of page tables and page faults opens up a wide range
-of interesting possibilities in addition to COW fork.  Another widely-used
-feature is called \indextext{lazy allocation}, which has two parts.
-First, when an application asks for more memory by
-calling \lstinline{sbrk}, the kernel 
-notes the increase in size,
-but does not allocate physical memory and does not create PTEs
-for the new range of virtual addresses.
-Second, on a page fault on one of those new addresses,
-the kernel allocates a page of physical
-memory and maps it into the page table.  Since applications often ask
-for more memory than they need, lazy allocation is a win: the kernel
-allocates memory only when the application actually uses it.  Like
-COW fork, the kernel can implement this feature transparently to
+of interesting possibilities in addition to COW fork.  Another
+widely-used feature is called \indextext{lazy allocation}, which has
+two parts.  First, when an application asks for more memory by calling
+\lstinline{sbrk}, the kernel notes the increase in size, but does not
+allocate physical memory and does not create PTEs for the new range of
+virtual addresses.  Second, on a page fault on one of those new
+addresses, the kernel allocates a page of physical memory and maps it
+into the page table.
+Like COW fork,
+the kernel can implement lazy allocation transparently to applications.
+
+Since applications often ask for more memory than they need, lazy
+allocation is a win: the kernel allocates memory only when the
+application actually uses it.  Furthermore, if the application is
+asking to grow the address space by a lot, then \lstinline{sbrk} is
+expensive: a gigabyte consists of 262,144 4096-byte pages that all
+must be initialized to zero bytes.  Lazy allocation allows this cost
+to be spread over time.  If the application uses all asked-for memory
+immediately, however, then spreading the cost incurs the extra
+overhead of page faults, which involve a kernel/user transition.
+Operating systems can reduce this cost by zeroing a few pages on a
+page fault instead of one page and by specializing the kernel
+entry/exit code for such page-faults.
+
+Yet another widely-used feature that exploits page faults is
+\indextext{demand paging}.  In \lstinline{exec}, xv6 loads all text
+and data of an application eagerly into memory.  Since applications
+can be large and reading from disk is expensive, this startup cost may
+be noticeable to users: when the user starts a large application from
+the shell, it may take a long time before user sees a response.  To
+improve response time, a modern kernel creates the page table for the
+user address space, but marks the PTEs for the pages invalid.  On a
+page fault, the kernel reads the content of the page from disk and
+maps it into the user address space.  Like COW fork and lazy
+allocation, the kernel can implement this feature transparently to
 applications.
 
-Yet another widely-used feature that exploits page faults
-is \indextext{paging from disk}.  If applications need more
+If applications need more
 memory than the available physical RAM,
 the kernel can evict some pages: write
 them to a storage device such as a disk and mark their
@@ -578,6 +599,21 @@ the kernel may have to evict another page.  This feature requires no
 changes to applications, and works well if applications have locality
 of reference (i.e., they use only a subset of their memory
 at any given time).
+
+In practice, operating systems often run in a setting where all memory
+is in use. For example, cloud providers multiplex many customers on a
+single machine to use their hardware cost effectively. As another
+example, users run many applications on smart phones in a small amount
+of physical memory.  In such settings all memory is always in use and
+the operation system must always evict pages to generate a free page.
+
+Lazy allocation and demand paging are particular advantageous when all
+memory is in use constantly.  Eagerly allocating much memory in
+\lstinline{sbrk} or eagerly loading a file in \lstinline{exec}
+incurs the extra cost of eviction to make memory available.
+Furthermore, there is a risk that the eager work is wasted, because
+before the application uses the page, the operating system may have
+evicted it.
 
 Other features that combine paging and page-fault exceptions include
 automatically extending stacks and memory-mapped files.
