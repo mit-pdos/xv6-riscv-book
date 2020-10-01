@@ -478,12 +478,13 @@ many kernels use page faults to implement
 \indextext{copy-on-write (COW) fork}.
 To explain copy-on-write fork, consider xv6's \lstinline{fork},
 described in Chapter~\ref{CH:MEM}.
-\lstinline{fork} causes the child to have the same
-memory content as the parent, by calling
+\lstinline{fork} causes the child's initial
+memory content to be the same as the parent's at the time of the fork.
+xv6 implements fork with
 \lstinline{uvmcopy}
-\lineref{kernel/vm.c:/^uvmcopy/}
-to allocate physical memory for
-the child and copy the parent's memory into it.
+\lineref{kernel/vm.c:/^uvmcopy/},
+which allocates physical memory for
+the child and copies the parent's memory into it.
 It would be more efficient if the child and parent could share 
 the parent's physical memory.
 A straightforward implementation of this would not work, however,
@@ -507,20 +508,24 @@ kinds of page fault: load page faults (when a load instruction cannot
 translate its virtual address), store page faults (when a store
 instruction cannot translate its virtual address), and instruction
 page faults (when the address in the program counter doesn't translate).  The
-value in the \lstinline{scause} register indicates the type of the
+\lstinline{scause} register indicates the type of the
 page fault and the \indexcode{stval} register contains the address
 that couldn't be translated.
 
 The basic plan in COW fork is for the parent and child to initially
 share all physical pages, but for each to map them read-only (with the
-\lstinline{PTE_W} flag clear). Thus, when the child or parent first
-writes a given page,
-the RISC-V CPU raises a page-fault exception. In
-response to this exception, the kernel makes a copy of the physical
-page that contains the faulted address. It maps that copy read/write
-in the faulting process's page table, and then resumes the faulting
-process at the instruction that caused the fault. Because the kernel
-has updated the relevant PTE to allow writes, the re-executed instruction
+\lstinline{PTE_W} flag clear).
+Parent and child can read from the shared physical memory.
+If either writes a given page,
+the RISC-V CPU raises a page-fault exception.
+The kernel's trap handler responds by allocating a
+new page of physical memory and copying into it
+the physical page that the faulted address maps to.
+The kernel changes the relevant PTE in the faulting process's page
+table to point to the copy and to allow writes as well as reads,
+and then resumes the faulting
+process at the instruction that caused the fault. Because the 
+PTE allows writes, the re-executed instruction
 will now execute without a fault. Copy-on-write requires book-keeping
 to help decide when physical pages can be freed, since each page can
 be referenced by a varying number of page tables depending on the history of
@@ -532,7 +537,7 @@ page table, no copy is needed.
 Copy-on-write makes \lstinline{fork} faster, since \lstinline{fork}
 need not copy memory. Some of the memory will have to be copied
 later, when written, but it's often the case that most of the
-memory need never be copied.
+memory never has to be copied.
 A common example is
 \lstinline{fork} followed by \lstinline{exec}:
 a few pages may be written after the \lstinline{fork},
@@ -557,15 +562,19 @@ Like COW fork,
 the kernel can implement lazy allocation transparently to applications.
 
 Since applications often ask for more memory than they need, lazy
-allocation is a win: the kernel allocates memory only when the
-application actually uses it.  Furthermore, if the application is
-asking to grow the address space by a lot, then \lstinline{sbrk} is
-expensive: a gigabyte consists of 262,144 4096-byte pages that all
-must be initialized to zero bytes.  Lazy allocation allows this cost
-to be spread over time.  If the application uses all asked-for memory
-immediately, however, then spreading the cost incurs the extra
+allocation is a win: the kernel doesn't have to do any work at all
+for pages that the application never uses.
+Furthermore, if the application is
+asking to grow the address space by a lot, then \lstinline{sbrk} 
+without lazy allocation is
+expensive: if an application asks for a gigabyte of memory,
+the kernel has to allocate and zero 262,144 4096-byte pages.
+Lazy allocation allows this cost
+to be spread over time.  On the other hand, lazy allocation
+incurs the extra
 overhead of page faults, which involve a kernel/user transition.
-Operating systems can reduce this cost by zeroing a few pages on a
+Operating systems can reduce this cost by allocating a batch of 
+consecutive pages per
 page fault instead of one page and by specializing the kernel
 entry/exit code for such page-faults.
 
@@ -582,34 +591,42 @@ maps it into the user address space.  Like COW fork and lazy
 allocation, the kernel can implement this feature transparently to
 applications.
 
-If applications need more
-memory than the available physical RAM,
-the kernel can evict some pages: write
-them to a storage device such as a disk and mark their
-PTEs as not valid. If an application reads
-or writes an
-evicted page, the CPU will experience a page fault. The kernel can
-then inspect the faulting address. If the address belongs to a page
-that is on disk, the kernel allocates a page of physical
-memory,
-reads the page from disk to that memory, updates
-the PTE to be valid and refer to that memory,
-and resumes the application. To make room for the page,
-the kernel may have to evict another page.  This feature requires no
-changes to applications, and works well if applications have locality
-of reference (i.e., they use only a subset of their memory
-at any given time).
+The programs running on a computer may need more memory than the
+computer has RAM. To cope gracefully, the operating system may
+implement \indextext{paging to disk}. The idea is to store only a
+fraction of user pages in RAM, and to store the rest on disk in a
+\indextext{paging area}. The kernel marks PTEs that correspond to
+memory stored in the paging area (and thus not in RAM) as invalid. If
+an application tries to use one of the pages that has been {\it paged
+  out} to disk, the application will incur a page fault, and the page
+must be {\it paged in}: the kernel trap handler will allocate a page
+of physical RAM, read the page from disk into the RAM, and modify the
+relevant PTE to point to the RAM.
 
-In practice, operating systems often run in a setting where all memory
-is in use. For example, cloud providers multiplex many customers on a
-single machine to use their hardware cost effectively. As another
-example, users run many applications on smart phones in a small amount
-of physical memory.  In such settings all memory is always in use and
-the operation system must always evict pages to generate a free page.
+What happens if a page needs to be paged in, but there is no free
+physical RAM? In that case, the kernel must first free a physical page
+by paging it out or {\it evicting} it to the paging area on disk, and
+marking the PTEs referring to that physical page as invalid. Eviction
+is expensive, so paging performs best if it's infrequent: if
+applications use only a subset of their memory pages and the union of
+the subsets fits in RAM. This property is often referred to as having
+good locality of reference. As with many virtual memory techniques,
+kernels usually implement paging to disk in a way that's transparent
+to applications.
 
-Lazy allocation and demand paging are particular advantageous when all
-memory is in use constantly.  Eagerly allocating much memory in
-\lstinline{sbrk} or eagerly loading a file in \lstinline{exec}
+Computers often operate with little or no {\it free} physical memory,
+regardless of how much RAM the hardware provides. For example, cloud
+providers multiplex many customers on a single machine to use their
+hardware cost-effectively. As another example, users run many
+applications on smart phones in a small amount of physical memory. In
+such settings allocating a page may require first evicting an existing
+page. Thus, when free physical memory is scarce, allocation is
+expensive.
+
+Lazy allocation and demand paging are particularly advantageous when
+free memory is scarce.
+Eagerly allocating memory in
+\lstinline{sbrk} or \lstinline{exec}
 incurs the extra cost of eviction to make memory available.
 Furthermore, there is a risk that the eager work is wasted, because
 before the application uses the page, the operating system may have
