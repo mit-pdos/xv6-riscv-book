@@ -664,6 +664,17 @@ security bugs in the kernel due to inadvertent use of user pointers,
 and to reduce some complexity that would be required to ensure that
 user and kernel virtual addresses don't overlap.
 
+Production operating systems implement copy-on-write fork, lazy
+allocation, demand paging, paging to disk, memory-mapped files, etc.
+Furthermore, production operating systems will try to use all of
+physical memory, either for applications or caches (e.g., the buffer
+cache of the file system, which we will cover later in
+Section~\ref{s:bcache}). Xv6 is na\"{i}ve in this regard: you want
+your operating system to use the physical memory you paid for, but xv6
+doesn't. Furthermore, if xv6 runs out of memory, it returns an error to
+the running application or kills it, instead of, for example, evicting
+a page of another application.
+
 \section{Exercises}
 
 \begin{enumerate}
