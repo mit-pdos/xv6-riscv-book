@@ -243,9 +243,10 @@ the CPU fairly among kernel threads is useful if kernel threads
 sometimes spend a lot of time computing, without returning to user
 space. However, the need for kernel code to be mindful that it might
 be suspended (due to a timer interrupt) and later resume on a
-different CPU is the source of some complexity in xv6. The kernel
-could be made somewhat simpler if device and timer interrupts only
-occurred while executing user code.
+different CPU is the source of some complexity in xv6
+(see~Section~\ref{s:lockinter}). The kernel could be made somewhat
+simpler if device and timer interrupts only occurred while executing
+user code.
 
 Supporting all the devices on a typical computer in its full glory is
 much work, because there are many devices, the devices have many
