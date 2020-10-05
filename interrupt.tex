@@ -285,6 +285,16 @@ generate or consume data very quickly. Some operating systems are able
 to directly move data between user-space buffers and device hardware,
 often with DMA.
 
+Some usages of computers require that the system must respond in a
+bounded time.  For example, in safety-critical systems missing a
+deadline can lead to disasters.  Xv6 is not suitable for hard
+real-time settings. Operating systems for hard real-time tend to be
+libraries that link with the application in a way that allows for an
+analysis to determine the worst-case response time.  Xv6 is also not
+suitable for soft real-time applications, when missing a deadline
+occasionally is acceptable, because xv6's scheduler is too simplistic and it has
+kernel code path where interrupts are disabled for a long time.
+
 \section{Exercises}
 
 \begin{enumerate}
