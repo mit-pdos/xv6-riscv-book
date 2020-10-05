@@ -285,6 +285,15 @@ generate or consume data very quickly. Some operating systems are able
 to directly move data between user-space buffers and device hardware,
 often with DMA.
 
+As mentioned in Chapter~\ref{CH:UNIX}, the console appears to
+applications as a regular file, and applications read input and write
+output using the \lstinline{read} and \lstinline{write} system calls.
+Applications may want to control aspects of a device that cannot be
+expressed through the standard file system calls (e.g.,
+enabling/disabling line buffering in the console driver).  Unix
+operating systems support the \lstinline{ioctl} system call for such
+cases.
+
 Some usages of computers require that the system must respond in a
 bounded time.  For example, in safety-critical systems missing a
 deadline can lead to disasters.  Xv6 is not suitable for hard
