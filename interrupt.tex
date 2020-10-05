@@ -169,8 +169,9 @@ UART) interrupt while that CPU is already executing inside
 {\tt consoleread};
 and the hardware might deliver a console interrupt on
 a different CPU while {\tt consoleread} is executing.
-Chapter~\ref{CH:LOCK} explores how locks help in
-these scenarios.
+These dangers may result in race conditions or deadlocks.
+Chapter~\ref{CH:LOCK} explores these problems and how locks can
+address them.
 
 Another way in which concurrency requires care in drivers is that one
 process may be waiting for input from a device, but the interrupt
