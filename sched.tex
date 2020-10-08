@@ -31,7 +31,7 @@ system call.
 Second, xv6 periodically forces a switch to cope with
 processes that compute for long periods without sleeping.
 This multiplexing creates the illusion that
-each process has its own CPU, just as xv6 uses the memory allocator and hardware
+each process has its own CPU, much as xv6 uses the memory allocator and hardware
 page tables to create the illusion that each process has its own memory.
 
 Implementing multiplexing poses a few challenges. First, how to switch from one
@@ -40,8 +40,8 @@ Although the idea of context switching
 is simple, the implementation is some of the most opaque code
 in xv6. Second, how to force
 switches in a way that is transparent to user processes?  Xv6 uses the
-standard technique of driving context switches with timer interrupts.
-Third, many CPUs may be switching among processes concurrently, and a
+standard technique in which a hardware timer's interrupts drive context switches.
+Third, all of the CPUs switch among the same shared set of processes, and a
 locking plan is necessary to avoid races. Fourth, a process's
 memory and other resources must be freed when the process exits,
 but it cannot do all of this itself
@@ -50,8 +50,8 @@ Fifth, each core of a multi-core machine must remember which
 process it is executing so that system calls affect the correct
 process's kernel state.
 Finally,  \lstinline{sleep} and \lstinline{wakeup} allow a process to give up
-the CPU and sleep waiting for an event, and allows another process to
-wake the first process up. Care is needed to avoid races that result in
+the CPU and wait to be woken up by another process or interrupt.
+Care is needed to avoid races that result in
 the loss of wakeup notifications.
 Xv6 tries to solve these problems as
 simply as possible, but nevertheless the resulting code is
@@ -107,7 +107,7 @@ The function
 performs the saves and restores for a kernel thread switch.
 \lstinline{swtch}
 doesn't directly know about threads; it just saves and
-restores register sets, called 
+restores sets of 32 RISC-V registers, called 
 \indextext{contexts}.
 When it is time for a process to give up the CPU,
 the process's kernel thread calls
@@ -157,8 +157,8 @@ and switch to the scheduler context previously saved in
 \lstinline{Swtch}
 \lineref{kernel/swtch.S:/swtch/}
 saves only callee-saved registers;
-caller-saved registers are saved on the stack (if needed) by the
-calling C code.
+the C compiler generates code in the caller to save
+caller-saved registers on the stack.
 \lstinline{Swtch} knows the offset of each
 register's field in 
 \lstinline{struct context}.
@@ -183,7 +183,8 @@ by the restored
 register, that is,
 the instruction from which the new thread previously
 called \lstinline{swtch}.
-In addition, it returns on the new thread's stack.
+In addition, it returns on the new thread's stack,
+since that's where the restored \lstinline{sp} points.
 
 In our example, 
 \indexcode{sched}
@@ -192,11 +193,12 @@ called
 to switch to
 \indexcode{cpu->scheduler},
 the per-CPU scheduler context.
-That context had been saved by 
-\lstinline{scheduler}'s
-call to
+That context was saved at the point in the past when
+\lstinline{scheduler}
+called
 \lstinline{swtch}
-\lineref{kernel/proc.c:/swtch.&c/}.
+\lineref{kernel/proc.c:/swtch.&c/}
+to switch to the process that's now giving up the CPU.
 When the
 \indexcode{swtch}
 we have been tracing returns,
@@ -204,7 +206,7 @@ it returns not to
 \lstinline{sched}
 but to 
 \indexcode{scheduler},
-and its stack pointer points at the current CPU's
+with the stack pointer in the current CPU's
 scheduler stack.
 %% 
 \section{Code: Scheduling}
@@ -230,17 +232,16 @@ update its own state
 (\lstinline{p->state}),
 and then call
 \indexcode{sched}.
-\lstinline{Yield}
-\lineref{kernel/proc.c:/^yield/}
-follows this convention, as do
+You can see this sequence in
+\lstinline{yield}
+\lineref{kernel/proc.c:/^yield/},
 \texttt{sleep}
 and
-\texttt{exit},
-which we will examine later.
+\texttt{exit}.
 \lstinline{Sched}
-double-checks those conditions
+double-checks some of those requirements
 \linerefs{kernel/proc.c:/if..holding/,/running/}
-and then an implication of those conditions:
+and then checks an implication:
 since a lock is held, interrupts should be disabled.
 Finally,
 \indexcode{sched}
@@ -257,7 +258,7 @@ as though
 \lstinline{swtch}
 had returned
 \lineref{kernel/proc.c:/swtch.*schedul.*contex/}.
-The scheduler continues the 
+The scheduler continues its
 \lstinline{for}
 loop, finds a process to run, 
 switches to it, and the cycle repeats.
@@ -295,10 +296,9 @@ caused it to stop using its own kernel stack.
 The result would be two CPUs running on the same stack,
 which cannot be right.
 
-A kernel thread always gives up its
-CPU in
-\lstinline{sched} 
-and always switches to the same location in the scheduler, which
+The only place a kernel thread gives up its CPU is in
+\lstinline{sched},
+and it always switches to the same location in \lstinline{scheduler}, which
 (almost) always switches to some kernel thread that previously called
 \lstinline{sched}. 
 Thus, if one were to print out the line numbers where xv6 switches
@@ -307,8 +307,9 @@ threads, one would observe the following simple pattern:
 \lineref{kernel/proc.c:/swtch..p/},
 \lineref{kernel/proc.c:/swtch..c/},
 \lineref{kernel/proc.c:/swtch..p/},
-and so on.  The procedures in which this stylized switching between
-two threads happens are sometimes referred to as 
+and so on.
+Procedures that intentionally transfer control to each other via thread
+switch are sometimes referred to as
 \indextext{coroutines}; 
 in this example,
 \indexcode{sched}
@@ -320,18 +321,23 @@ There is one case when the scheduler's call to
 \indexcode{swtch}
 does not end up in
 \indexcode{sched}.
-When a new process is first scheduled, it begins at
+\lstinline{allocproc} sets the context \lstinline{ra}
+register of a new process to
 \indexcode{forkret}
-\lineref{kernel/proc.c:/^forkret/}.
+\lineref{kernel/proc.c:/^forkret/},
+so that its first \lstinline{swtch} ``returns'' 
+to the start of that function.
 \lstinline{Forkret}
 exists to release the 
 \indexcode{p->lock};
-otherwise, the new process could start at
+otherwise, since the new process needs to
+return to user space as if returning from \lstinline{fork},
+it could instead start at
 \lstinline{usertrapret}.
 
 \lstinline{Scheduler}
 \lineref{kernel/proc.c:/^scheduler/} 
-runs a simple loop:
+runs a loop:
 find a process to run, run it until it yields, repeat.
 The scheduler
 loops over the process table
@@ -386,7 +392,7 @@ Observe that these properties are often not true while
 
 Maintaining the above invariants is the reason why xv6 often acquires 
 \indexcode{p->lock}
-in one thread and releases it in other,
+in one thread and releases it in another,
 for example acquiring in
 \lstinline{yield}
 and releasing in
@@ -422,7 +428,7 @@ reading or writing its state (e.g., the \lstinline{exit}
 system call looking at \lstinline{p->pid} and
 setting \lstinline{p->killed}
 \lineref{kernel/proc.c:/^kill/}).
-It might be worth thinking about whether the 
+It's possible that with some design effort the
 different functions of
 \lstinline{p->lock}
 could be split up, for clarity and perhaps
@@ -473,8 +479,9 @@ when entering the kernel from user space
 \lineref{kernel/trampoline.S:/make tp hold/}.
 The compiler guarantees never to use the \lstinline{tp}
 register.
-It would be more convenient if RISC-V allowed xv6 to read the
-current hartid directly, but that is allowed only in
+It would be more convenient if xv6 could ask the RISC-V
+hardware for the current hartid whenever needed,
+but RISC-V allows that only in
 machine mode, not in supervisor mode.
 
 The return values of
