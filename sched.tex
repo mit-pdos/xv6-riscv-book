@@ -523,21 +523,25 @@ pointer will stay the same.
 \label{sec:sleep}
 %% 
 
-Scheduling and locks help conceal the existence of one process
+Scheduling and locks help conceal the actions of one thread
 from another,
 but so far we have no abstractions that help
-processes intentionally interact.
-Many mechanisms have been invented to solve this problem.
-Xv6 uses one called sleep and wakeup, which allow one process to
-sleep waiting for an event and another process to wake it up
-once the event has happened.
+threads intentionally interact.
+Many solutions for this problem have been invented.
+The xv6 kernel uses a mechanism called sleep and wakeup.
+Sleep allows a kernel thread to
+wait for a specific event; another thread can call wakeup 
+to indicate that threads waiting for an event should resume.
 Sleep and wakeup are often called 
 \indextext{sequence coordination}
 or 
 \indextext{conditional synchronization}
 mechanisms.
 
-To illustrate, let's consider a
+
+Sleep and wakeup provide a relatively low-level synchronization
+interface. To motivate the way they work in xv6,
+we'll use them to build a higher-level
 synchronization mechanism called a \indextext{semaphore}~\cite{dijkstra65} that
 coordinates producers and consumers.
 A semaphore maintains a count and provides two operations.
@@ -579,7 +583,7 @@ rarely, the consumer will spend most
 of its time spinning in the 
 \lstinline{while}
 loop hoping for a non-zero count.
-The consumer's CPU could find more productive work than with
+The consumer's CPU could probably find more productive work than 
 \indextext{busy waiting}
 by repeatedly 
 \indextext{polling}
@@ -790,18 +794,22 @@ Note, however, that we need
 \lstinline{sleep}
 to atomically release
 \lstinline{s->lock}
-and put the consuming process to sleep.
+and put the consuming process to sleep,
+in order to avoid lost wakeups.
 
 %% 
 \section{Code: Sleep and wakeup}
 %% 
 
-Let's look at the implementation of
+Xv6's
 \indexcode{sleep}
 \lineref{kernel/proc.c:/^sleep/}
 and
 \indexcode{wakeup}
-\lineref{kernel/proc.c:/^wakeup/}.
+\lineref{kernel/proc.c:/^wakeup/}
+provide the interface shown in the last example above,
+and their implementation (plus rules for how to use them)
+ensures that there are no lost wakeups.
 The basic idea is to have
 \lstinline{sleep}
 mark the current process as
@@ -861,7 +869,7 @@ from missing the
 
 There is a minor complication: if 
 \lstinline{lk}
-is the same lock as
+is in fact
 \lstinline{p->lock},
 then
 \lstinline{sleep}
@@ -1186,7 +1194,7 @@ If
 finds children but none have exited,
 it calls
 \lstinline{sleep}
-to wait for one of them to exit
+to wait for any of them to exit
 \lineref{kernel/proc.c:/DOC: wait-sleep/},
 then scans again.
 Here,
@@ -1207,7 +1215,7 @@ its children. It uses \lstinline{np->parent} without holding
 shared variables must be protected by locks. It is possible that
 \lstinline{np} is an ancestor of the current process, in which case
 acquiring \lstinline{np->lock} could cause a deadlock since that would
-violate the order mentioned above. Examining \lstinline{np->parent}
+violate the locking order mentioned above. Examining \lstinline{np->parent}
 without a lock seems safe in this case; a process's \lstinline{parent}
 field is only changed by its parent, so if \lstinline{np->parent==p}
 is true, the value can't change unless the current process changes it.
@@ -1232,8 +1240,13 @@ The lock acquisition order is important to avoid deadlock: since \lstinline{wait
 acquires the parent's lock before the child's lock,
 \lstinline{exit} must use the same order.
 
-\lstinline{Exit} calls a specialized wakeup function,
-\lstinline{wakeup1}, that wakes up only the parent,
+\lstinline{Exit} cannot call \lstinline{wakeup} to
+wake a waiting parent, since \lstinline{wakeup}
+aquires locks that would violate the parent-then-child locking order.
+Instead,
+\lstinline{exit} calls a specialized wakeup function,
+\lstinline{wakeup1}, that does not acquire locks.
+\lstinline{wakeup1} wakes up only the parent,
 and only if it is sleeping in 
 \lstinline{wait}
 \lineref{kernel/proc.c:/^wakeup1/}.
@@ -1310,7 +1323,7 @@ For example, the pipe read and write code
 \lineref{kernel/pipe.c:/myproc..-\>killed/} 
 returns if the killed flag is set; eventually the
 code will return back to trap, which will again
-check the flag and exit.
+check \lstinline{p->killed} and exit.
 
 Some xv6 
 \lstinline{sleep}
@@ -1346,7 +1359,7 @@ interactions such as
 and 
 \indextext{convoys}.
 Priority inversion can happen when a low-priority and high-priority process
-share a lock, which when acquired by the low-priority process can prevent the
+both use a particular lock, which when acquired by the low-priority process can prevent the
 high-priority process from making progress.  A long convoy of waiting processes
 can form when many
 high-priority processes are waiting for a low-priority process that acquires a
@@ -1383,10 +1396,8 @@ The Linux kernel's
 uses an explicit process queue, called a wait queue, instead of
 a wait channel; the queue has its own internal lock.
 
-Scanning the entire process list in
+Scanning the entire set of processes in
 \lstinline{wakeup}
-for processes with a matching
-\lstinline{chan}
 is inefficient.  A better solution is to
 replace the
 \lstinline{chan}
@@ -1481,8 +1492,8 @@ but before it calls
 If this problem occurs, the victim won't notice the
 \lstinline{p->killed}
 until the condition it is waiting for occurs. This may be quite a bit later
-(e.g., when the virtio driver returns a disk block that the victim is waiting for) or never
-(e.g., if the victim is waiting from input from the console, but the user
+or even never
+(e.g., if the victim is waiting for input from the console, but the user
 doesn't type any input).
 
 A real operating system would find free
