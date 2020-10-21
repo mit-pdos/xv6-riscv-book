@@ -1457,9 +1457,9 @@ and thundering herd problems.
 Terminating processes and cleaning them up introduces much complexity in xv6.
 In most operating systems it is even more complex, because, for example, the
 victim process may be deep inside the kernel sleeping, and unwinding its
-stack requires much careful programming.  Many operating systems unwind the stack
-using explicit mechanisms for exception handling, such as
-\lstinline{longjmp}.
+stack requires care, since each function on the call stack
+may need to do some clean-up.  Some languages help out by providing
+an exception mechanism, but not C.
 Furthermore, there are other events that can cause a sleeping process to be
 woken up, even though the event it is waiting for has not happened yet.  For
 example, when a Unix process is sleeping, another process may send a 
