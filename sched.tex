@@ -525,10 +525,16 @@ pointer will stay the same.
 
 Scheduling and locks help conceal the actions of one thread
 from another,
-but so far we have no abstractions that help
+but we also need abstractions that help
 threads intentionally interact.
-Many solutions for this problem have been invented.
-The xv6 kernel uses a mechanism called sleep and wakeup.
+For example, the reader of a pipe in xv6 may need to wait
+for a writing process to produce data;
+a parent's call to \lstinline{wait} may need to
+wait for a child to exit; and
+a process reading the disk needs to wait
+for the disk hardware to finish the read.
+The xv6 kernel uses a mechanism called sleep and wakeup
+in these situations (and many others).
 Sleep allows a kernel thread to
 wait for a specific event; another thread can call wakeup 
 to indicate that threads waiting for an event should resume.
@@ -538,12 +544,12 @@ or
 \indextext{conditional synchronization}
 mechanisms.
 
-
 Sleep and wakeup provide a relatively low-level synchronization
 interface. To motivate the way they work in xv6,
 we'll use them to build a higher-level
 synchronization mechanism called a \indextext{semaphore}~\cite{dijkstra65} that
-coordinates producers and consumers.
+coordinates producers and consumers
+(xv6 does not use semaphores).
 A semaphore maintains a count and provides two operations.
 The ``V'' operation (for the producer) increments the count.
 The ``P'' operation (for the consumer) waits until the count is non-zero,
