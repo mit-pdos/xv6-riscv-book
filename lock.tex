@@ -573,7 +573,7 @@ int data = 0; // protected by lock
 f() {
   acquire(&lock);
   if(data == 0){
-    this_function_should_only_be_called_once();
+    call_once();
     h();
     data = 1;
   }
@@ -583,7 +583,7 @@ f() {
 g() {
   aquire(&lock);
   if(data == 0){
-    this_function_should_only_be_called_once();
+    call_once();
     data = 1;
   }
   release(&lock);
@@ -591,21 +591,21 @@ g() {
 \end{lstlisting}
 
 Looking at this code fragment, the intuition is that
-\lstinline{this_function_should_only_be_called_once} will be called
+\lstinline{call_once} will be called
 only once: either by \lstinline{f}, or by \lstinline{g}, but not by
 both.
 
 But if re-entrant locks are allowed, and \lstinline{h} happens to call
-\lstinline{g}, \lstinline{this_function_should_only_be_called_once}
+\lstinline{g}, \lstinline{call_once}
 will be called \emph{twice}.
 
 If re-entrant locks aren't allowed, then \lstinline{h} calling
 \lstinline{g} results in a deadlock, which is not great either. But,
 assuming it would be a serious error to call
-\lstinline{this_function_should_only_be_called_once}, a deadlock is
+\lstinline{call_once}, a deadlock is
 preferable.  The kernel developer will observe the deadlock (the
 kernel panics) and can fix the code to avoid it, while calling
-\lstinline{this_function_should_only_be_called_once} twice may
+\lstinline{call_once} twice may
 silently result in an error that is difficult to track down.
 
 For this reason, xv6 uses the simpler to understand non-re-entrant
@@ -614,7 +614,7 @@ however, either approach can be made to work. If xv6 were to use
 re-entrant locks, one would have to modify \lstinline{acquire} to
 notice that the lock is currently held by the calling thread. One
 would also have to add a count of nested acquires to struct spinlock,
-in similar style to \lstinline{push_off}.
+in similar style to \lstinline{push_off}, which is discussed next.
 
 \section{Locks and interrupt handlers}
 \label{s:lockinter}
