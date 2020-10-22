@@ -551,6 +551,71 @@ scheme, since more locks often means more opportunity for deadlock.
 The need to avoid deadlock is often a major factor in kernel
 implementation.
 
+\section{Re-entrant locks}
+
+It might appear that some deadlocks and lock-ordering challenges could
+be avoided by using \indextext{re-entrant locks}, which are also
+called \indextext{recursive locks}.  The idea is that if the lock is held
+by a process and if that process attempts to acquire the lock again,
+then the kernel could just allow this (since the process already has
+the lock), instead of calling panic, as the xv6 kernel does.
+
+It turns out, however, that re-entrant locks make it harder to reason
+about concurrency: re-entrant locks break the intuition that locks
+cause critical sections to be atomic with respect to other critical
+sections.  Consider the following two functions \lstinline{f} and
+\lstinline{g}:
+
+\begin{lstlisting}
+struct spinlock lock;
+int data = 0; // protected by lock
+
+f() {
+  acquire(&lock);
+  if(data == 0){
+    this_function_should_only_be_called_once();
+    h();
+    data = 1;
+  }
+  release(&lock);
+}
+
+g() {
+  aquire(&lock);
+  if(data == 0){
+    this_function_should_only_be_called_once();
+    data = 1;
+  }
+  release(&lock);
+}
+\end{lstlisting}
+
+Looking at this code fragment, the intuition is that
+\lstinline{this_function_should_only_be_called_once} will be called
+only once: either by \lstinline{f}, or by \lstinline{g}, but not by
+both.
+
+But if re-entrant locks are allowed, and \lstinline{h} happens to call
+\lstinline{g}, \lstinline{this_function_should_only_be_called_once}
+will be called \emph{twice}.
+
+If re-entrant locks aren't allowed, then \lstinline{h} calling
+\lstinline{g} results in a deadlock, which is not great either. But,
+assuming it would be a serious error to call
+\lstinline{this_function_should_only_be_called_once}, a deadlock is
+preferable.  The kernel developer will observe the deadlock (the
+kernel panics) and can fix the code to avoid it, while calling
+\lstinline{this_function_should_only_be_called_once} twice may
+silently result in an error that is difficult to track down.
+
+For this reason, xv6 uses the simpler to understand non-re-entrant
+locks.  As long as programmers keep the locking rules in mind,
+however, either approach can be made to work. If xv6 were to use
+re-entrant locks, one would have to modify \lstinline{acquire} to
+notice that the lock is currently held by the calling thread. One
+would also have to add a count of nested acquires to struct spinlock,
+in similar style to \lstinline{push_off}.
+
 \section{Locks and interrupt handlers}
 \label{s:lockinter}
 
@@ -792,15 +857,19 @@ do this.  If you program with locks, it is wise to use a tool that attempts to
 identify race conditions, because it is easy to miss an invariant that requires
 a lock.
 
-Most operating systems support POSIX threads (Pthreads), which allow a user
-process to have several threads running concurrently on different CPUs.
-Pthreads has support for user-level locks, barriers, etc.  Supporting Pthreads requires
-support from the operating system. For example, it should be the case that if
-one pthread blocks in a system call, another pthread of the same process should
-be able to run on that CPU.  As another example, if a pthread changes its
-process's address space (e.g., maps or unmaps memory), the kernel must arrange that
-other CPUs that run threads of the same process update their hardware page
-tables to reflect the change in the address space. 
+Most operating systems support POSIX threads (Pthreads), which allow a
+user process to have several threads running concurrently on different
+CPUs.  Pthreads has support for user-level locks, barriers, etc.
+Pthread also allows a programmer to optionally specify that a lock
+should be re-entrant.
+
+Supporting Pthreads at user level requires support from the operating
+system. For example, it should be the case that if one pthread blocks
+in a system call, another pthread of the same process should be able
+to run on that CPU.  As another example, if a pthread changes its
+process's address space (e.g., maps or unmaps memory), the kernel must
+arrange that other CPUs that run threads of the same process update
+their hardware page tables to reflect the change in the address space.
 
 It is possible to implement locks without atomic
 instructions~\cite{lamport:bakery}, but it is expensive, and most
