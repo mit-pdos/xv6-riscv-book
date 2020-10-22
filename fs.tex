@@ -19,7 +19,7 @@ so that data is still available after a reboot.
 
 The xv6 file system provides Unix-like files, directories, and pathnames
 (see Chapter~\ref{CH:UNIX}), and stores its data on a virtio disk for
-persistence (see Chapter~\ref{CH:TRAP}). The file system addresses
+persistence. The file system addresses
 several challenges:
 \begin{itemize}
   
@@ -79,6 +79,26 @@ application programmers.
 \caption{Layers of the xv6 file system.}
 \label{fig:fslayer}
 \end{figure}
+
+Disk hardware traditionally presents the data on the
+disk as a numbered sequence of 512-byte 
+\textit{blocks} 
+\index{block}
+(also called 
+\textit{sectors}): 
+\index{sector}
+sector 0 is the first 512 bytes, sector 1 is the next, and so on. The block size
+that an operating system uses for its file system maybe different than the
+sector size that a disk uses, but typically the block size is a multiple of the
+sector size. Xv6 holds copies of blocks that it has read into memory
+in objects of type
+\lstinline{struct buf}
+\lineref{kernel/buf.h:/^struct.buf/}.
+The
+data stored in this structure is sometimes out of sync with the disk: it might have
+not yet been read in from disk (the disk is working on it but hasn't returned
+the sector's content yet), or it might have been updated by software
+but not yet written to the disk.
 
 The file system must have a plan for where it stores inodes and
 content blocks on the disk.
