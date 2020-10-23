@@ -619,38 +619,44 @@ do its best to wreck the kernel or other processes. User code may try
 to dereference pointers outside its allowed address space; it may
 attempt to execute any RISC-V instructions, even those not intended
 for user code; it may try to read and write any RISC-V control
-register; and it may pass clever values to system calls in an attempt
+register; it may try to directly access device hardware;
+and it may pass clever values to system calls in an attempt
 to trick the kernel into crashing or doing something stupid. The
 kernel's goal to restrict each user processes so that all it can do is
 read/write/execute its own user memory, use the 32 general-purpose
 RISC-V registers, and affect the kernel and other processes in the
-ways that system calls intentionally allow. The kernel must prevent
+ways that system calls are intended to allow. The kernel must prevent
 any other actions. This is typically an absolute requirement in kernel
 design.
 
 The expectations for the kernel's own code are quite different. Kernel
-code is assumed to be written by well-meaning and skilled programmers.
+code is assumed to be written by well-meaning and careful programmers.
 Kernel code is expected to be bug-free, and certainly to contain
-nothing malicious. This assumption affects how we analyze kernel
-design. For example, there are many internal kernel functions (e.g.,
-the spin locks) that would cause serious problems if kernel code used
-them incorrectly. When examining any specific piece of kernel code,
-we'll want to convince ourselves that it behaves correctly. We assume,
+nothing malicious. This assumption affects how we analyze kernel code.
+For example, there are many internal kernel functions (e.g., the spin
+locks) that would cause serious problems if kernel code used them
+incorrectly. When examining any specific piece of kernel code, we'll
+want to convince ourselves that it behaves correctly. We assume,
 however, that kernel code in general is correctly written, and follows
 all the rules about use of the kernel's own functions and data
-structures. At the hardware level, the hardware (RISC-V, RAM, disk,
-etc) is assumed to operate as advertised in the documentation, with no
+structures. At the hardware level, the RISC-V CPU, RAM, disk, etc. are
+assumed to operate as advertised in the documentation, with no
 hardware bugs.
 
 Of course in real life things are not so straightforward. It's
-difficult to prevent clever user code from making a system unuseable
+difficult to prevent clever user code from making a system unusable
 (or causing it to panic) by consuming kernel-protected resources --
 disk space, CPU time, process table slots, etc. It's usually
-impossible to write code (or design hardware) that has no bugs; if the
+impossible to write bug-free code or design bug-free hardware; if the
 writers of malicious user code are aware of kernel or hardware bugs,
-they may exploit them. It may well be worthwhile to design safeguards
-into the kernel against the possibility that it has bugs: assertions,
-type checking, stack guard pages, etc.
+they will exploit them. It's worthwhile to design safeguards into the
+kernel against the possibility that it has bugs: assertions, type
+checking, stack guard pages, etc. Finally, the distinction between
+user and kernel code is sometimes blurred: some privileged user-level
+processes may provide essential services and effectively be part of
+the operating system, and in some operating systems privileged user
+code can insert new code into the kernel (as with Linux's loadable
+kernel modules).
 
 
 %% 
