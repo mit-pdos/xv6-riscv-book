@@ -605,6 +605,54 @@ if needed
 and then opens it as file descriptors 0, 1, and 2.
 Then it starts a shell on the console.
 The system is up.
+
+\section{Security Model}
+
+You may wonder how the operating system deals with buggy or malicious
+code. Because coping with malice is strictly harder than dealing with
+accidental bugs, it's reasonable to view this topic as relating to
+security. Here's a high-level view of typical security assumptions and
+goals in operating system design.
+
+The operating system must assume that a process's user-level code will
+do its best to wreck the kernel or other processes. User code may try
+to dereference pointers outside its allowed address space; it may
+attempt to execute any RISC-V instructions, even those not intended
+for user code; it may try to read and write any RISC-V control
+register; and it may pass clever values to system calls in an attempt
+to trick the kernel into crashing or doing something stupid. The
+kernel's goal to restrict each user processes so that all it can do is
+read/write/execute its own user memory, use the 32 general-purpose
+RISC-V registers, and affect the kernel and other processes in the
+ways that system calls intentionally allow. The kernel must prevent
+any other actions. This is typically an absolute requirement in kernel
+design.
+
+The expectations for the kernel's own code are quite different. Kernel
+code is assumed to be written by well-meaning and skilled programmers.
+Kernel code is expected to be bug-free, and certainly to contain
+nothing malicious. This assumption affects how we analyze kernel
+design. For example, there are many internal kernel functions (e.g.,
+the spin locks) that would cause serious problems if kernel code used
+them incorrectly. When examining any specific piece of kernel code,
+we'll want to convince ourselves that it behaves correctly. We assume,
+however, that kernel code in general is correctly written, and follows
+all the rules about use of the kernel's own functions and data
+structures. At the hardware level, the hardware (RISC-V, RAM, disk,
+etc) is assumed to operate as advertised in the documentation, with no
+hardware bugs.
+
+Of course in real life things are not so straightforward. It's
+difficult to prevent clever user code from making a system unuseable
+(or causing it to panic) by consuming kernel-protected resources --
+disk space, CPU time, process table slots, etc. It's usually
+impossible to write code (or design hardware) that has no bugs; if the
+writers of malicious user code are aware of kernel or hardware bugs,
+they may exploit them. It may well be worthwhile to design safeguards
+into the kernel against the possibility that it has bugs: assertions,
+type checking, stack guard pages, etc.
+
+
 %% 
 \section{Real world}
 %% 
