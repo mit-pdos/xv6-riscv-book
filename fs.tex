@@ -605,7 +605,7 @@ For efficiency, the loop is split into two
 pieces.
 The outer loop reads each block of bitmap bits.
 The inner loop checks all 
-\lstinline{BPB}
+Bits-Per-Block (\lstinline{BPB})
 bits in a single bitmap block.
 The race that might occur if two processes try to allocate
 a block at the same time is prevented by the fact that
