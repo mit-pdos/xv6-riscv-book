@@ -294,7 +294,7 @@ but before
 \lstinline{swtch}
 caused it to stop using its own kernel stack.
 The result would be two CPUs running on the same stack,
-which cannot be right.
+which would cause chaos.
 
 The only place a kernel thread gives up its CPU is in
 \lstinline{sched},
@@ -416,23 +416,23 @@ is completely running (after the
 for example in
 \lstinline{yield}).
 
-\indexcode{p->lock}
-protects other things as well:
-the interplay between
-\indexcode{exit}
-and
-\indexcode{wait},
-the machinery to avoid lost wakeups (see Section~\ref{sec:sleep}),
-and avoidance of races between a process exiting and other processes
-reading or writing its state (e.g., the \lstinline{exit}
-system call looking at \lstinline{p->pid} and
-setting \lstinline{p->killed}
-\lineref{kernel/proc.c:/^kill/}).
-It's possible that with some design effort the
-different functions of
-\lstinline{p->lock}
-could be split up, for clarity and perhaps
-for performance.
+% \indexcode{p->lock}
+% protects other things as well:
+% the interplay between
+% \indexcode{exit}
+% and
+% \indexcode{wait},
+% the machinery to avoid lost wakeups (see Section~\ref{sec:sleep}),
+% and avoidance of races between a process exiting and other processes
+% reading or writing its state (e.g., the \lstinline{exit}
+% system call looking at \lstinline{p->pid} and
+% setting \lstinline{p->killed}
+% \lineref{kernel/proc.c:/^kill/}).
+% It's possible that with some design effort the
+% different functions of
+% \lstinline{p->lock}
+% could be split up, for clarity and perhaps
+% for performance.
 %% 
 \section{Code: mycpu and myproc}
 %% 
@@ -873,27 +873,6 @@ keeping the
 from missing the
 \lstinline{sleep}.
 
-There is a minor complication: if 
-\lstinline{lk}
-is in fact
-\lstinline{p->lock},
-then
-\lstinline{sleep}
-would deadlock with itself if it tried to acquire 
-\lstinline{p->lock}.
-But if the process calling
-\lstinline{sleep}
-already holds \lstinline{p->lock}, it
-doesn't need to do anything more in order
-to avoiding missing a concurrent \lstinline{wakeup}.
-This case arises when
-\lstinline{wait}
-\lineref{kernel/proc.c:/^wakeup\(/}
-calls
-\lstinline{sleep}
-with 
-\lstinline{p->lock}.
-
 Now that
 \lstinline{sleep}
 holds
@@ -1171,24 +1150,29 @@ parent gives the child to the
 process, which perpetually calls {\tt wait};
 thus
 every child has a parent to clean up after it.
-The main implementation challenge is
-the possibility of races and deadlock between
-parent and child
+A challenge is
+to avoid races and deadlock between
+simultaneous parent and child
 \lstinline{wait}
 and
 \lstinline{exit},
-as well as
-\lstinline{exit}
-and
-\lstinline{exit}.
+as well as simultaneous
+\lstinline{exit} and \lstinline{exit}.
 
-\lstinline{Wait}
-uses the calling process's
-\lstinline{p->lock}
-as the condition lock to avoid lost wakeups,
-and it acquires that lock at the start
+% proc_tree_lock protects both all p->parents, and
+% the fact that processes have exited. the latter
+% must be the case because proc_tree_lock is the
+% condition lock for wait()'s sleep().
+
+\lstinline{Wait} starts by acquiring
+\lstinline{proc_tree_lock}
 \lineref{kernel/proc.c:/^wait/}.
-Then it scans the process table.
+The reason is that \lstinline{wait}
+must check every process's \lstinline{p->parent}
+field, and
+\lstinline{proc_tree_lock} protects the entire set
+of \lstinline{p->parent} fields.
+Then \lstinline{wait} scans the process table.
 If it finds a child in \texttt{ZOMBIE} state,
 it frees that child's resources and
 its \lstinline{proc} structure, copies
@@ -1203,64 +1187,34 @@ it calls
 to wait for any of them to exit
 \lineref{kernel/proc.c:/DOC: wait-sleep/},
 then scans again.
-Here,
-the condition lock being released in 
-\lstinline{sleep}
-is the waiting process's \lstinline{p->lock},
-the special case mentioned above.
-Note that \lstinline{wait} often holds two locks;
-that it acquires its own lock before trying to acquire
-any child's lock;
-and that thus all of xv6 must obey the same locking order
-(parent, then child) in order to avoid deadlock.
+\lstinline{wait} often holds two locks,
+\lstinline{proc_tree_lock} and some process's \lstinline{np->lock};
+the deadlock-avoiding order is first \lstinline{proc_tree_lock}
+and then \lstinline{np->lock}.
 
-\lstinline{Wait}
-looks at every process's \lstinline{np->parent} to find
-its children. It uses \lstinline{np->parent} without holding
-\lstinline{np->lock}, which is a violation of the usual rule that
-shared variables must be protected by locks. It is possible that
-\lstinline{np} is an ancestor of the current process, in which case
-acquiring \lstinline{np->lock} could cause a deadlock since that would
-violate the locking order mentioned above. Examining \lstinline{np->parent}
-without a lock seems safe in this case; a process's \lstinline{parent}
-field is only changed by its parent, so if \lstinline{np->parent==p}
-is true, the value can't change unless the current process changes it.
+\lstinline{Exit} \lineref{kernel/proc.c:/^exit/} records the exit
+status, frees some resources, calls \lstinline{reparent} to give its
+children to the \lstinline{init} process, wakes up the parent in case
+it is in \lstinline{wait}, marks the caller as a zombie, and
+permanently yields the CPU. \lstinline{exit} holds both
+\lstinline{proc_tree_lock} and \lstinline{p->lock} during this
+sequence. It has to hold \lstinline{proc_tree_lock} because that's the
+lock that protects its children's (and its own) \lstinline{p->parent}
+values, which are read by children and modified by parents. Another
+reason to hold \lstinline{proc_tree_lock} is that it's the condition
+lock for the \lstinline{wakeup(p->parent)}, preventing a parent in
+\lstinline{wait} from losing the wakeup. \lstinline{exit} must hold
+\lstinline{p->lock} for this sequence also, to prevent a parent in
+\lstinline{wait} from seeing that the child is in state
+\lstinline{ZOMBIE} before the child has finally called
+\lstinline{swtch}. \lstinline{Exit} acquires these locks in
+the same order as \lstinline{wait} to avoid deadlock.
 
-\lstinline{Exit}
-\lineref{kernel/proc.c:/^exit/}
-records the exit status, frees some resources,
-gives any children to the \lstinline{init} process,
-wakes up the parent in case it is in \lstinline{wait},
-marks the caller as a zombie, and permanently
-yields the CPU.
-The final sequence is a little tricky.
-The exiting process must hold its parent's lock while
-it sets its state to \lstinline{ZOMBIE} and
-wakes the parent up, since the parent's lock
-is the condition lock
-that guards against lost wakeups in \lstinline{wait}. The child must also
-hold its own \lstinline{p->lock}, since otherwise the parent
-might see it in state \lstinline{ZOMBIE} and free it while
-it is still running.
-The lock acquisition order is important to avoid deadlock: since \lstinline{wait}
-acquires the parent's lock before the child's lock,
-\lstinline{exit} must use the same order.
-
-\lstinline{Exit} cannot call \lstinline{wakeup} to
-wake a waiting parent, since \lstinline{wakeup}
-aquires locks that would violate the parent-then-child locking order.
-Instead,
-\lstinline{exit} calls a specialized wakeup function,
-\lstinline{wakeup1}, that does not acquire locks.
-\lstinline{wakeup1} wakes up only the parent,
-and only if it is sleeping in 
-\lstinline{wait}
-\lineref{kernel/proc.c:/^wakeup1/}.
-It may look incorrect for the child to wake up the parent
+It may look incorrect for \lstinline{exit} to wake up the parent
 before setting its state to \lstinline{ZOMBIE}, 
 but that is safe:
 although
-\lstinline{wakeup1}
+\lstinline{wakeup}
 may cause the parent to run,
 the loop in
 \lstinline{wait}
@@ -1534,18 +1488,6 @@ acquire(&p->lock);
 Doing this would break
 \lstinline{sleep}.
 How?
-
-\item Most process cleanup could be done by either
-\lstinline{exit}
-or
-\lstinline{wait}.
-It turns out that
-\lstinline{exit}
-must be the one to close the open files.
-Why?
-The answer involves pipes.
-% Answer: self-deadlock. wait() holds p->lock, but the wakeup()
-% in pipeclose() tries to acquire every process's lock.
 
 \item Implement semaphores in xv6 without using
 \lstinline{sleep} and \lstinline{wakeup} (but it
