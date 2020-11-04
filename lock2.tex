@@ -71,8 +71,8 @@ the pipe has file descriptors referring to it.
 
 \section{Lock-like patterns}
 
-In many places xv6 uses a reference count or a flag as a kind of soft
-lock to indicate that an object is allocated and should not be freed
+In many places xv6 uses a reference count or a flag in a lock-like way
+to indicate that an object is allocated and should not be freed
 or re-used. A process's {\tt p->state} acts in this way, as do the
 reference counts in {\tt file}, {\tt inode}, and {\tt buf} structures.
 While in each case a lock protects the flag or reference count, it is
@@ -127,12 +127,7 @@ hardware. Another is the {\tt started} variable in {\tt main.c}
 running until CPU zero has finished initializing xv6;
 the {\tt volatile} ensures that the compiler actually generates
 load and store instructions.
-A third are some uses of {\tt p->parent} in {\tt proc.c}
-\lineref{kernel/proc.c:/^wait/}
-\lineref{kernel/proc.c:/^reparent/}
-where proper locking could deadlock, but it seems clear that
-no other process could be simultaneously modifying {\tt p->parent}.
-A fourth example is \indexcode{p->killed}, which is set while holding
+A third example is \indexcode{p->killed}, which is set while holding
 \texttt{p->lock} \lineref{kernel/proc.c:/^kill/},
 but checked without a holding lock \lineref{kernel/trap.c:/p->killed/}.
 
@@ -154,8 +149,8 @@ ensure that the child's CPU sees the parent's writes.
 
 Locking is primarily about suppressing parallelism in the interests of
 correctness. Because performance is also important, kernel designers
-often have to think about how to use locks in a way that achieves both
-correctness and good parallelism. While xv6 is not systematically
+often have to think about how to use locks in a way that both achieves 
+correctness and allows parallelism. While xv6 is not systematically
 designed for high performance, it's still worth considering which xv6
 operations can execute in parallel, and which might conflict on locks.
 
@@ -208,5 +203,3 @@ so measurement on realistic workloads is often required.
 \item Eliminate some of the serialization in xv6's \texttt{fork()}.
 
 \end{enumerate}
-
-% is p->killed another example of cutting locking corners?
