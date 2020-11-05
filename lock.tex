@@ -473,7 +473,7 @@ log.lock & Serializes operations on the transaction log \\
 pipe's pi->lock & Serializes operations on each pipe \\
 pid\_lock & Serializes increments of next\_pid \\
 proc's p->lock & Serializes changes to process's state \\
-proc\_tree\_lock & Serializes changes to the process parent/child tree \\
+wait\_lock & Helps wait avoid lost wakeups \\
 tickslock & Serializes operations on the ticks counter \\
 inode's ip->lock & Serializes operations on each inode and its content \\
 buf's b->lock & Serializes operations on each block buffer \\

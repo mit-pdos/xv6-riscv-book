@@ -1142,19 +1142,12 @@ and
 as well as simultaneous
 \lstinline{exit} and \lstinline{exit}.
 
-% proc_tree_lock protects both all p->parents, and
-% the fact that processes have exited. the latter
-% must be the case because proc_tree_lock is the
-% condition lock for wait()'s sleep().
-
 \lstinline{Wait} starts by acquiring
-\lstinline{proc_tree_lock}
+\lstinline{wait_lock}
 \lineref{kernel/proc.c:/^wait/}.
-The reason is that \lstinline{wait}
-must check every process's \lstinline{p->parent}
-field, and
-\lstinline{proc_tree_lock} protects the entire set
-of \lstinline{p->parent} fields.
+The reason is that \lstinline{wait_lock} acts as the condition
+lock that helps ensure that the parent doesn't miss a \lstinline{wakeup}
+from an exiting child.
 Then \lstinline{wait} scans the process table.
 If it finds a child in \texttt{ZOMBIE} state,
 it frees that child's resources and
@@ -1171,8 +1164,8 @@ to wait for any of them to exit
 \lineref{kernel/proc.c:/DOC: wait-sleep/},
 then scans again.
 \lstinline{wait} often holds two locks,
-\lstinline{proc_tree_lock} and some process's \lstinline{np->lock};
-the deadlock-avoiding order is first \lstinline{proc_tree_lock}
+\lstinline{wait_lock} and some process's \lstinline{np->lock};
+the deadlock-avoiding order is first \lstinline{wait_lock}
 and then \lstinline{np->lock}.
 
 \lstinline{Exit} \lineref{kernel/proc.c:/^exit/} records the exit
@@ -1180,11 +1173,10 @@ status, frees some resources, calls \lstinline{reparent} to give its
 children to the \lstinline{init} process, wakes up the parent in case
 it is in \lstinline{wait}, marks the caller as a zombie, and
 permanently yields the CPU. \lstinline{exit} holds both
-\lstinline{proc_tree_lock} and \lstinline{p->lock} during this
-sequence. It has to hold \lstinline{proc_tree_lock} because that's the
-lock that protects its children's (and its own) \lstinline{p->parent}
-values, which are read by children and modified by parents. Another
-reason to hold \lstinline{proc_tree_lock} is that it's the condition
+\lstinline{wait_lock} and \lstinline{p->lock} during this
+sequence.
+It holds \lstinline{wait_lock} because 
+it's the condition
 lock for the \lstinline{wakeup(p->parent)}, preventing a parent in
 \lstinline{wait} from losing the wakeup. \lstinline{exit} must hold
 \lstinline{p->lock} for this sequence also, to prevent a parent in
@@ -1358,7 +1350,23 @@ atomic.
 
 \end{itemize}
 
-% now proc_tree_lock.
+
+The \lstinline{p->parent} field is protected by the global lock
+\lstinline{wait_lock} rather than by \lstinline{p->lock}.
+Only a process's parent modifies \lstinline{p->parent}, though
+the field is read both by the process itself and by other
+processes searching for their children. The purpose of 
+\lstinline{wait_lock} is to act as the condition lock when
+\lstinline{wait} sleeps waiting for any child to exit. An
+exiting child holds either \lstinline{wait_lock} or \lstinline{p->lock}
+until after it has set its state to \lstinline{ZOMBIE}, woken
+up its parent, and yielded the CPU. \lstinline{wait_lock} also
+serializes concurrent \lstinline{exit}s by a parent and child,
+so that the \lstinline{init} process (which inherits the child)
+is guaranteed to be woken up from its \lstinline{wait}.
+\lstinline{wait_lock} is a global lock rather than a per-process
+lock in each parent, because, until a process acquires it,
+it cannot know who its parent is.
 
 %% 
 \section{Real world}
