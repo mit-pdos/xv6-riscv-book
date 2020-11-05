@@ -416,23 +416,6 @@ is completely running (after the
 for example in
 \lstinline{yield}).
 
-% \indexcode{p->lock}
-% protects other things as well:
-% the interplay between
-% \indexcode{exit}
-% and
-% \indexcode{wait},
-% the machinery to avoid lost wakeups (see Section~\ref{sec:sleep}),
-% and avoidance of races between a process exiting and other processes
-% reading or writing its state (e.g., the \lstinline{exit}
-% system call looking at \lstinline{p->pid} and
-% setting \lstinline{p->killed}
-% \lineref{kernel/proc.c:/^kill/}).
-% It's possible that with some design effort the
-% different functions of
-% \lstinline{p->lock}
-% could be split up, for clarity and perhaps
-% for performance.
 %% 
 \section{Code: mycpu and myproc}
 %% 
@@ -1301,6 +1284,82 @@ be left in a correct state.
 A process that is killed while waiting for disk I/O won't
 exit until it completes the current system call and
 \lstinline{usertrap} sees the killed flag.
+
+\section{Process Locking}
+
+The lock associated with each process (\lstinline{p->lock}) is the
+most complex lock in xv6.
+A simple way to think about \lstinline{p->lock} is
+that it must be held while reading or writing any of the following
+\lstinline{struct proc} fields:
+\lstinline{p->state},
+\lstinline{p->chan},
+\lstinline{p->killed},
+\lstinline{p->xstate},
+and
+\lstinline{p->pid}.
+These fields can be used by other processes, or by scheduler
+threads on other cores, so it's natural that they
+must be protected by a lock.
+
+However, most uses of \lstinline{p->lock} are protecting higher-level
+aspects of xv6's process data structures and algorithms. Here's
+the full set of things that \lstinline{p->lock} does:
+
+% it's hard to know how to phrase these things in a uniform way.
+% should the discussion be about invariants? protecting data? avoiding
+% races? ensuring atomicity? avoiding a specific danger?
+
+% the "atomic" phrasing often doesn't really say what the danger is.
+
+\begin{itemize}
+
+\item Along with \lstinline{p->state}, it prevents races in allocating
+  \lstinline{proc[]} slots for new processes.
+% makes check for UNUSED atomic with allocation (or something).
+
+\item It conceals a process from view while it is being created
+or destroyed.
+% makes all the steps of allocation, and destruction, atomic.
+
+\item It prevents a parent's \lstinline{wait} from collecting a
+process that has set its state to \lstinline{ZOMBIE} but has
+not yet yielded the CPU.
+% it atomicizes the setting of the state to ZOMIE and the yielding
+% of the CPU.
+
+\item It prevents another core's scheduler from deciding to run
+a yielding process after it sets its state to \lstinline{RUNNABLE} but
+before it finishes \lstinline{swtch}.
+% it atomizes the setting of p->state and swtch().
+
+\item It ensures that only one core's scheduler decides to run a
+  \lstinline{RUNNABLE} processes.
+% it atomicizes a scheduler's check for RUNNABLE and actually
+% running the process. or setting state to RUNNING.
+
+\item It prevents a timer interrupt from causing a process to
+yield while it is in \lstinline{swtch}.
+% it makes swtch (or really the whole sequence) atomic w.r.t. timer interrupts
+
+\item Along with the condition lock, it helps prevent \lstinline{wakeup}
+from overlooking a process that is calling \lstinline{sleep} but has not
+finished yielding the CPU.
+% avoids a race between conditionCheck+sleep and wakeup?
+% makes condition check atomic with yield?
+
+\item It prevents the victim process of \lstinline{kill} from exiting
+and perhaps being re-allocated between \lstinline{kill}'s check of 
+\lstinline{p->pid} and setting \lstinline{p->killed}.
+% it makes the pid check atomic with setting killed.
+
+\item It makes \lstinline{kill}'s check and write of \lstinline{p->state}
+atomic.
+
+\end{itemize}
+
+% now proc_tree_lock.
+
 %% 
 \section{Real world}
 %% 
@@ -1532,16 +1591,5 @@ instruction
 when no processes are runnable.
 Try to ensure that, any time there are runnable processes waiting
 to run, no cores are pausing in \texttt{WFI}.
-
-\item The lock
-\lstinline{p->lock}
-protects many invariants, and when looking at a particular piece of xv6 code that
-is protected by
-\lstinline{p->lock},
-it can be difficult to figure out which invariant is being enforced.  Design a
-plan that is more clean by splitting
-\lstinline{p->lock}
-into several locks.
-% Answer: don't know.
 
 \end{enumerate}
