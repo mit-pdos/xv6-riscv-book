@@ -668,7 +668,8 @@ The
 array records the block numbers of the disk blocks holding
 the file's content.
 
-The kernel keeps the set of active inodes in memory;
+The kernel keeps the set of active inodes in memory
+in a table called \indexcode{itable};
 \indexcode{struct inode}
 \lineref{kernel/file.h:/^struct.inode/}
 is the in-memory copy of a 
@@ -694,11 +695,11 @@ such as
 
 There are four lock or lock-like mechanisms in xv6's
 inode code.
-\lstinline{icache.lock}
-protects the invariant that an inode is present in the cache
-at most once, and the invariant that a cached inode's
+\lstinline{itable.lock}
+protects the invariant that an inode is present in the inode table
+at most once, and the invariant that an in-memory inode's
 \lstinline{ref}
-field counts the number of in-memory pointers to the cached inode.
+field counts the number of in-memory pointers to the inode.
 Each in-memory inode has a
 \lstinline{lock}
 field containing a
@@ -708,11 +709,11 @@ inode's file or directory content blocks.
 An inode's
 \lstinline{ref},
 if it is greater than zero, causes the system to maintain
-the inode in the cache, and not re-use the cache entry for
+the inode in the table, and not re-use the table entry for
 a different inode.
 Finally, each inode contains a
 \lstinline{nlink}
-field (on disk and copied in memory if it is cached) that
+field (on disk and copied in memory if in memory) that
 counts the number of directory entries that refer to a file;
 xv6 won't free an inode if its link count is greater than zero.
 
@@ -758,15 +759,15 @@ returned by
 \lstinline{iget},
 but only one process can lock the inode at a time.
 
-The inode cache only caches inodes to which kernel code
+The inode table only stores inodes to which kernel code
 or data structures hold C pointers.
-Its main job is really synchronizing access by multiple processes;
-caching is secondary.
-If an inode is used frequently, the buffer cache will probably
-keep it in memory if it isn't kept by the inode cache.
-The inode cache is \indextext{write-through}, which means that code that
-modifies a cached inode must immediately write it to disk with
+Its main job is synchronizing access by multiple processes.
+The inode table also happens to cache frequently-used inodes, but
+caching is secondary; if an inode is used frequently, the buffer cache will probably
+keep it in memory.
+Code that modifies an in-memory inode writes it to disk with
 \lstinline{iupdate}.
+
 %% 
 %%  -------------------------------------------
 %% 
@@ -783,7 +784,7 @@ it loops over the inode structures on the disk, one block at a time,
 looking for one that is marked free.
 When it finds one, it claims it by writing the new 
 \lstinline{type}
-to the disk and then returns an entry from the inode cache
+to the disk and then returns an entry from the inode table
 with the tail call to 
 \indexcode{iget}
 \lineref{kernel/fs.c:/return.iget\(dev..inum\)/}.
@@ -799,7 +800,7 @@ and try to claim it.
 
 \lstinline{Iget}
 \lineref{kernel/fs.c:/^iget/}
-looks through the inode cache for an active entry (\lstinline{ip->ref}
+looks through the inode table for an active entry (\lstinline{ip->ref}
 \lstinline{>}
 \lstinline{0})
 with the desired device and inode number.
@@ -809,7 +810,7 @@ As
 \indexcode{iget}
 scans, it records the position of the first empty slot
 \linerefs{kernel/fs.c:/^....if.empty.==.0/,/empty.=.ip/},
-which it uses if it needs to allocate a cache entry.
+which it uses if it needs to allocate a table entry.
 
 Code must lock the inode using
 \indexcode{ilock}
@@ -834,7 +835,7 @@ releases a C pointer to an inode
 by decrementing the reference count
 \lineref{kernel/fs.c:/^..ip->ref--/}.
 If this is the last reference, the inode's
-slot in the inode cache is now free and can be re-used
+slot in the inode table is now free and can be re-used
 for a different inode.
 
 If 
@@ -859,7 +860,7 @@ One danger is that a concurrent thread might be waiting in
 to use this inode (e.g., to read a file or list a directory),
 and won't be prepared to find that the inode is not longer
 allocated. This can't happen because there is no way for
-a system call to get a pointer to a cached inode if it has
+a system call to get a pointer to an in-memory inode if it has
 no links to it and 
 \lstinline{ip->ref}
 is one. That one reference is the reference owned by the
@@ -868,7 +869,7 @@ thread calling
 It's true that 
 \lstinline{iput}
 checks that the reference count is one outside of its
-\lstinline{icache.lock}
+\lstinline{itable.lock}
 critical section, but at that point the link
 count is known to be zero, so no thread will try
 to acquire a new reference.
@@ -877,7 +878,7 @@ The other main danger is that a concurrent call to
 might choose the same inode that
 \lstinline{iput}
 is freeing.
-This can only happen after the
+This can happen only after the
 \lstinline{iupdate}
 writes the disk so that the inode has type zero.
 This race is benign; the allocating thread will politely wait
