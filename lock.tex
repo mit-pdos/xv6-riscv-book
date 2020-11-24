@@ -466,7 +466,7 @@ lists all of the locks in xv6.
 bcache.lock & Protects allocation of block buffer cache entries \\
 cons.lock & Serializes access to console hardware, avoids intermixed output \\
 ftable.lock & Serializes allocation of a struct file in file table \\
-icache.lock & Protects allocation of inode cache entries \\
+itable.lock & Protects allocation of in-memory inode entries \\
 vdisk\_lock & Serializes access to disk hardware and queue of DMA descriptors \\
 kmem.lock & Serializes allocation of memory \\
 log.lock & Serializes operations on the transaction log \\
@@ -955,7 +955,7 @@ changing its shared address space.
 
 % LocalWords:  CPUs uniprocessor interruptible allocator kalloc kfree
 % LocalWords:  struct malloc sizeof listlock invariants spinlock lk
-% LocalWords:  amoswap cpu bcache ftable icache inode vdisk DMA kmem
+% LocalWords:  amoswap cpu bcache ftable itable inode vdisk DMA kmem
 % LocalWords:  pid proc's tickslock inode's ip buf's proc SCHED sys
 % LocalWords:  consoleintr wakeup clockintr intr acquiresleep POSIX
 % LocalWords:  Pthreads pthread unmaps TLB IPIs
