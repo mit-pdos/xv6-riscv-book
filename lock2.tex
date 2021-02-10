@@ -94,8 +94,8 @@ count incremented, but not locked.
 Some data items are protected by different mechanisms at different
 times, and may at times be protected from concurrent access implicitly
 by the structure of the xv6 code rather than by explicit locks. For
-example, when a physical page is free, it is protected by \texttt{
-  kmem.lock} \lineref{kernel/kalloc.c:/^. kmem;/}. If the page is then
+example, when a physical page is free, it is protected by \texttt{kmem.lock}
+\lineref{kernel/kalloc.c:/^. kmem;/}. If the page is then
 allocated as a pipe \lineref{kernel/pipe.c:/^pipealloc/}, it is
 protected by a different lock (the embedded \lstinline{pi->lock}). If the page
 is re-allocated for a new process's user memory, it is not protected by a
