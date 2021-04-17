@@ -973,11 +973,11 @@ This is a good on-disk representation but a
 complex one for clients.
 The function
 \indexcode{bmap}
-manages the representation so that higher-level routines such as
+manages the representation so that higher-level routines, such as
 \indexcode{readi}
 and
 \indexcode{writei},
-which we will see shortly.
+which we will see shortly, do not need to manage this complexity.
 \lstinline{Bmap}
 returns the disk block number of the
 \lstinline{bn}'th
