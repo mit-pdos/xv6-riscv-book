@@ -268,8 +268,8 @@ calls {\tt userret} on the trampoline page that is mapped in
 both user and kernel page tables; the reason is that assembly
 code in {\tt userret} will switch page tables.
 
-{\tt usertrapret}'s call to {\tt userret} passes a pointer to the process's user
-page table in {\tt a0} and {\tt TRAPFRAME} in {\tt a1}
+{\tt usertrapret}'s call to {\tt userret} passes {\tt TRAPFRAME} in 
+{\tt a0} and a pointer to the process's user page table in {\tt a1}
 \lineref{kernel/trampoline.S:/^userret/}.
 {\tt userret} switches {\tt satp} to the process's user page table.
 Recall that the user page table maps both the trampoline page
