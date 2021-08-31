@@ -1674,7 +1674,7 @@ The most inefficient part of the file system layout is the directory,
 which requires a linear scan over all the disk blocks during each lookup.
 This is reasonable when directories are only a few disk blocks,
 but is expensive for directories holding many files.
-Microsoft Windows's NTFS, Mac OS X's HFS, and Solaris's ZFS, just to name a few, implement
+Microsoft Windows's NTFS, macOS's HFS, and Solaris's ZFS, just to name a few, implement
 a directory as an on-disk balanced tree of blocks.
 This is complicated but guarantees logarithmic-time directory lookups.
 
