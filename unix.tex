@@ -777,8 +777,7 @@ the code: now \lstinline{runcmd} needs to know if it's in an interior
 process or not.  Complications also arise when not forking for
 \lstinline{runcmd(p->right)}.  For example, with just that
 modification, \lstinline{sleep 10 | echo hi} will immediately print
-``hi'' and ask for the input from the user, instead of asking for
-input after 10 seconds; this happens because \lstinline{echo} runs
+``hi' and a new prompt, instead of after 10 seconds; this happens because \lstinline{echo} runs
 immediately and exits, not waiting for \lstinline{sleep} to finish.
 Since the goal of the \lstinline{sh.c} is to be as simple as possible,
 it doesn't try to avoid creating interior processes.
