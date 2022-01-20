@@ -424,7 +424,7 @@ thread's saved registers safely on its stack.
 {\tt kernelvec} jumps to {\tt kerneltrap}
 \lineref{kernel/trap.c:/^kerneltrap/} after saving registers.
 {\tt kerneltrap} is prepared for two types of traps:
-device interrrupts and exceptions. It calls
+device interrupts and exceptions. It calls
 {\tt devintr}
 \lineref{kernel/trap.c:/^devintr/}
 to check for and handle the former.
