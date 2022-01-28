@@ -858,7 +858,7 @@ in the case in which it frees the inode deserves a closer look.
 One danger is that a concurrent thread might be waiting in
 \lstinline{ilock}
 to use this inode (e.g., to read a file or list a directory),
-and won't be prepared to find that the inode is not longer
+and won't be prepared to find that the inode is no longer
 allocated. This can't happen because there is no way for
 a system call to get a pointer to an in-memory inode if it has
 no links to it and 
@@ -889,8 +889,8 @@ is done with it.
 
 \lstinline{iput()}
 can write to the disk.  This means that any system call that uses the file
-system may write the disk, because the system call may be the last one having a
-reference to the file. Even calls like
+system may write to the disk, because the system call may be the last one having
+a reference to the file. Even calls like
 \lstinline{read()}
 that appear to be read-only, may end up calling
 \lstinline{iput().}
@@ -916,7 +916,7 @@ such file exists, then it can free those files.
 The second solution doesn't require scanning the file system.  In this solution,
 the file system records on disk (e.g., in the super block) the inode inumber of
 a file whose link count drops to zero but whose reference count isn't zero.  If
-the file system removes the file when its reference counts reaches 0, then it
+the file system removes the file when its reference count reaches 0, then it
 updates the on-disk list by removing that inode from the list. On recovery, the
 file system frees any file in the list.
 
@@ -1007,7 +1007,7 @@ and then reads a block number from the right
 position within the block
 \lineref{kernel/fs.c:/a.=..uint\*.bp->data/}.
 If the block number exceeds
-\lstinline{NDIRECT}+NINDIRECT,
+\lstinline{NDIRECT+NINDIRECT},
 \lstinline{bmap} 
 panics; 
 \lstinline{writei}
@@ -1441,7 +1441,7 @@ cannot overwrite each other's data, though their writes may end up interlaced.
 %% 
 \section{Code: System calls}
 
-With the functions that the lower layers provide the implementation of most
+With the functions that the lower layers provide, the implementation of most
 system calls is trivial
 (see
 \fileref{kernel/sysfile.c}).

@@ -78,7 +78,7 @@ switch to a new process's kernel thread, and a trap return
 to the user-level process.
 The xv6 scheduler has a dedicated thread (saved registers and stack)
 per CPU because
-it is not safe for the scheduler execute on
+it is not safe for the scheduler to execute on
 the old process's kernel stack: some other core might
 wake the process up and run it, and it would be a disaster
 to use the same stack on two different cores.
@@ -151,7 +151,7 @@ which calls
 to save the current context in
 \lstinline{p->context}
 and switch to the scheduler context previously saved in 
-\indexcode{cpu->scheduler}
+\indexcode{cpu->context}
 \lineref{kernel/proc.c:/swtch..p/}.
 
 \lstinline{Swtch}
@@ -191,7 +191,7 @@ In our example,
 called
 \indexcode{swtch}
 to switch to
-\indexcode{cpu->scheduler},
+\indexcode{cpu->context},
 the per-CPU scheduler context.
 That context was saved at the point in the past when
 \lstinline{scheduler}
@@ -250,14 +250,14 @@ calls
 to save the current context in 
 \lstinline{p->context}
 and switch to the scheduler context in
-\indexcode{cpu->scheduler}.
+\indexcode{cpu->context}.
 \lstinline{Swtch}
 returns on the scheduler's stack
 as though
 \indexcode{scheduler}'s
 \lstinline{swtch}
 had returned
-\lineref{kernel/proc.c:/swtch.*schedul.*contex/}.
+\lineref{kernel/proc.c:/swtch.*contex.*contex/}.
 The scheduler continues its
 \lstinline{for}
 loop, finds a process to run, 
@@ -452,7 +452,7 @@ This allows
 of \lstinline{cpu} structures to find the right one.
 
 Ensuring that a CPU's \lstinline{tp} always holds the CPU's
-hartid is a little involved. \lstinline{mstart} sets the \lstinline{tp}
+hartid is a little involved. \lstinline{start} sets the \lstinline{tp}
 register early in the CPU's boot sequence, while still in machine mode
 \lineref{kernel/start.c:/w_tp/}.
 \lstinline{usertrapret} saves \lstinline{tp} in the trampoline
@@ -776,7 +776,7 @@ prevents
 from trying to wake it up between 
 \lstinline{P}'s
 check of
-\lstinline{c->count}
+\lstinline{s->count}
 and its call to
 \lstinline{sleep}.
 Note, however, that we need
@@ -1379,7 +1379,7 @@ Real operating systems implement more sophisticated policies that, for example,
 allow processes to have priorities.  The idea is that a runnable high-priority process
 will be preferred by the scheduler over a runnable low-priority process.   These
 policies can become complex quickly because there are often competing goals: for
-example, the operating might also want to guarantee fairness and
+example, the operating system might also want to guarantee fairness and
 high throughput.  In addition, complex policies may lead to unintended
 interactions such as
 \indextext{priority inversion}
