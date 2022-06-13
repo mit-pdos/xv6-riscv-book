@@ -31,7 +31,7 @@ Kernels are full of concurrently-accessed data. For example, two CPUs
 could simultaneously call {\tt kalloc}, thereby concurrently
 popping from the head of the free list. Kernel designers like to allow
 for lots of concurrency, since it can yield increased performance
-though parallelism, and increased responsiveness. However, as a result
+through parallelism, and increased responsiveness. However, as a result
 kernel designers spend a lot of effort convincing themselves of
 correctness despite such concurrency. There are many ways to arrive at
 correct code, some easier to reason about than others. Strategies
