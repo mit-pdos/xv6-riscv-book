@@ -46,7 +46,7 @@ commonality among the three trap types suggests that a kernel could
 handle all traps with a single code path, it turns out to be
 convenient to have separate code for
 three distinct cases: traps from user space, traps from kernel space,
-and timer interrupts. Kernel code (assembler or C) that
+and timer interrupts. Kernel code (assembly or C) that
 processes a trap is often called a \indextext{handler};
 the first handler instructions are usually written in assembler
 (rather than C) and are sometimes called a \indextext{vector}.
