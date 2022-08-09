@@ -76,8 +76,8 @@ an outline of the most important registers:
 \item \indexcode{scause}: RISC-V puts a number here that describes
 the reason for the trap.
 
-\item \indexcode{sscratch}: The kernel places a value here that comes in
-  handy at the very start of a trap handler.
+\item \indexcode{sscratch}: The trap handler code uses {\tt sscratch}
+  to help it avoid overwriting user regsters before saving them.
 
 \item \indexcode{sstatus}: The SIE bit in {\tt sstatus}
   controls whether device interrupts
@@ -143,7 +143,8 @@ the CPU switch to a kernel-specified instruction address, namely {\tt
 \section{Traps from user space}
 
 Xv6 handles traps differently depending on whether
-it is executing in the kernel or in user code. Here is the
+the trap occurs while
+executing in the kernel or in user code. Here is the
 story for traps from user code; Section~\ref{s:ktraps}
 describes traps from kernel code.
 
@@ -201,31 +202,29 @@ Storing to memory requires use of a register
 to hold the address,
 but at this point there are no general-purpose registers available!
 Luckily RISC-V provides a helping hand in the
-form of the {\tt sscratch} register. The {\tt csrrw} instruction at
-the start of {\tt uservec} swaps the contents of {\tt a0} and {\tt
-  sscratch}. Now the user code's {\tt a0} is saved
-in {\tt sscratch}; {\tt uservec} has
-one register ({\tt a0}) to play with; and {\tt a0} contains the
-value the kernel previously placed in {\tt sscratch}.
+form of the {\tt sscratch} register. The {\tt csrw} instruction at
+the start of {\tt uservec} saves {\tt a0} in {\tt
+  sscratch}. Now 
+{\tt uservec} has
+one register ({\tt a0}) to play with.
 
-{\tt uservec}'s next task is to save the 32 user registers. Before
-entering user space, the kernel set {\tt sscratch} to point to a
-per-process {\tt trapframe} structure that (among other things) has space to
+{\tt uservec}'s next task is to save the 32 user registers.
+The kernel allocates, for each process, a page of memory for a
+{\tt trapframe} structure that (among other things) has space to
 save the 32 user registers
 \lineref{kernel/proc.h:/^struct.trapframe/}. Because {\tt satp} still
 refers to the user page table, {\tt uservec} needs the trapframe to be
-mapped in the user address space. When creating each process, xv6
-allocates a page for the process's trapframe, and arranges for it
-always to be mapped at user virtual address {\tt TRAPFRAME}, which is
+mapped in the user address space. xv6 maps each process's trapframe
+at virtual address {\tt TRAPFRAME} in that process's user page table;
+{\tt TRAPFRAME} is
 just below {\tt TRAMPOLINE}. The process's {\tt p->trapframe} also
 points to the
 trapframe, though at its physical address so the kernel can use it
 through the kernel page table.
 
-Thus after swapping {\tt a0} and {\tt sscratch}, {\tt a0}
-holds a pointer to the current process's trapframe.
-{\tt uservec} now saves all user registers there,
-including the user's {\tt a0}, read from {\tt sscratch}.
+Thus {\tt uservec} loads address {\tt TRAPFRAME} into {\tt a0}
+and saves all the user registers there,
+including the user's {\tt a0}, read back from {\tt sscratch}.
 
 The {\tt trapframe} contains the address of the current process's
 kernel stack, the current CPU's hartid, the address of the {\tt usertrap}
@@ -268,22 +267,20 @@ calls {\tt userret} on the trampoline page that is mapped in
 both user and kernel page tables; the reason is that assembly
 code in {\tt userret} will switch page tables.
 
-{\tt usertrapret}'s call to {\tt userret} passes {\tt TRAPFRAME} in 
-{\tt a0} and a pointer to the process's user page table in {\tt a1}
+{\tt usertrapret}'s call to {\tt userret} passes 
+a pointer to the process's user page table in {\tt a0}
 \lineref{kernel/trampoline.S:/^userret/}.
 {\tt userret} switches {\tt satp} to the process's user page table.
 Recall that the user page table maps both the trampoline page
 and {\tt TRAPFRAME}, but nothing else from the kernel.
-The fact that the trampoline page is mapped at the same
-virtual address in user and kernel page tables is what allows
-{\tt uservec} to keep executing after changing {\tt satp}.
-{\tt userret} copies the trapframe's saved user {\tt a0} to {\tt sscratch}
-in preparation for a later swap with TRAPFRAME.
+The trampoline page mapping at the same
+virtual address in user and kernel page tables allows
+{\tt userret} to keep executing after changing {\tt satp}.
 From this point on, the only data {\tt userret} can use is
 the register contents and the content of the trapframe.
-Next {\tt userret} restores saved user registers from the trapframe,
-does a final swap of {\tt a0} and {\tt sscratch} to restore the
-user {\tt a0} and save {\tt TRAPFRAME} for the next trap,
+{\tt userret} loads the {\tt TRAPFRAME} address into {\tt a0},
+restores saved user registers from the trapframe via {\tt a0},
+restores the saved user {\tt a0},
 and executes {\tt sret} to return to user space.
 
 \section{Code: Calling system calls}
