@@ -452,7 +452,7 @@ This allows
 of \lstinline{cpu} structures to find the right one.
 
 Ensuring that a CPU's \lstinline{tp} always holds the CPU's
-hartid is a little involved. \lstinline{mstart} sets the \lstinline{tp}
+hartid is a little involved. \lstinline{start} sets the \lstinline{tp}
 register early in the CPU's boot sequence, while still in machine mode
 \lineref{kernel/start.c:/w_tp/}.
 \lstinline{usertrapret} saves \lstinline{tp} in the trampoline
