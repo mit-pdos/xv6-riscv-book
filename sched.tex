@@ -1164,9 +1164,9 @@ to wait for any of them to exit
 \lineref{kernel/proc.c:/DOC: wait-sleep/},
 then scans again.
 \lstinline{wait} often holds two locks,
-\lstinline{wait_lock} and some process's \lstinline{np->lock};
+\lstinline{wait_lock} and some process's \lstinline{pp->lock};
 the deadlock-avoiding order is first \lstinline{wait_lock}
-and then \lstinline{np->lock}.
+and then \lstinline{pp->lock}.
 
 \lstinline{Exit} \lineref{kernel/proc.c:/^exit/} records the exit
 status, frees some resources, calls \lstinline{reparent} to give its
