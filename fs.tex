@@ -1077,16 +1077,16 @@ and if the write has extended the file,
 must update its size
 \linerefs{kernel/fs.c:/^..if.n.>.0./,/^..}/}.
 
-Both
-\indexcode{readi}
-and
-\indexcode{writei}
-begin by checking for
-\lstinline{ip->type}
-\lstinline{==}
-\indexcode{T_DEV}.
-This case handles special devices whose data does not
-live in the file system; we will return to this case in the file descriptor layer.
+%% Both
+%% \indexcode{readi}
+%% and
+%% \indexcode{writei}
+%% begin by checking for
+%% \lstinline{ip->type}
+%% \lstinline{==}
+%% \indexcode{T_DEV}.
+%% This case handles special devices whose data does not
+%% live in the file system; we will return to this case in the file descriptor layer.
 
 The function
 \indexcode{stati}
