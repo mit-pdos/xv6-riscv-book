@@ -186,7 +186,7 @@ be above memory that programs use for themselves.
 The trampoline page is also mapped at address {\tt TRAMPOLINE}
 in the kernel page table. See Figure~\ref{fig:as} and
 Figure~\ref{fig:xv6_layout}. Because the trampoline page is mapped in
-the user page table, with the {\tt PTE\_U} flag, traps can start
+the user page table, without the {\tt PTE\_U} flag, traps can start
 executing there in supervisor mode. Because the trampoline page is
 mapped at the same address in the kernel address space, the trap handler
 can continue to execute after it switches to the kernel page
