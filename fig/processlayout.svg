@@ -64,7 +64,7 @@
      inkscape:current-layer="layer1"
      inkscape:document-units="px"
      inkscape:cy="470.83611"
-     inkscape:cx="297.62026"
+     inkscape:cx="298.48418"
      inkscape:zoom="1.1575153"
      inkscape:pageshadow="2"
      inkscape:pageopacity="0.0"
@@ -155,13 +155,13 @@
        id="path5418" />
     <text
        id="text5489"
-       y="884.89258"
-       x="245.80011"
+       y="900.8197"
+       x="247.13747"
        style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'American Typewriter';-inkscape-font-specification:'American Typewriter';fill:#000000;fill-opacity:1;stroke:none"
        xml:space="preserve"><tspan
          style="font-size:24px;line-height:1.25"
-         y="884.89258"
-         x="245.80011"
+         y="900.8197"
+         x="247.13747"
          id="tspan5491"
          sodipodi:role="line">text</tspan></text>
     <text
@@ -542,13 +542,13 @@
     <text
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;font-size:24px;line-height:125%;font-family:sans-serif;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       x="370.25708"
-       y="883.25714"
+       x="373.30673"
+       y="909.75092"
        id="text310"><tspan
          sodipodi:role="line"
          id="tspan308"
-         x="370.25708"
-         y="883.25714"
+         x="373.30673"
+         y="909.75092"
          style="font-size:24px">R-XU</tspan></text>
     <text
        xml:space="preserve"
@@ -632,6 +632,36 @@
          x="371.98236"
          y="439.61011"><tspan
    style="font-size:24px"
-   id="tspan398">RX--</tspan>-</tspan></text>
+   id="tspan398">R-W-</tspan>-</tspan></text>
+    <path
+       id="path559"
+       d="m 180.9588,846.71051 c 180,0 180,0 180,0"
+       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    <path
+       id="path561"
+       d="m 134.4599,813.8306 c 40,0 40,0 40,0"
+       style="font-size:24px;fill:none;stroke:#000000;stroke-width:1.4;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#Arrow1Lend)" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:24px;line-height:125%;font-family:sans-serif;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       x="27.892561"
+       y="797.61664"
+       id="text565"><tspan
+         sodipodi:role="line"
+         id="tspan563"
+         x="27.892561"
+         y="797.61664"
+         style="font-size:24px">Page aligned</tspan></text>
+    <text
+       id="text616"
+       y="836.70691"
+       x="224.64983"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'American Typewriter';-inkscape-font-specification:'American Typewriter';fill:#000000;fill-opacity:1;stroke:none"
+       xml:space="preserve"><tspan
+         style="font-size:24px;line-height:1.25"
+         y="836.70691"
+         x="224.64983"
+         id="tspan614"
+         sodipodi:role="line">unused</tspan></text>
   </g>
 </svg>
