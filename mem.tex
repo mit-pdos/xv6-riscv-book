@@ -554,7 +554,7 @@ Section~\ref{sec:pagefaults}).  The kernel then kills the process and
 prints out an informative message so that the developer can track down
 the problem.
 
-Similarly, by mapping data without \lstinline{PTE_U}, a user program
+Similarly, by mapping data without \lstinline{PTE_X}, a user program
 cannot accidentally jump to an address in the program's data and start
 executing at that address.
 
@@ -597,7 +597,7 @@ memory.  Second, each process sees its memory as having contiguous
 virtual addresses starting at zero, while the process's physical
 memory can be non-contiguous.  Third, the kernel maps a page with
 trampoline code at the top of the user address space (without
-\lstinline{PTE_V}), thus a single page of physical memory shows up in
+\lstinline{PTE_U}), thus a single page of physical memory shows up in
 all address spaces, but can be used only by the kernel.
 
 \begin{figure}[t]
@@ -636,13 +636,16 @@ examination of the user page table.
 %% 
 \section{Code: exec}
 %% 
-\lstinline{Exec} is the system call that creates a user address space.
-It initializes the address space from a file stored in the file
-system.  \lstinline{Exec} \lineref{kernel/exec.c:/^exec/} opens the
+\lstinline{Exec} is a system call that replaces a process's
+user address space with data read from a file, called a binary
+or executable file.
+A binary is typically the output of the compiler and linker,
+and holds machine instructions and program data.
+\lstinline{Exec} \lineref{kernel/exec.c:/^exec/} opens the
 named binary \lstinline{path} using \indexcode{namei}
 \lineref{kernel/exec.c:/namei/}, which is explained in
-Chapter~\ref{CH:FS}.  Then, it reads the ELF header. Xv6 applications
-are described in the widely-used \indextext{ELF format}, defined in
+Chapter~\ref{CH:FS}.  Then, it reads the ELF header. Xv6 binaries
+are formatted in the widely-used \indextext{ELF format}, defined in
 \fileref{kernel/elf.h}.  An ELF binary consists of an ELF header,
 \indexcode{struct elfhdr} \lineref{kernel/elf.h:/^struct.elfhdr/},
 followed by a sequence of program section headers,
@@ -711,7 +714,7 @@ Program Header:
 \end{footnotesize}
 
 We see that the text segment should be loaded at virtual address 0x0
-in memory (without write permissions) and that its content at offset
+in memory (without write permissions) from content at offset
 0x1000 in the file. We also see that the data should be loaded at
 address 0x1000, which is at a page boundary, and without executable
 permissions.
@@ -863,16 +866,17 @@ and may reduce overhead for page-table manipulation.
 The xv6 kernel's lack of a {\tt malloc}-like allocator that can
 provide memory for small objects prevents the kernel from using
 sophisticated data structures that would require dynamic allocation.
-
-Memory allocation is a perennial hot topic, the basic problems being
-efficient use of limited memory and
-preparing for unknown future requests~\cite{knuth}.  Today people care more about speed than
-space efficiency.  In addition, a more elaborate kernel
+A more elaborate kernel
 would likely allocate many different sizes of small blocks,
 rather than (as in xv6) just 4096-byte blocks;
 a real kernel
 allocator would need to handle small allocations as well as large
 ones.
+
+Memory allocation is a perennial hot topic, the basic problems being
+efficient use of limited memory and
+preparing for unknown future requests~\cite{knuth}.  Today people care more about speed than
+space efficiency.
 %% 
 \section{Exercises}
 %% 
@@ -921,7 +925,7 @@ with command line
 \lstinline{arg1}.
 Implement support for this convention in xv6.
 
-\item Implement address space randomization for the kernel.
+\item Implement address space layout randomization for the kernel.
 
 \end{enumerate}
 
