@@ -649,7 +649,9 @@ difficult to prevent clever user code from making a system unusable
 disk space, CPU time, process table slots, etc. It's usually
 impossible to write bug-free code or design bug-free hardware; if the
 writers of malicious user code are aware of kernel or hardware bugs,
-they will exploit them. It's worthwhile to design safeguards into the
+they will exploit them. Even in mature, widely-used kernels, such as
+Linux, people discover new vulnerabilities
+continuously~\cite{mitre:cves}. It's worthwhile to design safeguards into the
 kernel against the possibility that it has bugs: assertions, type
 checking, stack guard pages, etc. Finally, the distinction between
 user and kernel code is sometimes blurred: some privileged user-level
