@@ -558,6 +558,14 @@ Similarly, by mapping data without \lstinline{PTE_X}, a user program
 cannot accidentally jump to an address in the program's data and start
 executing at that address.
 
+In the real world, hardening a process by setting permissions
+carefully also aids in defending against security attacks.  An
+adversary may feed carefully-constructed input to a program (e.g., a
+Web server) that triggers a bug in the program in the hope of turning
+that bug into an exploit~\cite{aleph:smashing}.  Setting permissions
+carefully and other techniques, such as randomizing of the layout of the
+user address space, make such attacks harder.
+
 The stack is a single page, and is shown with the initial contents as
 created by exec.  Strings containing the command-line arguments, as
 well as an array of pointers to them, are at the very top of the
