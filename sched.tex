@@ -1228,7 +1228,10 @@ will call
 \lstinline{exit}
 if
 \lstinline{p->killed}
-is set.
+is set
+(it checks by calling
+\lstinline{killed}
+\lineref{kernel/proc.c:/^killed/}).
 If the victim is running in user space, it will soon enter
 the kernel by making a system call or because the timer (or
 some other device) interrupts.

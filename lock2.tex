@@ -127,9 +127,6 @@ hardware. Another is the {\tt started} variable in {\tt main.c}
 running until CPU zero has finished initializing xv6;
 the {\tt volatile} ensures that the compiler actually generates
 load and store instructions.
-A third example is \indexcode{p->killed}, which is set while holding
-\texttt{p->lock} \lineref{kernel/proc.c:/^kill/},
-but checked without a holding lock \lineref{kernel/trap.c:/p->killed/}.
 
 Xv6 contains cases in which one CPU or thread writes some data, and
 another CPU or thread reads the data, but there is no specific lock
