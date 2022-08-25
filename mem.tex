@@ -405,9 +405,16 @@ Xv6 executes {\tt sfence.vma} in {\tt kvminithart}  after reloading the
 switches to a user page table before returning to user space
 \lineref{kernel/trampoline.S:/sfence.vma/}.
 
+It is also necessary to issue \texttt{sfence.vma} before changing
+\texttt{satp}, in order to wait for completion of all outstanding loads and
+stores. This wait ensures that preceding updates to the page table have
+completed, and ensures that preceding loads and stores use the old
+page table, not the new one.
+
 To avoid flushing the complete TLB, RISC-V CPUs may support address
 space identifiers (ASIDs)~\cite{riscv:priv}.  The kernel can then
-flush just the TLB entries for a particular address space.
+flush just the TLB entries for a particular address space. xv6
+does not use this feature.
 
 \section{Physical memory allocation}
 
@@ -623,7 +630,7 @@ call is implemented by the function
 \lstinline{growproc}
 \lineref{kernel/proc.c:/^growproc/}.
 \lstinline{growproc} calls \lstinline{uvmalloc} or
-\lstinline{uvmdealloc}, depending on whether \lstinline{n} is postive
+\lstinline{uvmdealloc}, depending on whether \lstinline{n} is positive
 or negative.
 \lstinline{uvmalloc}
 \lineref{kernel/vm.c:/^uvmalloc/}
@@ -936,4 +943,3 @@ Implement support for this convention in xv6.
 \item Implement address space layout randomization for the kernel.
 
 \end{enumerate}
-
