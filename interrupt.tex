@@ -169,7 +169,7 @@ UART) interrupt while that CPU is already executing inside
 {\tt consoleread};
 and the hardware might deliver a console interrupt on
 a different CPU while {\tt consoleread} is executing.
-These dangers may result in race conditions or deadlocks.
+These dangers may result in races or deadlocks.
 Chapter~\ref{CH:LOCK} explores these problems and how locks can
 address them.
 
