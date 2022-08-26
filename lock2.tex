@@ -76,7 +76,9 @@ The answer is that the C language specification says that you
 cannot conclude \textit{anything} about the effects of any
 statement on memory visible to other threads if you do
 not use locks (or another similar construct, as detailed in
-the specification). So (without the lock) \texttt{setkilled} might
+the specification\footnote{``Threads and data races'' in \url{
+https://en.cppreference.com/w/c/language/memory_model}}).
+So (without the lock) \texttt{setkilled} might
 not actually change the value of \lstinline{p->killed}, or
 might change it to a value other than \texttt{1}. And \texttt{killed}
 might not read \lstinline{p->killed} at all, might yield a stale
