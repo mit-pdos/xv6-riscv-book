@@ -62,7 +62,7 @@ last reference disappears. See {\tt pipeclose}
 {\tt pi->readopen} and {\tt pi->writeopen} track whether
 the pipe has file descriptors referring to it.
 
-Often one sees locks around sequences of writes to sets of related
+Usually one sees locks around sequences of reads and writes to sets of related
 items; the locks ensure that other threads see only completed sequences of
 updates (as long as they, too, lock).
 What about situations where the update is a simple write to a
@@ -72,8 +72,8 @@ single shared variable? For example,
 lock around their simple uses of
 \lstinline{p->killed}.
 What could go wrong if the locking were omitted?
-The answer is that the C language specification says that you
-cannot conclude \textit{anything} about the effects of any
+The C language specification says that you
+cannot conclude \textit{anything} about the effects of a
 statement on memory visible to other threads if you do
 not use locks (or another similar construct, as detailed in
 the specification). So (without the lock) \texttt{setkilled} might
@@ -81,15 +81,15 @@ not actually change the value of \lstinline{p->killed}, or
 might change it to a value other than \texttt{1}. And \texttt{killed}
 might not read \lstinline{p->killed} at all, might yield a stale
 value, or might yield \texttt{1} even though the process has not been killed.
-The only kind of guarantee C gives code that doesn't lock is that
-it will yield the expected results if there is only one thread;
-there's no guarantee that memory will have the content that
-the code may seem to imply. Adding locks does two things: locks
-prevent other threads from seeing intermediate state of whatever
+That is, races yield undefined behavior.
+One way that locks help here is to
+prevent other threads from seeing the intermediate state of whatever
 optimized update strategy the compiler and CPU
-choose, and locks tell the compiler and CPU to 
+choose (the locks prevent races).
+In addition,
+locks tell the compiler and CPU to 
 cause critical sections to actually read and write current
-values in memory.
+values in memory (the locks create a memory barrier).
 
 % sleep locks.
 % hand-over-hand locking in namei.
