@@ -71,27 +71,25 @@ single shared variable? For example,
 \lineref{kernel/proc.c:/^setkilled/}
 lock around their simple uses of
 \lstinline{p->killed}.
-What could go wrong if the locking were omitted?
-The C language specification says that you
-cannot conclude \textit{anything} about the effects of a
-statement on memory visible to other threads if you do
-not use locks (or another similar construct, as detailed in
-the specification\footnote{``Threads and data races'' in \url{
-https://en.cppreference.com/w/c/language/memory_model}}).
-So (without the lock) \texttt{setkilled} might
-not actually change the value of \lstinline{p->killed}, or
-might change it to a value other than \texttt{1}. And \texttt{killed}
-might not read \lstinline{p->killed} at all, might yield a stale
-value, or might yield \texttt{1} even though the process has not been killed.
-That is, races yield undefined behavior.
-One way that locks help here is to
-prevent other threads from seeing the intermediate state of whatever
-optimized update strategy the compiler and CPU
-choose (the locks prevent races).
-In addition,
-locks tell the compiler and CPU to 
-cause critical sections to actually read and write current
-values in memory (the locks create a memory barrier).
+If there were no lock, one thread could write 
+\lstinline{p->killed}
+at the same time that another thread reads it.
+This is a \indextextx{race}, and the C language specification says
+that a race yields \indextext{undefined behavior}, which means the
+program may crash or yield incorrect results\footnote{``Threads and
+data races'' in \url{
+https://en.cppreference.com/w/c/language/memory_model}}. The locks
+prevent the race and avoid the undefined behavior.
+
+One reason races can break programs is that, if there are no
+locks or equivalent constructs, the compiler may generate machine code
+that reads and writes memory in ways quite different than
+the original C code. For example, the machine code
+of a thread calling
+\texttt{killed} could copy \lstinline{p->killed} to a register and
+read only that cached value; this would mean that the thread
+might never see any writes to
+\lstinline{p->killed}. The locks prevent such caching.
 
 % sleep locks.
 % hand-over-hand locking in namei.
