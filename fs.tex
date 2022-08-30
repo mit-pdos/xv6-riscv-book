@@ -479,7 +479,7 @@ times
 Incrementing
 \lstinline{log.outstanding}
 both reserves space and prevents a commit
-from occuring during this system call.
+from occurring during this system call.
 The code conservatively assumes that each system call might write up to
 \lstinline{MAXOPBLOCKS}
 distinct blocks.
@@ -1113,7 +1113,7 @@ which contains a name and an inode number.
 The name is at most
 \indexcode{DIRSIZ}
 (14) characters;
-if shorter, it is terminated by a NUL (0) byte.
+if shorter, it is terminated by a NULL (0) byte.
 Directory entries with inode number zero are free.
 
 The function

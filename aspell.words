@@ -1,4 +1,4 @@
-personal_ws-1.1 en 389 
+personal_ws-1.1 en 398 
 Abutalib
 acquiresleep
 addr
@@ -22,6 +22,7 @@ ASIDs
 Askar
 bache
 balloc
+basicstyle
 bb
 bcache
 bfree
@@ -78,6 +79,7 @@ dup
 ecall
 EINTR
 elfhdr
+escapeinside
 Eskicioglu
 fcntl
 fd
@@ -117,6 +119,7 @@ Hilderman
 hm
 Hochbaum
 ialloc
+idup
 iget
 ilock
 init
@@ -130,6 +133,7 @@ interp
 interruptible
 interruptor
 intr
+inum
 inumber
 invariants
 ip
@@ -182,6 +186,7 @@ memlayout
 memsz
 Meng
 mepc
+MFK
 microkernel
 microkernels
 miguelgvieira
@@ -191,6 +196,7 @@ mkdir
 mkfs
 mknod
 modularity
+morecomment
 Morrissey
 Mourad
 mret
@@ -222,6 +228,8 @@ pathnames
 Pavan
 Pawel
 pc
+pdfauthor
+pdftitle
 PGROUNDUP
 ph
 PHYSTOP
@@ -382,6 +390,7 @@ Wojciech
 writei
 writeopen
 WRONLY
+xleftmargin
 xstate
 xyz
 Zeldovich
