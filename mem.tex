@@ -16,7 +16,7 @@ parts of physical memory can be accessed. They allow xv6 to isolate
 different process's address spaces and to multiplex them onto a single
 physical memory. Page tables are a popular design because they provide
 a level of indirection that allow operating systems to perform many
-tricks. xv6 performs a few tricks: mapping the same memory
+tricks. Xv6 performs a few tricks: mapping the same memory
 (a trampoline page) in several address spaces, and guarding kernel and
 user stacks with an unmapped page. The rest of this chapter explains
 the page tables that the RISC-V hardware provides and how xv6 uses
@@ -123,7 +123,7 @@ Each PTE contains flag bits that tell the paging hardware
 how the associated virtual address is allowed to be used.
 \indexcode{PTE_V}
 indicates whether the PTE is present: if it is
-not set, a reference to the page causes an exception (i.e. is not allowed).
+not set, a reference to the page causes an exception (i.e., is not allowed).
 \indexcode{PTE_R}
 controls whether instructions are allowed to 
 read to the page.
@@ -413,7 +413,7 @@ page table, not the new one.
 
 To avoid flushing the complete TLB, RISC-V CPUs may support address
 space identifiers (ASIDs)~\cite{riscv:priv}.  The kernel can then
-flush just the TLB entries for a particular address space. xv6
+flush just the TLB entries for a particular address space. Xv6
 does not use this feature.
 
 \section{Physical memory allocation}

@@ -1576,7 +1576,7 @@ that occurs after the victim's sleep loop checks
 but before it calls
 \lstinline{sleep}
 results in the victim abandoning the current system call.
-% Answer: a solution is to to check in sleep if p->killed is set before setting
+% Answer: a solution is to check in sleep if p->killed is set before setting
 % the processes's state to sleep. 
 
 \item Design a plan so that every sleep loop checks 

@@ -43,17 +43,8 @@ clean:
 	rm -rf $(SRC)
 
 spell:
-	@ for i in $(TEX); do aspell --mode=tex \
-					  --add-tex-command="XXX oo" \
-					  --add-tex-command="autoref p" \
-					  --add-tex-command="renewcommand pp" \
-					  --add-tex-command="usetikzlibrary p" \
-					  --add-tex-command="bibliographystyle p" \
-					  --add-tex-command="bibliography p" \
-					  --add-tex-command="putbib o" \
-					  --add-tex-command="mkbib p" \
-					  --add-tex-command="@bibunitname p" \
-					  -p ./aspell.words -c $$i; done
-	@ for i in $(SPELLTEX); do perl bin/double.pl $$i; done
+	@ for i in $(TEX); do aspell --mode=tex -p ./aspell.words -c $$i; done
+	@ for i in $(TEX); do perl bin/double.pl $$i; done
+	@ for i in $(TEX); do perl bin/capital.py $$i; done
 	@ ( head -1 aspell.words ; tail -n +2 aspell.words | sort ) > aspell.words~
 	@ mv aspell.words~ aspell.words
