@@ -199,7 +199,7 @@ indicates that the buffer content has been handed to
 the disk, which may change the buffer (e.g., write
 data from the disk into \lstinline{data}).
 
-\lstinline{Bread}
+\lstinline{bread}
 \lineref{kernel/bio.c:/^bread/}
 calls
 \indexcode{bget}
@@ -211,14 +211,14 @@ calls
 \indexcode{virtio_disk_rw}
 to do that before returning the buffer.
 
-\lstinline{Bget}
+\lstinline{bget}
 \lineref{kernel/bio.c:/^bget/}
 scans the buffer list for a buffer with the given device and sector numbers
 \linerefs{kernel/bio.c:/Is.the.block.already/,/^..}/}.
 If there is such a buffer,
 \indexcode{bget}
 acquires the sleep-lock for the buffer.
-\lstinline{Bget}
+\lstinline{bget}
 then returns the locked buffer.
 
 If there is no cached buffer for the given sector,
@@ -228,7 +228,7 @@ a different sector.
 It scans the buffer list a second time, looking for a buffer
 that is not in use (\lstinline{b->refcnt = 0});
 any such buffer can be used.
-\lstinline{Bget}
+\lstinline{bget}
 edits the buffer metadata to record the new device and sector number
 and acquires its sleep-lock.
 Note that the assignment
@@ -241,7 +241,7 @@ rather than incorrectly using the buffer's previous contents.
 It is important that there is at most one cached buffer per
 disk sector, to ensure that readers see writes, and because the
 file system uses locks on buffers for synchronization.
-\lstinline{Bget}
+\lstinline{bget}
 ensures this invariant by holding the
 \lstinline{bache.lock}
 continuously from the first loop's check of whether the
@@ -283,7 +283,7 @@ exclusive use of the buffer and can read or write the data bytes.
 If the caller does modify the buffer, it must call
 \indexcode{bwrite}
 to write the changed data to disk before releasing the buffer.
-\lstinline{Bwrite}
+\lstinline{bwrite}
 \lineref{kernel/bio.c:/^bwrite/}
 calls
 \indexcode{virtio_disk_rw}
@@ -299,7 +299,7 @@ a shortening of
 b-release,
 is cryptic but worth learning:
 it originated in Unix and is used in BSD, Linux, and Solaris too.)
-\lstinline{Brelse}
+\lstinline{brelse}
 \lineref{kernel/bio.c:/^brelse/}
 releases the sleep-lock and
 moves the buffer
@@ -587,7 +587,7 @@ The block allocator provides two functions:
 allocates a new disk block, and
 \indexcode{bfree}
 frees a block.
-\lstinline{Balloc}
+\lstinline{balloc}
 The loop in
 \lstinline{balloc}
 at
@@ -611,7 +611,7 @@ The race that might occur if two processes try to allocate
 a block at the same time is prevented by the fact that
 the buffer cache only lets one process use any one bitmap block at a time.
 
-\lstinline{Bfree}
+\lstinline{bfree}
 \lineref{kernel/fs.c:/^bfree/}
 finds the right bitmap block and clears the right bit.
 Again the exclusive use implied by
@@ -777,7 +777,7 @@ To allocate a new inode (for example, when creating a file),
 xv6 calls
 \indexcode{ialloc}
 \lineref{kernel/fs.c:/^ialloc/}.
-\lstinline{Ialloc}
+\lstinline{ialloc}
 is similar to
 \indexcode{balloc}:
 it loops over the inode structures on the disk, one block at a time,
@@ -798,7 +798,7 @@ can be sure that some other process does not
 simultaneously see that the inode is available
 and try to claim it.
 
-\lstinline{Iget}
+\lstinline{iget}
 \lineref{kernel/fs.c:/^iget/}
 looks through the inode table for an active entry (\lstinline{ip->ref}
 \lstinline{>}
@@ -815,7 +815,7 @@ which it uses if it needs to allocate a table entry.
 Code must lock the inode using
 \indexcode{ilock}
 before reading or writing its metadata or content.
-\lstinline{Ilock}
+\lstinline{ilock}
 \lineref{kernel/fs.c:/^ilock/}
 uses a sleep-lock for this purpose.
 Once
@@ -829,7 +829,7 @@ releases the sleep-lock,
 which may cause any processes sleeping
 to be woken up.
 
-\lstinline{Iput}
+\lstinline{iput}
 \lineref{kernel/fs.c:/^iput/}
 releases a C pointer to an inode
 by decrementing the reference count
@@ -844,7 +844,7 @@ sees that there are no C pointer references to an inode
 and that the inode has no links to it (occurs in no
 directory), then the inode and its data blocks must
 be freed.
-\lstinline{Iput}
+\lstinline{iput}
 calls
 \indexcode{itrunc}
 to truncate the file to zero bytes, freeing the data blocks;
@@ -978,7 +978,7 @@ manages the representation so that higher-level routines, such as
 and
 \indexcode{writei},
 which we will see shortly, do not need to manage this complexity.
-\lstinline{Bmap}
+\lstinline{bmap}
 returns the disk block number of the
 \lstinline{bn}'th
 data block for the inode
@@ -1000,7 +1000,7 @@ The next
 \indexcode{NINDIRECT}
 blocks are listed in the indirect block at
 \lstinline{ip->addrs[NDIRECT]}.
-\lstinline{Bmap}
+\lstinline{bmap}
 reads the indirect block
 \lineref{kernel/fs.c:/bp.=.bread.ip->dev..addr/}
 and then reads a block number from the right 
@@ -1014,7 +1014,7 @@ panics;
 contains the check that prevents this from happening
 \lineref{kernel/fs.c:/off...n...MAXFILE.BSIZE/}.
 
-\lstinline{Bmap}
+\lstinline{bmap}
 allocates blocks as needed.
 An
 \lstinline{ip->addrs[]}
@@ -1029,7 +1029,7 @@ allocated on demand
 
 \indexcode{itrunc}
 frees a file's blocks, resetting the inode's size to zero.
-\lstinline{Itrunc}
+\lstinline{itrunc}
 \lineref{kernel/fs.c:/^itrunc/}
 starts by freeing the direct blocks
 \linerefs{kernel/fs.c:/^..for.i.=.0.*NDIRECT/,/^..}/},
@@ -1038,13 +1038,13 @@ then the ones listed in the indirect block
 and finally the indirect block itself
 \linerefs{kernel/fs.c:/^....bfree.*NDIRECT/,/./}.
 
-\lstinline{Bmap}
+\lstinline{bmap}
 makes it easy for
 \indexcode{readi}
 and
 \indexcode{writei} 
 to get at an inode's data.
-\lstinline{Readi}
+\lstinline{readi}
 \lineref{kernel/fs.c:/^readi/}
 starts by
 making sure that the offset and count are not 
@@ -1133,7 +1133,7 @@ it updates
 and returns an unlocked inode
 obtained via
 \indexcode{iget}.
-\lstinline{Dirlookup}
+\lstinline{dirlookup}
 is the reason that 
 \lstinline{iget}
 returns unlocked inodes.
@@ -1192,7 +1192,7 @@ by writing at offset
 Path name lookup involves a succession of calls to
 \indexcode{dirlookup},
 one for each path component.
-\lstinline{Namei}
+\lstinline{namei}
 \lineref{kernel/fs.c:/^namei/}
 evaluates 
 \lstinline{path}
@@ -1207,7 +1207,7 @@ Both call the generalized function
 \indexcode{namex}
 to do the real work.
 
-\lstinline{Namex}
+\lstinline{namex}
 \lineref{kernel/fs.c:/^namex/}
 starts by deciding where the path evaluation begins.
 If the path begins with a slash, evaluation begins at the root;
@@ -1267,7 +1267,7 @@ invocation of
 \lstinline{namex}
 by one kernel thread is blocked on a disk I/O, another kernel thread looking up
 a different pathname can proceed concurrently.
-\lstinline{Namex}
+\lstinline{namex}
 locks each directory in the path separately so that lookups in different
 directories can proceed in parallel.
 
@@ -1285,7 +1285,7 @@ the lookup thread holds the lock on the directory and
 \lstinline{dirlookup}
 returns an inode that was obtained using
 \lstinline{iget}.
-\lstinline{Iget}
+\lstinline{iget}
 increases the reference count of the inode.  Only after receiving the
 inode from
 \lstinline{dirlookup}
@@ -1377,7 +1377,7 @@ and
 \indexcode{filewrite}).
 
 The first three follow the now-familiar form.
-\lstinline{Filealloc}
+\lstinline{filealloc}
 \lineref{kernel/file.c:/^filealloc/}
 scans the file table for an unreferenced file
 (\lstinline{f->ref}
@@ -1407,11 +1407,11 @@ implement the
 and
 \indexcode{write}
 operations on files.
-\lstinline{Filestat}
+\lstinline{filestat}
 \lineref{kernel/file.c:/^filestat/}
 is only allowed on inodes and calls
 \indexcode{stati}.
-\lstinline{Fileread}
+\lstinline{fileread}
 and
 \lstinline{filewrite}
 check that the operation is allowed by
@@ -1455,7 +1455,7 @@ and
 edit directories, creating or removing references to inodes.
 They are another good example of the power of using 
 transactions. 
-\lstinline{Sys_link}
+\lstinline{sys_link}
 \lineref{kernel/sysfile.c:/^sys_link/}
 begins by fetching its arguments, two strings
 \lstinline{old}
@@ -1498,7 +1498,7 @@ before creating a link, would put the file system temporarily in an unsafe
 state, and a crash in between could result in havoc.
 With transactions we don't have to worry about this.
 
-\lstinline{Sys_link}
+\lstinline{sys_link}
 creates a new name for an existing inode.
 The function
 \indexcode{create}
@@ -1567,7 +1567,7 @@ Finally, now that the data is initialized properly,
 \indexcode{create}
 can link it into the parent directory
 \lineref{kernel/sysfile.c:/if.dirlink/}.
-\lstinline{Create},
+\lstinline{create},
 like
 \indexcode{sys_link},
 holds two inode locks simultaneously:
@@ -1590,7 +1590,7 @@ it is easy to implement
 \indexcode{sys_mkdir},
 and
 \indexcode{sys_mknod}.
-\lstinline{Sys_open}
+\lstinline{sys_open}
 \lineref{kernel/sysfile.c:/^sys_open/}
 is the most complex, because creating a new file is only
 a small part of what it can do.
@@ -1604,7 +1604,7 @@ flag, it calls
 Otherwise, it calls
 \indexcode{namei}
 \lineref{kernel/sysfile.c:/if..ip.=.namei.path/}.
-\lstinline{Create}
+\lstinline{create}
 returns a locked inode, but 
 \lstinline{namei}
 does not, so

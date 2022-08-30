@@ -165,11 +165,11 @@ int unlink(char *file) & Remove a file. \\
 A process may create a new process using the
 \indexcode{fork}
 system call.
-\lstinline{Fork}
+\lstinline{fork}
 gives the new process an exact copy of the calling
 process's memory,
 both instructions and data.
-\lstinline{Fork}
+\lstinline{fork}
 returns in both the original and new processes.
 In the original process, \lstinline{fork} returns the new process's
 PID.
@@ -259,7 +259,7 @@ When
 succeeds, it does not return to the calling program;
 instead, the instructions loaded from the file start
 executing at the entry point declared in the ELF header.
-\lstinline{Exec}
+\lstinline{exec}
 takes two arguments: the name of the file containing the
 executable and an array of string arguments.
 For example:
@@ -404,7 +404,7 @@ copies them into
 and returns the number of bytes read.
 Each file descriptor that refers to a file
 has an offset associated with it.
-\lstinline{Read}
+\lstinline{read}
 reads data from the current file offset and then advances
 that offset by the number of bytes read:
 a subsequent
@@ -489,7 +489,7 @@ descriptor of the current process.
 File descriptors and
 \indexcode{fork}
 interact to make I/O redirection easy to implement.
-\lstinline{Fork}
+\lstinline{fork}
 copies the parent's file descriptor table along with its memory,
 so that the child starts with exactly the same open files as the parent.
 The system call
@@ -521,7 +521,7 @@ is guaranteed to use that file descriptor
 for the newly opened
 \lstinline{input.txt}:
 0 will be the smallest available file descriptor.
-\lstinline{Cat}
+\lstinline{cat}
 then executes with file descriptor 0 (standard input) referring to
 \lstinline{input.txt}.
 The parent process's file descriptors are not changed by this
@@ -633,7 +633,7 @@ Otherwise file descriptors do not share offsets, even if they
 resulted from 
 \lstinline{open}
 calls for the same file.  
-\lstinline{Dup} 
+\lstinline{dup} 
 allows shells to implement commands like this:
 \lstinline{ls}
 \lstinline{existing-file}
@@ -869,7 +869,7 @@ fd = open("/dir/file", O_CREATE|O_WRONLY);
 close(fd);
 mknod("/console", 1, 1);
 \end{lstlisting}
-\lstinline{Mknod}
+\lstinline{mknod}
 creates a special file that refers to a device.
 Associated with a device file are
 the major and minor device numbers

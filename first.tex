@@ -127,7 +127,7 @@ to build up their memory image, instead of directly interacting with physical
 memory.  This allows the operating system to decide where to place a process in
 memory; if memory is tight, the operating system might even store some of
 a process's data on disk.
-\lstinline{Exec}
+\lstinline{exec}
 also provides
 users with the convenience of a file system to store executable program images.  
 
@@ -598,7 +598,7 @@ Once the kernel has completed
 \lstinline{exec},
 it returns to user space in
 the \lstinline{/init} process.
-\lstinline{Init}
+\lstinline{init}
 \lineref{user/init.c:/^main/}
 creates a new console device file
 if needed

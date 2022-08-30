@@ -121,7 +121,7 @@ itself contained in a process's
 \lstinline{struct proc}
 or a CPU's
 \lstinline{struct cpu}.
-\lstinline{Swtch}
+\lstinline{swtch}
 takes two arguments:
 \indexcode{struct context}
 \lstinline{*old}
@@ -143,7 +143,7 @@ that one possibility at the end of an interrupt is that
 \indexcode{usertrap}
 calls 
 \indexcode{yield}.
-\lstinline{Yield}
+\lstinline{yield}
 in turn calls
 \indexcode{sched},
 which calls
@@ -154,12 +154,12 @@ and switch to the scheduler context previously saved in
 \indexcode{cpu->context}
 \lineref{kernel/proc.c:/swtch..p/}.
 
-\lstinline{Swtch}
+\lstinline{swtch}
 \lineref{kernel/swtch.S:/swtch/}
 saves only callee-saved registers;
 the C compiler generates code in the caller to save
 caller-saved registers on the stack.
-\lstinline{Swtch} knows the offset of each
+\lstinline{swtch} knows the offset of each
 register's field in 
 \lstinline{struct context}.
 It does not save the program counter.
@@ -238,7 +238,7 @@ You can see this sequence in
 \texttt{sleep}
 and
 \texttt{exit}.
-\lstinline{Sched}
+\lstinline{sched}
 double-checks some of those requirements
 \linerefs{kernel/proc.c:/if..holding/,/running/}
 and then checks an implication:
@@ -251,7 +251,7 @@ to save the current context in
 \lstinline{p->context}
 and switch to the scheduler context in
 \indexcode{cpu->context}.
-\lstinline{Swtch}
+\lstinline{swtch}
 returns on the scheduler's stack
 as though
 \indexcode{scheduler}'s
@@ -327,7 +327,7 @@ register of a new process to
 \lineref{kernel/proc.c:/^forkret/},
 so that its first \lstinline{swtch} ``returns'' 
 to the start of that function.
-\lstinline{Forkret}
+\lstinline{forkret}
 exists to release the 
 \indexcode{p->lock};
 otherwise, since the new process needs to
@@ -335,7 +335,7 @@ return to user space as if returning from \lstinline{fork},
 it could instead start at
 \lstinline{usertrapret}.
 
-\lstinline{Scheduler}
+\lstinline{scheduler}
 \lineref{kernel/proc.c:/^scheduler/} 
 runs a loop:
 find a process to run, run it until it yields, repeat.
@@ -590,15 +590,15 @@ Let's imagine a pair of calls,
 and
 \indexcode{wakeup},
 that work as follows.
-\lstinline{Sleep(chan)}
+\lstinline{sleep(chan)}
 sleeps on the arbitrary value
 \indexcode{chan},
 called the 
 \indextext{wait channel}.
-\lstinline{Sleep}
+\lstinline{sleep}
 puts the calling process to sleep, releasing the CPU
 for other work.
-\lstinline{Wakeup(chan)}
+\lstinline{wakeup(chan)}
 wakes all processes sleeping on
 \lstinline{chan}
 (if any), causing their
@@ -818,7 +818,7 @@ can use any mutually convenient number as the channel.
 Xv6 often uses the address
 of a kernel data structure involved in the waiting.
 
-\lstinline{Sleep}
+\lstinline{sleep}
 acquires 
 \indexcode{p->lock}
 \lineref{kernel/proc.c:/DOC: sleeplock1/}.
@@ -887,7 +887,7 @@ after the
 \lstinline{release}).%
 %
 }.
-\lstinline{Wakeup}
+\lstinline{wakeup}
 loops over the process table
 \lineref{kernel/proc.c:/^wakeup\(/}.
 It acquires the
@@ -1018,12 +1018,12 @@ Let's suppose that calls to
 and
 \lstinline{pipewrite}
 happen simultaneously on two different CPUs.
-\lstinline{Pipewrite}
+\lstinline{pipewrite}
 \lineref{kernel/pipe.c:/^pipewrite/}
 begins by acquiring the pipe's lock, which
 protects the counts, the data, and their
 associated invariants.
-\lstinline{Piperead}
+\lstinline{piperead}
 \lineref{kernel/pipe.c:/^piperead/}
 then tries to acquire the lock too, but cannot.
 It spins in
@@ -1051,7 +1051,7 @@ and then sleeps on
 \lstinline{&pi->nwrite}
 to wait for a reader to take some bytes
 out of the buffer.
-\lstinline{Sleep}
+\lstinline{sleep}
 releases 
 \lstinline{pi->lock}
 as part of putting
@@ -1088,7 +1088,7 @@ calls
 \lineref{kernel/pipe.c:/DOC: piperead-wakeup/}
 to wake any sleeping writers
 before it returns.
-\lstinline{Wakeup}
+\lstinline{wakeup}
 finds a process sleeping on
 \lstinline{&pi->nwrite},
 the process that was running
@@ -1111,7 +1111,7 @@ will see the condition is still false and sleep again.
 %% 
 \section{Code: Wait, exit, and kill}
 %% 
-\lstinline{Sleep}
+\lstinline{sleep}
 and
 \lstinline{wakeup}
 can be used for many kinds of waiting.
@@ -1142,7 +1142,7 @@ and
 as well as simultaneous
 \lstinline{exit} and \lstinline{exit}.
 
-\lstinline{Wait} starts by acquiring
+\lstinline{wait} starts by acquiring
 \lstinline{wait_lock}
 \lineref{kernel/proc.c:/^wait/}.
 The reason is that \lstinline{wait_lock} acts as the condition
@@ -1168,7 +1168,7 @@ then scans again.
 the deadlock-avoiding order is first \lstinline{wait_lock}
 and then \lstinline{pp->lock}.
 
-\lstinline{Exit} \lineref{kernel/proc.c:/^exit/} records the exit
+\lstinline{exit} \lineref{kernel/proc.c:/^exit/} records the exit
 status, frees some resources, calls \lstinline{reparent} to give its
 children to the \lstinline{init} process, wakes up the parent in case
 it is in \lstinline{wait}, marks the caller as a zombie, and
@@ -1182,7 +1182,7 @@ lock for the \lstinline{wakeup(p->parent)}, preventing a parent in
 \lstinline{p->lock} for this sequence also, to prevent a parent in
 \lstinline{wait} from seeing that the child is in state
 \lstinline{ZOMBIE} before the child has finally called
-\lstinline{swtch}. \lstinline{Exit} acquires these locks in
+\lstinline{swtch}. \lstinline{exit} acquires these locks in
 the same order as \lstinline{wait} to avoid deadlock.
 
 It may look incorrect for \lstinline{exit} to wake up the parent
@@ -1397,7 +1397,7 @@ shared lock; once a convoy has formed it can persist for long time.
 To avoid these kinds of problems additional mechanisms are necessary in
 sophisticated schedulers.
 
-\lstinline{Sleep}
+\lstinline{sleep}
 and
 \lstinline{wakeup}
 are a simple and effective synchronization method,
@@ -1442,8 +1442,7 @@ Plan 9's
 \lstinline{sleep}
 and
 \lstinline{wakeup}
-call that structure a rendezvous point or
-\lstinline{Rendez}.
+call that structure a rendezvous point.
 Many thread libraries refer to the same
 structure as a condition variable;
 in that context, the operations
