@@ -15,7 +15,7 @@ locks.
 
 Cached items are often a challenge to lock.
 For example,
-the filesystem's block cache \lineref{kernel/bio.c:/^struct/} stores
+the file system's block cache \lineref{kernel/bio.c:/^struct/} stores
 copies of up to {\tt NBUF} disk blocks.
 It's vital that a given disk block have at most
 one copy in the cache; otherwise, different processes might make

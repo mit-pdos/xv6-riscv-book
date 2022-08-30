@@ -91,7 +91,6 @@ fileclose
 filedup
 fileread
 filestat
-filesystem's
 filesz
 filewrite
 forkexec
