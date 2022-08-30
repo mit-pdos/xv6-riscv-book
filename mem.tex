@@ -40,7 +40,7 @@ logical page table.}
 \label{fig:riscv_address}
 \end{figure}
 
-xv6 runs on Sv39 RISC-V, which means that only the bottom 39
+Xv6 runs on Sv39 RISC-V, which means that only the bottom 39
 bits of a 64-bit virtual address are used; the top 25 bits
 are not used.
 In this Sv39 configuration, a
@@ -422,7 +422,7 @@ user memory,
 kernel stacks,
 and pipe buffers.
 
-xv6 uses the physical memory between the end of the kernel and
+Xv6 uses the physical memory between the end of the kernel and
 \indexcode{PHYSTOP}
 for run-time allocation. It allocates and frees whole 4096-byte pages
 at a time. It keeps track of which pages are free by threading a

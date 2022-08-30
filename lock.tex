@@ -671,7 +671,7 @@ an interrupt's
 \lstinline{acquire}
 can wait for a thread to release a spinlock; just not on the same CPU.
 
-xv6 re-enables interrupts when a CPU holds no spinlocks; it must
+Xv6 re-enables interrupts when a CPU holds no spinlocks; it must
 do a little book-keeping to cope with nested critical sections.
 \lstinline{acquire}
 calls

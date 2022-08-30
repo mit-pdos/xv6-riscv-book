@@ -477,7 +477,7 @@ To explain copy-on-write fork, consider xv6's \lstinline{fork},
 described in Chapter~\ref{CH:MEM}.
 \lstinline{fork} causes the child's initial
 memory content to be the same as the parent's at the time of the fork.
-xv6 implements fork with
+Xv6 implements fork with
 \lstinline{uvmcopy}
 \lineref{kernel/vm.c:/^uvmcopy/},
 which allocates physical memory for
