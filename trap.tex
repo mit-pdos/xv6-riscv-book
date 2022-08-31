@@ -181,7 +181,7 @@ The trampoline page contains {\tt uservec}, the xv6 trap handling code
 that {\tt stvec} points to. The trampoline page is mapped in
 every process's page table at address
 \indexcode{TRAMPOLINE},
-which is at the end of the virtual address space so that it will
+which is at the top of the virtual address space so that it will
 be above memory that programs use for themselves.
 The trampoline page is also mapped at address {\tt TRAMPOLINE}
 in the kernel page table. See Figure~\ref{fig:as} and
