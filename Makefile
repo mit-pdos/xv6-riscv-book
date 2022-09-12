@@ -2,7 +2,7 @@ SRC=xv6-riscv-src/
 
 T=latex.out
 
-TEX=$(wildcard $(T)/*.tex)
+TEX=$(foreach file, $(SPELLTEX), $(T)/$(file))
 SPELLTEX=$(wildcard *.tex)
 
 all: book.pdf
