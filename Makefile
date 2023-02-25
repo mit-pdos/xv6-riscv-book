@@ -2,7 +2,19 @@ SRC=xv6-riscv-src/
 
 T=latex.out
 
-TEX=$(wildcard $(T)/*.tex)
+TEX=\
+	$(T)/acks.tex\
+	$(T)/unix.tex\
+	$(T)/first.tex\
+	$(T)/mem.tex\
+	$(T)/trap.tex\
+	$(T)/interrupt.tex\
+	$(T)/lock.tex\
+	$(T)/sched.tex\
+	$(T)/fs.tex\
+	$(T)/lock2.tex\
+	$(T)/sum.tex\
+
 SPELLTEX=$(wildcard *.tex)
 
 all: book.pdf
