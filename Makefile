@@ -2,18 +2,8 @@ SRC=xv6-riscv-src/
 
 T=latex.out
 
-TEX=\
-	$(T)/acks.tex\
-	$(T)/unix.tex\
-	$(T)/first.tex\
-	$(T)/mem.tex\
-	$(T)/trap.tex\
-	$(T)/interrupt.tex\
-	$(T)/lock.tex\
-	$(T)/sched.tex\
-	$(T)/fs.tex\
-	$(T)/lock2.tex\
-	$(T)/sum.tex\
+TEX=$(wildcard $(T)/*.tex)
+SPELLTEX=$(wildcard *.tex)
 
 all: book.pdf book.epub
 .PHONY: all src clean
@@ -46,3 +36,9 @@ clean:
 	rm -rf latex.out
 	rm -rf $(SRC)
 
+spell:
+	@ for i in $(SPELLTEX); do aspell --mode=tex -p ./aspell.words -c $$i; done
+	@ for i in $(SPELLTEX); do perl bin/double.pl $$i; done
+	@ for i in $(SPELLTEX); do perl bin/capital.py $$i; done
+	@ ( head -1 aspell.words ; tail -n +2 aspell.words | sort ) > aspell.words~
+	@ mv aspell.words~ aspell.words

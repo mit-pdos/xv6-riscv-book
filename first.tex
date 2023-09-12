@@ -127,7 +127,7 @@ to build up their memory image, instead of directly interacting with physical
 memory.  This allows the operating system to decide where to place a process in
 memory; if memory is tight, the operating system might even store some of
 a process's data on disk.
-\lstinline{Exec}
+\lstinline{exec}
 also provides
 users with the convenience of a file system to store executable program images.  
 
@@ -275,11 +275,11 @@ servers, and have seen wide deployment in embedded settings.  A
 variant of L4, seL4, is small enough that it has been verified for
 memory safety and other security properties~\cite{sel4}.
 
-There is much debate among developers of operating systems which
+There is much debate among developers of operating systems about which
 organization is better, and there is no conclusive evidence one way or
 the other.  Furthermore, it depends much on what ``better'' means:
 faster performance, smaller code size, reliability of the kernel,
-reliability of the complete operating system (inclusing user-level
+reliability of the complete operating system (including user-level
 services), etc.
 
 There are also practical considerations that may be more important
@@ -598,7 +598,7 @@ Once the kernel has completed
 \lstinline{exec},
 it returns to user space in
 the \lstinline{/init} process.
-\lstinline{Init}
+\lstinline{init}
 \lineref{user/init.c:/^main/}
 creates a new console device file
 if needed
@@ -649,7 +649,9 @@ difficult to prevent clever user code from making a system unusable
 disk space, CPU time, process table slots, etc. It's usually
 impossible to write bug-free code or design bug-free hardware; if the
 writers of malicious user code are aware of kernel or hardware bugs,
-they will exploit them. It's worthwhile to design safeguards into the
+they will exploit them. Even in mature, widely-used kernels, such as
+Linux, people discover new vulnerabilities
+continuously~\cite{mitre:cves}. It's worthwhile to design safeguards into the
 kernel against the possibility that it has bugs: assertions, type
 checking, stack guard pages, etc. Finally, the distinction between
 user and kernel code is sometimes blurred: some privileged user-level

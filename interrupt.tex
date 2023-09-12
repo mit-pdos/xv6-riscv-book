@@ -159,7 +159,7 @@ characters). This idea is sometimes called \indextext{I/O
 
 \section{Concurrency in drivers}
 
-You may have noticed calls to {\tt acquire} in {\texttt consoleread}
+You may have noticed calls to {\tt acquire} in {\tt consoleread}
 and in {\tt consoleintr}. These calls acquire a lock, which protects
 the console driver's data structures from concurrent access.
 There are three concurrency dangers here: two processes on
@@ -169,7 +169,7 @@ UART) interrupt while that CPU is already executing inside
 {\tt consoleread};
 and the hardware might deliver a console interrupt on
 a different CPU while {\tt consoleread} is executing.
-These dangers may result in race conditions or deadlocks.
+These dangers may result in races or deadlocks.
 Chapter~\ref{CH:LOCK} explores these problems and how locks can
 address them.
 
@@ -268,7 +268,7 @@ prepared data.
 
 Interrupts make sense when a device needs attention at unpredictable
 times, and not too often. But interrupts have high CPU overhead. Thus
-high speed devices, such networks and disk controllers, use tricks
+high speed devices, such as network and disk controllers, use tricks
 that reduce the need for interrupts. One trick is to raise a single
 interrupt for a whole batch of incoming or outgoing requests. Another
 trick is for the driver to disable interrupts entirely, and to check

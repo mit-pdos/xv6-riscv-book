@@ -63,7 +63,7 @@ Thus a process alternates between executing in
 and
 \indextext{kernel space}.
 
-The kernel uses the hardware protection mechanisms provided by a
+As described in detail in subsequent chapters, the kernel uses the hardware protection mechanisms provided by a
 CPU\footnote{
 This text generally refers to the hardware element that executes a
 computation with the term \indextext{CPU}, an acronym for central
@@ -124,7 +124,7 @@ Xv6
 \indextext{time-share}s
 processes: it transparently switches the available CPUs
 among the set of processes waiting to execute.
-When a process is not executing, xv6 saves its CPU registers,
+When a process is not executing, xv6 saves the process's CPU registers,
 restoring them when it next runs the process.
 The kernel associates a process identifier, or
 \indexcode{PID},
@@ -165,11 +165,11 @@ int unlink(char *file) & Remove a file. \\
 A process may create a new process using the
 \indexcode{fork}
 system call.
-\lstinline{Fork}
-gives the new process exactly the same memory contents
-(both instructions and data)
-as the calling process.
-\lstinline{Fork}
+\lstinline{fork}
+gives the new process an exact copy of the calling
+process's memory,
+both instructions and data.
+\lstinline{fork}
 returns in both the original and new processes.
 In the original process, \lstinline{fork} returns the new process's
 PID.
@@ -230,7 +230,7 @@ returns, causing the parent to print
 parent: child 1234 is done
 \end{lstlisting}
 Although the child has the same memory contents as the parent initially, the
-parent and child are executing with different memory and different registers:
+parent and child are executing with separate memory and separate registers:
 changing a variable in one does not affect the other. For example, when the
 return value of
 \lstinline{wait}
@@ -253,12 +253,13 @@ the file holds instructions, which part is data, at which instruction
 to start, etc. Xv6
 uses the ELF format, which Chapter~\ref{CH:MEM} discusses in
 more detail.
+Usually the file is the result of compiling a program's source code.
 When
 \indexcode{exec}
 succeeds, it does not return to the calling program;
 instead, the instructions loaded from the file start
 executing at the entry point declared in the ELF header.
-\lstinline{Exec}
+\lstinline{exec}
 takes two arguments: the name of the file containing the
 executable and an array of string arguments.
 For example:
@@ -403,7 +404,7 @@ copies them into
 and returns the number of bytes read.
 Each file descriptor that refers to a file
 has an offset associated with it.
-\lstinline{Read}
+\lstinline{read}
 reads data from the current file offset and then advances
 that offset by the number of bytes read:
 a subsequent
@@ -488,7 +489,7 @@ descriptor of the current process.
 File descriptors and
 \indexcode{fork}
 interact to make I/O redirection easy to implement.
-\lstinline{Fork}
+\lstinline{fork}
 copies the parent's file descriptor table along with its memory,
 so that the child starts with exactly the same open files as the parent.
 The system call
@@ -520,7 +521,7 @@ is guaranteed to use that file descriptor
 for the newly opened
 \lstinline{input.txt}:
 0 will be the smallest available file descriptor.
-\lstinline{Cat}
+\lstinline{cat}
 then executes with file descriptor 0 (standard input) referring to
 \lstinline{input.txt}.
 The parent process's file descriptors are not changed by this
@@ -632,7 +633,7 @@ Otherwise file descriptors do not share offsets, even if they
 resulted from 
 \lstinline{open}
 calls for the same file.  
-\lstinline{Dup} 
+\lstinline{dup} 
 allows shells to implement commands like this:
 \lstinline{ls}
 \lstinline{existing-file}
@@ -763,24 +764,24 @@ create a tree of processes.  The leaves of this tree are commands and
 the interior nodes are processes that wait until the left and right
 children complete.
 
-In principle, one could have the interior nodes run the left end of a
-pipeline, but doing so correctly would complicate the
-implementation. Consider making just the following modification:
-change \lstinline{sh.c} to not fork for \lstinline{p->left} and run
-\lstinline{runcmd(p->left)} in the interior process. Then, for
-example, \lstinline{echo hi | wc} won't produce output, because when
-\lstinline{echo hi} exits in \lstinline{runcmd}, the interior process
-exits and never calls fork to run the right end of the pipe.  This
-incorrect behavior could be fixed by not calling \lstinline{exit} in
-\lstinline{runcmd} for interior processes, but this fix complicates
-the code: now \lstinline{runcmd} needs to know if it's in an interior
-process or not.  Complications also arise when not forking for
-\lstinline{runcmd(p->right)}.  For example, with just that
-modification, \lstinline{sleep 10 | echo hi} will immediately print
-``hi' and a new prompt, instead of after 10 seconds; this happens because \lstinline{echo} runs
-immediately and exits, not waiting for \lstinline{sleep} to finish.
-Since the goal of the \lstinline{sh.c} is to be as simple as possible,
-it doesn't try to avoid creating interior processes.
+% In principle, one could have the interior nodes run the left end of a
+% pipeline, but doing so correctly would complicate the
+% implementation. Consider making just the following modification:
+% change \lstinline{sh.c} to not fork for \lstinline{p->left} and run
+% \lstinline{runcmd(p->left)} in the interior process. Then, for
+% example, \lstinline{echo hi | wc} won't produce output, because when
+% \lstinline{echo hi} exits in \lstinline{runcmd}, the interior process
+% exits and never calls fork to run the right end of the pipe.  This
+% incorrect behavior could be fixed by not calling \lstinline{exit} in
+% \lstinline{runcmd} for interior processes, but this fix complicates
+% the code: now \lstinline{runcmd} needs to know if it's in an interior
+% process or not.  Complications also arise when not forking for
+% \lstinline{runcmd(p->right)}.  For example, with just that
+% modification, \lstinline{sleep 10 | echo hi} will immediately print
+% ``hi' and a new prompt, instead of after 10 seconds; this happens because \lstinline{echo} runs
+% immediately and exits, not waiting for \lstinline{sleep} to finish.
+% Since the goal of the \lstinline{sh.c} is to be as simple as possible,
+% it doesn't try to avoid creating interior processes.
 
 Pipes may seem no more powerful than temporary files:
 the pipeline
@@ -791,7 +792,7 @@ could be implemented without pipes as
 \begin{lstlisting}[]
 echo hello world >/tmp/xyz; wc </tmp/xyz
 \end{lstlisting}
-Pipes have at least four advantages over temporary files
+Pipes have at least three advantages over temporary files
 in this situation.
 First, pipes automatically clean themselves up;
 with the file redirection, a shell would have to
@@ -804,9 +805,9 @@ on disk to store all the data.
 Third, pipes allow for parallel execution of pipeline stages,
 while the file approach requires the first program to finish
 before the second starts.
-Fourth, if you are implementing inter-process communication,
-pipes' blocking reads and writes are more efficient
-than the non-blocking semantics of files.
+% Fourth, if you are implementing inter-process communication,
+% pipes' blocking reads and writes are more efficient
+% than the non-blocking semantics of files.
 %% 
 %% 	File system
 %% 
@@ -868,7 +869,7 @@ fd = open("/dir/file", O_CREATE|O_WRONLY);
 close(fd);
 mknod("/console", 1, 1);
 \end{lstlisting}
-\lstinline{Mknod}
+\lstinline{mknod}
 creates a special file that refers to a device.
 Associated with a device file are
 the major and minor device numbers
@@ -1060,7 +1061,7 @@ Multics, a predecessor of Unix,
 abstracted file storage in a way that made it look like memory,
 producing a very different flavor of interface.
 The complexity of the Multics design had a direct influence
-on the designers of Unix, who tried to build something simpler.
+on the designers of Unix, who aimed to build something simpler.
 % XXX can we cut this, since its point is the same as the next paragraph?
 % An operating system interface that went out of fashion
 % decades ago but has recently returned is the idea of a virtual machine monitor.

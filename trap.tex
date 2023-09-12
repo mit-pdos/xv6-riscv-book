@@ -56,7 +56,7 @@ the first handler instructions are usually written in assembler
 
 Each RISC-V CPU has a set of control registers that the kernel writes to
 tell the CPU how to handle traps, and that the kernel can read
-to find out about a trap that has occured. The RISC-V documents
+to find out about a trap that has occurred. The RISC-V documents
 contain the full story~\cite{riscv:priv}. {\tt riscv.h}
 \lineref{kernel/riscv.h:1} contains definitions that xv6 uses. Here's
 an outline of the most important registers:
@@ -77,7 +77,7 @@ an outline of the most important registers:
 the reason for the trap.
 
 \item \indexcode{sscratch}: The trap handler code uses {\tt sscratch}
-  to help it avoid overwriting user regsters before saving them.
+  to help it avoid overwriting user registers before saving them.
 
 \item \indexcode{sstatus}: The SIE bit in {\tt sstatus}
   controls whether device interrupts
@@ -181,12 +181,12 @@ The trampoline page contains {\tt uservec}, the xv6 trap handling code
 that {\tt stvec} points to. The trampoline page is mapped in
 every process's page table at address
 \indexcode{TRAMPOLINE},
-which is at the end of the virtual address space so that it will
+which is at the top of the virtual address space so that it will
 be above memory that programs use for themselves.
 The trampoline page is also mapped at address {\tt TRAMPOLINE}
 in the kernel page table. See Figure~\ref{fig:as} and
 Figure~\ref{fig:xv6_layout}. Because the trampoline page is mapped in
-the user page table, with the {\tt PTE\_U} flag, traps can start
+the user page table, without the {\tt PTE\_U} flag, traps can start
 executing there in supervisor mode. Because the trampoline page is
 mapped at the same address in the kernel address space, the trap handler
 can continue to execute after it switches to the kernel page
@@ -214,7 +214,7 @@ The kernel allocates, for each process, a page of memory for a
 save the 32 user registers
 \lineref{kernel/proc.h:/^struct.trapframe/}. Because {\tt satp} still
 refers to the user page table, {\tt uservec} needs the trapframe to be
-mapped in the user address space. xv6 maps each process's trapframe
+mapped in the user address space. Xv6 maps each process's trapframe
 at virtual address {\tt TRAPFRAME} in that process's user page table;
 {\tt TRAPFRAME} is
 just below {\tt TRAMPOLINE}. The process's {\tt p->trapframe} also
@@ -424,7 +424,7 @@ thread's saved registers safely on its stack.
 {\tt kernelvec} jumps to {\tt kerneltrap}
 \lineref{kernel/trap.c:/^kerneltrap/} after saving registers.
 {\tt kerneltrap} is prepared for two types of traps:
-device interrrupts and exceptions. It calls
+device interrupts and exceptions. It calls
 {\tt devintr}
 \lineref{kernel/trap.c:/^devintr/}
 to check for and handle the former.
@@ -477,7 +477,7 @@ To explain copy-on-write fork, consider xv6's \lstinline{fork},
 described in Chapter~\ref{CH:MEM}.
 \lstinline{fork} causes the child's initial
 memory content to be the same as the parent's at the time of the fork.
-xv6 implements fork with
+Xv6 implements fork with
 \lstinline{uvmcopy}
 \lineref{kernel/vm.c:/^uvmcopy/},
 which allocates physical memory for

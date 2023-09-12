@@ -15,7 +15,7 @@ locks.
 
 Cached items are often a challenge to lock.
 For example,
-the filesystem's block cache \lineref{kernel/bio.c:/^struct/} stores
+the file system's block cache \lineref{kernel/bio.c:/^struct/} stores
 copies of up to {\tt NBUF} disk blocks.
 It's vital that a given disk block have at most
 one copy in the cache; otherwise, different processes might make
@@ -61,6 +61,35 @@ last reference disappears. See {\tt pipeclose}
 \lineref{kernel/pipe.c:/^pipeclose/} for an example;
 {\tt pi->readopen} and {\tt pi->writeopen} track whether
 the pipe has file descriptors referring to it.
+
+Usually one sees locks around sequences of reads and writes to sets of related
+items; the locks ensure that other threads see only completed sequences of
+updates (as long as they, too, lock).
+What about situations where the update is a simple write to a
+single shared variable? For example, 
+\texttt{setkilled} and \texttt{killed}
+\lineref{kernel/proc.c:/^setkilled/}
+lock around their simple uses of
+\lstinline{p->killed}.
+If there were no lock, one thread could write 
+\lstinline{p->killed}
+at the same time that another thread reads it.
+This is a \indextextx{race}, and the C language specification says
+that a race yields \indextext{undefined behavior}, which means the
+program may crash or yield incorrect results\footnote{``Threads and
+data races'' in \url{
+https://en.cppreference.com/w/c/language/memory_model}}. The locks
+prevent the race and avoid the undefined behavior.
+
+One reason races can break programs is that, if there are no
+locks or equivalent constructs, the compiler may generate machine code
+that reads and writes memory in ways quite different than
+the original C code. For example, the machine code
+of a thread calling
+\texttt{killed} could copy \lstinline{p->killed} to a register and
+read only that cached value; this would mean that the thread
+might never see any writes to
+\lstinline{p->killed}. The locks prevent such caching.
 
 % sleep locks.
 % hand-over-hand locking in namei.
@@ -127,9 +156,6 @@ hardware. Another is the {\tt started} variable in {\tt main.c}
 running until CPU zero has finished initializing xv6;
 the {\tt volatile} ensures that the compiler actually generates
 load and store instructions.
-A third example is \indexcode{p->killed}, which is set while holding
-\texttt{p->lock} \lineref{kernel/proc.c:/^kill/},
-but checked without a holding lock \lineref{kernel/trap.c:/p->killed/}.
 
 Xv6 contains cases in which one CPU or thread writes some data, and
 another CPU or thread reads the data, but there is no specific lock
