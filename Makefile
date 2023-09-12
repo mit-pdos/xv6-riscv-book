@@ -5,7 +5,7 @@ T=latex.out
 TEX=$(wildcard $(T)/*.tex)
 SPELLTEX=$(wildcard *.tex)
 
-all: book.pdf
+all: book.pdf book.epub
 .PHONY: all src clean
 
 $(T)/%.tex: %.tex | src
@@ -26,9 +26,13 @@ book.pdf: src book.tex $(TEX)
 	pdflatex book.tex
 	pdflatex book.tex
 
+book.epub: src book.tex $(TEX) ebook.cfg book.pdf
+	ebb -x fig/*.pdf
+	tex4ebook -c ebook.cfg book.tex
+
 clean:
 	rm -f book.aux book.idx book.ilg book.ind book.log\
-	 	book.toc book.bbl book.blg book.out
+	 	book.toc book.bbl book.blg book.out book.epub
 	rm -rf latex.out
 	rm -rf $(SRC)
 
