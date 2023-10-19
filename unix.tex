@@ -167,8 +167,8 @@ A process may create a new process using the
 system call.
 \lstinline{fork}
 gives the new process an exact copy of the calling
-process's memory,
-both instructions and data.
+process's user-space memory,
+including instructions, data and stack.
 \lstinline{fork}
 returns in both the original and new processes.
 In the original process, \lstinline{fork} returns the new process's
