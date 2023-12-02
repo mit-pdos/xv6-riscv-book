@@ -244,6 +244,7 @@ file system uses locks on buffers for synchronization.
 \lstinline{bget}
 ensures this invariant by holding the
 \lstinline{bache.lock}
+\lstinline{bcache.lock}
 continuously from the first loop's check of whether the
 block is cached through the second loop's declaration that
 the block is now cached (by setting
