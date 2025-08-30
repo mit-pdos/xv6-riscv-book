@@ -1,0 +1,31 @@
+name: Build book
+on: push
+jobs:
+  build-job:
+    runs-on: ubuntu-latest
+    container:
+      image: registry.gitlab.com/islandoftex/images/texlive:TL2025-2025-08-24-full
+    steps:
+      - run: apt-get update
+      - run: apt-get install -y build-essential
+      - run: apt-get install -y gnuplot
+      - name: Install gnuplot-lua-tikz.sty
+        run: |
+          cp -v \
+            /usr/share/texmf/tex/*gnuplot*.sty \
+            /usr/share/texmf/tex/*gnuplot*.tex \
+            /usr/local/texlive/*/texmf-dist/tex
+          texhash
+      - name: Install mpage
+        run: |
+          curl -O https://www.mesa.nl/pub/mpage/mpage-2.5.8.tgz
+          tar -xvzf mpage-*.tgz
+          cd mpage-*/
+          make
+          make install
+      - uses: actions/checkout@v4
+      - run: git clone https://github.com/mit-pdos/xv6-riscv.git xv6-riscv-src
+      - run: make
+      - uses: actions/upload-artifact@v4
+        with:
+          path: "*.pdf"
