@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 
 echo This script takes a minute to run.  Be patient. 1>&2
 
