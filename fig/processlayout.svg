@@ -260,14 +260,14 @@
     <text
        id="text6315"
        y="594.83936"
-       x="484.75293"
+       x="473.52197"
        style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'American Typewriter';-inkscape-font-specification:'American Typewriter';fill:#000000;fill-opacity:1;stroke:none"
        xml:space="preserve"><tspan
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:24px;line-height:1.25;font-family:'Bitstream Vera Sans';-inkscape-font-specification:'Bitstream Vera Sans'"
          y="594.83936"
-         x="484.75293"
+         x="473.52197"
          id="tspan6317"
-         sodipodi:role="line">address of argument N</tspan></text>
+         sodipodi:role="line">address of argument N-1</tspan></text>
     <text
        id="text6319"
        y="657.14197"
