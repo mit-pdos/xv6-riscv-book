@@ -261,7 +261,7 @@ but user code needs to resume executing at the subsequent instruction.
 killed or should yield the CPU (if this trap is a timer interrupt).
 
 The first step in returning to user space is the call to {\tt prepare\_return}
-{\lineref{kernel/trap.c:/^prepare/}}.
+\lineref{kernel/trap.c:/^prepare/}.
 This function sets up the RISC-V control registers to prepare for a
 future trap from user space: setting {\tt stvec}
 to {\tt uservec} and preparing the trapframe fields that
