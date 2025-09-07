@@ -46,3 +46,6 @@ spell:
 	@ for i in $(SPELLTEX); do perl bin/capital.py $$i; done
 	@ ( head -1 aspell.words ; tail -n +2 aspell.words | sort ) > aspell.words~
 	@ mv aspell.words~ aspell.words
+
+fig/%.png: fig/%.svg
+	inkscape -z --export-area-drawing --export-text-to-path --export-dpi=300 --export-filename=$@ $<

@@ -361,7 +361,7 @@
          y="593.43933"
          x="776.28882"
          id="tspan6477"
-         sodipodi:role="line">argv[argc]</tspan></text>
+         sodipodi:role="line">argv[argc-1]</tspan></text>
     <text
        id="text6479"
        y="655.10406"
@@ -483,7 +483,7 @@
          x="368.25739"
          y="777.58557"><tspan
    style="font-size:24px"
-   id="tspan370">R-WU</tspan>-</tspan></text>
+   id="tspan370">R-WU</tspan></tspan></text>
     <text
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;font-size:12.5px;line-height:125%;font-family:sans-serif;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
@@ -497,7 +497,7 @@
          x="366.64691"
          y="679.47406"><tspan
    style="font-size:24px"
-   id="tspan374">R-WU</tspan>-</tspan></text>
+   id="tspan374">R-WU</tspan></tspan></text>
     <text
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;font-size:12.5px;line-height:125%;font-family:sans-serif;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
@@ -511,7 +511,7 @@
          x="368.28149"
          y="608.47278"><tspan
    style="font-size:24px"
-   id="tspan380">R-WU</tspan>-</tspan></text>
+   id="tspan380">R-WU</tspan></tspan></text>
     <path
        id="path386"
        d="m 181.75386,558.48227 c 180,0 180,0 180,0"
@@ -540,7 +540,7 @@
          x="370.47736"
          y="396.61346"><tspan
    style="font-size:24px"
-   id="tspan392">RX--</tspan>-</tspan></text>
+   id="tspan392">RX--</tspan></tspan></text>
     <text
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;font-size:12.5px;line-height:125%;font-family:sans-serif;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
@@ -554,7 +554,7 @@
          x="371.98236"
          y="439.61011"><tspan
    style="font-size:24px"
-   id="tspan398">R-W-</tspan>-</tspan></text>
+   id="tspan398">R-W-</tspan></tspan></text>
     <path
        id="path559"
        d="m 180.9588,846.71051 c 180,0 180,0 180,0"
