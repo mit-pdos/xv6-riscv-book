@@ -133,7 +133,7 @@ copy executes concurrently.
 If two CPUs execute
 \lstinline{push}
 at the same time,
-both might execute line~\ref{line:next} as shown in Fig~\ref{fig:smp},
+both might execute line~\ref{line:next} as shown in Figure~\ref{fig:smp},
 before either executes line~\ref{line:list},  which results
 in an incorrect outcome as illustrated by Figure~\ref{fig:race}.
 There would then be two
