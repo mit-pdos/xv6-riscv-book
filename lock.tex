@@ -186,10 +186,10 @@ adds just a few lines (highlighted in yellow):
      l = malloc(sizeof *l); (*@\label{line:malloc}@*)
      l->data = data;
    
-     (*@\hl{acquire(\&listlock);} @*)
+     (*@\hl{acquire(\&listlock);}@*)
      l->next = list;     (*@\label{line:next1}@*)
      list = l;           (*@\label{line:list1}@*)
-     (*@\hl{release(\&listlock)}; @*)
+     (*@\hl{release(\&listlock);}@*)
    }
 \end{lstlisting}
 The sequence of instructions between
