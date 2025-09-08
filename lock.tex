@@ -315,14 +315,14 @@ is zero, and then both grab the lock by executing line~\ref{line:assign}.
 At this point, two different CPUs hold the lock,
 which violates the mutual exclusion property.
 What we need is a way to
-make lines \ref{line:testlocked} and \ref{line:assign} execute as an
+make lines~\ref{line:testlocked} and~\ref{line:assign} execute as an
 \indextext{atomic}
 (i.e., indivisible) step.
 
 Because locks are widely used,
 multi-core processors usually provide an instruction that
 can be used to make
-lines~\ref{line:testlocked} and \ref{line:assign}
+lines~\ref{line:testlocked} and~\ref{line:assign}
 atomic.
 On the RISC-V this instruction is
 \lstinline{amoswap r, a}.
