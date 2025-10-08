@@ -20,15 +20,15 @@ The kernel trap handling code recognizes when a device
 has raised an interrupt and calls the driver's interrupt handler;
 in xv6, this dispatch happens in {\tt devintr} \lineref{kernel/trap.c:/^devintr/}.
 
-Many device drivers execute code in two contexts: a \indextext{top
-half} that runs in a process's kernel thread, and a \indextext{bottom
-half} that executes at interrupt time. The top half
+Many device drivers execute code in two contexts: a \indextext{bottom
+half} that runs in a process's kernel thread, and a \indextext{top
+half} that executes at interrupt time. The bottom half
 is called via system calls such as {\tt read} and {\tt write} that want
 the device to perform I/O. This code may ask the hardware to start an
 operation (e.g., ask the disk to read a block); then the code waits for
 the operation to complete. Eventually the device completes the
 operation and raises an interrupt. The driver's interrupt handler,
-acting as the bottom half,
+acting as the top half,
 figures out what operation has completed, wakes up a waiting
 process if appropriate, and tells the hardware to start work
 on the next operation, if any.
@@ -182,7 +182,7 @@ to think about the process or code that they have interrupted. For
 example, an interrupt handler cannot safely call {\tt copyout} with
 the current process's page table. Interrupt handlers typically do
 relatively little work (e.g., just copy the input data to a buffer),
-and wake up top-half code to do the rest.
+and wake up bottom-half code to do the rest.
 
 \section{Timer interrupts}
 
