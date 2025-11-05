@@ -582,7 +582,7 @@ to acquire a lock that the same CPU already holds. One line of
 reasoning is that this should be allowed: no other CPU can hold the
 lock, so there's no need to worry about CPUs interfering with each
 others' use of the protected data. Locking systems that allow a CPU to
-re-aquire a lock it alread holds are called a {\it re-entrant} or {\it
+re-aquire a lock it already holds are called a {\it re-entrant} or {\it
   recursive}. On the other hand, if a lock is already held, even on
 the same CPU, that means an operation may have temporarily violated
 and not yet restored some invariants; to allow a new operation to
