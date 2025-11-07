@@ -18,7 +18,7 @@ typically support sharing of data among users and applications, as well as
 so that data is still available after a reboot.
 
 The xv6 file system provides Unix-like files, directories, and pathnames
-(see Chapter~\ref{CH:UNIX}), and stores its data on a virtio disk for
+(see Chapter~\ref{CH:UNIX}), and stores its data on a disk for
 persistence. The file system addresses
 several challenges:
 \begin{itemize}
@@ -50,7 +50,8 @@ The rest of this chapter explains how xv6 addresses these challenges.
 The xv6 file system implementation is
 organized in seven layers, shown in 
 Figure~\ref{fig:fslayer}.
-The disk layer reads and writes blocks on an virtio hard drive.
+The disk layer reads and writes blocks on a virtio hard drive;
+virtio is an emulated disk provided by {\tt qemu}.
 The buffer cache layer caches disk blocks and synchronizes access to them,
 making sure that only one kernel process at a time can modify the
 data stored in any particular block.  The logging layer allows higher
@@ -82,20 +83,26 @@ application programmers.
 
 Disk hardware traditionally presents the data on the
 disk as a numbered sequence of 512-byte 
-\textit{blocks} 
-\index{block}
-(also called 
-\textit{sectors}): 
-\index{sector}
-sector 0 is the first 512 bytes, sector 1 is the next, and so on. The block size
-that an operating system uses for its file system maybe different than the
-sector size that a disk uses, but typically the block size is a multiple of the
-sector size. Xv6 holds copies of blocks that it has read into memory
+\textit{sectors}\index{sector}:
+sector 0 is the first 512 bytes, sector 1 is the next, and so on.
+The disk hardware supports reads and writes only in whole multiples
+of sectors. Thus, for example, if the operating system needs to change
+a single byte on the disk, it must read the whole surrounding sector
+into memory, update the one byte, and then write the whole sector
+back to the disk. For this reason, file systems allocate disk space
+for files in units of one or more sectors. The allocation granularity
+that a file system uses is called the block \index{block} size.
+Xv6 uses a block
+size of one sector; many other operating systems use multi-sector
+blocks for better efficiency.
+
+Xv6 holds copies of blocks that it has read into memory
 in objects of type
 \lstinline{struct buf}
 \lineref{kernel/buf.h:/^struct.buf/}.
 The
-data stored in this structure is sometimes out of sync with the disk: it might have
+data stored in this structure is sometimes 
+not the same as the data on the disk: it might have
 not yet been read in from disk (the disk is working on it but hasn't returned
 the sector's content yet), or it might have been updated by software
 but not yet written to the disk.
@@ -106,7 +113,9 @@ To do so, xv6 divides the disk into several
 sections, as 
 Figure~\ref{fig:fslayout} shows.
 The file system does not use
-block 0 (it holds the boot sector).  Block 1 is called the 
+block 0 (block 0 often holds boot code, though in xv6 it's
+merely unused).
+Block 1 is called the 
 \indextext{superblock}; 
 it contains metadata about the file system (the file system size in blocks, the
 number of data blocks, the number of inodes, and the number of blocks in the
@@ -114,14 +123,22 @@ log).  Blocks starting at 2 hold the log.  After the log are the inodes, with mu
 those come bitmap blocks tracking which data blocks are in use.
 The remaining blocks are data blocks; each is either marked
 free in the bitmap block, or holds content for a file or directory.
-The superblock is filled in by a separate program, called
-\indexcode{mkfs},
-which builds an initial file system.
+
+An xv6 file system is initially created by a program outside
+of xv6 called 
+\indexcode{mkfs}.
+{\tt mkfs} writes the superblock, initializes an inode for
+the (empty) root directory, and marks all i-nodes and data
+blocks as free.
 
 The rest of this chapter discusses each layer, starting with the
 buffer cache.
 Look out for situations where well-chosen abstractions at lower layers
 ease the design of higher ones.
+
+At this point you should read the files {\tt buf.h}, {\tt fs.h}, {\tt
+  bio.c}, {\tt fs.c}, {\tt sysfile.c}, and {\tt file.c}.
+
 %% 
 %%  -------------------------------------------
 %% 
@@ -153,7 +170,6 @@ returns a locked buffer, and
 \lstinline{brelse}
 releases the lock.
 
-Let's return to the buffer cache.
 The buffer cache has a fixed number of buffers to hold disk blocks,
 which means that if the file system asks for a block that is not
 already in the cache, the buffer cache must recycle a buffer currently
@@ -333,12 +349,21 @@ One of the most interesting problems in file system design is crash
 recovery. The problem arises because many file-system operations
 involve multiple writes to the disk, and a crash after a subset of the
 writes may leave the on-disk file system in an inconsistent state. For
-example, suppose a crash occurs during file truncation (setting
-the length of a file to zero and freeing its content blocks).
-Depending on the order of the disk writes, the crash 
-may either leave an inode with a reference
-to a content block that is marked free,
-or it may leave an allocated but unreferenced content block.
+example, suppose a crash occurs during file truncation.
+Truncation involves writing (at least) two disk sectors,
+one containing the i-node and one containing part of the free-block bitmap:
+the i-node's length must be set to zero and the block
+numbers in the i-node must be cleared,
+and the bitmap bits for the file's blocks must
+be set to zero (marking them free).
+A crash after one of the writes, but before the kernel has
+a chance to perform the second write, will leave the
+on-disk file system in an incorrect state.
+If only the bitmap write occurs, the result after a crash
+and reboot will be an i-node with non-zero length which
+refers to blocks that are marked free;
+if only the i-node write occurs, the result will be
+blocks that are not used by any file but are also not marked free.
 
 The latter is relatively benign, but an inode that refers to a freed
 block is likely to cause serious problems after a reboot.  After reboot, the
@@ -577,7 +602,7 @@ Xv6's block allocator
 maintains a free bitmap on disk, with one bit per block. 
 A zero bit indicates that the corresponding block is free;
 a one bit indicates that it is in use.
-The program
+When it creates a new file system,
 \lstinline{mkfs}
 sets the bits corresponding to the boot sector, superblock, log blocks, inode
 blocks, and bitmap blocks.
@@ -587,7 +612,6 @@ The block allocator provides two functions:
 allocates a new disk block, and
 \indexcode{bfree}
 frees a block.
-\lstinline{balloc}
 The loop in
 \lstinline{balloc}
 at
@@ -1631,7 +1655,7 @@ Then it allocates the pipe and installs the file descriptors.
 The buffer cache in a real-world operating system is significantly
 more complex than xv6's, but it serves the same two purposes:
 caching and synchronizing access to the disk.
-Xv6's buffer cache, like V6's, uses a simple least recently used (LRU)
+Xv6's buffer cache uses a least recently used (LRU)
 eviction policy; there are many more complex
 policies that can be implemented, each good for some
 workloads and not as good for others.
@@ -1659,8 +1683,8 @@ system calls to be atomic. Recovery
 from a log is much faster and causes system calls to be atomic
 in the face of crashes.
 
-Xv6 uses the same basic on-disk layout of inodes and directories
-as early UNIX;
+Xv6 uses an on-disk layout of inodes and directories
+similar to that of early UNIX;
 this scheme has been remarkably persistent over the years.
 BSD's UFS/FFS and Linux's ext2/ext3 use essentially the same data structures.
 The most inefficient part of the file system layout is the directory,
