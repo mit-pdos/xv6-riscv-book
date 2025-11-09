@@ -1133,6 +1133,21 @@ The name is at most
 if shorter, it is terminated by a NULL (0) byte.
 Directory entries with inode number zero are free.
 
+The reason why a directory entry contains the file's i-number rather
+than the named file's entire i-node is to support ``links'' created by
+the {\tt link()} system call. An i-node can be referred to in multiple
+directories, and thus under multiple path names; each of an i-node's
+names (i.e. directory entries) is called a link. Because of the
+possibility of an i-node being named in multiple directories, it is
+not convenient for the i-node to be stored in any one of those
+directories. The possibility of multiple links is also the reason for
+the {\tt nlink} field in the i-node. The fact that i-nodes are stored
+separately from directories also allows sensible handling of a file
+being unlinked (removed) while some process has a file descriptor
+referring to the file: the file descriptor refers to the i-node, not
+to any directory entry, so the file descriptor will still work even
+though the file (really, just its name) has been removed.
+
 The function
 \indexcode{dirlookup}
 \lineref{kernel/fs.c:/^dirlookup/}
