@@ -92,9 +92,9 @@ into memory, update the one byte, and then write the whole sector
 back to the disk. For this reason, file systems allocate disk space
 for files in units of one or more sectors. The allocation granularity
 that a file system uses is called the block \index{block} size.
-Xv6 uses a block
-size of one sector; many other operating systems use multi-sector
-blocks for better efficiency.
+Most operating systems use multi-sector
+blocks for better efficiency;
+Xv6 uses a block size of two sectors.
 
 Xv6 holds copies of blocks that it has read into memory
 in objects of type
@@ -104,7 +104,7 @@ The
 data stored in this structure is sometimes 
 not the same as the data on the disk: it might have
 not yet been read in from disk (the disk is working on it but hasn't returned
-the sector's content yet), or it might have been updated by software
+the block's content yet), or it might have been updated by software
 but not yet written to the disk.
 
 The file system must have a plan for where it stores inodes and
@@ -219,7 +219,7 @@ data from the disk into \lstinline{data}).
 \lineref{kernel/bio.c:/^bread/}
 calls
 \indexcode{bget}
-to get a buffer for the given sector
+to get a buffer for the given block
 \lineref{kernel/bio.c:/b.=.bget/}.
 If the buffer needs to be read from disk,
 \lstinline{bread}
@@ -229,7 +229,7 @@ to do that before returning the buffer.
 
 \lstinline{bget}
 \lineref{kernel/bio.c:/^bget/}
-scans the buffer list for a buffer with the given device and sector numbers
+scans the buffer list for a buffer with the given device and block numbers
 \linerefs{kernel/bio.c:/Is.the.block.already/,/^..}/}.
 If there is such a buffer,
 \indexcode{bget}
@@ -237,15 +237,15 @@ acquires the sleep-lock for the buffer.
 \lstinline{bget}
 then returns the locked buffer.
 
-If there is no cached buffer for the given sector,
+If there is no cached buffer for the given block,
 \indexcode{bget}
 must make one, possibly reusing a buffer that held
-a different sector.
+a different block.
 It scans the buffer list a second time, looking for a buffer
 that is not in use (\lstinline{b->refcnt = 0});
 any such buffer can be used.
 \lstinline{bget}
-edits the buffer metadata to record the new device and sector number
+edits the buffer metadata to record the new device and block number
 and acquires its sleep-lock.
 Note that the assignment
 \lstinline{b->valid = 0}
@@ -255,7 +255,7 @@ will read the block data from disk
 rather than incorrectly using the buffer's previous contents.
 
 It is important that there is at most one cached buffer per
-disk sector, to ensure that readers see writes, and because the
+disk block, to ensure that readers see writes, and because the
 file system uses locks on buffers for synchronization.
 \lstinline{bget}
 ensures this invariant by holding the
@@ -350,7 +350,7 @@ recovery. The problem arises because many file-system operations
 involve multiple writes to the disk, and a crash after a subset of the
 writes may leave the on-disk file system in an inconsistent state. For
 example, suppose a crash occurs during file truncation.
-Truncation involves writing (at least) two disk sectors,
+Truncation involves writing (at least) two disk blocks,
 one containing the i-node and one containing part of the free-block bitmap:
 the i-node's length must be set to zero and the block
 numbers in the i-node must be cleared,
@@ -412,7 +412,7 @@ operation's writes appear on the disk, or none of them appear.
 The log resides at a known fixed location, specified in the superblock.
 It consists of a header block followed by a sequence
 of updated block copies (``logged blocks'').
-The header block contains an array of sector
+The header block contains an array of block
 numbers, one for each of the logged blocks, and 
 the count of log blocks.
 The count in the header block on disk is either
@@ -513,7 +513,7 @@ distinct blocks.
 \lineref{kernel/log.c:/^log.write/}
 acts as a proxy for 
 \indexcode{bwrite}.
-It records the block's sector number in memory,
+It records the block's block number in memory,
 reserving it a slot in the log on disk,
 and pins the buffer in the block cache
 to prevent the block cache from evicting it.
@@ -585,7 +585,7 @@ The transaction looks like this:
       end_op();
 \end{lstlisting}
 This code is wrapped in a loop that breaks up large writes into individual
-transactions of just a few sectors at a time, to avoid overflowing
+transactions of just a few blocks at a time, to avoid overflowing
 the log.  The call to
 \indexcode{writei}
 writes many blocks as part of this
