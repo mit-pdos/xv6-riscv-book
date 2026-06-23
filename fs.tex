@@ -615,7 +615,7 @@ frees a block.
 The loop in
 \lstinline{balloc}
 at
-\lineref{kernel/fs.c:/^..for.b.=.0/}
+\lineref{kernel/fs.c:/^..for..b.=.0/}
 considers every block, starting at block 0 up to 
 \lstinline{sb.size},
 the number of blocks in the file system.
@@ -829,11 +829,11 @@ looks through the inode table for an active entry (\lstinline{ip->ref}
 \lstinline{0})
 with the desired device and inode number.
 If it finds one, it returns a new reference to that inode
-\linerefs{kernel/fs.c:/^....if.ip->ref.>.0/,/^....}/}.
+\linerefs{kernel/fs.c:/^....if..ip->ref.>.0/,/^....}/}.
 As
 \indexcode{iget}
 scans, it records the position of the first empty slot
-\linerefs{kernel/fs.c:/^....if.empty.==.0/,/empty.=.ip/},
+\linerefs{kernel/fs.c:/^....if..empty.==.0/,/empty.=.ip/},
 which it uses if it needs to allocate a table entry.
 
 Code must lock the inode using
@@ -1012,7 +1012,7 @@ The function
 begins by picking off the easy case: the first 
 \indexcode{NDIRECT}
 blocks are listed in the inode itself
-\linerefs{kernel/fs.c:/^..if.bn.<.NDIRECT/,/^..}/}.
+\linerefs{kernel/fs.c:/^..if..bn.<.NDIRECT/,/^..}/}.
 The next 
 \indexcode{NINDIRECT}
 blocks are listed in the indirect block at
@@ -1022,14 +1022,14 @@ reads the indirect block
 \lineref{kernel/fs.c:/bp.=.bread.ip->dev..addr/}
 and then reads a block number from the right 
 position within the block
-\lineref{kernel/fs.c:/a.=..uint\*.bp->data/}.
+\lineref{kernel/fs.c:/a.=..uint.\*.bp->data/}.
 If the block number exceeds
 \lstinline{NDIRECT+NINDIRECT},
 \lstinline{bmap} 
 panics; 
 \lstinline{writei}
 contains the check that prevents this from happening
-\lineref{kernel/fs.c:/off...n...MAXFILE.BSIZE/}.
+\lineref{kernel/fs.c:/off...n...MAXFILE...BSIZE/}.
 
 \lstinline{bmap}
 allocates blocks as needed.
@@ -1041,17 +1041,17 @@ As
 \lstinline{bmap}
 encounters zeros, it replaces them with the numbers of fresh blocks,
 allocated on demand
-\linerefs{kernel/fs.c:/^....if..addr.=.*==.0/,/./}
-\linerefs{kernel/fs.c:/^....if..addr.*NDIRECT.*==.0/,/./}.
+\linerefs{kernel/fs.c:/^....if...addr.=.*==.0/,/./}
+\linerefs{kernel/fs.c:/^....if...addr.*NDIRECT.*==.0/,/./}.
 
 \indexcode{itrunc}
 frees a file's blocks, resetting the inode's size to zero.
 \lstinline{itrunc}
 \lineref{kernel/fs.c:/^itrunc/}
 starts by freeing the direct blocks
-\linerefs{kernel/fs.c:/^..for.i.=.0.*NDIRECT/,/^..}/},
+\linerefs{kernel/fs.c:/^..for..i.=.0.*NDIRECT/,/^..}/},
 then the ones listed in the indirect block
-\linerefs{kernel/fs.c:/^....for.j.=.0.*NINDIRECT/,/^....}/},
+\linerefs{kernel/fs.c:/^....for..j.=.0.*NINDIRECT/,/^....}/},
 and finally the indirect block itself
 \linerefs{kernel/fs.c:/^....bfree.*NDIRECT/,/./}.
 
@@ -1067,14 +1067,14 @@ starts by
 making sure that the offset and count are not 
 beyond the end of the file.
 Reads that start beyond the end of the file return an error
-\linerefs{kernel/fs.c:/^..if.off.>.ip->size/,/./}
+\linerefs{kernel/fs.c:/^..if..off.>.ip->size/,/./}
 while reads that start at or cross the end of the file 
 return fewer bytes than requested
-\linerefs{kernel/fs.c:/^..if.off.\+.n.>.ip->size/,/./}.
+\linerefs{kernel/fs.c:/^..if..off.\+.n.>.ip->size/,/./}.
 The main loop processes each block of the file,
 copying data from the buffer into 
 \lstinline{dst}
-\linerefs{kernel/fs.c:/^..for.tot=0/,/^..}/}.
+\linerefs{kernel/fs.c:/^..for..tot.=.0/,/^..}/}.
 %%  NOTE: It is very hard to write line references
 %%  for writei because so many of the lines are identical
 %%  to those in readi.  Luckily, identical lines probably
@@ -1086,13 +1086,13 @@ is identical to
 with three exceptions:
 writes that start at or cross the end of the file
 grow the file, up to the maximum file size
-\linerefs{kernel/fs.c:/^..if.off.\+.n.>.MAXFILE/,/./};
+\linerefs{kernel/fs.c:/^..if..off.\+.n.>.MAXFILE/,/./};
 the loop copies data into the buffers instead of out
 \lineref{kernel/fs.c:/either.copyin.*bp->data/};
 and if the write has extended the file,
 \indexcode{writei}
 must update its size
-\linerefs{kernel/fs.c:/^..if.off.>.ip->size\)/,/./}.
+\linerefs{kernel/fs.c:/^..if..off.>.ip->size\)/,/./}.
 
 %% Both
 %% \indexcode{readi}
@@ -1215,7 +1215,7 @@ Either way,
 then adds a new entry to the directory
 by writing at offset
 \lstinline{off}
-\linerefs{kernel/fs.c:/if.writei/,/return -1/}.
+\linerefs{kernel/fs.c:/if..writei/,/return -1/}.
 %% 
 %% 
 %% 
@@ -1244,7 +1244,7 @@ to do the real work.
 starts by deciding where the path evaluation begins.
 If the path begins with a slash, evaluation begins at the root;
 otherwise, the current directory
-\linerefs{kernel/fs.c:/..if.\*path.==....\)/,/idup/}.
+\linerefs{kernel/fs.c:/..if..\*path.==....\)/,/idup/}.
 Then it uses
 \indexcode{skipelem}
 to consider each element of the path in turn
@@ -1281,12 +1281,12 @@ so
 need only
 return the unlocked
 \lstinline{ip}
-\linerefs{kernel/fs.c:/^....if.nameiparent/,/^....}/}.
+\linerefs{kernel/fs.c:/^....if..nameiparent/,/^....}/}.
 Finally, the loop looks for the path element using
 \indexcode{dirlookup}
 and prepares for the next iteration by setting
 \lstinline{ip = next}
-\linerefs{kernel/fs.c:/^....if..next.*dirlookup/,/^....ip.=.next/}.
+\linerefs{kernel/fs.c:/^....if...next.*dirlookup/,/^....ip.=.next/}.
 When the loop runs out of path elements, it returns
 \lstinline{ip}.
 
@@ -1598,7 +1598,7 @@ entries.
 Finally, now that the data is initialized properly,
 \indexcode{create}
 can link it into the parent directory
-\lineref{kernel/sysfile.c:/if.dirlink/}.
+\lineref{kernel/sysfile.c:/if..dirlink/}.
 \lstinline{create},
 like
 \indexcode{sys_link},
@@ -1635,7 +1635,7 @@ flag, it calls
 \lineref{kernel/sysfile.c:/create.*T_FILE/}.
 Otherwise, it calls
 \indexcode{namei}
-\lineref{kernel/sysfile.c:/if..ip.=.namei.path/}.
+\lineref{kernel/sysfile.c:/if...ip.=.namei.path/}.
 \lstinline{create}
 returns a locked inode, but 
 \lstinline{namei}
