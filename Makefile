@@ -8,11 +8,11 @@ SPELLTEX=$(wildcard *.tex)
 all: book.pdf
 .PHONY: all src clean
 
-$(T)/%.tex: %.tex | src
+$(T)/%.tex: %.tex | $(SRC)
 	mkdir -p latex.out
 	./lineref $(notdir $@) $(SRC)  xv6-riscv-src-booklet/fmt > $@
 
-src:
+$(SRC):
 	if [ ! -d $(SRC) ]; then \
 		git clone git@github.com:mit-pdos/xv6-riscv.git $(SRC) ; \
 	else \
@@ -20,7 +20,7 @@ src:
 	fi; \
 	true
 
-booklet: src
+booklet: $(SRC)
 	(cd xv6-riscv-src-booklet; make)
 	mv xv6-riscv-src-booklet/xv6-src-booklet.pdf .
 
