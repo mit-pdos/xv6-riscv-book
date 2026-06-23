@@ -1,0 +1,41 @@
+project:
+  type: book
+  output-dir: ../html.out
+
+book:
+  title: "xv6: a simple, Unix-like teaching operating system"
+  author:
+    - Russ Cox
+    - Frans Kaashoek
+    - Robert Morris
+  search: true
+  repo-url: https://github.com/mit-pdos/xv6-riscv
+  sidebar:
+    style: docked
+    collapse-level: 1
+  chapters:
+    - index.qmd
+    - unix.qmd
+    - first.qmd
+    - mem.qmd
+    - trap.qmd
+    - pgfault.qmd
+    - interrupt.qmd
+    - lock.qmd
+    - sched.qmd
+    - sleep.qmd
+    - fs.qmd
+    - lock2.qmd
+    - sum.qmd
+    - references.qmd
+
+bibliography: book.bib
+
+format:
+  html:
+    theme: cosmo
+    css: styles.css
+    toc: true
+    code-overflow: wrap
+    number-depth: 3
+    include-after-body: coderef-panel.html

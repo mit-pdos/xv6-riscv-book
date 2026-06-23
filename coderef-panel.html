@@ -1,0 +1,111 @@
+<!-- Side-by-side source code panel for xv6 book "code reference" links.
+     Included via _quarto.yml's `include-after-body`. Clicking a link tagged
+     `.coderef` (see convert.py) fetches the referenced file from GitHub's raw
+     CDN, shows it in a right-hand pane, and highlights the referenced line(s).
+     GitHub blocks <iframe> embedding (X-Frame-Options: deny), so we fetch the
+     raw text (raw.githubusercontent.com sends Access-Control-Allow-Origin: *)
+     and render it ourselves. -->
+<div id="coderef-panel" aria-hidden="true">
+  <div id="coderef-head">
+    <span id="coderef-title">source</span>
+    <a id="coderef-gh" href="#" target="_blank" rel="noopener" title="Open on GitHub">GitHub ↗</a>
+    <button id="coderef-close" type="button" title="Close (Esc)" aria-label="Close">✕</button>
+  </div>
+  <div id="coderef-body"><div id="coderef-msg">Loading…</div></div>
+</div>
+<script>
+(function () {
+  // raw.githubusercontent.com mirror of the GH blob base used in convert.py.
+  var RAW = "https://raw.githubusercontent.com/mit-pdos/xv6-riscv/riscv/";
+  var cache = {};                       // path -> array of source lines
+
+  var panel = document.getElementById("coderef-panel");
+  var bodyEl = document.getElementById("coderef-body");
+  var titleEl = document.getElementById("coderef-title");
+  var ghEl = document.getElementById("coderef-gh");
+
+  function openPanel() {
+    document.documentElement.classList.add("coderef-open");
+    panel.setAttribute("aria-hidden", "false");
+  }
+  function closePanel() {
+    document.documentElement.classList.remove("coderef-open");
+    panel.setAttribute("aria-hidden", "true");
+  }
+  document.getElementById("coderef-close").addEventListener("click", closePanel);
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") closePanel();
+  });
+
+  function render(lines, start, end) {
+    var frag = document.createDocumentFragment();
+    var pre = document.createElement("pre");
+    pre.className = "coderef-code";
+    var target = null;
+    for (var i = 0; i < lines.length; i++) {
+      var n = i + 1;
+      var row = document.createElement("div");
+      row.className = "coderef-row";
+      if (n >= start && n <= end) {
+        row.classList.add("coderef-hl");
+        if (!target) target = row;
+      }
+      var gut = document.createElement("span");
+      gut.className = "coderef-ln";
+      gut.textContent = n;
+      var code = document.createElement("span");
+      code.className = "coderef-src";
+      code.textContent = lines[i];
+      row.appendChild(gut);
+      row.appendChild(code);
+      pre.appendChild(row);
+    }
+    frag.appendChild(pre);
+    bodyEl.innerHTML = "";
+    bodyEl.appendChild(frag);
+    // scroll the first highlighted line to roughly a third down the pane.
+    if (target) {
+      bodyEl.scrollTop = Math.max(0, target.offsetTop - bodyEl.clientHeight / 3);
+    }
+  }
+
+  function show(path, start, end, href) {
+    openPanel();
+    titleEl.textContent = path + (start ? ":" + start + (end > start ? "-" + end : "") : "");
+    ghEl.href = href;
+    if (cache[path]) {
+      render(cache[path], start, end);
+      return;
+    }
+    bodyEl.innerHTML = '<div id="coderef-msg">Loading ' + path + ' …</div>';
+    fetch(RAW + path)
+      .then(function (r) {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.text();
+      })
+      .then(function (txt) {
+        cache[path] = txt.replace(/\n$/, "").split("\n");
+        render(cache[path], start, end);
+      })
+      .catch(function (err) {
+        bodyEl.innerHTML =
+          '<div id="coderef-msg">Could not load source (' + err.message +
+          ').<br><a href="' + href + '" target="_blank" rel="noopener">Open on GitHub ↗</a></div>';
+      });
+  }
+
+  // Event delegation: one listener handles every .coderef link on the page.
+  document.addEventListener("click", function (e) {
+    var a = e.target.closest && e.target.closest("a.coderef");
+    if (!a) return;
+    // let modified clicks fall through to the normal GitHub link / new tab.
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+    var path = a.getAttribute("data-path");
+    if (!path) return;
+    e.preventDefault();
+    var start = parseInt(a.getAttribute("data-line"), 10) || 0;
+    var end = parseInt(a.getAttribute("data-end"), 10) || start;
+    show(path, start, end, a.href);
+  });
+})();
+</script>

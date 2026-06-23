@@ -3,6 +3,7 @@ SRC=xv6-riscv-src/
 T=latex.out
 
 TEX=$(patsubst %,$(T)/%,$(wildcard *.tex))
+TIKZ_SVGS=$(patsubst fig/%.tex,fig/%.svg,$(wildcard fig/*.tex))
 SPELLTEX=$(wildcard *.tex)
 
 all: book.pdf xv6-src-booklet.pdf
@@ -38,6 +39,7 @@ clean:
 	rm -f book.aux book.idx book.ilg book.ind book.log\
 	 	book.toc book.bbl book.blg book.out
 	rm -rf latex.out
+	rm -rf quarto.out
 	rm -rf $(SRC)
 
 spell:
@@ -49,3 +51,19 @@ spell:
 
 fig/%.png: fig/%.svg
 	inkscape -z --export-area-drawing --export-text-to-path --export-dpi=300 --export-filename=$@ $<
+
+fig/%.svg: fig/%.tex
+	./fig/tikz-to-svg.sh $(shell realpath $<) $@
+
+quarto.out: $(TEX) $(TIKZ_SVGS)
+	rm -rf quarto.out
+	./convert-quarto.py
+	ln -s ../fig quarto.out/
+	cp _quarto.yml quarto.out/
+	cp references.qmd quarto.out/
+	cp coderef-panel.html quarto.out/
+	cp book.bib quarto.out/
+	cp styles.css quarto.out/
+
+html.out: quarto.out
+	( cd quarto.out && quarto render )
