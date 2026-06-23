@@ -5,11 +5,11 @@ T=latex.out
 TEX=$(patsubst %,$(T)/%,$(wildcard *.tex))
 SPELLTEX=$(wildcard *.tex)
 
-all: book.pdf
+all: book.pdf xv6-src-booklet.pdf
 .PHONY: all src clean
 
-$(T)/%.tex: %.tex | $(SRC)
-	mkdir -p latex.out
+$(T)/%.tex: %.tex xv6-riscv-src-booklet/fmt | $(SRC)
+	@mkdir -p $(@D)
 	./lineref $(notdir $@) $(SRC)  xv6-riscv-src-booklet/fmt > $@
 
 $(SRC):
@@ -20,19 +20,19 @@ $(SRC):
 	fi; \
 	true
 
-booklet: $(SRC)
+xv6-src-booklet.pdf xv6-riscv-src-booklet/fmt: $(SRC)
 	(cd xv6-riscv-src-booklet; make)
 	mv xv6-riscv-src-booklet/xv6-src-booklet.pdf .
 
-book.pdf: booklet book.tex $(TEX)
+book.pdf: book.tex $(TEX)
 	pdflatex book.tex
 	bibtex book
 	pdflatex book.tex
 	pdflatex book.tex
 
 
-lineref: $(TEX) booklet
-	echo done
+lineref: $(TEX)
+	@echo done
 
 clean:
 	rm -f book.aux book.idx book.ilg book.ind book.log\
