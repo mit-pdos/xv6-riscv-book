@@ -49,8 +49,8 @@ processes a trap is often called a \indextext{handler};
 the first handler instructions are usually written in assembler
 (rather than C) and are sometimes called a \indextext{vector}.
 
-Before proceeding, please read {\tt kernel/trampoline.S},
-and {\tt usertrap()} and {\tt prepare\_return()} in {\tt kernel/trap.c}.
+Before proceeding, please read \lstinline{kernel/trampoline.S} \fileref{kernel/trampoline.S},
+and {\tt usertrap()} and {\tt prepare\_return()} in \lstinline{kernel/trap.c} \fileref{kernel/trap.c}.
 
 \section{RISC-V trap machinery}
 
@@ -321,9 +321,9 @@ into the kernel and causes
 {\tt uservec},
 {\tt usertrap}, and then {\tt syscall} to execute.
 
-At this point, please read {\tt kernel/syscall.c},
-{\tt sys\_write()} in {\tt kernel/sysfile.c},
-and {\tt copyout()}, {\tt copyin()}, and {\tt copyinstr()} in {\tt kernel/vm.c}.
+At this point, please read \lstinline{kernel/syscall.c} \fileref{kernel/syscall.c},
+{\tt sys\_write()} in \lstinline{kernel/sysfile.c} \fileref{kernel/sysfile.c},
+and {\tt copyout()}, {\tt copyin()}, and {\tt copyinstr()} in \lstinline{kernel/vm.c} \fileref{kernel/vm.c}.
 
 \indexcode{syscall}
 \lineref{kernel/syscall.c:/^syscall/} 
@@ -411,8 +411,8 @@ kernel to a user-supplied address.
 \section{Traps from kernel space}
 \label{s:ktraps}
 
-Please read {\tt kernel/kernelvec.S},
-and {\tt kerneltrap()} in {\tt kernel/trap.c}.
+Please read \lstinline{kernel/kernelvec.S} \fileref{kernel/kernelvec.S},
+and {\tt kerneltrap()} in \lstinline{kernel/trap.c} \fileref{kernel/trap.c}.
 
 Xv6 handles traps from kernel code in a different way
 than traps from user code.

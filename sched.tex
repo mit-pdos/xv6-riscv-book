@@ -13,14 +13,14 @@ with the illusion that it has its own virtual CPU by
 the processes onto the hardware CPUs.
 This chapter explains how xv6 achieves this multiplexing.
 
-Before proceeding with this chapter, please read {\tt kernel/proc.h},
-{\tt kernel/swtch.S},
+Before proceeding with this chapter, please read \lstinline{kernel/proc.h} \fileref{kernel/proc.h},
+\lstinline{kernel/swtch.S} \fileref{kernel/swtch.S},
 and
 {\tt yield()},
 {\tt sched()},
 and
 {\tt scheduler()}
-in {\tt kernel/proc.c}.
+in \lstinline{kernel/proc.c} \fileref{kernel/proc.c}.
 
 %% 
 \section{Multiplexing}
