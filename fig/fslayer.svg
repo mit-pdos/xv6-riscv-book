@@ -10,7 +10,7 @@
    xmlns:xlink="http://www.w3.org/1999/xlink"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   width="406.35159"
+   width="586.35159"
    height="422.16025"
    id="svg2976"
    version="1.1"
@@ -212,7 +212,12 @@
          style="font-size:24px;line-height:1.25">File descriptor</tspan></text>
     <path
        id="path3807"
-       d="m 220.00001,412.36218 c 379.99999,0 379.99999,0 379.99999,0"
+       d="m 220.00001,410.36218 c 379.99999,0 379.99999,0 379.99999,0"
+       style="fill:none;stroke:#000000;stroke-width:0.99999994px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       inkscape:connector-curvature="0" />
+    <path
+       id="path3807b"
+       d="m 220.00001,414.36218 c 379.99999,0 379.99999,0 379.99999,0"
        style="fill:none;stroke:#000000;stroke-width:0.99999994px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
        inkscape:connector-curvature="0" />
     <path
@@ -270,5 +275,27 @@
          id="tspan3893"
          sodipodi:role="line"
          style="font-size:24px;line-height:1.25">Disk</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'Bitstream Vera Sans';-inkscape-font-specification:'Bitstream Vera Sans';text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
+       x="615"
+       y="302.36218"
+       id="text-fs-label"><tspan
+         sodipodi:role="line"
+         id="tspan-fs-label"
+         x="615"
+         y="302.36218"
+         style="font-size:24px;line-height:1.25">File system</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'Bitstream Vera Sans';-inkscape-font-specification:'Bitstream Vera Sans';text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
+       x="615"
+       y="512.36218"
+       id="text-log-label"><tspan
+         sodipodi:role="line"
+         id="tspan-log-label"
+         x="615"
+         y="512.36218"
+         style="font-size:24px;line-height:1.25">Logging</tspan></text>
   </g>
 </svg>
