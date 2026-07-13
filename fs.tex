@@ -110,6 +110,13 @@ not yet been read in from disk (the disk is working on it but hasn't returned
 the block's content yet), or it might have been updated by software
 but not yet written to the disk.
 
+\begin{figure}[t]
+\center
+\includegraphics[scale=0.5]{fig/fslayout.pdf}
+\caption{Structure of the xv6 file system. }
+\label{fig:fslayout}
+\end{figure}
+
 The file system must have a plan for where it stores inodes and
 content blocks on the disk.
 To do so, xv6 divides the disk into several
@@ -136,7 +143,7 @@ blocks as free.
 
 The top layers of the file system, every layer above logging, are
 largely independent of the logging layers.  The top layers are concerned with
-implementing simple on-disk data structures to represent directories
+implementing on-disk data structures to represent directories
 and files.  The bottom layers are concerned with implementing
 transactions to allow the file system to atomically perform updates that involve multiple
 disk blocks.  The rest of this chapter focuses

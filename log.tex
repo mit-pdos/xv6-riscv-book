@@ -2,139 +2,73 @@
 \label{CH:LOG}
 %         is it process or kernel thread?
 % 
-%         the logging text (and some of the buffer text) assumes the reader
-%         knows a fair amount about how inodes and directories work,
-%         but they are introduced later.
-% 
-% 	have to decide on processor vs CPU.
-% 	
 % 	be sure to say buffer, not block 
 % 
 % 	Mount
 
-The purpose of a file system is to organize and store data. File systems
-typically support sharing of data among users and applications, as well as
-\indextext{persistence}
-so that data is still available after a reboot.
-
-The xv6 file system provides Unix-like files, directories, and pathnames
-(see Chapter~\ref{CH:UNIX}), and stores its data on a disk for
-persistence. The file system addresses
-several challenges:
-\begin{itemize}
-  
-\item The file system needs on-disk data structures to represent the tree
-of named directories and files, to record the identities of the
-blocks that hold each file's content, and to record which areas
-of the disk are free.
-\item The file system must support
-\indextext{crash recovery}.
-That is, if a crash (e.g., power failure) occurs, the file system must
-still work correctly after a restart. The risk is that a crash might
-interrupt a sequence of updates and leave inconsistent on-disk data
-structures (e.g., a block that is both used in a file and marked free).
-\item Different processes may operate on the file system at the same time,
-so the file-system code must coordinate to maintain invariants.
-\item Accessing a disk is orders of magnitude slower than accessing
-memory, so the file system must maintain an in-memory cache of
-popular blocks.
-
-\end{itemize}
-
-The rest of this chapter explains how xv6 addresses these challenges.
 %% 
 %%  -------------------------------------------
 %% 
-\section{Overview}
 
-The xv6 file system implementation is
-organized in seven layers, shown in 
-Figure~\ref{fig:fslayer}.
-The disk layer reads and writes blocks on a virtio hard drive;
-virtio is an emulated disk provided by {\tt qemu}.
-The buffer cache layer caches disk blocks and synchronizes access to them,
-making sure that only one kernel process at a time can modify the
-data stored in any particular block.  The logging layer allows higher
-layers to wrap updates to several blocks in a
-\indextext{transaction},
-and ensures that the blocks are updated atomically in the
-face of crashes (i.e., all of them are updated or none).
-The inode layer provides individual files, each represented as an
-\indextext{inode}
-with a unique i-number
-and some blocks holding the file's data.  The directory
-layer implements each directory as a special kind of
-inode whose content is a sequence of directory entries, each of which contains a
-file's name and i-number.
-The pathname layer provides
-hierarchical path names like
-\lstinline{/usr/rtm/xv6/fs.c},
-and resolves them with recursive lookup.
-The file descriptor layer abstracts many Unix resources (e.g., pipes, devices,
-files, etc.) using the file system interface, simplifying the lives of
-application programmers.
+One of the most interesting problems in file system design is crash
+recovery. The problem arises because many file-system operations
+involve multiple writes to the disk, and a crash after a subset of the
+writes may leave the on-disk file system in an inconsistent state. For
+example, suppose a crash occurs during file truncation.
+Truncation involves writing (at least) two disk blocks,
+one containing the i-node and one containing part of the free-block bitmap:
+the i-node's length must be set to zero and the block
+numbers in the i-node must be cleared,
+and the bitmap bits for the file's blocks must
+be set to zero (marking them free).
+A crash after one of the writes, but before the kernel has
+a chance to perform the second write, will leave the
+on-disk file system in an incorrect state.
+If only the bitmap write occurs, the result after a crash
+and reboot will be an i-node with non-zero length which
+refers to blocks that are marked free;
+if only the i-node write occurs, the result will be
+blocks that are not used by any file but are also not marked free.
 
-Disk hardware traditionally presents the data on the
-disk as a numbered sequence of 512-byte 
-\textit{sectors}\index{sector}:
-sector 0 is the first 512 bytes, sector 1 is the next, and so on.
-The disk hardware supports reads and writes only in whole multiples
-of sectors. Thus, for example, if the operating system needs to change
-a single byte on the disk, it must read the whole surrounding sector
-into memory, update the one byte, and then write the whole sector
-back to the disk. For this reason, file systems allocate disk space
-for files in units of one or more sectors. The allocation granularity
-that a file system uses is called the block \index{block} size.
-Most operating systems use multi-sector
-blocks for better efficiency;
-Xv6 uses a block size of two sectors.
+The latter is relatively benign, but an inode that refers to a freed
+block is likely to cause serious problems after a reboot.  After reboot, the
+kernel might allocate that block to another file, and now we have two different
+files pointing unintentionally to the same block.  If xv6 supported
+multiple users, this situation could be a security problem, since the
+old file's owner would be able to read and write blocks in the
+new file, owned by a different user.
 
-Xv6 holds copies of blocks that it has read into memory
-in objects of type
-\lstinline{struct buf}
-\lineref{kernel/buf.h:/^struct.buf/}.
-The
-data stored in this structure is sometimes 
-not the same as the data on the disk: it might have
-not yet been read in from disk (the disk is working on it but hasn't returned
-the block's content yet), or it might have been updated by software
-but not yet written to the disk.
+Xv6 solves the problem of crashes during file-system operations with a
+simple form of logging. An xv6 system call does not directly write
+the on-disk file system data structures. Instead, it places a
+description of all the disk writes it wishes to make in a 
+\indextext{log} 
+on the disk. Once the system call has logged all of its writes, it writes a
+special 
+\indextext{commit}
+record to the disk indicating that the log contains
+a complete operation. At that point the system call copies the writes
+to the on-disk file system data structures. After those writes have
+completed, the system call erases the log on disk.
 
-The file system must have a plan for where it stores inodes and
-content blocks on the disk.
-To do so, xv6 divides the disk into several
-sections, as 
-Figure~\ref{fig:fslayout} shows.
-The file system does not use
-block 0 (block 0 often holds boot code, though in xv6 it's
-merely unused).
-Block 1 is called the 
-\indextext{superblock}; 
-it contains metadata about the file system (the file system size in blocks, the
-number of data blocks, the number of inodes, and the number of blocks in the
-log).  Blocks starting at 2 hold the log.  After the log are the inodes, with multiple inodes per block.  After
-those come bitmap blocks tracking which data blocks are in use.
-The remaining blocks are data blocks; each is either marked
-free in the bitmap block, or holds content for a file or directory.
+If the system should crash and reboot, the file-system code recovers
+from the crash as follows, before running any processes. If the log is
+marked as containing a complete operation, then the recovery code
+copies the writes to where they belong in the on-disk file system. If
+the log is not marked as containing a complete operation, the recovery
+code ignores the log.  The recovery code finishes by erasing
+the log.
 
-An xv6 file system is initially created by a program outside
-of xv6 called 
-\indexcode{mkfs}.
-{\tt mkfs} writes the superblock, initializes an inode for
-the (empty) root directory, and marks all i-nodes and data
-blocks as free.
-
-The rest of this chapter discusses each layer, starting with the
-buffer cache.
-Look out for situations where well-chosen abstractions at lower layers
-ease the design of higher ones.
-
-At this point you should read the files {\tt buf.h}, {\tt fs.h}, {\tt
-  bio.c}, {\tt fs.c}, {\tt sysfile.c}, and {\tt file.c}.
-
-%% 
-%%  -------------------------------------------
-%% 
+Why does xv6's log solve the problem of crashes during file system
+operations? If the crash occurs before the operation commits, then the
+log on disk will not be marked as complete, the recovery code will
+ignore it, and the state of the disk will be as if the operation had
+not even started. If the crash occurs after the operation commits,
+then recovery will replay all of the operation's writes, perhaps
+repeating them if the operation had started to write them to the
+on-disk data structure. In either case, the log makes operations
+atomic with respect to crashes: after recovery, either all of the
+operation's writes appear on the disk, or none of them appear.
 \section{Buffer cache layer}
 \label{s:bcache}
 
@@ -171,12 +105,6 @@ least recently used buffer for the new block. The assumption is that
 the least recently used buffer is the one least likely to be used
 again soon.
 
-\begin{figure}[t]
-\center
-\includegraphics[scale=0.5]{fig/fslayout.pdf}
-\caption{Structure of the xv6 file system. }
-\label{fig:fslayout}
-\end{figure}
 %% 
 %%  -------------------------------------------
 %% 
@@ -336,73 +264,14 @@ pointers).
 %% 
 %%  -------------------------------------------
 %% 
-\section{Logging layer}
 
-One of the most interesting problems in file system design is crash
-recovery. The problem arises because many file-system operations
-involve multiple writes to the disk, and a crash after a subset of the
-writes may leave the on-disk file system in an inconsistent state. For
-example, suppose a crash occurs during file truncation.
-Truncation involves writing (at least) two disk blocks,
-one containing the i-node and one containing part of the free-block bitmap:
-the i-node's length must be set to zero and the block
-numbers in the i-node must be cleared,
-and the bitmap bits for the file's blocks must
-be set to zero (marking them free).
-A crash after one of the writes, but before the kernel has
-a chance to perform the second write, will leave the
-on-disk file system in an incorrect state.
-If only the bitmap write occurs, the result after a crash
-and reboot will be an i-node with non-zero length which
-refers to blocks that are marked free;
-if only the i-node write occurs, the result will be
-blocks that are not used by any file but are also not marked free.
-
-The latter is relatively benign, but an inode that refers to a freed
-block is likely to cause serious problems after a reboot.  After reboot, the
-kernel might allocate that block to another file, and now we have two different
-files pointing unintentionally to the same block.  If xv6 supported
-multiple users, this situation could be a security problem, since the
-old file's owner would be able to read and write blocks in the
-new file, owned by a different user.
-
-Xv6 solves the problem of crashes during file-system operations with a
-simple form of logging. An xv6 system call does not directly write
-the on-disk file system data structures. Instead, it places a
-description of all the disk writes it wishes to make in a 
-\indextext{log} 
-on the disk. Once the system call has logged all of its writes, it writes a
-special 
-\indextext{commit}
-record to the disk indicating that the log contains
-a complete operation. At that point the system call copies the writes
-to the on-disk file system data structures. After those writes have
-completed, the system call erases the log on disk.
-
-If the system should crash and reboot, the file-system code recovers
-from the crash as follows, before running any processes. If the log is
-marked as containing a complete operation, then the recovery code
-copies the writes to where they belong in the on-disk file system. If
-the log is not marked as containing a complete operation, the recovery
-code ignores the log.  The recovery code finishes by erasing
-the log.
-
-Why does xv6's log solve the problem of crashes during file system
-operations? If the crash occurs before the operation commits, then the
-log on disk will not be marked as complete, the recovery code will
-ignore it, and the state of the disk will be as if the operation had
-not even started. If the crash occurs after the operation commits,
-then recovery will replay all of the operation's writes, perhaps
-repeating them if the operation had started to write them to the
-on-disk data structure. In either case, the log makes operations
-atomic with respect to crashes: after recovery, either all of the
-operation's writes appear on the disk, or none of them appear.
 %% 
 %% 
 %% 
 \section{Log design}
 
-The log resides at a known fixed location, specified in the superblock.
+The log resides at a known fixed location (see
+Figure~\ref{fig:fslayout}), specified in the superblock.
 It consists of a header block followed by a sequence
 of updated block copies (``logged blocks'').
 The header block contains an array of block
@@ -584,16 +453,51 @@ the log.  The call to
 writes many blocks as part of this
 transaction: the file's inode, one or more bitmap blocks, and some data
 blocks.
+
 %% 
+%% %% 
+%%  -------------------------------------------
 %% 
-%% 
-%% 
+\section{Real world}
+
+The buffer cache in a real-world operating system is significantly
+more complex than xv6's, but it serves the same two purposes:
+caching and synchronizing access to the disk.
+Xv6's buffer cache uses a least recently used (LRU)
+eviction policy; there are many more complex
+policies that can be implemented, each good for some
+workloads and not as good for others.
+A more efficient LRU cache would eliminate the linked list,
+instead using a hash table for lookups and a heap for LRU evictions.
+Modern buffer caches are typically integrated with the
+virtual memory system to support memory-mapped files.
+
+Xv6's logging system is inefficient.
+A commit cannot occur concurrently with file-system system calls.
+The system logs entire blocks, even if
+only a few bytes in a block are changed. It performs synchronous
+log writes, a block at a time, each of which is likely to require an
+entire disk rotation time. Real logging systems address all of these
+problems.
+-
+Logging is not the only way to provide crash recovery. Early file systems
+used a scavenger during reboot (for example, the UNIX
+\indexcode{fsck}
+program) to examine every file and directory and the block and inode
+free lists, looking for and resolving inconsistencies. Scavenging can take
+hours for large file systems, and there are situations where it is not
+possible to resolve inconsistencies in a way that causes the original
+system calls to be atomic. Recovery
+from a log is much faster and causes system calls to be atomic
+in the face of crashes.
+
+
 %%  -------------------------------------------
 %% 
 \section{Exercises}
 
 \begin{enumerate}
 
-  \item TODO: add logging exercises
+  \item \mfk{TODO: add logging exercises}
 
 \end{enumerate}
