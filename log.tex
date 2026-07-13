@@ -120,6 +120,12 @@ To avoid recycling too early, the logging layer uses
 the buffer-cache functions \indexcode{bpin} and \indexcode{bunpin} to
 pin and unpin a buffer in the buffer cache.
 
+At this point please read the files \lstinline{kernel/bio.c}
+\fileref{kernel/bio.c} and
+\lstinline{kernel/log.c} \fileref{kernel/log.c}.
+
+
+
 %% 
 %%  -------------------------------------------
 %% 
@@ -511,6 +517,32 @@ in the face of crashes.
 
 \begin{enumerate}
 
-  \item \mfk{TODO: add logging exercises}
+  \item To understand how the log is used, insert the following line
+    of code before the \lstinline{log_write} statement in the function
+    \lstinline{writei()} in \lstinline{kernel/fs.c}:
+
+\begin{verbatim}
+printf("log write %d: %d %d %d\n", addr, bp->blockno, off, n);
+\end{verbatim}
+
+Run make clean and then make qemu, and at the xv6 shell prompt run the following command:
+\begin{verbatim}
+$ echo hi > f
+\end{verbatim}
+
+You should see output similiar to this:
+\begin{verbatim}
+log write 47: 47 368 16
+log write 936: 936 0 2
+log write 936: 936 2 1
+\end{verbatim}
+
+The output indicates that \lstinline{log_write} is called three times
+for this shell command. Why is \lstinline{log_write} called 3 times? What does
+each \lstinline{log_write} write? Does the first write above correspond to
+updating the root directory and the other two writes correspond to
+writing file f?  Figure~\ref{fig:fslayout} might be helpful and feel
+free to add more \lstinline{printf} statements to help you answering
+the question.
 
 \end{enumerate}
