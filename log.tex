@@ -69,9 +69,16 @@ repeating them if the operation had started to write them to the
 on-disk data structure. In either case, the log makes operations
 atomic with respect to crashes: after recovery, either all of the
 operation's writes appear on the disk, or none of them appear.
+
+%% 
+%% 
+%% 
+
 \section{Buffer cache layer}
 \label{s:bcache}
 
+The logging layer (and the file system) rely on the buffer cache to
+read and write disk blocks (see Figure~\ref{fig:fslayer}).
 The buffer cache has two jobs: (1) synchronize access to disk blocks to ensure
 that only one copy of a block is in memory and that only one kernel thread at a time
 uses that copy; (2) cache popular blocks so that they don't need to be re-read from
@@ -104,6 +111,14 @@ holding some other block. The buffer cache recycles the
 least recently used buffer for the new block. The assumption is that
 the least recently used buffer is the one least likely to be used
 again soon.
+
+There is a subtle interaction between the logging layer and the buffer
+cache:  the buffer cache cannot recycle a buffer that is in use by a
+transaction until the transaction commits (see
+Section~\ref{s:code-logging}).
+To avoid recycling too early, the logging layer uses
+the buffer-cache functions \indexcode{bpin} and \indexcode{bunpin} to
+pin and unpin a buffer in the buffer cache.
 
 %% 
 %%  -------------------------------------------
@@ -265,9 +280,6 @@ pointers).
 %%  -------------------------------------------
 %% 
 
-%% 
-%% 
-%% 
 \section{Log design}
 
 The log resides at a known fixed location (see
@@ -339,6 +351,7 @@ fit in the space remaining in the log.
 %% 
 %% 
 \section{Code: logging}
+\label{s:code-logging}
 
 A typical use of the log in a system call looks like this:
 \begin{lstlisting}[]

@@ -196,7 +196,8 @@ Bits-Per-Block (\lstinline{BPB})
 bits in a single bitmap block.
 The race that might occur if two processes try to allocate
 a block at the same time is prevented by the fact that
-the buffer cache only lets one process use any one bitmap block at a time.
+the buffer cache only lets one process use any one bitmap block at a
+time (see Section~\ref{s:bcache}).
 
 \lstinline{bfree}
 \lineref{kernel/fs.c:/^bfree/}
