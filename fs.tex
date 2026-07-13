@@ -139,7 +139,7 @@ largely independent of the logging layers.  The top layers are concerned with
 implementing simple on-disk data structures to represent directories
 and files.  The bottom layers are concerned with implementing
 transactions to allow the file system to atomically perform updates that involve multiple
-disk blocks.  The rest of this chapter focusses
+disk blocks.  The rest of this chapter focuses
 on the upper layers while Chapter~\ref{CH:LOG} discusses the lower layers.
 At this point please read the files \lstinline{kernel/buf.h}
 \fileref{kernel/buf.h}, \lstinline{kernel/fs.h} \fileref{kernel/fs.h},
@@ -1223,39 +1223,6 @@ Then it allocates the pipe and installs the file descriptors.
 %% 
 \section{Real world}
 
-\mfk{TODO: split in fs and log}
-
-The buffer cache in a real-world operating system is significantly
-more complex than xv6's, but it serves the same two purposes:
-caching and synchronizing access to the disk.
-Xv6's buffer cache uses a least recently used (LRU)
-eviction policy; there are many more complex
-policies that can be implemented, each good for some
-workloads and not as good for others.
-A more efficient LRU cache would eliminate the linked list,
-instead using a hash table for lookups and a heap for LRU evictions.
-Modern buffer caches are typically integrated with the
-virtual memory system to support memory-mapped files.
-
-Xv6's logging system is inefficient.
-A commit cannot occur concurrently with file-system system calls.
-The system logs entire blocks, even if
-only a few bytes in a block are changed. It performs synchronous
-log writes, a block at a time, each of which is likely to require an
-entire disk rotation time. Real logging systems address all of these
-problems.
-
-Logging is not the only way to provide crash recovery. Early file systems
-used a scavenger during reboot (for example, the UNIX
-\indexcode{fsck}
-program) to examine every file and directory and the block and inode
-free lists, looking for and resolving inconsistencies. Scavenging can take
-hours for large file systems, and there are situations where it is not
-possible to resolve inconsistencies in a way that causes the original
-system calls to be atomic. Recovery
-from a log is much faster and causes system calls to be atomic
-in the face of crashes.
-
 Xv6 uses an on-disk layout of inodes and directories
 similar to that of early UNIX;
 this scheme has been remarkably persistent over the years.
@@ -1267,17 +1234,6 @@ but is expensive for directories holding many files.
 Microsoft Windows's NTFS, macOS's HFS, and Solaris's ZFS, just to name a few, implement
 a directory as an on-disk balanced tree of blocks.
 This is complicated but guarantees logarithmic-time directory lookups.
-
-Xv6 is naive about disk failures: if a disk
-operation fails, xv6 panics.
-Whether this is reasonable depends on the hardware:
-if an operating systems sits atop special hardware that uses
-redundancy to mask disk failures, perhaps the operating system
-sees failures so infrequently that panicking is okay.
-On the other hand, operating systems using plain disks
-should expect failures and handle them more gracefully,
-so that the loss of a block in one file doesn't affect the
-use of the rest of the file system.
 
 Xv6 requires that the file system
 fit on one disk device and not change in size.
