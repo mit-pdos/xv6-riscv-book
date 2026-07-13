@@ -157,7 +157,7 @@ def preprocess(tex, chapnum):
     # drop bare index entries entirely (incl. one level of nested braces)
     tex = re.sub(r'\\index\{(?:[^{}]|\{[^{}]*\})*\}', '', tex)
     # tikz figure inputs -> rendered svg images
-    tex = re.sub(r'\\input\{fig/(switch|sleep|trap|order)\.tex\}',
+    tex = re.sub(r'\\input\{fig/([^}]*?)\.tex\}',
                  r'\\includegraphics{fig/\1.svg}', tex)
     # figure image extensions -> web svg
     tex = re.sub(r'\\includegraphics(\[[^\]]*\])?\{fig/([^}]*?)\.(pdf|png)\}',

@@ -8,10 +8,19 @@ fi
 TMP=$(mktemp -d)
 trap "rm $TMP/convert.* && rmdir $TMP" 0
 
+# If the book has been built, import its labels so any \ref{} inside a figure
+# (e.g. chapter cross-references) resolves to the right number instead of "??".
+ROOT=$(cd "$(dirname "$1")/.." && pwd)
+XR=""
+if [ -e "$ROOT/book.aux" ]; then
+  XR="\\usepackage{xr}\\externaldocument{$ROOT/book}"
+fi
+
 cat > $TMP/convert.tex <<EOF
 \\documentclass[border=4pt]{standalone}
 \\usepackage{tikz}\\usepackage{listings}\\usepackage{xcolor}
 \\usetikzlibrary{arrows,positioning}
+$XR
 \\lstset{basicstyle=\\small\\ttfamily}
 \\lstset{escapeinside={(*@}{@*)}}
 \\begin{document}\\input{$1}\\end{document}
