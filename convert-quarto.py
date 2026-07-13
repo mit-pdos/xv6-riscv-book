@@ -22,7 +22,7 @@ def basename(path):
 
 # chapter tex basename -> output qmd basename (book.tex order)
 CHAPTERS = ["acks","unix","first","mem","trap","pgfault","interrupt",
-            "lock","sched","sleep","fs","lock2","sum"]
+            "lock","sched","sleep","fs","log","lock2","sum"]
 QMD = {"acks":"index"}   # acks becomes the book landing page
 
 # ---------------------------------------------------------------------------

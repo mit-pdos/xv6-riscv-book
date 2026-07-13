@@ -25,6 +25,7 @@ book:
     - sched.qmd
     - sleep.qmd
     - fs.qmd
+    - log.qmd
     - lock2.qmd
     - sum.qmd
     - references.qmd
