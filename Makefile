@@ -5,6 +5,8 @@ T=latex.out
 TEX=$(patsubst %,$(T)/%,$(wildcard *.tex))
 TIKZ_SVGS=$(patsubst fig/%.tex,fig/%.svg,$(wildcard fig/*.tex))
 SPELLTEX=$(wildcard *.tex)
+# Figure sources the book includes (\input for *.tex, \includegraphics for *.pdf)
+FIGS=$(wildcard fig/*.tex) $(wildcard fig/*.pdf)
 
 all: book.pdf xv6-src-booklet.pdf
 .PHONY: all src clean
@@ -25,7 +27,7 @@ xv6-src-booklet.pdf xv6-riscv-src-booklet/fmt: $(SRC)
 	(cd xv6-riscv-src-booklet; make)
 	mv xv6-riscv-src-booklet/xv6-src-booklet.pdf .
 
-book.pdf: book.tex $(TEX)
+book.pdf: book.tex $(TEX) $(FIGS)
 	pdflatex book.tex
 	bibtex book
 	pdflatex book.tex
