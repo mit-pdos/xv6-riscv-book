@@ -36,7 +36,9 @@ format:
   html:
     theme: cosmo
     css: styles.css
-    toc: true
+    toc: false
     code-overflow: wrap
     number-depth: 3
-    include-after-body: coderef-panel.html
+    include-after-body:
+      - coderef-panel.html
+      - sidebar-toc.html

@@ -16,6 +16,27 @@ code .added-line { background: #fff3b0; }
 table { font-size: 0.92em; }
 
 /* ------------------------------------------------------------------ */
+/* Chapter sections nested in the left sidebar (see sidebar-toc.html)  */
+/* ------------------------------------------------------------------ */
+.chapter-sections {
+  margin: 0.1em 0 0.4em 0;
+  padding-left: 0.9em;
+  border-left: 1px solid #e1e4e8;
+}
+.chapter-sections .chapter-section-link {
+  display: block;
+  padding: 0.15em 0 0.15em 0.3em;
+  font-size: 0.86em;
+  line-height: 1.35;
+  color: #495057;
+}
+.chapter-sections .chapter-section-link:hover { color: #000; }
+.chapter-sections .chapter-section-link.active {
+  color: #0a58ca;
+  font-weight: 600;
+}
+
+/* ------------------------------------------------------------------ */
 /* Side-by-side source code panel (see coderef-panel.html)            */
 /* ------------------------------------------------------------------ */
 :root { --coderef-width: 42vw; }
