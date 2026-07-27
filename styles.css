@@ -1,0 +1,123 @@
+/* xv6 book HTML styling */
+
+/* GitHub source links rendered in blue, matching the PDF's hyperlink color */
+a.src-ref, .src-ref a { color: #0a58ca; white-space: nowrap; }
+
+/* Figure images: center and constrain width */
+figure img, .quarto-figure img { max-width: 100%; height: auto; }
+
+/* Code listings: slightly smaller monospace, like the book */
+pre code { font-size: 0.85em; }
+
+/* Highlighted (added) lines in code examples */
+code .added-line { background: #fff3b0; }
+
+/* Tables used as figures (system call lists, etc.) */
+table { font-size: 0.92em; }
+
+/* ------------------------------------------------------------------ */
+/* Chapter sections nested in the left sidebar (see sidebar-toc.html)  */
+/* ------------------------------------------------------------------ */
+.chapter-sections {
+  margin: 0.1em 0 0.4em 0;
+  padding-left: 0.9em;
+  border-left: 1px solid #e1e4e8;
+}
+.chapter-sections .chapter-section-link {
+  display: block;
+  padding: 0.15em 0 0.15em 0.3em;
+  font-size: 0.86em;
+  line-height: 1.35;
+  color: #495057;
+}
+.chapter-sections .chapter-section-link:hover { color: #000; }
+.chapter-sections .chapter-section-link.active {
+  color: #0a58ca;
+  font-weight: 600;
+}
+
+/* ------------------------------------------------------------------ */
+/* Side-by-side source code panel (see coderef-panel.html)            */
+/* ------------------------------------------------------------------ */
+:root { --coderef-width: 42vw; }
+
+#coderef-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: var(--coderef-width);
+  max-width: 720px;
+  height: 100vh;
+  background: #fff;
+  border-left: 1px solid #d0d7de;
+  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.18s ease-out;
+  z-index: 1050;
+}
+#coderef-panel[aria-hidden="false"] { transform: translateX(0); }
+
+/* Push the page content left so the source shows up side by side. */
+html.coderef-open body { margin-right: min(var(--coderef-width), 720px); }
+
+#coderef-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75em;
+  padding: 0.4em 0.7em;
+  background: #f6f8fa;
+  border-bottom: 1px solid #d0d7de;
+  font-size: 0.85em;
+}
+#coderef-title {
+  font-family: var(--bs-font-monospace, monospace);
+  font-weight: 600;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#coderef-gh { flex: 0 0 auto; text-decoration: none; }
+#coderef-close {
+  flex: 0 0 auto;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 1.1em;
+  line-height: 1;
+  color: #57606a;
+  padding: 0 0.2em;
+}
+#coderef-close:hover { color: #000; }
+
+#coderef-body { flex: 1 1 auto; overflow: auto; background: #fff; }
+#coderef-msg { padding: 1em; color: #57606a; font-size: 0.9em; }
+
+pre.coderef-code {
+  margin: 0;
+  padding: 0.5em 0;
+  font-size: 0.8em;
+  line-height: 1.45;
+  background: #fff;
+  border: none;
+}
+.coderef-row { display: flex; white-space: pre; }
+.coderef-hl { background: #fff8c5; }
+.coderef-ln {
+  flex: 0 0 auto;
+  width: 3.2em;
+  padding-right: 0.8em;
+  text-align: right;
+  color: #8c959f;
+  user-select: none;
+}
+.coderef-src { flex: 1 1 auto; }
+
+/* On narrow screens the panel takes the full width as an overlay. */
+@media (max-width: 900px) {
+  :root { --coderef-width: 100vw; }
+  #coderef-panel { max-width: none; }
+  html.coderef-open body { margin-right: 0; }
+}

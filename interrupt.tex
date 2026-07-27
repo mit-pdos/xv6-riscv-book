@@ -56,7 +56,7 @@ control registers. That is, there are some physical addresses that
 are connected to the UART device, so that loads and stores
 interact with the device hardware rather than RAM.
 The memory-mapped addresses for the UART start at 0x10000000, or {\tt UART0}
-\lineref{kernel/memlayout.h:/UART0.0x/}.
+\lineref{kernel/memlayout.h:/UART0.+0x/}.
 There are a handful of UART control registers, each the width
 of a byte. Their offsets from {\tt UART0} are defined in
 \lineref{kernel/uart.c:/define.RHR/}. For example, the

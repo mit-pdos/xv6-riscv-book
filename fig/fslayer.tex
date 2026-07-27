@@ -1,0 +1,22 @@
+\begin{tikzpicture}[x=1cm,y=1cm]
+
+  \def\w{6.333}
+
+  \draw[thick] (0,0) rectangle (\w,7);
+
+  \foreach \y in {1,2,4,5,6}
+    \draw (0,\y) -- (\w,\y);
+  \draw[double,double distance=1.5pt] (0,3) -- (\w,3);
+
+  \node at (\w/2,6.5) {File descriptor};
+  \node at (\w/2,5.5) {Pathname};
+  \node at (\w/2,4.5) {Directory};
+  \node at (\w/2,3.5) {Inode};
+  \node at (\w/2,2.5) {Logging};
+  \node at (\w/2,1.5) {Buffer cache};
+  \node at (\w/2,0.5) {Disk};
+
+  \node[right] at (\w+0.3,5)   {File system (Chapter~\ref{CH:FS})};
+  \node[right] at (\w+0.3,1.5) {Logging (Chapter~\ref{CH:LOG})};
+
+\end{tikzpicture}

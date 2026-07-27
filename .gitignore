@@ -1,7 +1,9 @@
 *.pdf
 *.*~
 *.ps
-latex.out/
+/latex.out/
+/quarto.out/
+/html.out/
 xv6-riscv-src
 xv6-riscv-src-booklet/fmt
 *.aux

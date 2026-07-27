@@ -287,7 +287,7 @@ table after initially creating it.
 \section{Code: creating an address space}
 %% 
 
-Please read {\tt kernel/vm.c} through the end of {\tt mappages()}
+Please read \lstinline{kernel/vm.c} \fileref{kernel/vm.c} through the end of {\tt mappages()}
 before proceeding.
 
 Most of the xv6 code for manipulating address spaces and
@@ -448,7 +448,7 @@ linked list through the pages themselves. Allocation consists of
 removing a page from the linked list; freeing consists of adding the
 freed page to the list.
 
-Please read {\tt kernel/kalloc.c}.
+Please read \lstinline{kernel/kalloc.c} \fileref{kernel/kalloc.c}.
 
 %% 
 \section{Code: Physical memory allocator}
@@ -628,7 +628,7 @@ all address spaces, but can be used only by the kernel.
 \section{Code: exec}
 %% 
 
-Please read {\tt kernel/exec.c} and {\tt kernel/vm.c}
+Please read \lstinline{kernel/exec.c} \fileref{kernel/exec.c} and \lstinline{kernel/vm.c} \fileref{kernel/vm.c}
 starting at {\tt uvmcreate()}.
 
 \lstinline{exec} is a system call that replaces a process's

@@ -38,10 +38,9 @@ address space, but only to pay the cost of allocating physical memory
 for the pages the program actually reads and writes. xv6 uses page
 faults for only one purpose: lazy allocation.
 
-Before proceeding, please read the functions {\tt sys\_sbrk()} in {\tt
-  kernel/sysproc.c}, and {\tt vmfault} in {\tt kernel/vm.c}.
-Search for calls to {\tt vmfault} in {\tt kernel/trap.c} and {\tt
-kernel/vm.c}.
+Before proceeding, please read the functions {\tt sys\_sbrk()} in
+  \lstinline{kernel/sysproc.c} \fileref{kernel/sysproc.c}, and {\tt vmfault} in \lstinline{kernel/vm.c} \fileref{kernel/vm.c}.
+Search for calls to {\tt vmfault} in \lstinline{kernel/trap.c} \fileref{kernel/trap.c} and \lstinline{kernel/vm.c} \fileref{kernel/vm.c}.
 
 \section{Lazy allocation}
 \label{sec:lazy}
