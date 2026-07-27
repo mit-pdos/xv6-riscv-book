@@ -746,18 +746,37 @@ These appear in xv6 as
 the \lstinline{__ATOMIC_ACQUIRE} and \lstinline{__ATOMIC_RELEASE}
 arguments to the C atomic functions
 used in \lstinline{acquire} and \lstinline{release}.
-These have two effects.
-First, they tell the compiler not to move memory references
-past the atomic calls, so that instructions for memory
-references that are inside the C critical section stay
-between the \lstinline{amoswap} instructions that acquire and release the lock.
-Second, they tell the compiler to generate instructions
-that tell the CPU not to move memory references past those
-acquire/release instructions either.
-
+Each has two effects.
+First, each tells the compiler not to move memory references
+past the atomic call.
+Second, each tells the compiler to generate instructions
+that tell the CPU not to move execution-time memory references past the
+\lstinline{amoswap} instruction generated for the atomic call.
 Such a ``don't move past'' point is called
-is a \indextext{memory barrier} or 
-\indextext{fence}.
+a \indextext{memory barrier} or 
+a \indextext{fence}.
+
+The barriers in xv6's spinlock functions have two important
+effects on code that uses locks. First, all memory references
+(reads and writes) that occur in the C code 
+before a \lstinline{release()}
+are guaranteed to take effect on the memory system
+before the \lstinline{release()}'s \lstinline{amoswap}
+instruction completes. This includes
+both memory references in the critical section and memory
+references before the critical section. Second, all memory
+references in the C code after the \lstinline{acquire}
+are guaranteed {\bf not} to take effect before the successful
+completion of the \lstinline{amoswap} in \lstinline{acquire()}.
+Again, this includes both references inside the critical
+section and references after the \lstinline{release}.
+
+These barriers produce an important transitive effect. For example, if
+a CPU writes to a newly-allocated data object (without holding locks)
+and then, in a critical section, links that object into a list, any
+CPU that subsequently acquires a lock and obtains a pointer to the
+object from the list is guaranteed to observe the first CPU's writes.
+
 The barriers in xv6's 
 \lstinline{acquire}
 and
