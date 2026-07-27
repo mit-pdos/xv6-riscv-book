@@ -45,10 +45,10 @@ exclusion, ensuring that only one CPU at a time can hold the lock. If
 the programmer associates a lock with each shared data item, and the
 code always holds the associated lock when using an item, then the
 item will be used by only one CPU at a time.  In this situation, we
-say that the lock protects the data item.  Although locks are an
-easy-to-understand concurrency control mechanism, the downside of
-locks is that they can limit performance, because they serialize
-concurrent operations.
+say that the lock protects the data item.  Although a lock is an
+easy-to-understand concurrency control mechanism, 
+it can limit performance by serializing
+concurrent operations on the data it protects.
 
 The rest of this chapter explains why xv6 needs locks, how xv6
 implements them, and how it uses them.
@@ -325,8 +325,10 @@ can be used to make
 lines~\ref{line:testlocked} and \ref{line:assign}
 atomic.
 On the RISC-V this instruction is
-\lstinline{amoswap r, a}.
+\lstinline{amoswap r, r, a}.
+The
 \lstinline{amoswap}
+instruction
 reads the value at the memory address {\tt a},
 writes the contents of register {\tt r} to that address,
 and puts the value it read into {\tt r}.
@@ -336,23 +338,24 @@ It performs this sequence atomically, using special
 hardware to prevent any
 other CPU from using the memory address between the read and the write.
 
-The portable C library call 
-\lstinline{__sync_lock_test_and_set(addr, value)}
-boils down to the
+The C compiler provides a family of ``atomic'' built-in functions
+that generate atomic instructions. Xv6's \lstinline{acquire()}
+uses \lstinline{__atomic_exchange_n(addr, value, ...)}, which boils down to
+the 
 \lstinline{amoswap}
 instruction;
 the function returns the old (swapped) contents of {\tt *addr}.
 Here's a good way to write the loop in {\tt acquire}:
 
 \begin{lstlisting}[numbers=left,firstnumber=21]
-  while(__sync_lock_test_and_set(&lk->locked, 1) != 0)
+  while (__atomic_exchange_n(&lk->locked, 1, __ATOMIC_ACQUIRE) != 0)
     ;
 \end{lstlisting}
 
 Xv6's 
 \indexcode{acquire}
 \lineref{kernel/spinlock.c:/^acquire/}
-uses the above loop.
+uses the above loop (Section~\ref{SEC:MEMORDER} will explain \lstinline{__ATOMIC_ACQUIRE}).
 Each iteration swaps one into
 \lstinline{lk->locked} 
 and checks the previous value;
@@ -383,7 +386,7 @@ it clears the
 \lstinline{lk->cpu}
 field
 and then releases the lock.
-Conceptually, the release just requires assigning zero to
+Conceptually, the release just assigns zero to
 \lstinline{lk->locked}.
 The C standard allows compilers to implement an assignment
 with multiple store instructions,
@@ -391,9 +394,10 @@ so a C assignment might be non-atomic with respect
 to concurrent code.
 Instead,
 \lstinline{release}
-uses the C library function
-\lstinline{__sync_lock_release}
-that performs an atomic assignment.
+uses the C atomic function
+\lstinline{__atomic_store_n(addr, value, ...)}
+that stores the value to the address in a single
+indivisible operation.
 This function also boils down to a RISC-V
 \lstinline{amoswap}
 instruction.
@@ -418,8 +422,9 @@ Xv6 may well have as-yet-undiscovered races.
 A hard part about using locks is deciding how many locks
 to use and which data and invariants each lock should protect.
 There are a few basic principles.
-First, any time a variable can be written by one CPU
-at the same time that another CPU can read or write it,
+First, in any code that might cause a memory location to be
+written by one CPU 
+at the same time that another CPU reads or writes it,
 a lock should be used to keep the two
 operations from overlapping.
 Second, remember that locks protect invariants:
@@ -459,8 +464,8 @@ each file, so that processes that manipulate different files can often
 proceed without waiting for each other's locks. The file locking
 scheme could be made even more fine-grained if one wanted to allow
 processes to simultaneously write different areas of the same file.
-Ultimately lock granularity decisions need to be driven by performance
-measurements as well as complexity considerations.
+Ultimately lock granularity decisions need to be driven by 
+performance requirements as well as complexity considerations.
 
 As subsequent chapters explain each part of xv6, they
 will mention examples of xv6's use of locks
@@ -484,7 +489,7 @@ kmem.lock & Serializes allocation of memory \\
 log.lock & Serializes operations on the transaction log \\
 pipe's pi->lock & Serializes operations on each pipe \\
 pid\_lock & Serializes increments of next\_pid \\
-proc's p->lock & Serializes changes to process's state \\
+proc's p->lock & Serializes changes to each process's state \\
 wait\_lock & Helps wait avoid lost wakeups \\
 tickslock & Serializes operations on the ticks counter \\
 inode's ip->lock & Serializes operations on each inode and its content \\
@@ -530,8 +535,9 @@ Xv6 has many lock-order chains of length two involving
 per-process locks
 (the lock in each
 \lstinline{struct proc})
-due to the way that
-\lstinline{sleep}
+due to the way that the
+\lstinline{sleep}/\lstinline{wakeup}
+mechanism
 works (see Chapter~\ref{CH:SLEEP}).
 For example,
 \lstinline{consoleintr}
@@ -582,7 +588,7 @@ to acquire a lock that the same CPU already holds. One line of
 reasoning is that this should be allowed: no other CPU can hold the
 lock, so there's no need to worry about CPUs interfering with each
 others' use of the protected data. Locking systems that allow a CPU to
-re-aquire a lock it alread holds are called a {\it re-entrant} or {\it
+re-acquire a lock it already holds are called a {\it re-entrant} or {\it
   recursive}. On the other hand, if a lock is already held, even on
 the same CPU, that means an operation may have temporarily violated
 and not yet restored some invariants; to allow a new operation to
@@ -659,12 +665,12 @@ When that count reaches zero,
 \lstinline{pop_off} 
 restores the interrupt enable state that existed 
 at the start of the outermost critical section.
-The
-\lstinline{intr_off}
-and
-\lstinline{intr_on}
-functions execute RISC-V instructions to disable and enable
-interrupts, respectively.
+\lstinline{push_off} and \lstinline{pop_off} tell the CPU to enable
+and disable interrupts by changing the \lstinline{SIE}
+(Supervisor Interrupt Enable)
+bit in the \lstinline{sstatus} (Supervisor Status)
+register, using \lstinline{intr_on} and \lstinline{rc_sstatus(SSTATUS_SIE)};
+the latter clears the \lstinline{SIE} bit.
 
 It is important that
 \indexcode{acquire}
@@ -687,13 +693,14 @@ releasing the lock
 
 %% 
 \section{Instruction and memory ordering}
+\label{SEC:MEMORDER}
 %% 
 
 It is natural to think of programs executing in the order
 in which source code statements appear.
 That's a reasonable mental model for single-threaded
-code, but is incorrect when
-multiple threads interact through shared memory~\cite{riscv:user,boehm04}.
+code, but is not what actually happens.
+
 One reason is that compilers emit load and store
 instructions in orders different from those implied
 by the source code, and may entirely omit them
@@ -707,6 +714,9 @@ The CPU may start instruction B first, either because its
 inputs are ready before A's inputs, or in order to overlap
 execution of A and B.
 
+Memory access re-ordering by the CPU and compiler can cause
+problems when
+multiple threads interact through shared memory~\cite{riscv:user,boehm04}.
 As an example of what could go wrong,
 in this code for
 \lstinline{push},
@@ -730,21 +740,24 @@ observe the updated
 but see an uninitialized
 \lstinline{list->next}.
 
-The good news is that compilers and CPUs help concurrent programmers
-by following a set of rules called the \indextext{memory model}, and
-by providing some primitives to help programmers control re-ordering.
+The good news is that compilers and CPUs provide ways
+for programmers to prevent re-ordering.
+These appear in xv6 as
+the \lstinline{__ATOMIC_ACQUIRE} and \lstinline{__ATOMIC_RELEASE}
+arguments to the C atomic functions
+used in \lstinline{acquire} and \lstinline{release}.
+These have two effects.
+First, they tell the compiler not to move memory references
+past the atomic calls, so that instructions for memory
+references that are inside the C critical section stay
+between the \lstinline{amoswap} instructions that acquire and release the lock.
+Second, they tell the compiler to generate instructions
+that tell the CPU not to move memory references past those
+acquire/release instructions either.
 
-To tell the hardware and compiler not to re-order,
-xv6 uses
-\lstinline{__sync_synchronize()} 
-in both
-\lstinline{acquire} \lineref{kernel/spinlock.c:/^acquire/}
-and
-\lstinline{release} \lineref{kernel/spinlock.c:/^release/}.
-\lstinline{__sync_synchronize()}
-is a \indextext{memory barrier}:
-it tells the compiler and CPU to not reorder loads or stores across the
-barrier.
+Such a ``don't move past'' point is called
+is a \indextext{memory barrier} or 
+\indextext{fence}.
 The barriers in xv6's 
 \lstinline{acquire}
 and
@@ -752,6 +765,25 @@ and
 force order in almost all cases where it matters,
 since xv6 uses locks around accesses to shared data.
 Chapter~\ref{CH:LOCK2} discusses a few exceptions.
+
+\section{Programming with Atomics}
+
+Though xv6 doesn't do this, it is sometimes possible to update shared
+data while avoiding races by direct use of atomic instructions,
+without use of locks. Most CPUs conveniently supply dozens of atomic
+instructions, typically with the pattern that they read a memory
+location, modify the value, and write the new value to the same memory
+location, atomically. The RISC-V \lstinline{amoadd} instruction is an
+example: it atomically adds a register's contents to a location in
+memory. The C compiler provides ``atomic'' wrappers for
+these instructions.\footnote{\url{https://gcc.gnu.org/onlinedocs/gcc/_005f_005fatomic-Builtins.html}}
+Thus code could increment a shared counter without locks using
+\begin{lstlisting}
+  __atomic_fetch_add(&counter, 1, __ATOMIC_SEQ_CST);
+\end{lstlisting}
+It can be useful to avoid locks because they consume
+CPU time, or because a structural reason such as deadlock
+avoidance makes use of locks awkward.
 
 %% 
 \section{Sleep locks}
@@ -930,4 +962,5 @@ changing its shared address space.
 % LocalWords:  consoleintr wakeup clockintr intr acquiresleep POSIX
 % LocalWords:  Pthreads pthread unmaps TLB IPIs SMP firstnumber int
 % LocalWords:  structure's spinlocks addr tx uart pipe's wakeups A's
-% LocalWords:  usertests
+% LocalWords:  usertests SIE sstatus rc amoadd register's SEQ sched
+% LocalWords:  tex
