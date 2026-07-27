@@ -92,9 +92,10 @@ into memory, update the one byte, and then write the whole sector
 back to the disk. For this reason, file systems allocate disk space
 for files in units of one or more sectors. The allocation granularity
 that a file system uses is called the block \index{block} size.
-Most operating systems use multi-sector
+Most file systems use multi-sector
 blocks for better efficiency;
-Xv6 uses a block size of two sectors.
+xv6 uses a block size of two sectors (determined by
+{\tt BSIZE} in {\tt fs.h}).
 
 Xv6 holds copies of blocks that it has read into memory
 in objects of type
