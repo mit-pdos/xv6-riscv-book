@@ -117,6 +117,20 @@ Xv6's virtio driver doesn't support this kind of
 \indextext{batching},
 but xv6's file system design allows for it.
 
+A subtle implication of group commit is
+that it makes the effects of a write system call asynchronous:
+that is, even after a write system call returns to the application, it is not guaranteed that
+the blocks it modified are on disk.
+For example, when a write transaction finishes, 
+another transaction may have started and the write transaction will
+commit together with the second transaction as one group, delaying the
+effects of the write on disk until the second transaction commits.
+If an application wants to wait until its modifications are made durable
+(i.e., are on disk),
+it can call the \indexcode{sync} \lineref{kernel/log.c:/sys_sync/} system call after a write system call;
+\lstinline{sync} waits until an in-progress group-commit has committed.
+
+
 Xv6 dedicates a fixed amount of space on the disk to hold the log.
 The total number of blocks written by the system calls in a
 transaction must fit in that space.
