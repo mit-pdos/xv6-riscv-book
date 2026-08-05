@@ -423,7 +423,7 @@ Since {\tt kernelvec} only executes if
 xv6 was already in the kernel, {\tt kernelvec} can rely
 on {\tt satp} being set to the kernel page table, and on the
 stack pointer referring to a valid kernel stack.
-{\tt kernelvec} pushes all 32 registers onto the current stack,
+{\tt kernelvec} pushes all caller-saved registers onto the current stack,
 from which it will later restore them
 so that the interrupted
 kernel code can resume without disturbance.
