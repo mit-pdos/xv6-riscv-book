@@ -106,7 +106,7 @@ large ranges of virtual addresses have no mappings, the three-level
 structure can omit entire page directories.  For example, if an
 application uses only a few pages starting at address zero, then the
 entries 1 through 511 of the top-level page directory are invalid, and
-the kernel doesn't have to allocate pages those for 511 intermediate
+the kernel doesn't have to allocate pages for those 511 intermediate
 page directories.  Furthermore, the kernel also doesn't have to
 allocate pages for the bottom-level page directories for those 511
 intermediate page directories. So, in this example, the three-level
