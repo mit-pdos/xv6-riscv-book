@@ -196,9 +196,13 @@ least recently used buffer for the new block. The assumption is that
 the least recently used buffer is the one least likely to be used
 again soon.
 
-There is a subtle interaction between the logging layer and the buffer
-cache:  the buffer cache cannot recycle a buffer that is in use by a
-transaction until the transaction commits (see
+There are two interactions between the buffer cache layer and the
+logging layer: 1) to implement transactions, file-system layers above the logging layer update a disk
+block by calling \indexcode{log_write} \lineref{kernel/log.c:/log_write/}, which is a proxy for
+\lstinline{bwrite} and only the logging layer
+calls \lstinline{bwrite};  2)
+the buffer cache cannot recycle a buffer that is in use by a
+transaction until the logging layer commits the transaction (see
 Section~\ref{s:code-logging}).
 To avoid recycling too early, the logging layer uses
 the buffer-cache functions \indexcode{bpin} and \indexcode{bunpin} to
