@@ -186,7 +186,7 @@ the
 \indextext{kernel}.
 
 Applications interact with the kernel via system calls
-calls such as {\tt read}.
+such as {\tt read}.
 Applications are not allowed to directly call kernel functions
 or access the kernel's memory.
 RISC-V provides the \indexcode{ecall} instruction
@@ -430,7 +430,8 @@ to refer to elements of the
 structure; for example,
 \indexcode{p->pagetable} is a pointer to the process's page table.
 
-At this point, please read {\tt kernel/proc.h}, which defines {\tt
+At this point, please read \lstinline{kernel/proc.h}
+\fileref{kernel/proc.h}, which defines {\tt
   struct proc}. The xv6 code is more important for you to understand
 than this book; you should prioritize the code, and consult this book
 as needed to clarify the code. The purpose of some of the code may not
@@ -501,8 +502,8 @@ process may have more than one thread to take advantage of multiple CPUs.
 To make xv6 more concrete, we'll outline how the kernel starts and
 runs the first process. The subsequent chapters will describe the
 mechanisms that show up in this overview in more detail.
-Please read {\tt kernel/entry.S}, {\tt kernel/start.c},
-{\tt kernel/main.c}, and {\tt user/init.c}.
+Please read \lstinline{kernel/entry.S} \fileref{kernel/entry.S}, \lstinline{kernel/start.c} \fileref{kernel/start.c},
+\lstinline{kernel/main.c} \fileref{kernel/main.c}, and \lstinline{user/init.c} \fileref{user/init.c}.
 
 When the RISC-V computer powers on, it initializes
 itself and runs a boot loader which is stored in read-only

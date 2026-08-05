@@ -20,15 +20,15 @@ The kernel trap handling code recognizes when a device
 has raised an interrupt and calls the driver's interrupt handler;
 in xv6, this dispatch happens in {\tt devintr} \lineref{kernel/trap.c:/^devintr/}.
 
-Many device drivers execute code in two contexts: a \indextext{top
-half} that runs in a process's kernel thread, and a \indextext{bottom
-half} that executes at interrupt time. The top half
+Many device drivers execute code in two contexts: a \indextext{bottom
+half} that runs in a process's kernel thread, and a \indextext{top
+half} that executes at interrupt time. The bottom half
 is called via system calls such as {\tt read} and {\tt write} that want
 the device to perform I/O. This code may ask the hardware to start an
 operation (e.g., ask the disk to read a block); then the code waits for
 the operation to complete. Eventually the device completes the
 operation and raises an interrupt. The driver's interrupt handler,
-acting as the bottom half,
+acting as the top half,
 figures out what operation has completed, wakes up a waiting
 process if appropriate, and tells the hardware to start work
 on the next operation, if any.
@@ -56,7 +56,7 @@ control registers. That is, there are some physical addresses that
 are connected to the UART device, so that loads and stores
 interact with the device hardware rather than RAM.
 The memory-mapped addresses for the UART start at 0x10000000, or {\tt UART0}
-\lineref{kernel/memlayout.h:/UART0.0x/}.
+\lineref{kernel/memlayout.h:/UART0.+0x/}.
 There are a handful of UART control registers, each the width
 of a byte. Their offsets from {\tt UART0} are defined in
 \lineref{kernel/uart.c:/define.RHR/}. For example, the
@@ -123,38 +123,41 @@ Once woken, {\tt consoleread} will observe a full line in {\tt
   cons.buf}, copy it to user space, and return (via the system call
 machinery) to user space.
 
+A pattern to note is the decoupling of device activity from process
+activity via buffering and interrupts. The console driver can process
+input even when no process is waiting to read it; a subsequent read
+will see the input. This decoupling can increase performance by
+allowing processes to execute concurrently with device I/O, and is
+particularly important when the device is slow (as with the UART) or
+needs immediate attention (as with echoing typed characters). This
+idea is sometimes called \indextext{I/O concurrency}.
+
 \section{Code: Console output}
 
 A {\tt write} system call on a file descriptor connected to the console
-eventually arrives at 
-{\tt uartputc}
-\lineref{kernel/uart.c:/^uartputc/}.
-The device driver maintains an output buffer ({\tt uart\_tx\_buf})
-so that writing processes do not have to wait for the UART to finish
-sending; instead, {\tt uartputc} appends each character to the buffer,
-calls {\tt uartstart} to start the device transmitting (if it isn't
-already), and returns. The only situation in which {\tt uartputc}
-waits is if the buffer is already full.
-
-Each time the UART finishes sending a byte, it generates an interrupt.
-{\tt uartintr} calls {\tt uartstart}, which checks that the device
-really has finished sending, and hands the device the next buffered
-output character. Thus if a process writes multiple bytes to the
-console, typically the first byte will be sent by {\tt uartputc}'s
-call to {\tt uartstart}, and the remaining buffered bytes will be sent
-by {\tt uartstart} calls from {\tt uartintr} as transmit complete
-interrupts arrive.
-
-A general pattern to note is the decoupling of device activity from
-process activity via buffering and interrupts. The console driver can
-process input even when no process is waiting to read it; a subsequent
-read will see the input. Similarly, processes can send output without
-having to wait for the device. This decoupling can increase
-performance by allowing processes to execute concurrently with device
-I/O, and is particularly important when the device is slow (as with
-the UART) or needs immediate attention (as with echoing typed
-characters). This idea is sometimes called \indextext{I/O
-  concurrency}.
+reaches
+{\tt consolewrite}
+\lineref{kernel/console.c:/^consolewrite/},
+which copies batches of bytes from user space
+and hands each batch to {\tt uartwrite}
+\lineref{kernel/uart.c:/^uartwrite/}.
+Before writing each byte to the UART's THR register,
+{\tt uartwrite} must wait for the UART to be ready
+to accept more output. Because the UART is relatively
+slow, {\tt uartwrite} waits using {\tt sleep}
+(which yields the CPU)
+rather than a busy-loop.
+When the UART is done sending the most recent byte,
+it interrupts. The interrupt routine,
+{\tt uartintr}
+\lineref{kernel/uart.c:/^uartintr/},
+cooperates with {\tt uartwrite}:
+the latter sets the {\tt tx\_busy} flag when
+it sends each character, and waits for
+the flag to be cleared;
+the interrupt routine clears {\tt tx\_busy}
+and wakes up the writing thread
+when the UART signals it is ready for more output.
 
 \section{Concurrency in drivers}
 
@@ -179,7 +182,7 @@ to think about the process or code that they have interrupted. For
 example, an interrupt handler cannot safely call {\tt copyout} with
 the current process's page table. Interrupt handlers typically do
 relatively little work (e.g., just copy the input data to a buffer),
-and wake up top-half code to do the rest.
+and wake up bottom-half code to do the rest.
 
 \section{Timer interrupts}
 

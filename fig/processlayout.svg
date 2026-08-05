@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <svg
    sodipodi:docname="processlayout.svg"
-   inkscape:version="1.3.2 (091e20ef0f, 2023-11-25, custom)"
+   inkscape:version="1.4.2 (ebf0e940d0, 2025-05-08)"
    version="1.1"
    id="svg2976"
    height="744.09448"
    width="1052.3622"
-   inkscape:export-filename="processlayout.jpg"
+   inkscape:export-filename="processlayout.png"
    inkscape:export-xdpi="300"
    inkscape:export-ydpi="300"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
@@ -58,8 +58,8 @@
      inkscape:window-maximized="0"
      inkscape:window-y="0"
      inkscape:window-x="0"
-     inkscape:window-height="1561"
-     inkscape:window-width="2876"
+     inkscape:window-height="1406"
+     inkscape:window-width="2556"
      showgrid="false"
      inkscape:current-layer="layer1"
      inkscape:document-units="px"
@@ -245,7 +245,7 @@
          y="537.05396"
          x="534.68134"
          id="tspan6309"
-         sodipodi:role="line">argument N</tspan></text>
+         sodipodi:role="line">argument N-1</tspan></text>
     <text
        id="text6311"
        y="564.80884"
@@ -260,14 +260,14 @@
     <text
        id="text6315"
        y="594.83936"
-       x="484.75293"
+       x="473.52197"
        style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'American Typewriter';-inkscape-font-specification:'American Typewriter';fill:#000000;fill-opacity:1;stroke:none"
        xml:space="preserve"><tspan
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:24px;line-height:1.25;font-family:'Bitstream Vera Sans';-inkscape-font-specification:'Bitstream Vera Sans'"
          y="594.83936"
-         x="484.75293"
+         x="473.52197"
          id="tspan6317"
-         sodipodi:role="line">address of argument N</tspan></text>
+         sodipodi:role="line">address of argument N-1</tspan></text>
     <text
        id="text6319"
        y="657.14197"
@@ -350,7 +350,7 @@
          y="562.27179"
          x="775.74969"
          id="tspan6473"
-         sodipodi:role="line">null-terminated string</tspan></text>
+         sodipodi:role="line">end of argv indicator</tspan></text>
     <text
        id="text6475"
        y="593.43933"
@@ -361,7 +361,7 @@
          y="593.43933"
          x="776.28882"
          id="tspan6477"
-         sodipodi:role="line">argv[argc]</tspan></text>
+         sodipodi:role="line">argv[argc-1]</tspan></text>
     <text
        id="text6479"
        y="655.10406"
@@ -483,7 +483,7 @@
          x="368.25739"
          y="777.58557"><tspan
    style="font-size:24px"
-   id="tspan370">R-WU</tspan>-</tspan></text>
+   id="tspan370">R-WU</tspan></tspan></text>
     <text
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;font-size:12.5px;line-height:125%;font-family:sans-serif;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
@@ -497,7 +497,7 @@
          x="366.64691"
          y="679.47406"><tspan
    style="font-size:24px"
-   id="tspan374">R-WU</tspan>-</tspan></text>
+   id="tspan374">R-WU</tspan></tspan></text>
     <text
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;font-size:12.5px;line-height:125%;font-family:sans-serif;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
@@ -511,7 +511,7 @@
          x="368.28149"
          y="608.47278"><tspan
    style="font-size:24px"
-   id="tspan380">R-WU</tspan>-</tspan></text>
+   id="tspan380">R-WU</tspan></tspan></text>
     <path
        id="path386"
        d="m 181.75386,558.48227 c 180,0 180,0 180,0"
@@ -540,7 +540,7 @@
          x="370.47736"
          y="396.61346"><tspan
    style="font-size:24px"
-   id="tspan392">RX--</tspan>-</tspan></text>
+   id="tspan392">RX--</tspan></tspan></text>
     <text
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;font-size:12.5px;line-height:125%;font-family:sans-serif;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
@@ -554,7 +554,7 @@
          x="371.98236"
          y="439.61011"><tspan
    style="font-size:24px"
-   id="tspan398">R-W-</tspan>-</tspan></text>
+   id="tspan398">R-W-</tspan></tspan></text>
     <path
        id="path559"
        d="m 180.9588,846.71051 c 180,0 180,0 180,0"
