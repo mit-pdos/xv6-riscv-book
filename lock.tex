@@ -133,7 +133,7 @@ copy executes concurrently.
 If two CPUs execute
 \lstinline{push}
 at the same time,
-both might execute line~\ref{line:next} as shown in Fig~\ref{fig:smp},
+both might execute line~\ref{line:next} as shown in Figure~\ref{fig:smp},
 before either executes line~\ref{line:list},  which results
 in an incorrect outcome as illustrated by Figure~\ref{fig:race}.
 There would then be two
@@ -186,10 +186,10 @@ adds just a few lines (highlighted in yellow):
      l = malloc(sizeof *l); (*@\label{line:malloc}@*)
      l->data = data;
    
-     (*@\hl{acquire(\&listlock);} @*)
+     (*@\hl{acquire(\&listlock);}@*)
      l->next = list;     (*@\label{line:next1}@*)
      list = l;           (*@\label{line:list1}@*)
-     (*@\hl{release(\&listlock)}; @*)
+     (*@\hl{release(\&listlock);}@*)
    }
 \end{lstlisting}
 The sequence of instructions between
@@ -315,14 +315,14 @@ is zero, and then both grab the lock by executing line~\ref{line:assign}.
 At this point, two different CPUs hold the lock,
 which violates the mutual exclusion property.
 What we need is a way to
-make lines \ref{line:testlocked} and \ref{line:assign} execute as an
+make lines~\ref{line:testlocked} and~\ref{line:assign} execute as an
 \indextext{atomic}
 (i.e., indivisible) step.
 
 Because locks are widely used,
 multi-core processors usually provide an instruction that
 can be used to make
-lines~\ref{line:testlocked} and \ref{line:assign}
+lines~\ref{line:testlocked} and~\ref{line:assign}
 atomic.
 On the RISC-V this instruction is
 \lstinline{amoswap r, r, a}.
@@ -347,7 +347,7 @@ instruction;
 the function returns the old (swapped) contents of {\tt *addr}.
 Here's a good way to write the loop in {\tt acquire}:
 
-\begin{lstlisting}[numbers=left,firstnumber=21]
+\begin{lstlisting}[]
   while (__atomic_exchange_n(&lk->locked, 1, __ATOMIC_ACQUIRE) != 0)
     ;
 \end{lstlisting}

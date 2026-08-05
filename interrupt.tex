@@ -100,7 +100,7 @@ The trap handler calls {\tt devintr}
 which looks at the RISC-V {\tt scause} register to discover that
 the interrupt is from an external device.
 Then it asks a hardware unit called the PLIC
-\cite{riscv:priv}
+~\cite{riscv:priv}
 to tell it which device interrupted
 \lineref{kernel/trap.c:/plic.claim/}.
 If it was the UART, {\tt devintr} calls {\tt uartintr}.
