@@ -347,7 +347,7 @@ instruction;
 the function returns the old (swapped) contents of {\tt *addr}.
 Here's a good way to write the loop in {\tt acquire}:
 
-\begin{lstlisting}[numbers=left,firstnumber=21]
+\begin{lstlisting}[]
   while (__atomic_exchange_n(&lk->locked, 1, __ATOMIC_ACQUIRE) != 0)
     ;
 \end{lstlisting}
