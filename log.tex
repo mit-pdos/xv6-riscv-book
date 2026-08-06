@@ -245,6 +245,13 @@ logged blocks, so that a crash doesn't result in recovery
 using one transaction's header with the subsequent transaction's
 logged blocks.
 
+A key assumption in the implementation of \lstinline{end_op} is that
+\lstinline{write_head} updates the header block atomically: completely or
+not at all.
+Recall from Chapter~\ref{CH:FS} that a block in xv6 is two disk sectors, but the log header
+fits in the first sector, and so there is no problem even if the disk
+guarantees only that a single-sector update is atomic.
+
 \indexcode{recover_from_log}
 \lineref{kernel/log.c:/^recover_from_log/}
 is called from 
