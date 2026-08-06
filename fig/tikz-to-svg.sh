@@ -18,6 +18,7 @@ fi
 
 cat > $TMP/convert.tex <<EOF
 \\documentclass[border=4pt]{standalone}
+\\usepackage[T1]{fontenc}
 \\usepackage{tikz}\\usepackage{listings}\\usepackage{xcolor}
 \\usetikzlibrary{arrows,positioning}
 $XR
