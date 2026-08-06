@@ -1213,7 +1213,7 @@ The functions
 and
 \indexcode{filewrite}
 implement the 
-\indexcode{stat},
+\indexcode{fstat},
 \indexcode{read},
 and
 \indexcode{write}
@@ -1276,7 +1276,7 @@ and
 Assuming 
 \lstinline{old}
 exists and is not  a directory
-\linerefs{kernel/sysfile.c:/namei.old/,/^..}/},
+\linerefs{kernel/sysfile.c:/namei.old/,/ip->n/},
 \lstinline{sys_link}
 increments its 
 \lstinline{ip->nlink}
@@ -1377,7 +1377,7 @@ entries.
 Finally, now that the data is initialized properly,
 \indexcode{create}
 can link it into the parent directory
-\lineref{kernel/sysfile.c:/if..dirlink/}.
+\lineref{kernel/sysfile.c:/if..dirlink\(dp/}.
 \lstinline{create},
 like
 \indexcode{sys_link},

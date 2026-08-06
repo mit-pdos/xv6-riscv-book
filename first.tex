@@ -470,7 +470,7 @@ changes the program counter to a kernel-defined entry point.  The code
 at the entry point switches to the process's kernel stack and executes the kernel
 instructions that implement the system call.  When the system call
 completes, the kernel returns to
-user space by executin the \indexcode{sret} instruction, which switches
+user space by executing the \indexcode{sret} instruction, which switches
 to user mode and resumes executing user instructions
 just after the system call instruction.  A process's thread can
 ``block'' in the kernel to wait for I/O, and resume where it left off

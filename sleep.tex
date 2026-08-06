@@ -249,7 +249,7 @@ there is no data to be read.
 From their point of view the wakeup was ``spurious,'' and
 they must sleep again.
 For this reason \lstinline{sleep} is always called inside a loop that
-re-checks the condition, as in \lstinline{P} above.
+re-checks the condition, as in \lstinline{piperead} above.
 
 No harm is done if two uses of sleep/wakeup accidentally
 choose the same channel: they will see spurious wakeups,
