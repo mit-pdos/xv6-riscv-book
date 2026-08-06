@@ -54,7 +54,9 @@ spell:
 fig/%.png: fig/%.svg
 	inkscape -z --export-area-drawing --export-text-to-path --export-dpi=300 --export-filename=$@ $<
 
-fig/%.svg: fig/%.tex
+# order-only book.pdf: tikz-to-svg.sh reads book.aux, so that \ref{}s inside a
+# figure come out as numbers rather than "??"
+fig/%.svg: fig/%.tex | book.pdf
 	./fig/tikz-to-svg.sh $(shell realpath $<) $@
 
 quarto.out: $(TEX) $(TIKZ_SVGS)
@@ -69,5 +71,8 @@ quarto.out: $(TEX) $(TIKZ_SVGS)
 	cp book.bib quarto.out/
 	cp styles.css quarto.out/
 
-html.out: quarto.out
+# the text links to xv6-src-booklet.pdf as a sibling of the pages, so both PDFs
+# go into the site
+html.out: quarto.out book.pdf xv6-src-booklet.pdf
 	( cd quarto.out && quarto render )
+	cp book.pdf xv6-src-booklet.pdf html.out/
