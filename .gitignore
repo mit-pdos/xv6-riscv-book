@@ -4,6 +4,7 @@
 /latex.out/
 /quarto.out/
 /html.out/
+/.quarto/
 xv6-riscv-src
 xv6-riscv-src-booklet/fmt
 *.aux
