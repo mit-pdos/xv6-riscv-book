@@ -1,0 +1,74 @@
+name: html
+
+on:
+  push:
+    branches: [xv6-riscv]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install LaTeX and pdf2svg
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            texlive-base texlive-binaries \
+            texlive-latex-base texlive-latex-recommended texlive-latex-extra \
+            texlive-pictures texlive-plain-generic texlive-fonts-recommended \
+            cm-super gnuplot-data pdf2svg ghostscript
+
+      # xv6-riscv-src-booklet/runoff typesets with mpage, which is no longer in
+      # Debian/Ubuntu, so build it from upstream source (K&R C, hence gnu89).
+      - name: Build mpage
+        run: |
+          cd "$RUNNER_TEMP"
+          curl -sSLO https://www.mesa.nl/pub/mpage/mpage-$MPAGE.tgz
+          echo "$SHA256  mpage-$MPAGE.tgz" | sha256sum -c -
+          tar xzf mpage-$MPAGE.tgz
+          make -C mpage-$MPAGE CFLAGS='-O2 -std=gnu89 -w $(DEFS)'
+          sudo install mpage-$MPAGE/mpage /usr/local/bin/
+        env:
+          MPAGE: 2.5.7
+          SHA256: 51ab9c4e5fdd37e03c90df6756f30c0b61a34f066cb625f8924feedc4b3ec3fe
+
+      - uses: quarto-dev/quarto-actions/setup@v2
+        with:
+          version: 1.10.18
+
+      # builds book.pdf and xv6-src-booklet.pdf too, and copies both into html.out
+      - name: make html.out
+        run: make html.out < /dev/null
+
+      - name: Check the site, and that no refs or figures came out broken
+        run: |
+          test -s html.out/book.pdf
+          test -s html.out/xv6-src-booklet.pdf
+          ! grep -l '??' html.out/*.html
+          ! grep -l '<image' html.out/fig/*.svg   # cm-super missing -> Type 3 bitmaps
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: html.out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v5
