@@ -42,3 +42,4 @@ format:
     include-after-body:
       - coderef-panel.html
       - sidebar-toc.html
+      - hl-lines.html

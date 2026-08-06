@@ -1,0 +1,26 @@
+<!-- Yellow highlighting for individual code-listing lines, the HTML counterpart
+     of the book's \hl{} in lstlisting escapes (see convert-quarto.py).
+     Included via _quarto.yml's `include-after-body`. convert-quarto.py tags the
+     listing with hl-lines="7,16,19", which pandoc emits as data-hl-lines on the
+     wrapping <div class="sourceCode">; pandoc numbers the lines by wrapping each
+     one in <span id="cbN-L">, so we just add .added-line (see styles.css) to the
+     spans whose line numbers were listed. -->
+<script>
+(function () {
+  function highlight(div) {
+    var code = div.querySelector("pre > code");
+    if (!code) return;
+    var spans = code.querySelectorAll(":scope > span[id]");
+    if (!spans.length) return;         // block isn't line-numbered
+    // The first span's id is "cbN-<first line number>", which is where the
+    // listing's numbering starts (lstlisting's firstnumber=).
+    var first = parseInt(spans[0].id.replace(/^.*-/, ""), 10);
+    if (isNaN(first)) return;
+    div.getAttribute("data-hl-lines").split(",").forEach(function (s) {
+      var i = parseInt(s, 10) - first;
+      if (i >= 0 && i < spans.length) spans[i].classList.add("added-line");
+    });
+  }
+  document.querySelectorAll("div.sourceCode[data-hl-lines]").forEach(highlight);
+})();
+</script>

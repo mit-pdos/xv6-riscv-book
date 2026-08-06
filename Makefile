@@ -65,6 +65,7 @@ quarto.out: $(TEX) $(TIKZ_SVGS)
 	cp references.qmd quarto.out/
 	cp coderef-panel.html quarto.out/
 	cp sidebar-toc.html quarto.out/
+	cp hl-lines.html quarto.out/
 	cp book.bib quarto.out/
 	cp styles.css quarto.out/
 

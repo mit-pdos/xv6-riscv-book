@@ -62,18 +62,22 @@ def take_listing(m):
         raw = raw[:-1]
     has_label = False
     out = []
+    hl = []             # 1-based listing line numbers carrying \hl{} (yellow)
     n = first
     for ln in raw:
         for lbl in re.findall(r'\(\*@\\label\{(line:[^}]*)\}@\*\)', ln):
             linemap[lbl] = n
             has_label = True
+        if re.search(r'\(\*@[^@]*\\hl\{', ln):
+            hl.append(n)
         ln = re.sub(r'\(\*@(.*?)@\*\)', lambda mm: clean_escape(mm.group(1)), ln)
         ln = ln.replace('\\&', '&').replace('\\%', '%').replace('\\#', '#')
         out.append(ln.rstrip())
         n += 1
     numbered = ('numbers=left' in opts) or has_label
     idx = len(listings)
-    listings.append({'code': '\n'.join(out), 'numbered': numbered, 'start': first})
+    listings.append({'code': '\n'.join(out), 'numbered': numbered, 'start': first,
+                     'hl': hl})
     return f"\n\nZZLSTBLOCK{idx}ZZ\n\n"
 
 # ---------------------------------------------------------------------------
@@ -265,10 +269,18 @@ for c, chunk in zip(CHAPTERS, chunks):
     # splice listings back in
     def put_listing(m):
         b = listings[int(m.group(1))]
+        attrs = []
         if b['numbered']:
-            fence = '``` {.numberLines startFrom="%d"}' % b['start']
-        else:
-            fence = '```'
+            attrs.append('.numberLines startFrom="%d"' % b['start'])
+        if b['hl']:
+            # pandoc passes this through as data-hl-lines on the wrapping
+            # <div class="sourceCode">; hl-lines.html turns it into yellow
+            # backgrounds (it needs the per-line spans .numberLines emits).
+            if not b['numbered']:
+                print("warning: \\hl in an unnumbered listing; not highlighted")
+            else:
+                attrs.append('hl-lines="%s"' % ','.join(str(x) for x in b['hl']))
+        fence = ('``` {%s}' % ' '.join(attrs)) if attrs else '```'
         return fence + "\n" + b['code'] + "\n```"
     body = re.sub(r'ZZLSTBLOCK(\d+)ZZ', put_listing, body)
     # restore inline code as markdown code spans (verbatim)
