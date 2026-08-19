@@ -19,7 +19,8 @@ Even on a uniprocessor, the kernel may switch the CPU among
 a number of threads, causing their execution to be interleaved.
 Finally, a device interrupt handler that modifies
 the same data as some interruptible code could damage
-the data if the interrupt occurs at just the wrong time.
+the data if the interrupt occurs just as the interrupted code is
+also modifying the data.
 The word 
 \indextext{concurrency}
 refers to situations in which
@@ -30,17 +31,26 @@ thread switching, or interrupts.
 Kernels are full of concurrently-accessed data. For example, two CPUs
 could simultaneously call {\tt kalloc}, thereby concurrently
 popping from the head of the free list. Kernel designers like to allow
-for lots of concurrency, since it can yield increased performance
-through parallelism, and increased responsiveness. However, as a result
-kernel designers must convince themselves of
-correctness despite such concurrency. There are many ways to arrive at
-correct code, some easier to reason about than others. Strategies
+for lots of concurrency, since it can increase performance
+and responsiveness. However, they must then
+convince themselves of
+correctness despite concurrency.
+Strategies
 aimed at correctness under concurrency, and abstractions that support
 them, are called \indextext{concurrency control} techniques.
 
-Xv6 uses a number of concurrency control techniques, depending on the
-situation; many more are possible. This chapter focuses on a widely
-used technique: the \indextext{lock}.  A lock provides mutual
+This chapter focuses on a widely
+used concurrency control technique: the \indextext{lock}.
+As a preview, here's what use of a lock in the xv6 kernel looks like:
+\begin{lstlisting}
+struct spinlock lk;
+...;
+acquire(&lk);
+... read or write some shared data ...
+release(&lk);
+\end{lstlisting}
+
+A lock provides mutual
 exclusion, ensuring that only one CPU at a time can hold the lock. If
 the programmer associates a lock with each shared data item, and the
 code always holds the associated lock when using an item, then the
@@ -293,7 +303,7 @@ The important field in the structure is
 \lstinline{locked},
 a word that is zero when the lock is available
 and non-zero when it is held.
-Logically, xv6 should acquire a lock by executing code like
+Were there no concurrency, xv6 could acquire a lock with code like
 \begin{lstlisting}[numbers=left,firstnumber=21]
    void
    acquire(struct spinlock *lk) // does not work!
@@ -307,8 +317,8 @@ Logically, xv6 should acquire a lock by executing code like
    }
 \end{lstlisting}
 Unfortunately, this implementation does not
-guarantee mutual exclusion on a multiprocessor.
-It could happen that two CPUs simultaneously
+guarantee mutual exclusion in the face of concurrency.
+Two CPUs could simultaneously
 reach line~\ref{line:testlocked}, see that 
 \lstinline{lk->locked}
 is zero, and then both grab the lock by executing line~\ref{line:assign}.
@@ -317,7 +327,7 @@ which violates the mutual exclusion property.
 What we need is a way to
 make lines~\ref{line:testlocked} and~\ref{line:assign} execute as an
 \indextext{atomic}
-(i.e., indivisible) step.
+(indivisible) step.
 
 Because locks are widely used,
 multi-core processors usually provide an instruction that
@@ -329,7 +339,7 @@ On the RISC-V this instruction is
 The
 \lstinline{amoswap}
 instruction
-reads the value at the memory address {\tt a},
+reads the value at memory address {\tt a},
 writes the contents of register {\tt r} to that address,
 and puts the value it read into {\tt r}.
 That is, it swaps the contents of the register and the addressed
@@ -395,12 +405,9 @@ to concurrent code.
 Instead,
 \lstinline{release}
 uses the C atomic function
-\lstinline{__atomic_store_n(addr, value, ...)}
-that stores the value to the address in a single
+\lstinline{__atomic_store_n(addr, 0, ...)}
+that stores zero to the address in a single
 indivisible operation.
-This function also boils down to a RISC-V
-\lstinline{amoswap}
-instruction.
 %% 
 \section{Code: Using locks}
 %% 
@@ -751,7 +758,7 @@ First, each tells the compiler not to move memory references
 past the atomic call.
 Second, each tells the compiler to generate instructions
 that tell the CPU not to move execution-time memory references past the
-\lstinline{amoswap} instruction generated for the atomic call.
+instructions generated for the atomic call.
 Such a ``don't move past'' point is called
 a \indextext{memory barrier} or 
 a \indextext{fence}.
@@ -761,8 +768,8 @@ effects on code that uses locks. First, all memory references
 (reads and writes) that occur in the C code 
 before a \lstinline{release()}
 are guaranteed to take effect on the memory system
-before the \lstinline{release()}'s \lstinline{amoswap}
-instruction completes. This includes
+before the \lstinline{release()}
+completes. This includes
 both memory references in the critical section and memory
 references before the critical section. Second, all memory
 references in the C code after the \lstinline{acquire}
