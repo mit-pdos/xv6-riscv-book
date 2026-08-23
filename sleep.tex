@@ -213,9 +213,8 @@ they are interacting with).
 %% 
 \section{Code: Pipes}
 %% 
-xv6's pipes are an example of code that uses
-\lstinline{sleep}
-and \lstinline{wakeup} to synchronize producers and
+xv6's pipes are an example of code that sleeps
+to synchronize producers and
 consumers.
 We saw the interface for pipes in Chapter~\ref{CH:UNIX}:
 bytes written to one end of a pipe are copied
@@ -301,17 +300,12 @@ In this case,
 calls
 \lstinline{wakeup}
 to alert any sleeping readers to the fact
-that there is data waiting in the buffer
-and then sleeps on
+that there is data waiting in the buffer,
+releases the lock,
+and sleeps on channel
 \lstinline{&pi->nwrite}
 to wait for a reader to take some bytes
 out of the buffer.
-\lstinline{sleep}
-releases 
-the pipe's lock
-as part of putting
-\lstinline{pipewrite}'s
-process to sleep.
 
 \lstinline{piperead}
 now acquires the pipe's lock and enters its critical section:
