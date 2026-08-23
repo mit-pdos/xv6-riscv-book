@@ -15,7 +15,7 @@ for the disk hardware to finish the read.
 The xv6 kernel uses a mechanism called sleep and wakeup
 in these situations (and many others).
 Sleep allows a kernel thread to
-wait for some condition to be true; another thread
+wait for some \indextext{condition} to be true; another thread
 or an interrupt handler can cause the condition
 to be true (typically by modifying some variable(s))
 and then call wakeup
@@ -26,7 +26,9 @@ or
 \indextext{conditional synchronization}
 mechanisms.
 
-Before proceeding, please read the functions {\tt sleep()} and {\tt
+Before proceeding, please read the functions
+{\tt sleep\_prepare()},
+{\tt sleep()}, and {\tt
   wakeup()} in \lstinline{kernel/proc.c} \fileref{kernel/proc.c}, and all of file \lstinline{kernel/pipe.c} \fileref{kernel/pipe.c}.
 
 \section{Overview}
@@ -34,41 +36,65 @@ Before proceeding, please read the functions {\tt sleep()} and {\tt
 The sleep/wakeup interface looks like:
 
 \begin{lstlisting}
-void sleep(void *chan, struct spinlock *lk)
+void sleep_prepare(void *chan)
+void sleep()
 void wakeup(void *chan)
 \end{lstlisting}
 
-\lstinline{sleep()} marks the calling process as \lstinline{SLEEPING}
-(not \lstinline{RUNNABLE}) and releases the CPU by context-switching 
-to the scheduler, so that other processes can run.
-The \lstinline{chan} argument is called the \indextext{wait channel}.
-\lstinline{wakeup(chan)} wakes up all processes (if any)
-that have called \lstinline{sleep(chan, ...)} with the same \lstinline{chan}
-value. \lstinline{sleep} and \lstinline{wakeup} treat \lstinline{chan}
-as an opaque 64-bit value; the only thing they do with it is compare for
-equality. The usual pattern is for callers to pass the address of
-some convenient object as the \lstinline{chan} argument.
+A process sleeps in order to wait for a condition
+to become true, and the {\tt chan}
+argument (the \indextext{wait channel}) names the desired condition.
+\lstinline{sleep_prepare(chan)} declares that a process might soon
+sleep in order to wait for the indicated wait channel; it returns
+right away. \lstinline{wakeup(chan)} is called when the condition named by
+\lstinline{chan} has (or might have) become true; it wakes up all
+processes that have called \lstinline{sleep_prepare(chan)} and
+then \lstinline{sleep()} with the same \lstinline{chan}.
+\lstinline{sleep()} returns right away if \lstinline{wakeup(chan)} has
+already been called after the (required) previous call to
+\lstinline{sleep_prepare(chan)}; if not, \lstinline{sleep()} marks the
+calling process as \lstinline{SLEEPING} (not \lstinline{RUNNABLE}) and
+releases the CPU by context-switching to the scheduler, so that other
+processes can run. \lstinline{sleep_prepare()} and \lstinline{sleep()}
+are called by the same process (typically within a few lines of each
+other); \lstinline{wakeup()} is called by a different process or by an
+interrupt handler.
 
-Kernel code calls \lstinline{sleep} to wait for some
-\indextext{condition} to become true. For example, the kernel code
-that reads from a pipe calls \lstinline{sleep} if the pipe buffer is
-currently empty; the condition in this case is the pipe buffer
-becoming non-empty (due to another process writing to the pipe).
-\lstinline{sleep} and \lstinline{wakeup} do not know what the
-condition is: only the calling code knows. The usual pattern is for
-the caller to first check the condition, and call \lstinline{sleep}
-if it is not true; code that later makes the
-condition true calls \lstinline{wakeup}.
+These functions treat \lstinline{chan} as an opaque 64-bit value; the
+only thing they do with it is compare for equality. The usual pattern
+is for callers to pass the address of some convenient object as the
+\lstinline{chan} argument. The kernel programmer is responsible for
+choosing wait channel conventions, and for passing the same
+\lstinline{chan} to \lstinline{sleep_prepare()} and
+\lstinline{wakeup()} calls that should interact.
 
-Here's a sketch of how the xv6 kernel pipe code uses
-\lstinline{sleep} and \lstinline{wakeup}:
+Kernel code sleeps in order to wait for some condition to become true.
+For example, the kernel code that reads from a pipe sleeps
+if the pipe buffer is currently empty; the condition
+in this case is the pipe buffer becoming non-empty (due to another
+process writing to the pipe). \lstinline{sleep_prepare()}
+and \lstinline{sleep}
+do not know how to check the condition: only the calling code knows. The
+usual pattern is for the potentially sleeping process to
+first acquire a lock that protects the condition;
+then check the condition;
+and if it is not true, call
+\lstinline{sleep_prepare()},
+release the lock,
+and call \lstinline{sleep()}.
+Code that later causes the
+condition to become true calls \lstinline{wakeup}.
+
+Here's a sketch of how the xv6 kernel pipe code sleeps:
 
 \begin{lstlisting}
 piperead(pipe){
   acquire(&pipe->lock);
   while(there's no data in pipe->buffer){
-    (*@\textcolor{blue}{// ZZZ}@*)
-    sleep(&pipe, &pipe->lock);
+    sleep_prepare(&pipe);
+    release(&pipe->lock);
+    sleep();
+    acquire(&pipe->lock);
   }
   remove the data from the pipe;
   release(&pipe->lock);
@@ -85,154 +111,81 @@ pipewrite(pipe){
 This code uses the address of the pipe data structure as
 the wait channel.
 
-What is the \lstinline{lk} argument to \lstinline{sleep}?
-In all uses of \lstinline{sleep}/\lstinline{wakeup}
-the condition involves shared data, used by both the
-thread that sleeps and the thread that calls \lstinline{wakeup}, so
-there always turns out to be a lock that protects the condition. That lock is
-called the \indextext{condition lock}. In the pipe code above, both
-functions use the pipe and its buffer while holding the pipe lock,
-which in this case is also the condition lock. It's a rule that any code
-that calls \lstinline{sleep} or \lstinline{wakeup} must hold the
-condition lock, and that the lock must be passed to \lstinline{sleep}
-as the second argument.
+\lstinline{sleep_prepare(chan)} must be called either before checking
+the condition, or before releasing the lock that protects the
+condition. The call records the fact that the process may need to
+sleep on the indicated {\tt chan}. If another process (or interrupt)
+calls \lstinline{wakeup(chan)} between the calls to
+\lstinline{sleep_prepare(chan)} and \lstinline{sleep()},
+\lstinline{wakeup()} sets a flag in the about-to-sleep process
+indicating that it shouldn't actually sleep. If \lstinline{sleep()}
+sees this flag, it returns rather than sleeping.
 
-The reason that the condition lock must be held when \lstinline{sleep}
-is called, and that it must be passed to \lstinline{sleep}, is to
-prevent the possibility that another thread might call
-\lstinline{wakeup} between the check of the condition 
-and the call to \lstinline{sleep}. A call to
-\lstinline{wakeup} at that point would find no sleeping process to
-wake up; the \lstinline{wakeup} would simply return.
-But then the call to \lstinline{sleep} might never wake up,
-since the \lstinline{wakeup} intended for it has already happened.
-This undesirable situation is called a \indextext{lost wake-up}.
+What is the reason for \lstinline{sleep_prepare(chan)}? There is the
+possibility that the condition might become true, and
+\lstinline{wakeup()} called, between when the pipe reader sees that
+the buffer is empty, and when it calls \lstinline{sleep}. Without some
+cleverness, the \lstinline{wakeup()} would not find any sleeping
+processes, and would not have any effect. Then the process would call
+\lstinline{sleep()} even though the pipe buffer has data to read; and
+if (as could be the case) the pipe writer never wrote anything more,
+the reader could incorrectly sleep forever. This undesirable situation
+is called a \indextext{lost wake-up}. The behavior described in the
+previous paragraph avoids this problem.
 
-In the pipe example above, the lost wake-up being avoided is the
-possibility that a thread on another CPU might call \lstinline{pipewrite}
-at the point marked {\tt ZZZ},
-between \lstinline{piperead}'s check of the condition and its call to
-\lstinline{sleep}. The fact that \lstinline{piperead} holds the pipe
-lock during the time between when it checks the condition and calls
-\lstinline{sleep} prevents \lstinline{pipewrite} from executing, and
-thus prevents a lost wake-up.
-
-{\tt sleep()} releases the condition lock so that the code calling
-{\tt wakeup()} can proceed. {\tt sleep()} also context-switches to the
-scheduler in order to let other threads run while it is waiting. The
-implementation performs these two steps in a way that is atomic
-(indivisible) with respect to {\tt wakeup()}, to prevent lost
-wake-ups.
+In the pipe example, as in most sleeping code, there is a lock that
+protects the condition and prevents \lstinline{wakeup()} from being
+called between when the going-to-sleep process checks the condition
+and when it calls \lstinline{sleep_prepare()}. This lock is often
+called the \indextext{condition lock}. A process must release the lock
+before calling \lstinline{sleep()} (so that some other process or
+interrupt handler can modify the condition and call
+\lstinline{wakeup()}), and re-acquire the lock after
+\lstinline{sleep()} returns.
 
 %% 
 \section{Code: Sleep and wakeup}
 %% 
 
-Xv6's
-\indexcode{sleep}
-\lineref{kernel/proc.c:/^sleep/}
-and
-\indexcode{wakeup}
-\lineref{kernel/proc.c:/^wakeup/}
-implement the interface used in the example above.
-The basic idea is to have
-\lstinline{sleep}
-mark the current process as
-\indexcode{SLEEPING}
-and then call
-\indexcode{sched}
-to release the CPU;
-\lstinline{wakeup}
-looks for a process sleeping on the given wait channel
-and marks it as 
+Xv6's \indexcode{sleep_prepare}
+\lineref{kernel/proc.c:/^sleep_prepare/} and \indexcode{sleep}
+\lineref{kernel/proc.c:/^sleep/} and \indexcode{wakeup}
+\lineref{kernel/proc.c:/^wakeup/} implement the interface used in the
+example above. The basic idea is to have \lstinline{sleep} mark the
+current process as \indexcode{SLEEPING} and then call
+\indexcode{sched} to release the CPU; \lstinline{wakeup} looks for
+processes sleeping on the given wait channel and marks them
 \indexcode{RUNNABLE}.
 
-\lstinline{sleep}
-acquires 
-\indexcode{p->lock}
-\lineref{kernel/proc.c:/DOC: sleeplock1/}
-and {\it only then} releases
-the condition lock
-\lstinline{lk}.
-The fact that \lstinline{sleep}
-holds one or the other of these locks at all times is what
-prevents a concurrent \lstinline{wakeup}
-(which must acquire and hold both) from acting,
-and thus prevents a lost wake-up.
-Now that
-\lstinline{sleep}
-holds just
-\lstinline{p->lock},
-it can put the process to sleep by recording
-the wait channel,
-changing the process state to \texttt{SLEEPING},
-and calling
-\lstinline{sched}
-\linerefs{kernel/proc.c:/chan.=.chan/,/sched/}.
-In a moment it will be clear why it's critical that
-\lstinline{p->lock} is not released (by \lstinline{scheduler}) until after
-the process is marked \texttt{SLEEPING}.
+\lstinline{sleep_prepare(chan)} records the wait channel in
+\lstinline{p->chan} and returns. If \lstinline{p->chan} is still
+non-zero when \lstinline{sleep()} is called, \lstinline{sleep()}
+changes the calling process to state \lstinline{SLEEPING} and calls
+\lstinline{sched()} to let other processes run.
 
-At some point, a process will acquire the condition lock,
-set the condition that the sleeper is waiting for,
-and call \lstinline{wakeup(chan)}.
-It's important that \lstinline{wakeup} is called
-while holding the condition lock\footnote{%
-%
-Strictly speaking it is sufficient if
-\lstinline{wakeup}
-merely follows the
-\lstinline{acquire}
-(that is, one could call
-\lstinline{wakeup}
-after the
-\lstinline{release}).%
-%
-}.
-\lstinline{wakeup}
-loops over the process table
-\lineref{kernel/proc.c:/^wakeup\(/}.
-It acquires the
-\lstinline{p->lock}
-of each process it inspects.
-When \lstinline{wakeup} finds a process in state
-\indexcode{SLEEPING}
-with a matching
-\indexcode{chan},
-it changes that process's state to
-\indexcode{RUNNABLE}.
-The next time \lstinline{scheduler} runs, it will
-see that the process is ready to be run.
+\lstinline{wakeup(chan)} handles two situations with respect to some
+other process that might concurrently be in the process of going to
+sleep on \lstinline{chan}. If that other process has gotten as far as
+marking itself as \lstinline{SLEEPING}, then \lstinline{wakeup} will
+see it in that state and change it to \lstinline{RUNNABLE}; its call
+to \lstinline{sleep()} will then return. If the other process has
+gotten as far as calling \lstinline{sleep_prepare(chan)} (but its
+\lstinline{sleep()} has not gotten as far as acquiring
+\lstinline{p->lock}), \lstinline{wakeup(chan)} will see that
+\lstinline{p->chan} is equal to \lstinline{chan}, and
+\lstinline{wakeup} will set \lstinline{p->chan} to zero. In that case,
+when the other process does call \lstinline{sleep}, it will see the
+zero and return immediately. The point is to avoid a lost wakeup if
+\lstinline{wakeup()} is called just as another process is about to
+call \lstinline{sleep()}.
 
-\begin{figure}[t]
-  \input{fig/sleep.tex}
-  \caption{Overlapping locks to avoid lost wake-up}
-    \label{fig:overlap}
-\end{figure}
-
-Why do the locking rules for 
-\lstinline{sleep}
-and
-\lstinline{wakeup}
-ensure that a process that's going to sleep
-won't miss a concurrent wakeup?
-The going-to-sleep process holds either
-the condition lock or its own
-\lstinline{p->lock} 
-or both from {\it before} it checks the condition
-until {\it after} it has marked itself as \texttt{SLEEPING};
-see Figure~\ref{fig:overlap}.
-The process calling \texttt{wakeup} needs to aquire \textit{both}
-locks.
-The waker might acquire the locks first, which means
-it will make the condition true before the consuming
-thread checks the condition, and the consuming thread
-won't need to call {\tt sleep()};
-or the waker's {\tt acquire()}s might have to wait until the consuming
-thread has completely finished going to sleep and
-releases the locks, in which case the waker will then see
-that the consuming thread is marked {\tt SLEEPING}
-and will wake it up.
+The rules for use of \lstinline{sleep_prepare()} prevent us from
+having to worry about the situation in which an about-to-sleep process
+hasn't yet called \lstinline{sleep_prepare()}. Either that process
+surrounds its condition check and \lstinline{sleep_prepare()} with a
+lock that prevents any call to \lstinline{wakeup()} for the relevant
+channel, or that process must call \lstinline{sleep_prepare()} before
+checking the condition.
 
 Sometimes multiple processes are sleeping
 on the same channel; for example, more than one process
@@ -240,15 +193,13 @@ reading from a pipe.
 A single call to 
 \lstinline{wakeup}
 will wake them all up.
-One of them will run first and acquire the lock that
-\lstinline{sleep}
-was called with, and (in the case of pipes) read whatever
-data is waiting.
+One of them will run first and (in the case of pipes)
+acquire the pipe lock and read whatever data is waiting.
 The other processes will find that, despite being woken up,
 there is no data to be read.
 From their point of view the wakeup was ``spurious,'' and
 they must sleep again.
-For this reason \lstinline{sleep} is always called inside a loop that
+For this reason sleeping always occurs inside a loop that
 re-checks the condition, as in \lstinline{piperead} above.
 
 No harm is done if two uses of sleep/wakeup accidentally
@@ -816,9 +767,10 @@ Choose a few of xv6's uses of sleep and wakeup and
 replace them with semaphores.
 Judge the result.
 
-\item Can you implement a variant of {\tt sleep()} that
-takes just one argument, the channel, and doesn't need
-a lock argument?
+\item Can you implement a sleep/wakeup scheme that just
+needs a call to {\tt sleep()} (perhaps with additional
+arguments), and doesn't need anything like the
+call to {\tt sleep\_prepare()}?
 
 \item Fix the race mentioned above between
 \lstinline{kill}
