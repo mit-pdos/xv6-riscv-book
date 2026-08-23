@@ -338,18 +338,18 @@ to wake any sleeping writers
 before it returns.
 \lstinline{wakeup}
 finds a process sleeping on
-\lstinline{&pi->nwrite},
-the process that was running
+\lstinline{&pi->nwrite}
+(the process that was running
 \lstinline{pipewrite}
-but stopped when the buffer filled.
-It marks that process as
+but stopped when the buffer filled).
+\lstinline{wakeup} marks that process as
 \indexcode{RUNNABLE}.
 
 The pipe code uses separate wait channels for reader and writer
-(\lstinline{pi->nread}
+(\lstinline{&pi->nread}
 and
-\lstinline{pi->nwrite});
-this might make the system more efficient in the unlikely
+\lstinline{&pi->nwrite});
+this might make the system more efficient in the 
 event that there are lots of
 readers and writers waiting for the same pipe.
 The pipe code sleeps inside a loop checking the
@@ -364,11 +364,7 @@ and {\tt kkill()} in \lstinline{kernel/proc.c} \fileref{kernel/proc.c}; these ar
 internal implementations of the corresponding system calls.
 
 %% 
-\lstinline{sleep}
-and
-\lstinline{wakeup}
-can be used for many kinds of waiting.
-An interesting example, introduced in Chapter~\ref{CH:UNIX},
+An interesting example of sleeping, introduced in Chapter~\ref{CH:UNIX},
 is the interaction between a child's \indexcode{exit}
 and its parent's \indexcode{wait}.
 At the time of the child's death, the parent may already
@@ -412,8 +408,7 @@ and returns the child's process ID.
 If 
 \lstinline{kwait}
 finds children but none have exited,
-it calls
-\lstinline{sleep}
+it sleeps
 to wait for any of them to exit
 \lineref{kernel/proc.c:/DOC: wait-sleep/},
 then scans again.
@@ -491,11 +486,10 @@ see that it has been killed the next time it enters
 the kernel by making a system call or because the timer (or
 some other device) interrupts.
 
-If the victim process is in
-\lstinline{sleep},
-\lstinline{kkill}'s call to
-\lstinline{wakeup}
-will cause the victim to return from
+If the victim process is sleeping,
+\lstinline{kkill}
+sets its state to \lstinline{RUNNABLE}
+so that the victim returns from
 \lstinline{sleep}.
 This is potentially dangerous because 
 the condition being waited for may not be true.
@@ -593,11 +587,7 @@ before it finishes \lstinline{swtch}.
 yield while it is in \lstinline{swtch}.
 % it makes swtch (or really the whole sequence) atomic w.r.t. timer interrupts
 
-\item Along with the condition lock, it helps prevent \lstinline{wakeup}
-from overlooking a process that is calling \lstinline{sleep} but has not
-finished yielding the CPU.
-% avoids a race between conditionCheck+sleep and wakeup?
-% makes condition check atomic with yield?
+\item It prevents races between \lstinline{sleep} and \lstinline{wakeup}.
 
 \item It prevents the victim process of \lstinline{kill} from exiting
 and perhaps being re-allocated between \lstinline{kkill}'s check of 
@@ -644,12 +634,6 @@ The original Unix kernel's
 \lstinline{sleep}
 simply disabled interrupts,
 which sufficed because Unix ran on a single-CPU system.
-Because xv6 runs on multiprocessors,
-it adds an explicit lock to
-\lstinline{sleep}.
-FreeBSD's
-\lstinline{msleep}
-takes the same approach.
 Plan 9's 
 \lstinline{sleep}
 uses a callback function that runs with the scheduling
