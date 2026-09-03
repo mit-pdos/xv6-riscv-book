@@ -29,21 +29,22 @@ blocks that hold each file's content, and to record which areas
 of the disk are free.
 \item Different processes may operate on the file system at the same time,
 so the file-system code must coordinate to maintain invariants.
+\item Accessing a disk is orders of magnitude slower than accessing
+memory, so the file system must maintain an in-memory cache of
+popular blocks.
 \item The file system must support
 \indextext{crash recovery}.
 That is, if a crash (e.g., power failure) occurs, the file system must
 still work correctly after a restart. The risk is that a crash might
 interrupt a sequence of updates and leave inconsistent on-disk data
 structures (e.g., a block that is both used in a file and marked free).
-\item Accessing a disk is orders of magnitude slower than accessing
-memory, so the file system must maintain an in-memory cache of
-popular blocks.
 
 \end{itemize}
 
-The rest of this chapter explains how xv6 addresses these challenges,
-focusing on the first two challenges, while Chapter~\ref{CH:LOG}
-focuses on the last two challenges.
+The rest of this chapter explains how xv6 addresses the first three
+challenges,
+while Chapter~\ref{CH:LOG}
+focuses on crash recovery.
 
 %% 
 %%  -------------------------------------------
@@ -142,14 +143,6 @@ of xv6 called
 the (empty) root directory, and marks all i-nodes and data
 blocks as free.
 
-The top layers of the file system, every layer above logging, are
-largely independent of the logging layers.  The top layers are concerned with
-implementing on-disk data structures to represent directories
-and files.  The bottom layers are concerned with implementing
-transactions to allow the file system to atomically perform updates that involve multiple
-disk blocks.  The rest of this chapter describes each layer,
-except for the logging layer, which is presented in 
-Chapter~\ref{CH:LOG}.
 At this point please read the files \lstinline{kernel/buf.h}
 \fileref{kernel/buf.h}, \lstinline{kernel/fs.h} \fileref{kernel/fs.h},
 \lstinline{kernel/fs.c} \fileref{kernel/fs.c},
