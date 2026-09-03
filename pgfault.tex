@@ -60,8 +60,9 @@ to accurately predict how much memory they will need.  For example, an
 application may process input, but not know in advance how large the
 input will be.  With lazy allocations an application can ask for
 memory for the worst case, but not have to pay for this worst case:
-the kernel doesn't have to do any work at all for pages that the
-application never uses.
+the kernel doesn't have to do any work for pages that the
+application never uses, and other applications can allocate the unused
+pages.
 
 Furthermore, if the application is asking to grow the address space by
 a lot, then \lstinline{sbrk} without lazy allocation is expensive: if
