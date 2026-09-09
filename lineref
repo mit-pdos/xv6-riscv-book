@@ -74,50 +74,62 @@ def lookup_regex(path, fname, pat1, pat2=None):
       print("error: cannot open %s" % fname, file=sys.stderr)
       return (None, None)
    
+# A line may hold several references, of the same or of different kinds, and
+# each must be resolved on its own; so each pattern is substituted with a
+# callback rather than with one replacement string computed from the first
+# match.  The file name stops at the ":" that starts the pattern, and the
+# patterns themselves are matched non-greedily up to their closing "/", so a
+# reference cannot swallow the one that follows it on the same line.  A
+# reference whose pattern the source no longer contains is dropped, after a
+# complaint on stderr, but the prose around it is kept: a stale reference
+# costs a link, not a sentence.
+LINEREF = re.compile(r'\\lineref\{(?P<f>[^{}:]+):/(?P<p>.*?)/(?P<d>[+-]?\d+)?\}')
+LINEREFS = re.compile(r'\\linerefs\{(?P<f>[^{}:]+):/(?P<p1>.*?)/(?P<d1>[+-]?\d+)?'
+                      r',/(?P<p2>.*?)/(?P<d2>[+-]?\d+)?\}')
+FILEREF = re.compile(r'\\fileref\{(?P<f>[^{}]*)\}')
+
+def delta(s):
+   return int(s) if s != None else 0
+
+# file:/pattern/delta
+def sub_lineref(m):
+   f = m.group('f')
+   (i, j) = lookup_regex(xv6src, f, m.group('p'))
+   (i0, j0) = lookup_regex_booklet(f, m.group('p'))
+   if i == None or i0 == None:
+      return ''
+   d = delta(m.group('d'))
+   return r'\showlineref{%s}{%s}{%s}' % (f, str(i+d), fmt_line(i0+d))
+
+# file:/pattern/delta,/pattern/delta
+def sub_linerefs(m):
+   f = m.group('f')
+   (i, j) = lookup_regex(xv6src, f, m.group('p1'), m.group('p2'))
+   (i0, j0) = lookup_regex_booklet(f, m.group('p1'), m.group('p2'))
+   if i == None or j == None or i0 == None or j0 == None:
+      return ''
+   d1 = delta(m.group('d1'))
+   d2 = delta(m.group('d2'))
+   return r'\showlinerefs{%s}{%s}{%s}{%s}{%s}' % (f, str(i+d1), str(j+d2),
+                                                  fmt_line(i0+d1), fmt_line(j0+d2))
+
+# whole file
+def sub_fileref(m):
+   f = m.group('f')
+   n0 = lookup_fileref_booklet(f)
+   if n0 == None:
+      return ''
+   return r'\showfileref{%s}{%s}' % (f, fmt_line(n0))
+
 def lineref(l):
-   # file:/pattern/delta
-   p = re.compile(r'\\lineref{(.*):\/(.*)\/([+-]?\d+)?}')
-   m = p.search(l)
-   if m != None:
-      f = m.groups()[0]
-      (i, j) = lookup_regex(xv6src, f, m.groups()[1])
-      (i0, j0) = lookup_regex_booklet(f, m.groups()[1])
-      # print(f, m.groups()[1], i, i0, file=sys.stderr)
-      delta = 0
-      if m.groups()[2] != None:
-         delta = int(m.groups()[2])
-      if i != None:
-         l = p.sub(r'\\showlineref{%s}{%s}{%s}' % (f,str(i+delta),fmt_line(i0+delta)), l)
-         print(l, end="")
+   out = LINEREFS.sub(sub_linerefs, l)
+   out = LINEREF.sub(sub_lineref, out)
+   out = FILEREF.sub(sub_fileref, out)
+   # a line that held nothing but a dropped reference goes away with it: an
+   # empty line left behind would be a \par in the middle of a sentence.
+   if out.strip() == "" and l.strip() != "":
       return
-   # fileref
-   p = re.compile(r'\\fileref\{([^}]*)\}')
-   m = p.search(l)
-   if m != None:
-      f = m.groups()[0]
-      n0 = lookup_fileref_booklet(f)
-      print("fileref", f, n0, file=sys.stderr)
-      l = p.sub(r'\\showfileref{%s}{%s}' % (f, fmt_line(n0)), l)
-      print(l, end="")
-      return
-   # file:/pattern/delta,pattern/delta
-   p = re.compile(r'\\linerefs{(.*):\/(.*)\/([+-]?\d+)?,\/(.*)\/([+-]?\d+)?}')
-   m = p.search(l)
-   if m != None:
-      f = m.groups()[0]
-      (i, j) = lookup_regex(xv6src, f, m.groups()[1], m.groups()[3])
-      (i0, j0) = lookup_regex_booklet(f, m.groups()[1], m.groups()[3])
-      delta1 = 0
-      if m.groups()[2] != None:
-         delta1 = int(m.groups()[2])
-      delta2 = 0
-      if m.groups()[4] != None:
-         delta2 = int(m.groups()[4])
-      if i != None and j != None:
-         l = p.sub(r'\\showlinerefs{%s}{%s}{%s}{%s}{%s}' % (f, str(i+delta1), str(j+delta2), fmt_line(i0+delta1), fmt_line(j0+delta2)), l)
-         print(l, end="")
-      return
-   print(l, end="")
+   print(out, end="")
 
 with open(sys.argv[1]) as f:  
    line = f.readline()
