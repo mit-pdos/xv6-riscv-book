@@ -125,8 +125,9 @@ process at the instruction that caused the fault. Because the
 PTE is now valid, the re-executed load or store instruction
 will execute without a fault.
 
-If an application frees memory using {\tt sbrk}, \lstinline{sys_sbrk}
-calls \lstinline{shrinkproc}, which calls \lstinline{uvmdealloc}.  The
+If an application frees memory by calling {\tt sbrk} with a
+negative {\tt n}, \lstinline{sys_sbrk} calls \lstinline{growproc},
+which calls \lstinline{uvmdealloc}.  The
 real work is done by {\tt uvmunmap} \lineref{kernel/vm.c:/^uvmunmap/},
 which uses {\tt walk} to find PTEs.  Since some pages may never have
 been used by the process and thus never have been allocated by {\tt

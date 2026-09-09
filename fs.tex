@@ -191,7 +191,7 @@ again soon.
 
 There are two interactions between the buffer cache layer and the
 logging layer: 1) to implement transactions, file-system layers above the logging layer update a disk
-block by calling \indexcode{log_write} \lineref{kernel/log.c:/log_write/}, which is a proxy for
+block by calling \indexcode{log_write} \lineref{kernel/log.c:/^log_write/}, which is a proxy for
 \lstinline{bwrite} and only the logging layer
 calls \lstinline{bwrite};  2)
 the buffer cache cannot recycle a buffer that is in use by a
@@ -638,15 +638,18 @@ If
 \indexcode{iput}
 sees that there are no C pointer references to an inode
 and that the inode has no links to it (occurs in no
-directory), then the inode and its data blocks must
+directory)
+\lineref{kernel/fs.c:/^..int.last.=/},
+then the inode and its data blocks must
 be freed.
 \lstinline{iput}
 calls
 \indexcode{itrunc}
-to truncate the file to zero bytes, freeing the data blocks;
-sets the inode type to 0 (unallocated);
-and writes the inode to disk
-\lineref{kernel/fs.c:/^..int.last.=/}.
+to truncate the file to zero bytes, freeing the data blocks,
+and then calls
+\indexcode{ifree}
+\lineref{kernel/fs.c:/^ifree/}
+to set the inode's type to 0 (unallocated) on disk.
 
 The locking protocol in 
 \indexcode{iput}
@@ -667,14 +670,17 @@ The other main danger is that a concurrent call to
 might choose the same inode that
 \lstinline{iput}
 is freeing.
-This can happen only after the
-\lstinline{iupdate}
+This can happen only after
+\lstinline{ifree}
 writes the disk so that the inode has type zero.
-This race is benign; the allocating thread will politely wait
-to acquire the inode's sleep-lock before reading or writing
-the inode, at which point
 \lstinline{iput}
-is done with it.
+calls
+\lstinline{ifree}
+last, after it has truncated the inode, released the inode's
+sleep-lock, and dropped its own reference.
+So by the time the allocating thread can see that the inode is free,
+\lstinline{iput}
+is done with it, and the race is benign.
 
 \lstinline{iput()}
 can write to the disk.  This means that any system call that uses the file
@@ -889,7 +895,7 @@ system call.
 %% 
 %% 
 %% 
-\section{Code: directory layer}
+\section{Code: Directory layer}
 
 A directory is implemented internally much like a file.
 Its inode has type

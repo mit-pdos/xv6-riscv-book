@@ -141,7 +141,8 @@ lifetime, and the protection may take the form of implicit structure
 rather than explicit locks.
 
 A final lock-like example is the need to disable interrupts around
-calls to {\tt mycpu()} \lineref{kernel/proc.c:/^myproc/}. Disabling
+calls to {\tt mycpu()}, as in {\tt myproc()}
+\lineref{kernel/proc.c:/^myproc/}. Disabling
 interrupts causes the calling code to be atomic with respect to timer
 interrupts that could force a context switch, and thus move the
 process to a different CPU.

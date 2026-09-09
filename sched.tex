@@ -148,7 +148,7 @@ be Y's stack pointer, since {\tt swtch} loaded {\tt sp} from Y's {\tt
 it's enough to save and restore {\tt ra}.
 
 \lstinline{swtch}
-\lineref{kernel/swtch.S:/swtch/}
+\lineref{kernel/swtch.S:/^swtch:/}
 saves callee-saved registers ({\tt ra,sp,s0..s11}) but not caller-saved registers.
 The RISC-V calling convention requires that if code needs to
 preserve the value in a caller-saved register across a function

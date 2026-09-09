@@ -198,7 +198,7 @@ registers, and then asks for the first timer interrupt.
 The {\tt time} control register contains a count that the
 hardware increments at a steady rate; this serves as a
 notion of the current time. The {\tt stimecmp} register
-contains a time at which the the CPU will raise a timer
+contains a time at which the CPU will raise a timer
 interrupt; setting {\tt stimecmp} to the current value
 of {\tt time} plus {\it x} will schedule an interrupt
 {\it x} time units in the future. For {\tt qemu}'s RISC-V

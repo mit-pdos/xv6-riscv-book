@@ -284,7 +284,7 @@ they execute in the kernel. xv6 does not modify the kernel page
 table after initially creating it.
 
 %% 
-\section{Code: creating an address space}
+\section{Code: Creating an address space}
 %% 
 
 Please read \lstinline{kernel/vm.c} \fileref{kernel/vm.c} through the end of {\tt mappages()}
@@ -673,7 +673,7 @@ allocates memory for each ELF segment with
 \lineref{kernel/exec.c:/uvmalloc/},
 and loads each segment into memory with
 \indexcode{loadseg}
-\lineref{kernel/exec.c:/loadseg/}.
+\lineref{kernel/exec.c:/if..loadseg/}.
 \lstinline{loadseg}
 uses
 \indexcode{walkaddr}

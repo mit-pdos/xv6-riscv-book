@@ -326,7 +326,7 @@ Memory & vm.c & Manage page tables and address spaces. \\
  & kalloc.c & Physical page allocator. \\
 Devices & console.c & Connect to the user keyboard and screen. \\
  & plic.c & RISC-V interrupt controller. \\
- & printf.c & Formatted output to the console. \\
+ & printk.c & Formatted output to the console. \\
  & uart.c & Serial-port console device driver. \\
  & virtio\_disk.c & Disk device driver. \\
 FS & bio.c & Disk block cache for the file system. \\
@@ -497,7 +497,7 @@ of one address space and one thread.  In real operating systems a
 process may have more than one thread to take advantage of multiple CPUs.
 
 %% 
-\section{Code: starting xv6, the first process and system call}
+\section{Code: Starting xv6, the first process and system call}
 %% 
 To make xv6 more concrete, we'll outline how the kernel starts and
 runs the first process. The subsequent chapters will describe the
