@@ -155,6 +155,7 @@ int wait(int *status) & Wait for a child to exit; exit status in *status; return
 int kill(int pid) & Terminate process PID. Returns 0, or -1 for error. \\
 int getpid() & Return the current process's PID. \\
 int pause(int n) & Pause for n clock ticks. \\
+int uptime() & Return the number of clock ticks since boot. \\
 int exec(char *file, char *argv[]) & Load a file and execute it with arguments; only returns if error. \\
 char *sbrk(int n) & Grow process's memory by n zero bytes. Returns start of new memory. \\
 int open(char *file, int flags) & Open a file; flags indicate read/write; returns an fd (file descriptor). \\
@@ -169,6 +170,7 @@ int mknod(char *file, int, int) & Create a device file. \\
 int fstat(int fd, struct stat *st) & Place info about an open file into *st. \\
 int link(char *file1, char *file2) & Create another name (file2) for the file file1. \\
 int unlink(char *file) & Remove a file. \\
+int sync() & Wait until earlier file system modifications are on disk. \\
 \end{tabular}
 \caption{Xv6 system calls. If not otherwise stated, these calls return
 0 for no error, and -1 if there's an error.}

@@ -853,11 +853,15 @@ using techniques that will be explained in
 Chapter~\ref{CH:SLEEP}.
 At a high level, a sleep-lock has a
 \lstinline{locked}
-field that is protected by a spinlock, and 
-\lstinline{acquiresleep} 's
-call to
-\lstinline{sleep}
-atomically yields the CPU and releases the spinlock.
+field that is protected by a spinlock.
+If the sleep-lock is held,
+\lstinline{acquiresleep}
+releases the spinlock and calls
+\lstinline{sleep},
+which yields the CPU until
+\lstinline{releasesleep}
+calls
+\lstinline{wakeup}.
 The result is that other threads can execute while
 \lstinline{acquiresleep}
 waits.

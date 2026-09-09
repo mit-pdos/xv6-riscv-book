@@ -152,12 +152,12 @@ it interrupts. The interrupt routine,
 {\tt uartintr}
 \lineref{kernel/uart.c:/^uartintr/},
 cooperates with {\tt uartwrite}:
-the latter sets the {\tt tx\_busy} flag when
-it sends each character, and waits for
-the flag to be cleared;
-the interrupt routine clears {\tt tx\_busy}
-and wakes up the writing thread
-when the UART signals it is ready for more output.
+before sending each byte, {\tt uartwrite} reads the UART's
+LSR register to see whether the UART can accept another byte,
+and calls {\tt sleep} if it cannot;
+the interrupt routine calls {\tt wakeup} when the UART signals
+it is ready for more output, which causes {\tt uartwrite}
+to wake up, re-check the LSR register, and send the next byte.
 
 \section{Concurrency in drivers}
 

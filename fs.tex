@@ -706,7 +706,19 @@ but no directory entry will point to it.
 File systems handle this case in one of two ways. The simple solution is that on
 recovery, after reboot, the file system scans the whole file system for files
 that are marked allocated, but have no directory entry pointing to them.  If any
-such file exists, then it can free those files.
+such file exists, then it can free those files.  This is the solution implemented
+by xv6.  During boot,
+\lstinline{fsinit}
+calls
+\indexcode{ireclaim}
+\lineref{kernel/fs.c:/^ireclaim/},
+which examines every on-disk inode, looking for ones that are marked
+allocated (non-zero type) but have a link count of zero; these are
+exactly the files that had been unlinked but were still open when
+the crash occurred.
+For each such orphan,
+\lstinline{ireclaim} calls \lstinline{iput}
+to free the inode and its data blocks.
 
 The second solution doesn't require scanning the file system.  In this solution,
 the file system records on disk (e.g., in the super block) the inode inumber of
@@ -715,12 +727,7 @@ the file system removes the file when its reference count reaches 0, then it
 updates the on-disk list by removing that inode from the list. On recovery, the
 file system frees any file in the list.
 
-Xv6 implements neither solution, which means that inodes may be marked allocated
-on disk, even though they are not in use anymore.  This means that over time xv6
-runs the risk that it may run out of disk space.
-%% 
-%% 
-%% 
+
 \section{Code: Inode content}
 
 \begin{figure}[t]
@@ -1274,12 +1281,19 @@ and
 \lineref{kernel/sysfile.c:/argstr.*old.*new/}.
 Assuming 
 \lstinline{old}
-exists and is not  a directory
-\linerefs{kernel/sysfile.c:/namei.old/,/ip->n/},
+exists, is not a directory, and has fewer than
+\lstinline{NLINK_MAX}
+links
+\linerefs{kernel/sysfile.c:/namei.old/,/NLINK_MAX/},
 \lstinline{sys_link}
 increments its 
 \lstinline{ip->nlink}
-count.
+count
+\lineref{kernel/sysfile.c:/^..ip->nlink\+\+/}.
+The limit exists because
+\lstinline{nlink}
+is a 16-bit field in the on-disk inode; without the check,
+creating too many links would overflow the count.
 Then
 \lstinline{sys_link}
 calls
