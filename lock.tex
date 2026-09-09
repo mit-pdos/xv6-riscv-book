@@ -685,7 +685,7 @@ call
 \lstinline{push_off}
 strictly before setting
 \lstinline{lk->locked}
-\lineref{kernel/spinlock.c:/sync_lock_test_and_set/}.
+\lineref{kernel/spinlock.c:/while..__atomic_exchange_n/}.
 If the two were reversed, there would be
 a brief window when the lock
 was held with interrupts enabled, and
@@ -696,7 +696,7 @@ call
 \indexcode{pop_off}
 only after 
 releasing the lock
-\lineref{kernel/spinlock.c:/sync_lock_release/}.
+\lineref{kernel/spinlock.c:/^..__atomic_store_n/}.
 
 %% 
 \section{Instruction and memory ordering}

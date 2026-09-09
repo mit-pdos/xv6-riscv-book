@@ -149,7 +149,7 @@ interrupt handler can modify the condition and call
 
 Xv6's \indexcode{sleep_prepare}
 \lineref{kernel/proc.c:/^sleep_prepare/} and \indexcode{sleep}
-\lineref{kernel/proc.c:/^sleep/} and \indexcode{wakeup}
+\lineref{kernel/proc.c:/^sleep.void./} and \indexcode{wakeup}
 \lineref{kernel/proc.c:/^wakeup/} implement the interface used in the
 example above. The basic idea is to have \lstinline{sleep} mark the
 current process as \indexcode{SLEEPING} and then call
@@ -520,7 +520,7 @@ because the code is in the middle of a multi-step
 system call that should be atomic (i.e., would be
 incorrect if abandoned midway through).
 The virtio driver
-\lineref{kernel/virtio\_disk.c:/sleep.b/} 
+\lineref{kernel/virtio\_disk.c:/while..b->disk.==.1/} 
 is an example: it does not check
 \lstinline{p->killed}
 because a disk operation may be one of a set of

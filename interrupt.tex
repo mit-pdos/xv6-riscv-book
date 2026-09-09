@@ -89,7 +89,7 @@ buffered in {\tt cons.buf}, copies the input to user space, and (after
 a whole line has arrived) returns to the user process. If the user
 hasn't typed a full line yet, any reading processes will wait in the
 {\tt sleep} call
-\lineref{kernel/console.c:/sleep..cons/}
+\lineref{kernel/console.c:/^......sleep..;/}
 (Chapter~\ref{CH:SLEEP} explains the details of {\tt sleep}).
 
 When the user types a character, the UART hardware asks the RISC-V
