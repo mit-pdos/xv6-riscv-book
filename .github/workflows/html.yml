@@ -20,6 +20,7 @@ jobs:
 
       - name: Install LaTeX and pdf2svg
         run: |
+          sudo rm -f /etc/apt/sources.list.d/google-chrome*.list
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
             texlive-base texlive-binaries \
