@@ -207,6 +207,25 @@ text = re.sub(r'\)\{reference-type="[^"]*"\s+reference="[^"]*"\}', ')', text)
 # strip any stray {reference=...} on figures/headers
 text = re.sub(r'\{#([^ }]+)\s+reference-type="[^"]*"\s+reference="[^"]*"\}', r'{#\1}', text)
 
+# Pandoc renders multi-column tabulars as raw HTML, but markdown inside an HTML
+# block is still parsed: a cell such as "int link(char *file1, char *file2)" has
+# its two asterisks read as emphasis (and a pair can even span two cells, since
+# the whole table is one block). A cell starting with a list marker is worse: it
+# opens a list that swallows the rest of the table. Cells here are plain text, so
+# neutralize the markdown-active characters as HTML entities.
+def ent(c):
+    return '&#%d;' % ord(c)
+def escape_cell(m):
+    body = m.group(2)
+    if '](' in body:               # leave any real markdown link alone
+        return m.group(0)
+    body = re.sub(r'[*_`]', lambda c: ent(c.group(0)), body)
+    # leading block-level marker: -/+/#/> item, or "1." / "1)" ordered list
+    body = re.sub(r'^(\s*)([-+#>])(?=\s)', lambda c: c.group(1) + ent(c.group(2)), body)
+    body = re.sub(r'^(\s*\d+)([.)])(?=\s)', lambda c: c.group(1) + ent(c.group(2)), body)
+    return m.group(1) + body + m.group(3)
+text = re.sub(r'(<t[dh]\b[^>]*>)(.*?)(</t[dh]>)', escape_cell, text, flags=re.S)
+
 # Tag every GitHub source-reference link so the side-by-side code panel can pick
 # it up: attach a .coderef class plus data-path / data-line / data-end attributes
 # parsed straight out of the blob URL. The href is left untouched so the link
