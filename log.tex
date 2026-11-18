@@ -263,6 +263,47 @@ It reads the log header, and mimics the actions of
 \lstinline{end_op}
 if the header indicates that the log contains a committed transaction.
 
+What if the system crashes again while
+\lstinline{recover_from_log}
+is installing blocks?
+Recovery writes the header with a count of zero only after it has
+installed every logged block, so a second crash leaves the committed
+header on disk, and the next boot starts the installation over.
+Installing a block twice is harmless, because each copy writes the same
+contents to the same place.
+
+Figure~\ref{fig:logcrash}
+follows one two-block transaction through its six disk writes:
+truncating a file, the example at the start of this chapter.
+Block A is the free-block bitmap and block B holds the file's i-node.
+Each row shows the disk if the power fails right after the write named
+in the first column, and the disk after the next boot has run recovery.
+Before the commit, the home locations hold the old contents and recovery
+ignores the log.
+From the commit until the header count is zeroed, recovery installs both
+blocks, even when only A has reached its home location.
+The row for home A is the state that the start of the chapter warns
+about, an i-node that refers to blocks marked free, and recovery
+repairs it.
+
+\begin{figure}[t]
+\center
+\begin{tabular}{llll}
+{\bf Crash after} & {\bf Header count} & {\bf Home A, B} & {\bf After recovery} \\
+\midrule
+previous transaction & 0 & old, old & old, old \\
+log copy of A & 0 & old, old & old, old \\
+log copy of B & 0 & old, old & old, old \\
+header (commit) & 2 & old, old & new, new \\
+home A & 2 & new, old & new, new \\
+home B & 2 & new, new & new, new \\
+header count zeroed & 0 & new, new & new, new \\
+\end{tabular}
+\caption{The disk after a crash at each write of a two-block transaction
+that truncates a file. A is the free-block bitmap and B holds the file's i-node.}
+\label{fig:logcrash}
+\end{figure}
+
 An example use of the log occurs in 
 \indexcode{filewrite}
 \lineref{kernel/file.c:/^filewrite/}.
@@ -341,5 +382,14 @@ updating the root directory and the other two writes correspond to
 writing file f?  Figure~\ref{fig:fslayout} might be helpful and feel
 free to add more \lstinline{printk} statements to help you answering
 the question.
+
+  \item Suppose
+    \lstinline{recover_from_log}
+    first wrote a count of zero to the header on disk, and only then
+    installed the logged blocks.
+    Describe a sequence of crashes that loses a committed transaction.
+    Would a single crash at any of the writes in
+    Figure~\ref{fig:logcrash}
+    reveal the problem?
 
 \end{enumerate}
